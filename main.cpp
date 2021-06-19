@@ -19,11 +19,11 @@ using namespace std;
 // }
 
 
-int compare_ent (entity* a, entity* b) {
+int compare_ent (actor* a, actor* b) {
   	return a->getOriginY() + a->z < b->getOriginY() +b->z;
 }
 
-void sort_by_y(vector<entity*> &g_entities) {
+void sort_by_y(vector<actor*> &g_entities) {
     stable_sort(g_entities.begin(), g_entities.end(), compare_ent);
 }
 
@@ -313,13 +313,9 @@ int main(int argc, char ** argv) {
 		protagGlimmerD = 0;
 
 		//sort		
-		sort_by_y(g_entities);
-		for(long long unsigned int i=0; i < g_entities.size(); i++){
-			if(!g_entities[i]->wallcap) {
-				g_entities[i]->shadow->render(renderer, g_camera);
-			}
-			g_entities[i]->render(renderer, g_camera, protag);
-			
+		sort_by_y(g_actors);
+		for(long long unsigned int i=0; i < g_actors.size(); i++){
+			g_actors[i]->render(renderer, g_camera);
 		}
 
 		for(long long unsigned int i=0; i < g_tiles.size(); i++){

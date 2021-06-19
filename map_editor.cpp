@@ -135,10 +135,10 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             tri* t = new tri(p1, p2, p3, p4);
             g_triangles.push_back(t);
         }
-        if(word == "wallcap") {
+        if(word == "mapObject") {
             iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
             //entity* e = new entity(renderer, s1, p1, p2, p3, p4, p6, p7, p8, p9);
-            entity* e = new entity(renderer, s1, p1, p2, p3, p4, p5, p6, p7);
+            mapObject* e = new mapObject(renderer, s1, p1, p2, p3, p4, p5, p6, p7);
         }
         if(word == "door") {
             iss >> s0 >> s1 >> s2 >> p1 >> p2 >>p3 >> p4;
@@ -453,7 +453,7 @@ void write_map(entity* mapent) {
                 if(autoMakeWallcaps) {
                     int step = 5;
                     for (int i = 0; i < selection->height; i+=step) {
-                        entity* e = new entity(renderer, captex, selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
+                        mapObject* e = new mapObject(renderer, captex, selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
                     }
                     
                 }
@@ -461,7 +461,7 @@ void write_map(entity* mapent) {
                 if(autoMakeWalls) {
                     int step = 64;
                     for (int i = 0; i < wallheight; i+=step) {
-                        entity* e = new entity(renderer, walltex, selection->x, selection->y + selection->height, i, selection->width, 55, 1);
+                        mapObject* e = new mapObject(renderer, walltex, selection->x, selection->y + selection->height, i, selection->width, 55, 1);
                     }
                     ////entity* e = new entity(renderer, selection->x, selection->y + selection->height, selection->width, wallheight, walltex, 1);
                     //entity* e = new entity(renderer, walltex, selection->x, selection->y + selection->height, 0, selection->width, (wallheight) * XtoZ + 2, 1);
@@ -469,32 +469,32 @@ void write_map(entity* mapent) {
 
                 if(shine == 1) {
                     //front
-                    entity* f = new entity(renderer, "tiles/lighting/SMOOTHSHADING.png", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
                     
                     
 
                     //back
-                    f = new entity(renderer, "tiles/lighting/SMOOTHSHADING.png", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
+                    f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
                     
                 }
 
                 if(shine == 2) {
-                    entity* f = new entity(renderer, "tiles/lighting/SHARPSHADING.png", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "tiles/lighting/SHARPSHADING.png", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
 
                 }
 
                 if(shine == 3) {
-                    entity* f = new entity(renderer, "tiles/lighting/SHARPBRIGHTSHADING.png", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "tiles/lighting/SHARPBRIGHTSHADING.png", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
                 }
 
                 if(occlusion) {
                     //front shading
-                    entity* m = new entity(renderer, "tiles/lighting/OCCLUSION.png", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
+                    mapObject* m = new mapObject(renderer, "tiles/lighting/OCCLUSION.png", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
 
                     //sides
                     int step = 5;
                     for (int i = 0; i < selection->height; i+=step) {
-                        entity* u = new entity(renderer, "tiles/lighting/h-OCCLUSION.png", selection->x - 19, selection->y + i + 5, 0, selection->width + 45, step);
+                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png", selection->x - 19, selection->y + i + 5, 0, selection->width + 45, step);
         
                     }
                     D(selection->height);
@@ -502,16 +502,16 @@ void write_map(entity* mapent) {
                     
                     
                     //corner a
-                    entity* a = new entity(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x - (38 - 19), selection->y, 0, 32, 19, 0, 0, -20);
+                    mapObject* a = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x - (38 - 19), selection->y, 0, 32, 19, 0, 0, -20);
                     M("make corner");
                     //corner b
-                    entity* b = new entity(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x + selection->width, selection->y, 0, 32, 19, 0, 0, -20);
+                    mapObject* b = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x + selection->width, selection->y, 0, 32, 19, 0, 0, -20);
 
                     //corner c
-                    entity* c = new entity(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x - (38 - 19), selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
+                    mapObject* c = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x - (38 - 19), selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
 
                     //corner d
-                    entity* d = new entity(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
+                    mapObject* d = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
                 }
 
                 
@@ -739,27 +739,18 @@ void write_map(entity* mapent) {
             }
             if(word == "info") {
                 M(mapname);
-                int entcount = 0;
-                int fakecount = 0;
-                for (auto x : g_entities) {
-                    if(!x->wallcap) {
-                        entcount++;
-                    } else {
-                        fakecount++;
-                    }
-                }
                 
-                M("Number of Dynamic entities: ");
-                M(entcount);
-                M("Number of Entitytiles:");
-                M(fakecount);
-                M("Number of Floortiles: ");
+                M("Entity Count: ");
+                M(g_entities.size());
+                M("MapObject Count:");
+                M(g_mapObjects.size());
+                M("Floor Count: ");
                 M(g_tiles.size() - 9);
                 // M("Number of Shadows: ");
                 // M(g_shadows.size());
-                M("Number of Waypoints: ");
+                M("Waypoint Count: ");
                 M(g_waypoints.size());
-                M("Number of Doors: ");
+                M("Door Count: ");
                 M(g_doors.size());
                 D(mapent->x);
                 D(mapent->y);
@@ -855,18 +846,17 @@ void write_map(entity* mapent) {
                         ofile << "triangle " << g_triangles[i]->x1 << " " << g_triangles[i]->y1 << " " << g_triangles[i]->x2 << " " << g_triangles[i]->y2 << endl;
                     }
                     for (long long unsigned int i = 0; i < g_entities.size(); i++) {
-                        if(!g_entities[i]->wallcap && !g_entities[i]->inParty) {
+                        if(!g_entities[i]->inParty) {
                             if(dynamic_cast<ai*>(g_entities[i]) == nullptr) { //dont save monsters as entities
                                 ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) << endl;
                             }
                         }
                     }
-                    for (long long unsigned int i = 0; i < g_entities.size(); i++) {
-                        if(g_entities[i]->wallcap) {
-                            //iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7 >> p8;
-                            ofile << "wallcap " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) << " " << to_string(g_entities[i]->z) << " " << to_string(g_entities[i]->width) << " " << to_string(g_entities[i]->height) <<  " " << g_entities[i]->wall << " " << g_entities[i]->extraYOffset << " "  << g_entities[i]->sortingOffset << endl;
-                        }
+                    
+                    for (long long unsigned int i = 0; i < g_mapObjects.size(); i++) {    
+                        ofile << "mapObject " << g_mapObjects[i]->name << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
                     }
+
                     for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
                         if(g_tiles[i]->fileaddress == "tiles/engine/marker.png" ) { continue; } //dont save map graphics
                         if(g_tiles[i]->fileaddress == "tiles/engine/speaker.png" ) { continue; }

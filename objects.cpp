@@ -29,7 +29,7 @@ public:
 	SDL_Surface* image = 0;
 	string name;
 	string binding;
-	float magnitude = 0.178;
+	float magnitude = 0.278;
 
 	heightmap(string fname, string fbinding) {
 		image = IMG_Load(fbinding.c_str());
@@ -381,42 +381,6 @@ bool LineTrace(int x1, int y1, int x2, int y2, int size = 30, int layer = 0) {
 	return true;
 }
 
-class cshadow {
-public:
-	float width = 100;
-	float height = 70;
-	float x = 0;
-	float y = 0;
-	float z = 0;
-	float size;
-	entity* owner = 0;
-	SDL_Surface* image = 0;
-	SDL_Texture* texture = 0;
-	bool asset_sharer = 0;
-	cshadow(SDL_Renderer * renderer, float fsize) {
-		size = fsize;
-		//if there is another shadow steal his texture
-		if( g_shadows.size() > 0) {
-			texture = g_shadows[0]->texture;
-			this->asset_sharer = 1;	
-		} else {
-			image = IMG_Load("sprites/shadow.png");
-			texture = SDL_CreateTextureFromSurface(renderer, image);
-			SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
-			SDL_FreeSurface(image);
-		}
-		
-		g_shadows.push_back(this);
-	}
-
-	~cshadow() {
-		M("~cshadow()" );
-		if(!asset_sharer) { SDL_DestroyTexture(texture);}
-		g_shadows.erase(remove(g_shadows.begin(), g_shadows.end(), this), g_shadows.end());
-	}
-	void render(SDL_Renderer* renderer, camera fcamera);
-};
-
 class door {
 public:
 	float x;
@@ -706,6 +670,8 @@ public:
 	float width = 0;
 	float height = 0;
 	SDL_Texture* texture;
+	rect bounds;
+	string name;
 
 	//add entities and mapObjects to g_actors with dc
 	actor() {
@@ -717,13 +683,60 @@ public:
 		M("~actor()");
 		g_actors.erase(remove(g_actors.begin(), g_actors.end(), this), g_actors.end());
 	}
+
+	virtual void render(SDL_Renderer * renderer, camera fcamera) {
+		
+	}
+	
+	
+	int getOriginX() {
+		return  x + width/2;
+	}
+
+	int getOriginY() {
+		return y + bounds.y + bounds.height/2;
+	}
 };
+
+
+class cshadow:public actor {
+public:
+	float size;
+	entity* owner = 0;
+	SDL_Surface* image = 0;
+	SDL_Texture* texture = 0;
+	bool asset_sharer = 0;
+	int xoffset = 0;
+	int yoffset = 0;
+
+	cshadow(SDL_Renderer * renderer, float fsize) {
+		size = fsize;
+		//if there is another shadow steal his texture
+		if( g_shadows.size() > 0) {
+			texture = g_shadows[0]->texture;
+			this->asset_sharer = 1;	
+		} else {
+			image = IMG_Load("sprites/shadow.png");
+			texture = SDL_CreateTextureFromSurface(renderer, image);
+			SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
+			SDL_FreeSurface(image);
+		}
+		
+		g_shadows.push_back(this);
+	}
+
+	~cshadow() {
+		M("~cshadow()" );
+		if(!asset_sharer) { SDL_DestroyTexture(texture);}
+		g_shadows.erase(remove(g_shadows.begin(), g_shadows.end(), this), g_shadows.end());
+	}
+	void render(SDL_Renderer* renderer, camera fcamera);
+};
+
 
 class mapObject:public actor {
 public:
-	rect bounds;
-
-	string name;
+	
 	float xoffset = 0;
 	float yoffset = 64;
 	bool wall; //to darken entwalls
@@ -810,12 +823,123 @@ public:
 		
 	}
 
+	~mapObject() {
+		g_mapObjects.erase(remove(g_mapObjects.begin(), g_mapObjects.end(), this), g_mapObjects.end());
+	}
+
+	void render(SDL_Renderer * renderer, camera fcamera) {
+		SDL_Point nowt = {0, 0};
+
+		rect obj(floor((x -fcamera.x)* fcamera.zoom) , floor((y-fcamera.y - height - XtoZ * z) * fcamera.zoom), ceil(width * fcamera.zoom), ceil(height * fcamera.zoom));		
+		rect cam(0, 0, fcamera.width, fcamera.height);
+		
+		if(RectOverlap(obj, cam)) {
+			/*
+			//if its a wall, check if it is covering the player
+			if(this->wall && protagForGlimmer != nullptr) {
+				
+				//make obj one block higher for the wallcap
+				//obj.height -= 45;
+				//obj.y += 45;
+				if((protagForGlimmer->x - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
+					protagGlimmerA = 1;
+				}
+				if((protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
+					protagGlimmerB = 1;
+				}
+				if((protagForGlimmer->x - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
+					protagGlimmerC = 1;
+				}
+				if((protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
+					protagGlimmerD = 1;
+				}
+				
+			}
+			*/
+			
+			SDL_Rect srcrect;
+			SDL_Rect dstrect;
+			int ypos = 0;
+			int xpos = 0;
+			srcrect.x = xoffset;
+			srcrect.y = yoffset;
+			
+			while(1) {
+				if(srcrect.x == xoffset) {
+						srcrect.w = framewidth - xoffset;
+						dstrect.w = framewidth - xoffset;
+					} else {
+						srcrect.w = framewidth;
+						dstrect.w = framewidth;
+					}
+					if(srcrect.y == yoffset) {
+						
+						srcrect.h = frameheight - yoffset;
+						dstrect.h = frameheight - yoffset;
+					} else {
+						dstrect.h = frameheight;
+						srcrect.h = frameheight;
+					}
+
+				dstrect.x = (x + xpos);
+				dstrect.y = (y+ ypos- z * XtoZ );
+				
+				
+				
+				
+				//are we still inbounds?
+				if(xpos + dstrect.w > this->width) {
+					dstrect.w = this->width - xpos;
+					if(dstrect.w + srcrect.x > framewidth) {
+						dstrect.w = framewidth - srcrect.x;
+					}
+					srcrect.w = dstrect.w;
+				}
+				if(ypos + dstrect.h > this->height ) {
+					
+					dstrect.h = this->height - ypos;
+					if(dstrect.h + srcrect.y > frameheight) {
+						dstrect.h = frameheight - srcrect.y;
+					}
+					srcrect.h = dstrect.h;
+					
+				}
+
+				
+				
+				
+				
+
+
+				//transform
+				dstrect.w = ceil(dstrect.w * fcamera.zoom);
+				dstrect.h = ceil(dstrect.h * fcamera.zoom);
+
+				dstrect.x = floor((dstrect.x - fcamera.x)* fcamera.zoom);
+				dstrect.y = floor((dstrect.y - fcamera.y - height)* fcamera.zoom);
+				
+
+				SDL_RenderCopyEx(renderer, texture, &srcrect, &dstrect, 0, &nowt, SDL_FLIP_NONE );
+				xpos += srcrect.w;
+				srcrect.x = 0;
+				
+				if(xpos >= this->width) {
+					
+					xpos = 0;
+					srcrect.x = xoffset;
+					
+					ypos += srcrect.h;
+					srcrect.y = 0;	
+					if(ypos >= this->height)
+						break;
+				}	
+			}
+		}
+	}
 };
 
 class entity:public actor {
 public:
-	string name;
-
 	//dialogue
 	vector<string> sayings;
 	int dialogue_index = 0;
@@ -874,7 +998,7 @@ public:
 	vector<coord*> framespots;
 	bool up, down, left, right; //for chusing one of 8 animations for facing
 	bool hadInput = 0; //had input this frame;
-	int shooting = 0; //1 if character is shooting1
+	int shooting = 0; //1 if character is shooting
 	
 
 	//object-related design
@@ -884,7 +1008,6 @@ public:
 	bool enemy = false;
 	bool talks = false;
 	bool wallcap = false; //used for wallcaps 
-	rect bounds;
 	cshadow * shadow = 0;
 	
 	//for textured entities (e.g. wallcap)
@@ -904,12 +1027,13 @@ public:
 
 	//default constructor is called automatically for children
 	entity() {
-		M("entity()" );
+		//M("entity()" );
 	};
 
 	entity(SDL_Renderer * renderer, string filename, float sizeForDefaults = 1) {
 		M("entity()" );
-
+		M("THIS SHOULD BE RUNNING");
+		SDL_Delay(500);
 		//temporary until I edit the footstep effect
 		
 		
@@ -985,10 +1109,8 @@ public:
 		this->shadow->owner = this;
 
 		file >> comment;
-		file >> shadow->x;
-		file >> shadow->y;
-
-		
+		file >> shadow->xoffset;
+		file >> shadow->yoffset;		
 		
 		file >> comment;
 		file >> this->animspeed;
@@ -1061,6 +1183,10 @@ public:
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		this->width = size * framewidth;
 		this->height = size * frameheight;
+
+		//move shadow to feet
+		shadow->xoffset += width/2 - shadow->width/2;
+		shadow->yoffset -= height - shadow->height;
 		
 		if(using_default) {
 			int w, h;
@@ -1099,79 +1225,13 @@ public:
 	//used mostly for fake entities, e.g. wallcaps
 	entity(SDL_Renderer * renderer, string imageadress, int fx, int fy, int fz, int fwidth, int fheight, bool fwall = 0, float extrayoffset = 0, float fsortingoffset = 0) {
 		M("entity() fake");
-		
-		name = imageadress;
-		
-		bool cached = false;
-		wall = fwall;
-		//has someone else already made a texture?
-		for(long long unsigned int i=0; i < g_entities.size(); i++){
-			if(g_entities[i]->name == this->name && g_entities[i]->wall == this->wall) {
-				//check if both are walls?
-				cached = true;
-				this->texture = g_entities[i]->texture;
-				this->asset_sharer = 1;
-				break;
-			}
-		}
-		if(cached) {
-						
-		} else {
-			const char* plik = imageadress.c_str();
-			SDL_Surface* image = IMG_Load(plik);
-			texture = SDL_CreateTextureFromSurface(renderer, image);
-			SDL_FreeSurface(image);
-			if(fwall) {
-				wall = 1;
-				SDL_SetTextureColorMod(texture, -40, -40, -40);
-			} else {
-				//SDL_SetTextureColorMod(texture, -35, -35, -35);
-				//SDL_SetTextureColorMod(texture, 0.8, 0.8, 0.8);
-			}
-			if(name.find("SHADING") != string::npos) {
-				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
-				//SDL_SetTextureAlphaMod(texture, 150);
-				
-			}
-			if(name.find("OCCLUSION") != string::npos) {
-				//cout << "blended " << name << endl;
-				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
-				//SDL_SetTextureAlphaMod(texture, 10);
-				
-			}
-		}
-
-		
-		
-		
-		//used for tiling
-		SDL_QueryTexture(texture, NULL, NULL, &this->framewidth, &this->frameheight);
-		this->width = fwidth;
-		this->x = fx;
-		this->y = fy;
-		this->z = fz;
-		this->height = fheight;
-		this->dynamic = false;
-		this->curheight = fheight;
-		this->curwidth = fwidth;
-		this->wallcap = 1;
-		this->sortingOffset = fsortingoffset;
-		this->xoffset = int(this->x) % int(this->framewidth);
-		this->bounds.y = -55; //added after the ORIGIN was used for ent sorting rather than the FOOT.
-		//this essentially just gives the blocks an invisible hitbox starting from their "head" so that their origin is in the middle
-		//of the collision
-
-		extraYOffset = extrayoffset;
-		this->yoffset = int(this->y - this->height) % int(this->frameheight) + extrayoffset;
-		if(fwall) {
-			this->yoffset = int(this->y - this->height - (z * 0.5)) % int(this->frameheight) + extrayoffset;
-		}
-		g_entities.push_back(this);
+		//deprecated and should be removed soon
 		
 	}
 
 	~entity() {
 		M("~entity()" );
+		D(name);
 		if (!wallcap) {
 			delete shadow;
 		}
@@ -1201,7 +1261,7 @@ public:
 
 	void shoot();
 
-	void render(SDL_Renderer * renderer, camera fcamera, entity* protagForGlimmer = nullptr) {
+	void render(SDL_Renderer * renderer, camera fcamera) {
 		//if its a wallcap, tile the image just like a maptile
 		if(wallcap && effect == 0) {
 			
@@ -1213,7 +1273,7 @@ public:
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
-			
+			/*
 			//if its a wall, check if it is covering the player
 			if(this->wall && protagForGlimmer != nullptr) {
 				
@@ -1234,6 +1294,7 @@ public:
 				}
 				
 			}
+			*/
 			
 			SDL_Rect srcrect;
 			SDL_Rect dstrect;
@@ -1777,7 +1838,10 @@ public:
 		}
 	
 		this->shadow->z = max(shadowFloor, heightfloor);
-		
+		shadow->x = x + shadow->xoffset;
+		shadow->y = y + shadow->yoffset;
+
+
 		if(z > floor + 1) {
 			zaccel -= g_gravity;
 			grounded = 0;
@@ -1808,8 +1872,24 @@ public:
 	}
 };
 
-class projectile : public entity {
+class projectile : public actor {
 public:
+	int layer;
+	float xvel;
+	float yvel;
+
+	bool asset_sharer;
+
+	bool animate = 0;
+	int frame = 0;
+	int animation = 0;
+	int xframes = 0;
+	int frameInAnimation = 0;
+	
+	int curheight = 0;
+	int curwidth = 0;
+
+
 	float maxLifetime = 0.4;
 	float lifetime = 500;
 	float angle = 0;
@@ -1819,26 +1899,20 @@ public:
 		M("projectile()");
 		gun = fweapon;
 		texture = gun->texture;
-		asset_sharer = 1; //dont delete the gun texture upon being destroyed (default ent destructor) 
-		//dont forget to share textures with other entities!
-		
-
-		//either make it static or add a function to get a shadow
-		dynamic = 0;
+		asset_sharer = 1;
 		
 		width = 30;
 		height = 30;
 		
-		shadow = new cshadow(renderer, 1);
-		shadow->owner = this;
-		shadow->width = width;
-		shadow->height = height;
-		
 		animate = 0;
-		curheight = 0;
-		curwidth = 0;
-		g_entities.push_back(this);
+		curheight = 30;
+		curwidth = 30;
 		g_projectiles.push_back(this);
+	}
+
+	~projectile() {
+		M("~projectile()");
+		g_projectiles.erase(remove(g_projectiles.begin(), g_projectiles.end(), this), g_projectiles.end());
 	}
 
 	void update(float elapsed) {
@@ -1858,15 +1932,30 @@ public:
 		x += sin(angle) * gun->sideways(maxLifetime - lifetime) + cos(angle) * gun->forward(maxLifetime - lifetime) + xvel;
 		y += XtoY * (sin(angle + M_PI / 2) * gun->sideways(maxLifetime - lifetime) + cos(angle + M_PI / 2) * gun->forward(maxLifetime - lifetime) + yvel);
 		lifetime -= elapsed;
-		//check for terrain collision
-		
-		
 	}
 
-	~projectile() {
-		M("~projectile()");
-		g_projectiles.erase(remove(g_projectiles.begin(), g_projectiles.end(), this), g_projectiles.end());
-		//g_entities.erase(remove(g_entities.begin(), g_entities.end(), this), g_entities.end());
+	void render(SDL_Renderer * renderer, camera fcamera) {
+		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y-curheight - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
+		rect cam(0, 0, fcamera.width, fcamera.height);
+		
+		if(RectOverlap(obj, cam)) {
+
+			
+			SDL_Rect dstrect = { obj.x, obj.y, obj.width, obj.height};
+			if(0/*framespots.size() > 0*/) {
+				//frame = animation * xframes + frameInAnimation;
+				//SDL_Rect dstrect = { obj.x, obj.y, obj.width, obj.height};
+				//SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
+				//const SDL_Point center = {0 ,0};
+				//if(texture != NULL) {
+				//	SDL_RenderCopyEx(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
+				//}
+			} else {
+				if(texture != NULL) {
+					SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+				}
+			}
+		}
 	}
 };
 
@@ -1877,7 +1966,7 @@ void entity::shoot() {
 		projectile* p = new projectile(hisWeapon);
 		p->x = getOriginX() - p->width/2;
 		p->y = getOriginY() - p->height/2;
-		p->z = z + 10;
+		p->z = z;
 		p->width = hisWeapon->width;
 		p->height = hisWeapon->height;
 		p->gun = this->hisWeapon;
@@ -1919,6 +2008,11 @@ void entity::shoot() {
 				
 			}
 		}
+	
+		//move it out of the shooter and infront
+		p->x += cos(p->angle) * width/2;
+		p->y += cos(p->angle + M_PI / 2) * height/2;
+		
 	}
 	
 }
@@ -2055,7 +2149,7 @@ public:
 class chaser: public ai {
 public:
 	chaser(SDL_Renderer * renderer, string filename, float sizeForDefaults = 1) {
-		M("entity()" );
+		//M("entity()" );
 		range = 1.2;
 		ifstream file;
 		bool using_default = 0;
@@ -2115,11 +2209,12 @@ public:
 		this->shadow->owner = this;
 
 		file >> comment;
-		file >> shadow->x;
-		file >> shadow->y;
+		file >> shadow->xoffset;
+		file >> shadow->yoffset;
+		
+		
 
-		
-		
+
 		file >> comment;
 		file >> this->animspeed;
 		file >> this->animlimit;
@@ -2133,7 +2228,7 @@ public:
 		this->shadow->width = framewidth * fsize;
 		this->shadow->height = framewidth * fsize * (1/p_ratio);
 		
-		
+	
 
 		
 
@@ -2186,15 +2281,17 @@ public:
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		this->width = size * framewidth;
 		this->height = size * frameheight;
-		
+
 		//move shadow to feet
-		this->shadow->y -= this->shadow->height / 2;
-		this->shadow->x = (this->width/2 - this->shadow->width/2);
+		shadow->xoffset += width/2 - shadow->width/2;
+		shadow->yoffset -= height - shadow->height;
+		
+
 		if(setcollisionfromshadow) {
 			this->bounds.width = this->shadow->width;
 			this->bounds.height = this->shadow->height;
-			this->bounds.x = this->shadow->x;
-			this->bounds.y = this->shadow->y;
+			this->bounds.x = this->shadow->xoffset;
+			this->bounds.y = this->shadow->yoffset;
 		}
 
 		if(using_default) {
@@ -2471,7 +2568,11 @@ public:
 
 
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
-	SDL_Rect dstrect = { ((owner->x +this->x)-fcamera.x) *fcamera.zoom, (( (owner->y + this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (width * size), (height * size)* (637 /640) * 0.9};
+	SDL_Rect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (width * size), (height * size)* (637 /640) * 0.9};
+	D(x);
+	D(y);
+	D(xoffset);
+	D(yoffset);
 	//SDL_Rect dstrect = {500, 500, 200, 200 };
 	//dstrect.y += (owner->height -(height/2)) * fcamera.zoom;
 	float temp;
@@ -3093,8 +3194,11 @@ void clear_map(camera& cameraToReset) {
 	int size;
 	size = g_entities.size();
 
+	g_actors.clear();
+
 	//copy protag to a pointer, clear the array, and re-add protag
 	entity* hold_protag;
+	D(protag->inParty);
 	for(int i=0; i< size; i++) {
 		if(g_entities[0]->inParty) {
 			//remove from array without deleting
@@ -3106,6 +3210,7 @@ void clear_map(camera& cameraToReset) {
 	//push back any entities that were in the party
 	for (int i = 0; i < party.size(); i++) {
 		g_entities.push_back(party[i]);
+		g_actors.push_back(party[i]);
 	}
 	
 	size = g_mapObjects.size();
@@ -3113,7 +3218,7 @@ void clear_map(camera& cameraToReset) {
 		delete g_mapObjects[0];
 	}
 	
-	g_actors.clear();
+	
 
 	size = g_tiles.size();
 	for(int i = 0; i < size; i++) {
