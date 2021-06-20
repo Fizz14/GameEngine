@@ -48,7 +48,7 @@ int main(int argc, char ** argv) {
 	SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best"); 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(vsync);
 
 
 	chaser* freller = new chaser(renderer, "protag");
@@ -77,7 +77,7 @@ int main(int argc, char ** argv) {
 
 	//setup UI
 	adventureUIManager = new adventureUI(renderer);
-	adventureUIManager->	protagref = protag;
+	adventureUIManager->protagref = protag;
 	
 	if(devMode) {
 		init_map_writing(renderer);
@@ -103,26 +103,19 @@ int main(int argc, char ** argv) {
 		g_collisions.push_back(v);
 	}
 
-	load_map(renderer, "maps/empty.map", "a");
+	load_map(renderer, "maps/empty/empty.map", "a");
 	srand (time(NULL));
 	
-	
-	//give protag a weapon
-	protag->hisWeapon = new weapon("shot");
-	
-
-	
 	while (!quit) {
-
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
+		
 		//lock framerate
-		if(elapsed < g_min_frametime) {
+		if(vsync && elapsed < g_min_frametime) {
 			SDL_Delay(g_min_frametime - elapsed);
 			ticks = SDL_GetTicks();
-			elapsed = ticks - lastticks;
-			
-		}	
+			elapsed = ticks - lastticks;	
+		}
 		lastticks = ticks;
 
 		//cooldownsA
@@ -132,8 +125,8 @@ int main(int argc, char ** argv) {
 		musicUpdateTimer += elapsed;
 
 		// INPUT
-		
 		getInput(elapsed);
+
 		//rearrange party
 		if(input[9] && !oldinput[9]) {
 			g_camera.lag = 4;

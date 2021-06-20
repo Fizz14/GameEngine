@@ -22,7 +22,20 @@
 
 using namespace std;
 
+//Thanks to user "user9266" from github for this solution
+struct Timer {
+    Uint64 previous_ticks{};
+    float elapsed_seconds{};
 
+    void tick()
+    {
+        const Uint64 current_ticks{ SDL_GetPerformanceCounter() };
+        const Uint64 delta{ current_ticks - previous_ticks };
+        previous_ticks = current_ticks;
+        static const Uint64 TICKS_PER_SECOND{ SDL_GetPerformanceFrequency() };
+        elapsed_seconds = delta / static_cast<float>(TICKS_PER_SECOND);
+    }
+};
 
 class heightmap {
 public:
@@ -273,6 +286,11 @@ bool RectOverlap(rect a, rect b) {
 	} else {
 		return false;
 	}
+}
+
+bool ElipseOverlap(rect a, rect b) {
+	//todo, check rectangles (bounding boxes) first and then elipse collisions
+	return false;
 }
 
 bool RectOverlap(SDL_Rect a, SDL_Rect b) {
@@ -626,6 +644,8 @@ public:
 	float shotLifetime = 500; //ms
 	int width = 20;
 	int height = 20;
+	int faction = 1;
+	int damage = 1;
 	float size = 0.1;
 	SDL_Texture* texture;
 
@@ -675,12 +695,12 @@ public:
 
 	//add entities and mapObjects to g_actors with dc
 	actor() {
-		M("actor()");
+		//M("actor()");
 		g_actors.push_back(this);
 	}
 	
 	~actor() {
-		M("~actor()");
+		//M("~actor()");
 		g_actors.erase(remove(g_actors.begin(), g_actors.end(), this), g_actors.end());
 	}
 
@@ -698,6 +718,92 @@ public:
 	}
 };
 
+class projectile : public actor {
+public:
+	int layer;
+	float xvel;
+	float yvel;
+
+	bool asset_sharer;
+
+	bool animate = 0;
+	int frame = 0;
+	int animation = 0;
+	int xframes = 0;
+	int frameInAnimation = 0;
+	
+	int curheight = 0;
+	int curwidth = 0;
+
+
+	float maxLifetime = 0.4;
+	float lifetime = 500;
+	float angle = 0;
+	weapon* gun;
+
+	projectile(weapon* fweapon) {
+		//M("projectile()");
+		gun = fweapon;
+		texture = gun->texture;
+		asset_sharer = 1;
+		
+		width = 30;
+		height = 30;
+		
+		animate = 0;
+		curheight = 30;
+		curwidth = 30;
+		g_projectiles.push_back(this);
+	}
+
+	~projectile() {
+		//M("~projectile()");
+		g_projectiles.erase(remove(g_projectiles.begin(), g_projectiles.end(), this), g_projectiles.end());
+	}
+
+	void update(float elapsed) {
+		rect bounds = {x, y, width, height};
+		layer = max(z /64, 0.0f);
+		for(auto n : g_collisions[layer]) {
+			if(RectOverlap(bounds, n->bounds)) {
+				lifetime = 0;
+				return;
+			}
+		}
+
+		if(lifetime <= 0) {
+			return;
+		}
+		
+		x += sin(angle) * gun->sideways(maxLifetime - lifetime) + cos(angle) * gun->forward(maxLifetime - lifetime) + xvel;
+		y += XtoY * (sin(angle + M_PI / 2) * gun->sideways(maxLifetime - lifetime) + cos(angle + M_PI / 2) * gun->forward(maxLifetime - lifetime) + yvel);
+		lifetime -= elapsed;
+	}
+
+	void render(SDL_Renderer * renderer, camera fcamera) {
+		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y-curheight - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
+		rect cam(0, 0, fcamera.width, fcamera.height);
+		
+		if(RectOverlap(obj, cam)) {
+
+			
+			SDL_Rect dstrect = { obj.x, obj.y, obj.width, obj.height};
+			if(0/*framespots.size() > 0*/) {
+				//frame = animation * xframes + frameInAnimation;
+				//SDL_Rect dstrect = { obj.x, obj.y, obj.width, obj.height};
+				//SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
+				//const SDL_Point center = {0 ,0};
+				//if(texture != NULL) {
+				//	SDL_RenderCopyEx(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
+				//}
+			} else {
+				if(texture != NULL) {
+					SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+				}
+			}
+		}
+	}
+};
 
 class cshadow:public actor {
 public:
@@ -710,6 +816,7 @@ public:
 	int yoffset = 0;
 
 	cshadow(SDL_Renderer * renderer, float fsize) {
+		M("cshadow()");
 		size = fsize;
 		//if there is another shadow steal his texture
 		if( g_shadows.size() > 0) {
@@ -972,8 +1079,7 @@ public:
 	int max_update_z_time = 1; //update zpos every x frames
 	float oldz = 0;
 	
-	//combat
-	weapon* hisWeapon;
+	
 	
 
 	//animation
@@ -1003,9 +1109,7 @@ public:
 
 	//object-related design
 	bool dynamic = true; //true for things such as wallcaps. movement/collision is not calculated if this is false
-	bool invincible = true; //so innocent people dont take damage from shots
 	bool inParty = false;
-	bool enemy = false;
 	bool talks = false;
 	bool wallcap = false; //used for wallcaps 
 	cshadow * shadow = 0;
@@ -1022,6 +1126,25 @@ public:
 
 	//self-data
 	int data[25] = {0};
+
+	//combat
+	weapon* hisWeapon;
+	bool canFight = 1;
+	bool invincible = 0;
+	float invincibleMS = 0; //ms before setting invincible to 0
+	bool agrod = 0; //are they fighting a target?
+	entity* target; //who are they fighting?
+	int faction = 0; //0 is player, 1 is most enemies
+	float level = 1; //affects damage
+	float maxhp = 20;
+	float hp = 20;
+	float dhpMS = 0; //how long to apply dhp (dot, healing)
+	float dhp = 0;
+	string weaponName = "";
+
+	Status status = none;
+	float statusMS = 0; //how long to apply status before it becomes "none"
+	float statusMag = 0; //magnitude of status
 	
 	
 
@@ -1031,11 +1154,7 @@ public:
 	};
 
 	entity(SDL_Renderer * renderer, string filename, float sizeForDefaults = 1) {
-		M("entity()" );
-		M("THIS SHOULD BE RUNNING");
-		SDL_Delay(500);
-		//temporary until I edit the footstep effect
-		
+		M("entity()");
 		
 		ifstream file;
 		bool using_default = 0;
@@ -1108,6 +1227,7 @@ public:
 		
 		this->shadow->owner = this;
 
+
 		file >> comment;
 		file >> shadow->xoffset;
 		file >> shadow->yoffset;		
@@ -1126,22 +1246,10 @@ public:
 		this->shadow->width = framewidth * fsize;
 		this->shadow->height = framewidth * fsize * (1/p_ratio);
 		
-		
-
-		//move shadow to feet
-		//this->shadow->y -= this->shadow->height / 2;
-
-		//(owner->height -(height/2))
-
 		file >> comment;
 		bool setcollisionfromshadow;
 		file >> setcollisionfromshadow;
-		if(setcollisionfromshadow) {
-			this->bounds.width = this->shadow->width;
-			this->bounds.height = this->shadow->height;
-			this->bounds.x = this->shadow->x;
-			this->bounds.y = this->shadow->y;
-		}
+		
 
 		
 
@@ -1152,7 +1260,17 @@ public:
 		file >> this->talks;
 
 		file >> comment;
-		file >> this->enemy;
+		file >> this->faction;
+		
+
+		file >> comment;
+		file >> this->weaponName;
+
+		if(this->dynamic) {
+			hisWeapon = new weapon(weaponName);
+			hisWeapon->faction = this->faction;
+		}
+
 		file.close();
 		
 		//load dialogue file
@@ -1188,6 +1306,15 @@ public:
 		shadow->xoffset += width/2 - shadow->width/2;
 		shadow->yoffset -= height - shadow->height;
 		
+
+		if(setcollisionfromshadow) {
+			this->bounds.width = this->shadow->width;
+			this->bounds.height = this->shadow->height;
+			this->bounds.x = this->shadow->xoffset;
+			this->bounds.y = this->shadow->yoffset;
+			
+		}
+		
 		if(using_default) {
 			int w, h;
 			SDL_QueryTexture(texture, NULL, NULL, &w, &h);
@@ -1196,10 +1323,9 @@ public:
 			this->shadow->width = 0;
 		}
 
-		//move shadow to feet
-		//this->bounds.y +=this->height/2;
 		curwidth = width;
 		curheight = height;
+
 		
 		if(!using_default) {
 			xframes = image->w /framewidth;
@@ -1441,6 +1567,7 @@ public:
 	}
 
 	void move_up() {
+		//y-=yagil;
 		yaccel = -1* yagil;
 		if(shooting) { return;}
 		up = true;
@@ -1456,6 +1583,7 @@ public:
 	}
 
 	void move_down() {
+		//y+=yagil;
 		yaccel = yagil;
 		if(shooting) { return;}
 		down = true;
@@ -1464,7 +1592,9 @@ public:
 	}
 
 	void move_left() {
+		//x-=xagil;
 		xaccel = -1 * xagil;
+		//x -= 3;
 		if(shooting) { return;}
 		left = true;
 		right = false;
@@ -1479,6 +1609,7 @@ public:
 	}
 	
 	void move_right() {
+		//x+=xagil;
 		xaccel = xagil;
 		if(shooting) { return;}
 		right = true;
@@ -1561,6 +1692,7 @@ public:
 			curwidth = curwidth * 0.8 + width * 0.2;
 			curheight = curheight * 0.8 + height* 0.2;
 		}
+		
 		
 		if(!dynamic) { return nullptr; }
 		//should we animate?
@@ -1838,8 +1970,7 @@ public:
 		}
 	
 		this->shadow->z = max(shadowFloor, heightfloor);
-		shadow->x = x + shadow->xoffset;
-		shadow->y = y + shadow->yoffset;
+
 
 
 		if(z > floor + 1) {
@@ -1863,105 +1994,60 @@ public:
 		layer = max(z /64, 0.0f);
 		layer = min(layer, (int)g_collisions.size() - 1);
 
+		shadow->x = x + shadow->xoffset;
+		shadow->y = y + shadow->yoffset;
+
+		//update combat
 		if(shooting) {
 			//spawn shot.
 			shoot();
 		}
 
+		if(!invincible) {
+			//M("I'm not invincible");
+			//check for projectile collision
+			for(auto x : g_projectiles) {
+				rect thatMovedBounds = rect(x->x + x->bounds.x, x->y + x->bounds.y, x->bounds.width, x->bounds.height);
+				rect thisMovedBounds = rect(this->x + bounds.x, y + bounds.y, bounds.width, bounds.height);
+				
+				if(x->gun->faction != this->faction && RectOverlap(thatMovedBounds, thisMovedBounds)) {
+					//take damage
+					this->hp -= x->gun->damage;
+
+					//destroy projectile
+					delete x;					
+				}
+			}
+		}
+		if(canFight) {
+			if(agrod) {
+
+			} else {
+				//not yet agro'd
+
+			}
+		}
+
+		//apply statuseffect
+
+		
+		//check if he has died
+		if(hp < 0) {
+			delete this;
+		}
+
+		
+
+
 		return nullptr;
 	}
 };
 
-class projectile : public actor {
-public:
-	int layer;
-	float xvel;
-	float yvel;
 
-	bool asset_sharer;
-
-	bool animate = 0;
-	int frame = 0;
-	int animation = 0;
-	int xframes = 0;
-	int frameInAnimation = 0;
-	
-	int curheight = 0;
-	int curwidth = 0;
-
-
-	float maxLifetime = 0.4;
-	float lifetime = 500;
-	float angle = 0;
-	weapon* gun;
-
-	projectile(weapon* fweapon) {
-		M("projectile()");
-		gun = fweapon;
-		texture = gun->texture;
-		asset_sharer = 1;
-		
-		width = 30;
-		height = 30;
-		
-		animate = 0;
-		curheight = 30;
-		curwidth = 30;
-		g_projectiles.push_back(this);
-	}
-
-	~projectile() {
-		M("~projectile()");
-		g_projectiles.erase(remove(g_projectiles.begin(), g_projectiles.end(), this), g_projectiles.end());
-	}
-
-	void update(float elapsed) {
-		rect bounds = {x, y, width, height};
-		layer = max(z /64, 0.0f);
-		for(auto n : g_collisions[layer]) {
-			if(RectOverlap(bounds, n->bounds)) {
-				lifetime = 0;
-				return;
-			}
-		}
-
-		if(lifetime <= 0) {
-			return;
-		}
-		
-		x += sin(angle) * gun->sideways(maxLifetime - lifetime) + cos(angle) * gun->forward(maxLifetime - lifetime) + xvel;
-		y += XtoY * (sin(angle + M_PI / 2) * gun->sideways(maxLifetime - lifetime) + cos(angle + M_PI / 2) * gun->forward(maxLifetime - lifetime) + yvel);
-		lifetime -= elapsed;
-	}
-
-	void render(SDL_Renderer * renderer, camera fcamera) {
-		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y-curheight - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
-		rect cam(0, 0, fcamera.width, fcamera.height);
-		
-		if(RectOverlap(obj, cam)) {
-
-			
-			SDL_Rect dstrect = { obj.x, obj.y, obj.width, obj.height};
-			if(0/*framespots.size() > 0*/) {
-				//frame = animation * xframes + frameInAnimation;
-				//SDL_Rect dstrect = { obj.x, obj.y, obj.width, obj.height};
-				//SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
-				//const SDL_Point center = {0 ,0};
-				//if(texture != NULL) {
-				//	SDL_RenderCopyEx(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
-				//}
-			} else {
-				if(texture != NULL) {
-					SDL_RenderCopy(renderer, texture, NULL, &dstrect);
-				}
-			}
-		}
-	}
-};
 
 void entity::shoot() {
 	if(this->hisWeapon->cooldown <= 0) {
-		M("shoot()");
+		//M("shoot()");
 		hisWeapon->cooldown = hisWeapon->maxCooldown;
 		projectile* p = new projectile(hisWeapon);
 		p->x = getOriginX() - p->width/2;
@@ -2100,9 +2186,6 @@ public:
 		
 		file >> comment;
 		file >> this->talks;
-		file >> comment;
-		file >> this->enemy;
-		
 
 		file.close();
 		SDL_Surface* image = IMG_Load(spritefile);
@@ -2160,9 +2243,18 @@ public:
 		file.open(plik);
 		
 		if (!file.is_open()) {
-			using_default = 1;
-			string newfile = "entities/default.ent";
-			file.open(newfile);
+			//load from global folder
+			loadstr = "entities/" + filename + ".ent";
+			const char* plik = loadstr.c_str();
+			
+			file.open(plik);
+			
+			if (!file.is_open()) {
+				//just make a default entity
+				using_default = 1;
+				string newfile = "entities/default.ent";
+				file.open(newfile);
+			}
 		}
 		
 		string temp;
@@ -2246,7 +2338,16 @@ public:
 		file >> this->talks;
 
 		file >> comment;
-		file >> this->enemy;
+		file >> this->faction;
+
+		file >> comment;
+		file >> this->weaponName;
+
+		if(this->dynamic) {
+			hisWeapon = new weapon(weaponName);
+			hisWeapon->faction = this->faction;
+		}
+
 		file.close();
 		
 		//load dialogue file
@@ -2285,7 +2386,6 @@ public:
 		//move shadow to feet
 		shadow->xoffset += width/2 - shadow->width/2;
 		shadow->yoffset -= height - shadow->height;
-		
 
 		if(setcollisionfromshadow) {
 			this->bounds.width = this->shadow->width;
@@ -2302,8 +2402,6 @@ public:
 			
 		}
 
-		//move shadow to feet
-		//this->bounds.y +=this->height/2;
 		curwidth = width;
 		curheight = height;
 		
@@ -2569,10 +2667,6 @@ public:
 
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 	SDL_Rect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (width * size), (height * size)* (637 /640) * 0.9};
-	D(x);
-	D(y);
-	D(xoffset);
-	D(yoffset);
 	//SDL_Rect dstrect = {500, 500, 200, 200 };
 	//dstrect.y += (owner->height -(height/2)) * fcamera.zoom;
 	float temp;
@@ -2587,9 +2681,11 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 
 	rect cam(0, 0, fcamera.width, fcamera.height);
 
-	//if(RectOverlap(obj, cam)) {
+	if(RectOverlap(obj, cam)) {
 		SDL_RenderCopy(renderer, texture, NULL, &dstrect);	
-	//}
+	}
+
+
 }
 
 class textbox {

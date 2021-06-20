@@ -108,6 +108,8 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             e->x = p0;
             e->y = p1;
             e->z = p2;
+            e->shadow->x = e->x + e->shadow->xoffset;
+            e->shadow->y = e->y + e->shadow->yoffset;
         }
         if(word == "ai") {
             //M("loading ai" << endl;
@@ -964,31 +966,13 @@ void write_map(entity* mapent) {
                     break;
                 }
             }
-            if(word == "set") {
+            if(word == "set" || word == "s") {
                 line >> word;
                 if(word == "shine") {
                     line >> shine;
                     break;
                 }
-                //for adjusting entity hitboxes/shadows
-                if(word == "boundx") {
-                    line >> g_entities[g_entities.size() - 1]->bounds.x;
-                }
-                if(word == "boundy") {
-                    line >> g_entities[g_entities.size() - 1]->bounds.y;
-                }
-                if(word == "boundw") {
-                    line >> g_entities[g_entities.size() - 1]->bounds.width;
-                }
-                if(word == "boundh") {
-                    line >> g_entities[g_entities.size() - 1]->bounds.height;
-                }
-                if(word == "shadowx") {
-                    line >> g_entities[g_entities.size() - 1]->shadow->x;
-                }
-                if(word == "shadowy") {
-                    line >> g_entities[g_entities.size() - 1]->shadow->y;
-                }
+                
                 if(word == "limits") {
                     int a, b, c, d;
                     line >> a >> b >> c >> d;
@@ -1003,31 +987,31 @@ void write_map(entity* mapent) {
                     break;
                 }
                 
-                if(word == "wallheight") {
+                if(word == "wallheight" || word == "wh") {
                     line >> wallheight;
                     wallheight *= 64;
                     break;
                 }
-                if(word == "occlusion") {
+                if(word == "occlusion" || word == "o") {
                     line >> occlusion;
                     break;
                 }
-                if(word == "wall") {
+                if(word == "wall" || word == "w") {
                     line >> walltex;
                     walltex = "tiles/diffuse/" + walltex + ".png";
                     break;
                 }
-                if(word == "floor") {
+                if(word == "floor" || word == "f") {
                     line >> floortex;
                     floortex = "tiles/diffuse/" + floortex + ".png";
                     break;
                 }
-                if(word == "cap") {
+                if(word == "cap" || word == "c") {
                     line >> captex;
                     captex = "tiles/diffuse/" + captex + ".png";
                     break;
                 }
-                if(word == "mask") {
+                if(word == "mask" || word == "m") {
                     line >> masktex;
                     masktex = "tiles/masks/" + masktex + ".png";
                     break;
@@ -1131,11 +1115,46 @@ void write_map(entity* mapent) {
                     break;
                 }
             }
+            
+            if(word == "adj" || word == "adjust") {
+                //adjust
+                line >> word;
+                if(word == "boundx") {
+                    g_entities[g_entities.size() - 1]->bounds.x = (g_entities[g_entities.size() - 1]->width/2 - g_entities[g_entities.size() - 1]->shadow->width/2);
+                    int number;
+                    line >> number;
+                    g_entities[g_entities.size() - 1]->bounds.x += number;
+                    break;
+                }
+                if(word == "boundy") {
+                    g_entities[g_entities.size() - 1]->bounds.y = -1 * (g_entities[g_entities.size() - 1]->height - g_entities[g_entities.size() - 1]->shadow->height);
+                    int number;
+                    line >> number;
+                    g_entities[g_entities.size() - 1]->bounds.y += number;
+                    break;
+                }
+                if(word == "boundw") {
+                    line >> g_entities[g_entities.size() - 1]->bounds.width;
+                    break;
+                }
+                if(word == "boundh") {
+                    line >> g_entities[g_entities.size() - 1]->bounds.height;
+                    break;
+                }
+                if(word == "shadowx") {
+                    line >> g_entities[g_entities.size() - 1]->shadow->x;
+                    break;
+                }
+                if(word == "shadowy") {
+                    line >> g_entities[g_entities.size() - 1]->shadow->y;
+                    break;
+                }
+            }
             if(word == "where") {
                 M(px);
                 M(py);
             }
-            if(word == "reset") {
+            if(word == "reset"  || word == "rs") {
                 line >> word;
                 if(word == "grid") {
                     grid = 60;
@@ -1168,14 +1187,14 @@ void write_map(entity* mapent) {
                     for(auto x: limits) {x = 0;}
                 }
             }
-            if(word == "teleport") {
+            if(word == "teleport" || word == "tp") {
                 int x, y;
                 line >> x >> y;
                 mapent->x = x;
                 mapent->y = y;
                 break;
             }
-            if(word == "ent") {
+            if(word == "entity" || word == "ent") {
                 line >> entstring;
                 float z = 0;
                 line >> z;
@@ -1185,19 +1204,21 @@ void write_map(entity* mapent) {
                 //entstring = loadstr;
                 entity* e = new entity(renderer,  plik);
                 e->x = px;
-                e->y = py + mapent->height -(grid/2);
+                e->y = py;
                 e->xmaxspeed =0;
                 e->ymaxspeed =0;
                 e->stop_hori();
                 e->stop_verti();
-                e->z = z;
+                e->z = mapent->z;
+                e->shadow->x = e->x + e->shadow->xoffset;
+		        e->shadow->y = e->y + e->shadow->yoffset;
                 break;
             }
-            if(word == "sound") {
+            if(word == "sound" || word == "snd") {
                 line >> entstring;
                 worldsound* w = new worldsound(entstring, px + marker->width/2, py + marker->height/2);
             } 
-            if(word == "music") {
+            if(word == "music" || word == "m") {
                 line >> entstring;
                 musicNode* m = new musicNode(entstring, px + marker->width/2, py + marker->height/2);
             }
@@ -1207,11 +1228,11 @@ void write_map(entity* mapent) {
                 line >> radius;
                 cueSound* m = new cueSound(entstring, px + marker->width/2, py + marker->height/2, radius);
             }
-            if(word == "way") {
+            if(word == "way" || word == "w") {
                 line >> entstring;
                 waypoint* m = new waypoint(entstring, px + marker->width/2, py + marker->height/2);
             }
-            if(word == "door") { //consider renaming this "link" or something other than "door" because it doesnt make doors
+            if(word == "door" || word == "d") { //consider renaming this "link" or something other than "door" because it doesnt make doors
                 string mapdest, waydest;
                 line >> mapdest >> waydest;
                 if(g_doors.size() > 0) {
@@ -1220,7 +1241,7 @@ void write_map(entity* mapent) {
                     
                 }
             }
-            if(word == "trigger") {
+            if(word == "trigger" || word == "t") {
                 string fbinding;
                 line >> fbinding;
                 if(g_triggers.size() > 0) {
@@ -1228,7 +1249,7 @@ void write_map(entity* mapent) {
                     
                 }
             }
-            if(word == "listener") {
+            if(word == "listener" || word == "l") {
                 M("LISTENER EVENT ENTNAME BLOCK VALUE");
                 string fbinding, entstr, blockstr, valuestr;
                 line >> fbinding >> entstr >> blockstr >> valuestr;

@@ -135,6 +135,7 @@ float old_WIN_WIDTH = 640; //used for detecting change in window width to recalc
 
 //for visual style
 float p_ratio = 1.151;
+bool vsync = true;
 //x length times x_z_ratio is proper screen length in z
 float XtoZ = 0.496; // 4/2.31, arctan (4/ 3.21) = 60 deg
 float XtoY = 0.866;
@@ -199,7 +200,7 @@ public:
 		
 		if(lag == 0) {
 			x=targetx;
-			y=targety;	
+			y=targety;
 		} else {
 			x += (targetx-oldx)  * (elapsed / 256) * lag;
 			y += (targety-oldy)  * (elapsed / 256) * lag;
@@ -289,6 +290,9 @@ float dialogue_cooldown = 0; //seconds until he can have dialogue again.
 //debuging
 SDL_Texture* nodeDebug;
 clock_t debugClock;
+
+//combat
+enum Status { none, stunned, slowed, buffed, marked };
 
 void playSound(int channel, Mix_Chunk* sound, int loops) {
 	if(!g_mute && sound != NULL) {
