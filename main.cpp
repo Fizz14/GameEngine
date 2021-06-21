@@ -51,13 +51,13 @@ int main(int argc, char ** argv) {
 	SDL_GL_SetSwapInterval(g_vsync);
 
 
-	chaser* freller = new chaser(renderer, "protag");
-	freller->inParty= 1;
-	freller->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
-	freller->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
+	chaser* fomm = new chaser(renderer, "fomm");
+	fomm->inParty= 1;
+	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
+	fomm->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
 
 	protag = party[0];
-	g_camera.target = protag;
+	g_focus = protag;
 	
 	SDL_RenderSetScale(renderer, scalex, scaley);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080);
@@ -108,7 +108,7 @@ int main(int argc, char ** argv) {
 	srand (time(NULL));
 
 	bool storedJump = 0; //store the input from a jump if the player is off the ground, quake-style
-
+	
 	while (!quit) {
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
@@ -136,7 +136,6 @@ int main(int argc, char ** argv) {
 			g_camera.lag = 4;
 			g_camera.oldx = g_camera.x;
 			g_camera.oldy = g_camera.y;
-			g_camera.lagResetTimer = 200;
 			std::rotate(party.begin(), party.begin()+1, party.end());
 			protag = party[0];
 			cout << party.size() << endl;
@@ -266,7 +265,7 @@ int main(int argc, char ** argv) {
 		if(freecamera) {
 			g_camera.update_movement(elapsed, camx, camy);
 		} else {
-			g_camera.update_movement(elapsed);
+			g_camera.update_movement(elapsed, (g_focus->x - (g_camera.width/(2 * g_camera.zoom))) + (g_focus->width/2), ((g_focus->y - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom))) );
 		}
 		//update ui
 		curTextWait += elapsed * text_speed_up;

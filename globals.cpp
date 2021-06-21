@@ -171,32 +171,28 @@ float g_gravity = 290;
 
 class camera {
 public:
-	int oldx = 0;
-	int oldy = 0;
-	int x = 200;
-	int y = 200;
+	float oldx = 0;
+	float oldy = 0;
+	float x = 200;
+	float y = 200;
 	int width = 640;
 	int height = 480;
 	float lag = 0.0;
+	const float DEFAULTLAGACCEL = 0.01;
+	float lagaccel = 0.01; //how much faster the camera gets while lagging
 	float zoom = 1;
 	float zoommod=1;
-	float lagResetTimer = 300; //ms to wait before setting lag to 0, used for transitions
 	int lowerLimitX = 0;
 	int lowerLimitY = 0;
 	int upperLimitX = 3000;
 	int upperLimitY = 3000;
 	bool enforceLimits = 0;
-	entity* target;
 
 	camera(float fx, float fy) {
 		fx=x;
 		fy=y;
 	}
 	void update_movement(float elapsed, float targetx, float targety) {
-		lagResetTimer -= elapsed;
-		if(lagResetTimer < 0) {
-			lag = 0;
-		}
 		if(!isfinite(targetx) || !isfinite(targety) ) { return; }
 		
 		if(lag == 0) {
@@ -208,52 +204,13 @@ public:
 
 			oldx=x;
 			oldy=y;	
-
-		}
-
-
-		
-		zoom = round(0);
-		
-		if (zoom < 1) {
-			zoom = 1;
-		}
-		
-
-		if(enforceLimits) {
-			if(x < lowerLimitX) { x = lowerLimitX ; }
-			if(y < lowerLimitY) { y = lowerLimitY ; }
-
-			if(x + width > upperLimitX) { x = upperLimitX - width; }
-			if(y + height > upperLimitY) { y = upperLimitY - height; }
-		}
-	}
-
-	void update_movement(float elapsed) {
-		lagResetTimer -= elapsed;
-		if(lagResetTimer < 0) {
-			lag = 0;
-		}
-		if(!isfinite(targetx) || !isfinite(targety) ) { return; }
-		
-		if(lag == 0) {
-			x=targetx;
-			y=targety;
-		} else {
-			x += (targetx-oldx)  * (elapsed / 256) * lag;
-			y += (targety-oldy)  * (elapsed / 256) * lag;
-
-			oldx=x;
-			oldy=y;	
-
-		}
-
-
-		
-		zoom = round(0);
-		
-		if (zoom < 1) {
-			zoom = 1;
+			//if we're there, within a pixel, set the lagResetTimer to nothing
+			if(abs(targetx - x) < 1.4 && abs(targety - y) < 1.4) {
+				lag = 0;
+			} else {
+				//if not, consider increasing lag to catch up
+				lag += lagaccel;
+			}
 		}
 		
 
@@ -280,10 +237,10 @@ int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
 SDL_Window * window;
 
-
 bool fullscreen = false;
 camera g_camera(0,0);
 entity* protag;
+entity* g_focus;
 vector<chaser*> party;
 float g_max_framerate = 120;
 float g_min_frametime = 1/g_max_framerate * 1000;

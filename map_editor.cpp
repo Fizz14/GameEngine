@@ -1949,6 +1949,33 @@ public:
 			return;
 		}
 
+        //change cameratarget
+        if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '`') {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 1);
+			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            string transtr = "0";
+            transtr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            float transitionspeed = 0;
+            transitionspeed = stof(transtr);
+            
+            entity* hopeful = searchEntities(name);
+			if(hopeful != nullptr) {
+                g_focus = hopeful;
+                if(transitionspeed != 0) {
+                    g_camera.lag = transitionspeed;
+                    g_camera.lagaccel = transitionspeed;
+                } else {
+                    g_camera.lag = 0;
+                    g_camera.lagaccel = g_camera.DEFAULTLAGACCEL;
+                }
+            }
+            
+			talker->dialogue_index++;
+			this->continueDialogue();
+			return;
+		}
+
 		//default - keep talking
 		talker->dialogue_index++;
 		pushText(talker);	

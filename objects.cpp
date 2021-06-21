@@ -2072,7 +2072,18 @@ public:
 	}
 };
 
-
+//search entity by name
+entity* searchEntities(string fname) {
+	if(fname == "protag") {
+		return protag;
+	}
+	for(auto n : g_entities) {
+		if(n->name == fname) {
+			return n;
+		}
+	}
+	return nullptr;
+}
 
 void entity::shoot() {
 	if(this->hisWeapon->cooldown <= 0) {
