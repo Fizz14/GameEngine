@@ -441,12 +441,18 @@ class tile {
 public:
 	int x = 0;
 	int y = 0;
-	int z = 0; //represents layer. 0 default
+	int z = 0; //really just layer
 
 	float width = 0;
 	float height = 0;
+	
 	float xoffset = 0; //for aligning texture across the map
 	float yoffset = 0;
+
+	float dxoffset = 0; //for changing texture coords
+	float dyoffset = 0;
+	
+
 	int texwidth = 0;
 	int texheight = 0;
 	bool wraptexture = 1; //should we tile the image or stretch it?
@@ -458,12 +464,17 @@ public:
 	string fileaddress = "df"; //for checking if someone else has already loaded a texture
 	string mask_fileaddress = "&"; //unset value
 	
-	tile(SDL_Renderer * renderer, const char* filename, const char* mask_filename, int fx, int fy, int fwidth, int fheight, bool fwall=0) {		
+	tile(SDL_Renderer * renderer, const char* filename, const char* mask_filename, int fx, int fy, int fwidth, int fheight, int flayer, bool fwrap, bool fwall, float fdxoffset, float fdyoffset) {		
 		this->x = fx;
 		this->y = fy;
+		this->z = flayer;
 		this->width = fwidth;
 		this->height = fheight;
 		this->wall = fwall;
+		this->wraptexture = fwrap;
+
+		this->dxoffset = fdxoffset;
+		this->dyoffset = fdyoffset;
 		
 		fileaddress = filename;
 		bool cached = false;
@@ -536,6 +547,24 @@ public:
 		rect obj(floor((x -fcamera.x)* fcamera.zoom) , floor((y-fcamera.y) * fcamera.zoom), ceil(width * fcamera.zoom), ceil(height * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
+		//movement
+		if((dxoffset !=0 || dyoffset != 0 ) && wraptexture) {
+			xoffset += dxoffset;
+			yoffset += dyoffset;
+			if(xoffset < 0) {
+				xoffset = texwidth;
+			}
+			if(xoffset > texwidth) {
+				xoffset = 0;
+			}
+			if(yoffset < 0) {
+				yoffset = texheight;
+			}
+			if(yoffset > texheight) {
+				yoffset = 0;
+			}
+		}
+
 		if(RectOverlap(obj, cam)) {
 			
 			if(this->wraptexture) {	
@@ -1974,7 +2003,7 @@ public:
 
 
 		if(z > floor + 1) {
-			zaccel -= g_gravity;
+			zaccel -= g_gravity * ((double) elapsed / 256.0);
 			grounded = 0;
 		} else {
 			grounded = 1;
@@ -2775,17 +2804,24 @@ class ui {
 public:
 	float x;
 	float y;
+
 	float xagil;
 	float yagil;
+
 	float xaccel;
 	float yaccel;
+
 	float xvel;
 	float yvel;
+
 	float xmaxspeed;
 	float ymaxspeed;
+
 	float width = 0.5;
 	float height = 0.5;
+
 	float friction;
+
 	bool show = true;
 	SDL_Surface* image;
 	SDL_Texture* texture;
@@ -2795,12 +2831,15 @@ public:
 	int patchwidth = 256; //213
 	float patchscale = 0.4;
 
+	bool persistent = 0;
 
-	ui(SDL_Renderer * renderer, const char* filename, float size) {
+	ui(SDL_Renderer * renderer, const char* filename, float fx, float fy, float fwidth, float fheight) {
 		M("ui()" );
 		image = IMG_Load(filename);
-		width = image->w * size;
-		height = image->h * size;
+		width = fwidth;
+		height = fheight;
+		x = fx;
+		y = fy;
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		g_ui.push_back(this);
 		
@@ -2810,24 +2849,24 @@ public:
 		M("~ui()" );
 		SDL_DestroyTexture(texture);
 		SDL_FreeSurface(image);
-		
+		g_ui.erase(remove(g_ui.begin(), g_ui.end(), this), g_ui.end());
 	}
 
-	void render(SDL_Renderer * renderer, camera fcamera, int winwidth, int winheight) {
+	void render(SDL_Renderer * renderer, camera fcamera) {
 		if(this->show) {
 			if(is9patch) {
-				if(winwidth != 0) {
-					patchscale = winwidth;
+				if(WIN_WIDTH != 0) {
+					patchscale = WIN_WIDTH;
 					patchscale /= 4000;
 				}
-				int ibound = width * winwidth;
-				int jbound = height * winheight;
+				int ibound = width * WIN_WIDTH;
+				int jbound = height * WIN_HEIGHT;
 				int scaledpatchwidth = patchwidth * patchscale;
 				int i = 0; 
 				while (i < ibound) {
 					int j = 0;
 					while (j < jbound) {
-						SDL_Rect dstrect = {i + (x * winwidth), j + (y * winheight), scaledpatchwidth, scaledpatchwidth}; //change patchwidth in this declaration for sprite scale
+						SDL_Rect dstrect = {i + (x * WIN_WIDTH), j + (y * WIN_HEIGHT), scaledpatchwidth, scaledpatchwidth}; //change patchwidth in this declaration for sprite scale
 						SDL_Rect srcrect;
 						srcrect.h = patchwidth;
 						srcrect.w = patchwidth;
@@ -2883,7 +2922,7 @@ public:
 				}
 				
 			} else {
-				SDL_Rect dstrect = {x * winwidth, y * winheight, width * winwidth, height * winheight};
+				SDL_Rect dstrect = {x * WIN_WIDTH, y * WIN_HEIGHT, width * WIN_WIDTH, height * WIN_HEIGHT};
 				SDL_RenderCopy(renderer, texture, NULL, &dstrect);
 			}
 		}
@@ -3365,6 +3404,23 @@ void clear_map(camera& cameraToReset) {
 	for(int i = 0; i < size; i++) {
 		delete g_listeners[0];
 	}
+
+
+	vector<ui*> persistentui;
+	size = g_ui.size();
+	for(int i = 0; i < size; i++) {
+		if(g_ui[i]->persistent) {
+			persistentui.push_back(g_ui[i]);
+			g_ui.erase(remove(g_ui.begin(), g_ui.end(), g_ui[0]), g_ui.end());
+		} else {
+			delete g_ui[0];
+		}
+	}
+
+	for(auto x : persistentui) {
+		g_ui.push_back(x);
+	}
+	
 	
 	g_ais.clear();
 	g_projectiles.clear();

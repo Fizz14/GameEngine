@@ -135,7 +135,7 @@ float old_WIN_WIDTH = 640; //used for detecting change in window width to recalc
 
 //for visual style
 float p_ratio = 1.151;
-bool vsync = true;
+bool g_vsync = true;
 //x length times x_z_ratio is proper screen length in z
 float XtoZ = 0.496; // 4/2.31, arctan (4/ 3.21) = 60 deg
 float XtoY = 0.866;
@@ -165,7 +165,7 @@ bool protagGlimmerC = 0;
 bool protagGlimmerD = 0;
 
 //physics
-float g_gravity = 15;
+float g_gravity = 290;
 
 
 
@@ -186,12 +186,50 @@ public:
 	int upperLimitX = 3000;
 	int upperLimitY = 3000;
 	bool enforceLimits = 0;
+	entity* target;
 
 	camera(float fx, float fy) {
 		fx=x;
 		fy=y;
 	}
 	void update_movement(float elapsed, float targetx, float targety) {
+		lagResetTimer -= elapsed;
+		if(lagResetTimer < 0) {
+			lag = 0;
+		}
+		if(!isfinite(targetx) || !isfinite(targety) ) { return; }
+		
+		if(lag == 0) {
+			x=targetx;
+			y=targety;
+		} else {
+			x += (targetx-oldx)  * (elapsed / 256) * lag;
+			y += (targety-oldy)  * (elapsed / 256) * lag;
+
+			oldx=x;
+			oldy=y;	
+
+		}
+
+
+		
+		zoom = round(0);
+		
+		if (zoom < 1) {
+			zoom = 1;
+		}
+		
+
+		if(enforceLimits) {
+			if(x < lowerLimitX) { x = lowerLimitX ; }
+			if(y < lowerLimitY) { y = lowerLimitY ; }
+
+			if(x + width > upperLimitX) { x = upperLimitX - width; }
+			if(y + height > upperLimitY) { y = upperLimitY - height; }
+		}
+	}
+
+	void update_movement(float elapsed) {
 		lagResetTimer -= elapsed;
 		if(lagResetTimer < 0) {
 			lag = 0;
@@ -247,7 +285,7 @@ bool fullscreen = false;
 camera g_camera(0,0);
 entity* protag;
 vector<chaser*> party;
-float g_max_framerate = 60;
+float g_max_framerate = 120;
 float g_min_frametime = 1/g_max_framerate * 1000;
 SDL_Event event;
 float ticks, lastticks, elapsed = 5, halfsecondtimer;

@@ -48,7 +48,7 @@ int main(int argc, char ** argv) {
 	SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best"); 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	SDL_GL_SetSwapInterval(vsync);
+	SDL_GL_SetSwapInterval(g_vsync);
 
 
 	chaser* freller = new chaser(renderer, "protag");
@@ -57,6 +57,7 @@ int main(int argc, char ** argv) {
 	freller->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
 
 	protag = party[0];
+	g_camera.target = protag;
 	
 	SDL_RenderSetScale(renderer, scalex, scaley);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080);
@@ -105,13 +106,15 @@ int main(int argc, char ** argv) {
 
 	load_map(renderer, "maps/empty/empty.map", "a");
 	srand (time(NULL));
-	
+
+	bool storedJump = 0; //store the input from a jump if the player is off the ground, quake-style
+
 	while (!quit) {
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
 		
 		//lock framerate
-		if(vsync && elapsed < g_min_frametime) {
+		if(g_vsync && elapsed < g_min_frametime) {
 			SDL_Delay(g_min_frametime - elapsed);
 			ticks = SDL_GetTicks();
 			elapsed = ticks - lastticks;	
@@ -126,6 +129,7 @@ int main(int argc, char ** argv) {
 
 		// INPUT
 		getInput(elapsed);
+
 
 		//rearrange party
 		if(input[9] && !oldinput[9]) {
@@ -143,10 +147,14 @@ int main(int argc, char ** argv) {
 		}
 		
 		//jump
-		if(input[8] && !oldinput[8] && protag->grounded && protag_can_move) {
-			protag->zaccel = 300;
+		if(input[8] && !oldinput[8] && protag->grounded && protag_can_move || input[8] && storedJump && protag->grounded && protag_can_move) {
+			protag->zaccel = 350;
+			storedJump = 0;
+		} else { 
+			if(input[8] && !oldinput[8] && !protag->grounded) {
+				storedJump = 1;
+			}
 		}
-
 		
 
 
@@ -258,7 +266,7 @@ int main(int argc, char ** argv) {
 		if(freecamera) {
 			g_camera.update_movement(elapsed, camx, camy);
 		} else {
-			g_camera.update_movement(elapsed, (protag->x - (g_camera.width/(2 * g_camera.zoom))) + (protag->width/2), ((protag->y - XtoZ * protag->z) - (g_camera.height/(2 * g_camera.zoom))) );
+			g_camera.update_movement(elapsed);
 		}
 		//update ui
 		curTextWait += elapsed * text_speed_up;
@@ -411,7 +419,7 @@ int main(int argc, char ** argv) {
 		//ui
 		for(long long unsigned int i=0; i < g_ui.size(); i++){
 			
-			g_ui[i]->render(renderer, g_camera, WIN_WIDTH, WIN_HEIGHT);
+			g_ui[i]->render(renderer, g_camera);
 			
 		}	
 		for(long long unsigned int i=0; i < g_textboxes.size(); i++){

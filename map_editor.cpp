@@ -122,14 +122,10 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "tile") {
             //M("loading tile" << endl;
-            iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >>p4 >> p5 >> p6 >> p7;
+            iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >>p4 >> p5 >> p6 >> p7 >> p8 >> p9;
             const char* plik1 = s1.c_str();
             const char* plik2 = s2.c_str();
-            tile* t = new tile(renderer, plik1, plik2, p1, p2, p3, p4, p7);
-            if(p5 > 0) {
-                t->z = p5;
-            }
-            t->wraptexture = p6;
+            tile* t = new tile(renderer, plik1, plik2, p1, p2, p3, p4, p5, p6, p7, p8, p9);
         }
         if(word == "triangle") {
             //M("loading triangle" << endl;
@@ -173,9 +169,9 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         
         if(word == "ui") {
-            iss >> s0 >> s1 >> p0;
+            iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3;
             const char* plik = s1.c_str();
-            ui* u = new ui(renderer, plik, p0);
+            ui* u = new ui(renderer, plik, p0, p1, p2, p3);
         }
 
         if(word == "heightmap") {
@@ -225,18 +221,16 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 
 //called on init if map_editing is true
 void init_map_writing(SDL_Renderer* renderer) {
-    selection = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0);
-    selection->z = 1; //foreground;
-    selection->wraptexture=1;
-    marker = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0);
-    worldsoundIcon = new tile(renderer, "tiles/engine/speaker.png", "&", 0, 0, 0, 0);
-    listenerIcon = new tile(renderer, "tiles/engine/listener.png", "&", 0, 0, 0, 0);
-    navNodeIcon = new tile(renderer, "tiles/engine/walker.png", "&", 0, 0, 0, 0);
-    musicIcon = new tile(renderer, "tiles/engine/music.png", "&", 0, 0, 0, 0);
-    cueIcon = new tile(renderer, "tiles/engine/cue.png", "&", 0, 0, 0, 0);
-    waypointIcon = new tile(renderer, "tiles/engine/waypoint.png", "&", 0, 0, 0, 0);
-    doorIcon = new tile(renderer, "tiles/engine/door.png", "&", 0, 0, 0, 0);
-    triggerIcon = new tile(renderer, "tiles/engine/trigger.png", "&", 0, 0, 0, 0);
+    selection = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
+    marker = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
+    worldsoundIcon = new tile(renderer, "tiles/engine/speaker.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    listenerIcon = new tile(renderer, "tiles/engine/listener.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    navNodeIcon = new tile(renderer, "tiles/engine/walker.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    musicIcon = new tile(renderer, "tiles/engine/music.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    cueIcon = new tile(renderer, "tiles/engine/cue.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    waypointIcon = new tile(renderer, "tiles/engine/waypoint.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    doorIcon = new tile(renderer, "tiles/engine/door.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    triggerIcon = new tile(renderer, "tiles/engine/trigger.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
     marker->z = 2; //infront of selections
     marker->wraptexture=0;
 }
@@ -392,7 +386,7 @@ void write_map(entity* mapent) {
 
                 makingtile = 0;
                 const char* plik = floortex.c_str();
-                tile* t = new tile(renderer, plik, masktex.c_str(), selection->x, selection->y, selection->width, selection->height);
+                tile* t = new tile(renderer, plik, masktex.c_str(), selection->x, selection->y, selection->width, selection->height, layer, tiling, 0, 0, 0);
                 
                 t->z = layer;
                 t->wraptexture = tiling;
@@ -870,7 +864,7 @@ void write_map(entity* mapent) {
                         if(g_tiles[i]->fileaddress == "tiles/engine/door.png" ) { continue; }
                         if(g_tiles[i]->fileaddress == "tiles/engine/listener.png" ) { continue; }
                         
-                        ofile << "tile " << g_tiles[i]->fileaddress << " " << g_tiles[i]->mask_fileaddress << " " << to_string(g_tiles[i]->x) << " " << to_string(g_tiles[i]->y) << " " << to_string(g_tiles[i]->width) << " " << to_string(g_tiles[i]->height) << " " << g_tiles[i]->z << " " << g_tiles[i]->wraptexture << " " << g_tiles[i]->wall << endl;
+                        ofile << "tile " << g_tiles[i]->fileaddress << " " << g_tiles[i]->mask_fileaddress << " " << to_string(g_tiles[i]->x) << " " << to_string(g_tiles[i]->y) << " " << to_string(g_tiles[i]->width) << " " << to_string(g_tiles[i]->height) << " " << g_tiles[i]->z << " " << g_tiles[i]->wraptexture << " " << g_tiles[i]->wall << " " << g_tiles[i]->dxoffset << " " << g_tiles[i]->dyoffset << endl;
                     }
                     for (long long unsigned int i = 0; i < g_heightmaps.size(); i++) {
                         
@@ -968,7 +962,25 @@ void write_map(entity* mapent) {
             }
             if(word == "set" || word == "s") {
                 line >> word;
-                if(word == "shine") {
+                if(word == "tdx") {
+                    float number;
+                    line >> number;
+                    if(g_tiles.size() > 0){
+                        g_tiles[g_tiles.size()-1]->dxoffset = number;
+                    }
+                    break;
+                }
+
+                if(word == "tdy") {
+                    float number;
+                    line >> number;
+                    if(g_tiles.size() > 0){
+                        g_tiles[g_tiles.size()-1]->dyoffset = number;
+                    }
+                    break;
+                }
+
+                if(word == "shine" || word == "sh") {
                     line >> shine;
                     break;
                 }
@@ -1671,14 +1683,15 @@ public:
 	}
 
 	adventureUI(SDL_Renderer* renderer) {
-		talkingBox = new ui(renderer, "ui/menu9patchblack.png", 0.001);
-		talkingBox->x = 0;
-		talkingBox->y = 0.65;
-		talkingBox->width = 1;
-		talkingBox->height = 0.35;
+		talkingBox = new ui(renderer, "ui/menu9patchblack.png", 0, 0.65, 1, 0.35);
+		// talkingBox->x = 0;
+		// talkingBox->y = 0.65;
+		// talkingBox->width = 1;
+		// talkingBox->height = 0.35;
 		talkingBox->patchwidth = 213;
 		talkingBox->patchscale = 0.4;
 		talkingBox->is9patch = true;
+        talkingBox->persistent = true;
 
 		talkingText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
 		talkingText->boxWidth = 0.95;
