@@ -31,6 +31,7 @@ void getInput(float& elapsed);
  
 
 int main(int argc, char ** argv) {
+
 	//load first arg into variable devmode
 	if(argc > 1) {
 		devMode = (argv[1][0] == '1');
@@ -49,18 +50,19 @@ int main(int argc, char ** argv) {
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best"); 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_GL_SetSwapInterval(g_vsync);
-
+	SDL_RenderSetScale(renderer, scalex, scaley);
+	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
 	chaser* fomm = new chaser(renderer, "fomm");
 	fomm->inParty= 1;
 	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
 	fomm->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
-
 	protag = party[0];
 	g_focus = protag;
 	
-	SDL_RenderSetScale(renderer, scalex, scaley);
-	//SDL_RenderSetLogicalSize(renderer, 1920, 1080);
+	//load save	
+	loadSave(g_saveName);
+	
 
 	//for transition
 	SDL_Surface* transitionSurface = IMG_Load("tiles/engine/transition.png");
@@ -78,7 +80,6 @@ int main(int argc, char ** argv) {
 
 	//setup UI
 	adventureUIManager = new adventureUI(renderer);
-	adventureUIManager->protagref = protag;
 	
 	if(devMode) {
 		init_map_writing(renderer);
@@ -104,12 +105,17 @@ int main(int argc, char ** argv) {
 		g_collisions.push_back(v);
 	}
 
-	load_map(renderer, "maps/empty/empty.map", "a");
-	srand (time(NULL));
+	if(devMode) {
+		load_map(renderer, "maps/empty/empty.map", "a");
+	} else {
+		load_map(renderer, "maps/mtest/mtest.map", "a");
+		srand (time(NULL));
+	}
 
 	bool storedJump = 0; //store the input from a jump if the player is off the ground, quake-style
 	
 	while (!quit) {
+
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
 		
@@ -206,14 +212,17 @@ int main(int argc, char ** argv) {
 		for (int i = 0; i < g_triggers.size(); i++) {
 			if(!g_triggers[i]->active) {continue;}
 			rect trigger = {g_triggers[i]->x, g_triggers[i]->y, g_triggers[i]->width, g_triggers[i]->height};
-			rect movedbounds = rect(protag->x, protag->y - protag->bounds.height, protag->bounds.width, protag->bounds.height);
+			entity* checkHim = searchEntities(g_triggers[i]->targetEntity);
+			if(checkHim == nullptr) {continue;}
+			rect movedbounds = rect(checkHim->x, checkHim->y - checkHim->bounds.height, checkHim->bounds.width, checkHim->bounds.height);
 			if(RectOverlap(movedbounds, trigger)) {
-				adventureUIManager->blip = NULL; //possibly narrarators voice
+				adventureUIManager->blip = g_ui_voice; 
 				adventureUIManager->sayings = &g_triggers[i]->script;
-				adventureUIManager->talker = protag;
-				protag->dialogue_index = -1;
-				protag->sayings = g_triggers[i]->script;
+				adventureUIManager->talker = checkHim;
+				checkHim->dialogue_index = -1;
+				checkHim->sayings = g_triggers[i]->script;
 				adventureUIManager->continueDialogue();
+				
 				g_triggers[i]->active = 0;
 			}	
 		}
@@ -417,9 +426,7 @@ int main(int argc, char ** argv) {
 		
 		//ui
 		for(long long unsigned int i=0; i < g_ui.size(); i++){
-			
 			g_ui[i]->render(renderer, g_camera);
-			
 		}	
 		for(long long unsigned int i=0; i < g_textboxes.size(); i++){
 			g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
@@ -764,7 +771,7 @@ void getInput(float &elapsed) {
 		}
 		
 	} else {
-		if(keystate[bindings[6]] && !left_ui_refresh) {
+		if(keystate[bindings[2]] && !left_ui_refresh) {
 			if(adventureUIManager->askingQuestion) {
 				adventureUIManager->response_index--;
 				if(adventureUIManager->response_index < 0) {
@@ -772,8 +779,8 @@ void getInput(float &elapsed) {
 				}
 			}
 			left_ui_refresh = 1;
-		} else if(!keystate[bindings[6]]){ left_ui_refresh = 0;}
-		if(keystate[bindings[7]] && !right_ui_refresh) {
+		} else if(!keystate[bindings[2]]){ left_ui_refresh = 0;}
+		if(keystate[bindings[3]] && !right_ui_refresh) {
 			if(adventureUIManager->askingQuestion) {
 				adventureUIManager->response_index++;
 				if(adventureUIManager->response_index > adventureUIManager->responses.size() - 1) {
@@ -781,7 +788,7 @@ void getInput(float &elapsed) {
 				}
 			}
 			right_ui_refresh = 1;
-		} else if(!keystate[bindings[7]]) { right_ui_refresh = 0;}
+		} else if(!keystate[bindings[3]]) { right_ui_refresh = 0;}
 		protag->stop_hori();
 		protag->stop_verti();
 	}

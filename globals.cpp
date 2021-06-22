@@ -12,6 +12,7 @@
 #include <cctype> //make input lowercase for map console
 #include <ctime>//debug clock
 #include <string>
+#include <map> //saves
 
 #ifndef GLOBALS
 #define GLOBALS
@@ -262,10 +263,10 @@ bool right_ui_refresh = false;
 bool quit = false;
 string config = "default";
 
-
 //sounds and music
 float g_volume = 0;
 bool g_mute = 0;
+Mix_Chunk* g_ui_voice = Mix_LoadWAV("sounds/voice-normal.wav");
 musicNode* closestMusicNode;
 musicNode* newClosest;
 int musicFadeTimer = 0;
@@ -286,6 +287,69 @@ float dialogue_cooldown = 0; //seconds until he can have dialogue again.
 SDL_Texture* nodeDebug;
 clock_t debugClock;
 
+//userdata
+string g_saveName = "A";
+
+std::map<string, int> g_save = {};
+
+int loadSave(string address) {
+	g_save.clear();
+	ifstream file;
+	string line;
+
+	address = "user/saves/" + address + ".txt";
+	D(address);
+	const char* plik = address.c_str();
+	file.open(plik);
+	
+	string field = "";
+	string value = "";
+
+	//load fields
+	while(getline(file, line)) {
+		field = line.substr(0, line.find(' '));
+		value = line.substr(line.find(" "), line.length()-1);
+		D(value + "->" + field);
+		try {
+			g_save.insert( pair<string, int>(field, stoi(value)) );
+		} catch(...) {
+			M("Error writing");
+			return -1;
+		}
+	}
+	file.close();
+	return 0;
+}
+
+int writeSave(string address) {
+	ofstream file;
+	
+	address = "user/saves/" + address + ".txt";
+	const char* plik = address.c_str();
+	file.open(plik);
+
+	auto it = g_save.begin();
+
+	while (it != g_save.end() ) {
+		file << it->first << " " << it->second << endl;
+		D(it->first);
+		D(it->second);
+		M("---");
+		it++;
+	}
+	file.close();
+	return 0;
+}
+
+int checkSaveField(string field) {
+	std::map<string, int>::iterator it = g_save.find(field);
+	if(it != g_save.end()) {
+		return it->second;
+	} else {
+		return 0;
+	}
+}
+
 //combat
 enum Status { none, stunned, slowed, buffed, marked };
 
@@ -299,7 +363,7 @@ SDL_Texture* MaskTexture(SDL_Renderer* renderer, SDL_Texture* mask, SDL_Texture*
 	int w, h;
 	SDL_QueryTexture(diffuse, NULL, NULL, &w, &h);
 	SDL_Texture* result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
-	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_BLEND); // blend - mod - none - none
+	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderTarget(renderer, result);
 
 	SDL_SetTextureBlendMode(mask, SDL_BLENDMODE_MOD);

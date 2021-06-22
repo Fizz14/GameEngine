@@ -2843,8 +2843,9 @@ public:
 	float patchscale = 0.4;
 
 	bool persistent = 0;
+	int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
 
-	ui(SDL_Renderer * renderer, const char* filename, float fx, float fy, float fwidth, float fheight) {
+	ui(SDL_Renderer * renderer, const char* filename, float fx, float fy, float fwidth, float fheight, int fpriority) {
 		M("ui()" );
 		image = IMG_Load(filename);
 		width = fwidth;
@@ -2853,6 +2854,7 @@ public:
 		y = fy;
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		g_ui.push_back(this);
+		priority = fpriority;
 		
 	}
 
@@ -3136,29 +3138,35 @@ public:
 	string binding;
 	vector<string> script;
 	bool active = 1;
-	trigger(string fbinding, int fx, int fy, int fwidth, int fheight) {
+
+	string targetEntity = "protag"; //what entity will activate the trigger
+
+	trigger(string fbinding, int fx, int fy, int fwidth, int fheight, string ftargetEntity) {
 		x = fx;
 		y = fy;
 		width = fwidth;
 		height = fheight;
 		binding = fbinding;
+		targetEntity = ftargetEntity;
 		g_triggers.push_back(this);
 		//open and read from the script file
 		ifstream stream;
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_map + "/" + fbinding + ".event";
+		loadstr = "maps/" + g_map + "/" + fbinding + ".txt";
 		D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		stream.open(plik);
 		
 		if (!stream.is_open()) {
-			stream.open("events/" + fbinding + ".event");
+			stream.open("events/" + fbinding + ".txt");
 		}
 		string line;
-		
+
+		getline(stream, line);
+
 		while (getline(stream, line)) {
 			script.push_back(line);
 		}

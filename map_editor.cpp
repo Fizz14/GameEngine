@@ -64,6 +64,15 @@ bool fileExists (const std::string& name) {
     }   
 }
 
+//for sorting ui on mapload
+int compare_ui (ui* a, ui* b) {
+  	return a->priority < b->priority;
+}
+
+void sort_ui(vector<ui*> &g_ui) {
+    stable_sort(g_ui.begin(), g_ui.end(), compare_ui);
+}
+
 void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) {
     debugClock = clock();
     mapname = filename;
@@ -144,9 +153,9 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             door* d = new door(renderer, map, s2, p1, p2, p3, p4);
         }
         if(word == "trigger") {
-            iss >> s0 >> s1 >> p1 >> p2 >>p3 >> p4;
+            iss >> s0 >> s1 >> p1 >> p2 >>p3 >> p4 >> s2;
             const char* binding = s1.c_str();
-            trigger* t = new trigger(binding, p1, p2, p3, p4);
+            trigger* t = new trigger(binding, p1, p2, p3, p4, s2);
         }
         if(word == "worldsound") {
             iss >> s0 >> s1 >> p1 >> p2;
@@ -169,9 +178,9 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         
         if(word == "ui") {
-            iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3;
+            iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3 >> p4;
             const char* plik = s1.c_str();
-            ui* u = new ui(renderer, plik, p0, p1, p2, p3);
+            ui* u = new ui(renderer, plik, p0, p1, p2, p3, p4);
         }
 
         if(word == "heightmap") {
@@ -196,6 +205,9 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
     }
     Update_NavNode_Costs(g_navNodes);
     infile.close();
+
+    //sort ui by priority
+    sort_ui(g_ui);
 
     double LoadingTook = ( std::clock() - debugClock ) / (double) CLOCKS_PER_SEC;
     cout << "Loading took " << LoadingTook << "s" << endl;
@@ -348,7 +360,7 @@ void write_map(entity* mapent) {
         if(devinput[0] && !olddevinput[0] && makingcollision) {
             makingcollision = 0;
             cout << g_triggers.size() << endl;
-            trigger* t = new trigger("unset", selection->x, selection->y, selection->width, selection->height);
+            trigger* t = new trigger("unset", selection->x, selection->y, selection->width, selection->height, "protag");
             //set to unactive so that if we walk into it, we dont crash
             t->active = false;
         }
@@ -879,7 +891,7 @@ void write_map(entity* mapent) {
                         ofile << "door " << g_doors[i]->to_map << " " << g_doors[i]->to_point << " " << g_doors[i]->x << " " << g_doors[i]->y << " " << g_doors[i]->width << " " << g_doors[i]->height << endl;
                     }
                     for (long long unsigned int i = 0; i < g_triggers.size(); i++){
-                        ofile << "trigger " << g_triggers[i]->binding << " " << g_triggers[i]->x << " " << g_triggers[i]->y << " " << g_triggers[i]->width << " " << g_triggers[i]->height << endl;
+                        ofile << "trigger " << g_triggers[i]->binding << " " << g_triggers[i]->x << " " << g_triggers[i]->y << " " << g_triggers[i]->width << " " << g_triggers[i]->height << " " << g_triggers[i]->targetEntity << endl;
                     }
                     for (int i = 0; i < g_worldsounds.size(); i++) {
                         ofile << "worldsound " << g_worldsounds[i]->name << " " << g_worldsounds[i]->x << " " << g_worldsounds[i]->y << endl;
@@ -1255,10 +1267,15 @@ void write_map(entity* mapent) {
             }
             if(word == "trigger" || word == "t") {
                 string fbinding;
+                string fentity;
                 line >> fbinding;
+                line >> fentity;
                 if(g_triggers.size() > 0) {
                     g_triggers[g_triggers.size() - 1]->binding = fbinding;
-                    
+                    if(fentity.length() > 0) {
+                        D(fentity);
+                        g_triggers[g_triggers.size() - 1]->targetEntity = fentity;
+                    }
                 }
             }
             if(word == "listener" || word == "l") {
@@ -1661,10 +1678,8 @@ public:
     string response = "tired"; //contains the last response the player gave to a question
     vector<string> responses; //contains each possible response to a question
     int response_index = 0; //number of response from array responses
-
-
-    //reference to protag;
-    entity* protagref;
+    int sleepingMS = 0; //MS to sleep cutscene/script
+    bool sleepflag = 0; //true for one frame after starting a sleep
 
 	void showTalkingUI() {
 		M("showTalkingUI()");
@@ -1683,7 +1698,7 @@ public:
 	}
 
 	adventureUI(SDL_Renderer* renderer) {
-		talkingBox = new ui(renderer, "ui/menu9patchblack.png", 0, 0.65, 1, 0.35);
+		talkingBox = new ui(renderer, "ui/menu9patchblack.png", 0, 0.65, 1, 0.35, 0);
 		// talkingBox->x = 0;
 		// talkingBox->y = 0.65;
 		// talkingBox->width = 1;
@@ -1736,6 +1751,17 @@ public:
 	void updateText() {
 		talkingText->updateText(curText, WIN_WIDTH *g_fontsize, 0.9);
         
+        if(sleepingMS > 1) {
+            sleepingMS -= elapsed;
+            this->hideTalkingUI();
+            return;
+        } else {
+            if(sleepflag){
+                this->showTalkingUI();
+                sleepflag = 0;
+            }
+        }
+
         if(askingQuestion) {
             string former = "   ";
             string latter = "   ";
@@ -1770,15 +1796,20 @@ public:
             //the absurdity of this check
             if(!protag_is_talking && talker == protag) { 
                 //this means that a trigger has opened a dialogue prompt, and the text has been completed.
-                // talker->dialogue_index++;
-                // continueDialogue();
-                adventureUIManager->hideTalkingUI();
-                talker = NULL;
+                //talker->dialogue_index++;
+                //continueDialogue();
+                //adventureUIManager->hideTalkingUI();
+                //talker = NULL;
+                
+                //continueDialogue();
             }
 
 		}
 	}
 	void continueDialogue() {
+        protag_is_talking = 1;
+
+        //showTalkingUI();
 		if(talker->sayings.at(talker->dialogue_index + 1) == "#") {
 			protag_is_talking = 2;
 			adventureUIManager->hideTalkingUI();
@@ -1854,7 +1885,7 @@ public:
 		}
 
 		//comment
-		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '/') {
+		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,2) =="//") {
 			talker->dialogue_index++;
 			this->continueDialogue();
 			return;
@@ -1871,6 +1902,8 @@ public:
                 response_index = 0;
                 playSound(-1, confirm_noise, 0);
                 talker->dialogue_index = jump - 3;
+                D(talker->dialogue_index);
+                D(talker->sayings.at(talker->dialogue_index+1));
                 this->continueDialogue();
             } else {
                 talker->dialogue_index++;
@@ -1975,6 +2008,97 @@ public:
 			this->continueDialogue();
 			return;
 		}
+
+        //sleep
+        if(talker->sayings.at(talker->dialogue_index + 1).at(0) == ';') {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 1);
+            string msstr = "0";
+            msstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            int ms = 0;
+            ms = stoi(msstr);
+            sleepingMS = ms;
+            talker->dialogue_index++;
+            sleepflag = 1;
+            this->continueDialogue();
+            return;
+        }
+
+        //load savefile
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/load") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 6);
+            loadSave(s);
+
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
+        }
+
+        //write savefile
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/write") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 7);
+            writeSave(s);
+
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
+        }
+
+        //check savefield
+        if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("\\{([a-zA-Z0-9_]){1,}\\}"))) {
+            M("Tried to check a save field");
+            //
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 1);
+            s.erase(s.length() - 1, 1);
+            
+            int value = checkSaveField(s);
+
+            int j = 1;
+            string res = talker->sayings.at(talker->dialogue_index + 1 + j);
+            while (res.find('*') != std::string::npos) {
+                
+                //parse option
+                // *15 29 -> if data is 15, go to line 29
+                string s = talker->sayings.at(talker->dialogue_index + 1 + j);
+                s.erase(0, 1);
+                int condition = stoi( s.substr(0, s.find(':')));
+                s.erase(0, s.find(':') + 1);
+                int jump = stoi(s);
+                if(value == condition) {
+                    talker->dialogue_index = jump - 3;
+                    this->continueDialogue();
+                    return;
+                }
+                j++;
+                res = talker->sayings.at(talker->dialogue_index + 1 + j);
+
+            }
+
+            talker->dialogue_index++;
+            this->continueDialogue();
+			return;
+		}
+
+        //write to savefield
+        if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}"))) {
+            
+        }
+
+        //unconditional jump
+        if(talker->sayings.at(talker->dialogue_index + 1).at(0) == ':') {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 1);
+            string DIstr = "0";
+            DIstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            int DI = 0;
+            DI = stoi(DIstr);
+            talker->dialogue_index = DI - 3;
+            this->continueDialogue();
+            return;
+        }
 
 		//default - keep talking
 		talker->dialogue_index++;
