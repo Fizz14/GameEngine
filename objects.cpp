@@ -1154,7 +1154,7 @@ public:
 	bool asset_sharer = 0;
 
 	//self-data
-	int data[25] = {0};
+	int data[255] = {0};
 
 	//combat
 	weapon* hisWeapon;

@@ -350,6 +350,16 @@ int checkSaveField(string field) {
 	}
 }
 
+void writeSaveField(string field, int value) {
+	auto it = g_save.find(field);
+
+	if (it == g_save.end()) {
+		g_save.insert(std::make_pair(field, value));
+	} else {
+		g_save[field] = value;
+	}
+}
+
 //combat
 enum Status { none, stunned, slowed, buffed, marked };
 

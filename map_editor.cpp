@@ -2059,9 +2059,6 @@ public:
             int j = 1;
             string res = talker->sayings.at(talker->dialogue_index + 1 + j);
             while (res.find('*') != std::string::npos) {
-                
-                //parse option
-                // *15 29 -> if data is 15, go to line 29
                 string s = talker->sayings.at(talker->dialogue_index + 1 + j);
                 s.erase(0, 1);
                 int condition = stoi( s.substr(0, s.find(':')));
@@ -2084,7 +2081,20 @@ public:
 
         //write to savefield
         if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}"))) {
-            
+            M("tried to write to savedata");
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+            s.erase(s.length() - 1, 1);
+
+            string valuestr = s.substr(0, s.find('-'));
+            int value = stoi(valuestr);
+
+            string field = s.substr(s.find('{')+1, s.length() - 1);
+            D(value);
+            D(field);
+            writeSaveField(field, value);
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
         }
 
         //unconditional jump
