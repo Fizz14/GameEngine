@@ -510,7 +510,8 @@ public:
 				
 			}
 			if(mask_filename[0] != '&') {
-				SDL_DestroyTexture(texture);
+				SDL_DestroyTexture(texture);				
+        
 				SDL_Surface* smask = IMG_Load(mask_filename);
 				SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
 				SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
@@ -888,17 +889,20 @@ public:
 	float curwidth;
 	float curheight;
 
-	mapObject(SDL_Renderer * renderer, string imageadress, int fx, int fy, int fz, int fwidth, int fheight, bool fwall = 0, float extrayoffset = 0, float fsortingoffset = 0) {
+
+	string mask_fileaddress = "&"; //unset value
+
+	mapObject(SDL_Renderer * renderer, string imageadress, const char* mask_filename, int fx, int fy, int fz, int fwidth, int fheight, bool fwall = 0, float extrayoffset = 0, float fsortingoffset = 0) {
 		M("mapObject() fake");
 		
 		name = imageadress;
+		mask_fileaddress = mask_filename;
 		
 		bool cached = false;
 		wall = fwall;
 		//has someone else already made a texture?
 		for(long long unsigned int i=0; i < g_mapObjects.size(); i++){
-			if(g_mapObjects[i]->name == this->name && g_mapObjects[i]->wall == this->wall) {
-				//check if both are walls?
+			if(g_mapObjects[i]->name == this->name && g_mapObjects[i]->mask_fileaddress == mask_filename && g_mapObjects[i]->wall == this->wall) {
 				cached = true;
 				this->texture = g_mapObjects[i]->texture;
 				this->asset_sharer = 1;
@@ -911,7 +915,27 @@ public:
 			const char* plik = imageadress.c_str();
 			SDL_Surface* image = IMG_Load(plik);
 			texture = SDL_CreateTextureFromSurface(renderer, image);
+			
+
+			if(mask_filename[0] != '&') {
+				
+				//the SDL_SetHint() changes a flag from 3 to 0 to 3 again. 
+				//this effects texture interpolation, and for masked entities such as wallcaps, it should
+				//be off.
+
+				SDL_DestroyTexture(texture);
+				SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+				SDL_Surface* smask = IMG_Load(mask_filename);
+				SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
+				SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
+				texture = MaskTexture(renderer, diffuse, mask);
+				SDL_FreeSurface(smask);
+				SDL_DestroyTexture(mask);
+				SDL_DestroyTexture(diffuse);
+				SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+			}
 			SDL_FreeSurface(image);
+
 			if(fwall) {
 				wall = 1;
 				SDL_SetTextureColorMod(texture, -40, -40, -40);
@@ -930,6 +954,7 @@ public:
 				//SDL_SetTextureAlphaMod(texture, 10);
 				
 			}
+			
 		}
 
 		

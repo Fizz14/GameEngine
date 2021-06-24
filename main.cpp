@@ -47,9 +47,10 @@ int main(int argc, char ** argv) {
 
 	Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048);
 	SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best"); 
+
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3"); 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	SDL_GL_SetSwapInterval(g_vsync);
+	
 	SDL_RenderSetScale(renderer, scalex, scaley);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
@@ -96,8 +97,38 @@ int main(int argc, char ** argv) {
 		bindings[i] = SDL_GetScancodeFromName(line.c_str());
 		D(bindings[i]);
 	}
+	//set vsync and g_fullscreen from config
+	string valuestr; int value;
+	
+	//get vsync
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '), line.length());
+	value = stoi(valuestr);
+	g_vsync = value;
+	
+	//get g_fullscreen
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '), line.length());
+	value = stoi(valuestr);
+	g_fullscreen = value;
+
+
+
 	bindfile.close();
 	
+	//apply vsync
+	SDL_GL_SetSwapInterval(g_vsync);
+
+	//apply fullscreen
+	if(g_fullscreen) {
+		SDL_GetCurrentDisplayMode(0, &DM);
+		SDL_SetWindowSize(window, DM.w, DM.h);
+		SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+	} else {
+		SDL_SetWindowFullscreen(window, 0);
+		
+	}
+
 	//initialize collision matrix z
 	int top_layer = 12;
 	for (int i = 0; i < top_layer; i++) {
@@ -115,7 +146,6 @@ int main(int argc, char ** argv) {
 	bool storedJump = 0; //store the input from a jump if the player is off the ground, quake-style
 	
 	while (!quit) {
-
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
 		
@@ -983,11 +1013,15 @@ void getInput(float &elapsed) {
 	if(keystate[bindings[2]] == keystate[bindings[3]]) {
 		protag->stop_hori();
 	}
+
 	if(keystate[SDL_SCANCODE_F] && !devMode) {
-		fullscreen = !fullscreen;
-		if(fullscreen) {
-			SDL_SetWindowFullscreen(window, 0);	
+		g_fullscreen = !g_fullscreen;
+		if(g_fullscreen) {
+			SDL_SetWindowFullscreen(window, 0);
+			
 		} else {
+			SDL_GetCurrentDisplayMode(0, &DM);
+			SDL_SetWindowSize(window, DM.w, DM.h);
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 		}
 	}

@@ -237,8 +237,8 @@ public:
 int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
 SDL_Window * window;
-
-bool fullscreen = false;
+SDL_DisplayMode DM;
+bool g_fullscreen = false;
 camera g_camera(0,0);
 entity* protag;
 entity* g_focus;

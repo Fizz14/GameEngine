@@ -143,9 +143,9 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             g_triangles.push_back(t);
         }
         if(word == "mapObject") {
-            iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
+            iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
             //entity* e = new entity(renderer, s1, p1, p2, p3, p4, p6, p7, p8, p9);
-            mapObject* e = new mapObject(renderer, s1, p1, p2, p3, p4, p5, p6, p7);
+            mapObject* e = new mapObject(renderer, s1, s2.c_str(), p1, p2, p3, p4, p5, p6, p7);
         }
         if(word == "door") {
             iss >> s0 >> s1 >> s2 >> p1 >> p2 >>p3 >> p4;
@@ -461,7 +461,7 @@ void write_map(entity* mapent) {
                 if(autoMakeWallcaps) {
                     int step = 5;
                     for (int i = 0; i < selection->height; i+=step) {
-                        mapObject* e = new mapObject(renderer, captex, selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
+                        mapObject* e = new mapObject(renderer, captex, "&", selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
                     }
                     
                 }
@@ -469,7 +469,7 @@ void write_map(entity* mapent) {
                 if(autoMakeWalls) {
                     int step = 64;
                     for (int i = 0; i < wallheight; i+=step) {
-                        mapObject* e = new mapObject(renderer, walltex, selection->x, selection->y + selection->height, i, selection->width, 55, 1);
+                        mapObject* e = new mapObject(renderer, walltex, "&", selection->x, selection->y + selection->height, i, selection->width, 55, 1);
                     }
                     ////entity* e = new entity(renderer, selection->x, selection->y + selection->height, selection->width, wallheight, walltex, 1);
                     //entity* e = new entity(renderer, walltex, selection->x, selection->y + selection->height, 0, selection->width, (wallheight) * XtoZ + 2, 1);
@@ -477,32 +477,32 @@ void write_map(entity* mapent) {
 
                 if(shine == 1) {
                     //front
-                    mapObject* f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
                     
                     
 
                     //back
-                    f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
+                    f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
                     
                 }
 
                 if(shine == 2) {
-                    mapObject* f = new mapObject(renderer, "tiles/lighting/SHARPSHADING.png", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "tiles/lighting/SHARPSHADING.png",  "&", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
 
                 }
 
                 if(shine == 3) {
-                    mapObject* f = new mapObject(renderer, "tiles/lighting/SHARPBRIGHTSHADING.png", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "tiles/lighting/SHARPBRIGHTSHADING.png",  "&", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
                 }
 
                 if(occlusion) {
                     //front shading
-                    mapObject* m = new mapObject(renderer, "tiles/lighting/OCCLUSION.png", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
+                    mapObject* m = new mapObject(renderer, "tiles/lighting/OCCLUSION.png",  "&", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
 
                     //sides
                     int step = 5;
                     for (int i = 0; i < selection->height; i+=step) {
-                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png", selection->x - 19, selection->y + i + 5, 0, selection->width + 45, step);
+                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png",  "&", selection->x - 19, selection->y + i + 5, 0, selection->width + 45, step);
         
                     }
                     D(selection->height);
@@ -510,16 +510,16 @@ void write_map(entity* mapent) {
                     
                     
                     //corner a
-                    mapObject* a = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x - (38 - 19), selection->y, 0, 32, 19, 0, 0, -20);
+                    mapObject* a = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", selection->x - (38 - 19), selection->y, 0, 32, 19, 0, 0, -20);
                     M("make corner");
                     //corner b
-                    mapObject* b = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x + selection->width, selection->y, 0, 32, 19, 0, 0, -20);
+                    mapObject* b = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", selection->x + selection->width, selection->y, 0, 32, 19, 0, 0, -20);
 
                     //corner c
-                    mapObject* c = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x - (38 - 19), selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
+                    mapObject* c = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", selection->x - (38 - 19), selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
 
                     //corner d
-                    mapObject* d = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png",selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
+                    mapObject* d = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
                 }
 
                 
@@ -862,7 +862,7 @@ void write_map(entity* mapent) {
                     }
                     
                     for (long long unsigned int i = 0; i < g_mapObjects.size(); i++) {    
-                        ofile << "mapObject " << g_mapObjects[i]->name << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
+                        ofile << "mapObject " << g_mapObjects[i]->name << " " << g_mapObjects[i]->mask_fileaddress << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
                     }
 
                     for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
@@ -1332,56 +1332,12 @@ void write_map(entity* mapent) {
     }
     
     if(devinput[12] && !olddevinput[12]) {
+        mapObject* m = new mapObject(renderer, captex, "tiles/engine/a.png", marker->x, marker->y + 55 - 1, wallheight, 64 - 1, 54 + 1, 0, 0, 0);
+        //m = new mapObject(renderer, walltex, "tiles/engine/a.png", marker->x, marker->y + 55 - 1, 0, 64 - 1, 54 + 1, 1, 0, 0);
         
-        //wall's corner is in top left
-        //make the gapcloser
-        entity* e = new entity(renderer, captex, marker->x, marker->y- wallheight + 38, marker->width, marker->height, 0);
-        e->sortingOffset = wallheight - 38;
-        
-
-        //make chip
-        size_t pos = walltex.find("/");
-        string awalltex = walltex.substr (pos + 1);
-        pos = awalltex.find("/");
-        awalltex = awalltex.substr (pos + 1); 
-        awalltex = "tiles/sheared/a-" + awalltex;
-
-
-        float extraoffset = ((int)marker->y + wallheight) % 90;
-        float currentOffset = -22;
-        for (int i = 0; i < wallheight; i+=38) {
-            float extraoffset = ((int)marker->y + 38) % 90;
-            D(awalltex);
-            entity* f = new entity(renderer, awalltex, marker->x, marker->y + marker->height , marker->width, 2 * marker->height, 1, extraoffset);
-            f->sortingOffset = currentOffset;
-            SDL_SetTextureBlendMode(f->texture, SDL_BLENDMODE_BLEND);
-            currentOffset += 38;
-            marker->y-= 38;
-        }
-        marker->y += wallheight;
-        
-        
-        
-        if(shine == 1) {
-            entity* g = new entity(renderer, "tiles/lighting/a-SMOOTHSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-            
-        }
-
-        if(shine == 2) {
-            entity* g = new entity(renderer, "tiles/lighting/a-SHARPSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        if(shine == 3) {
-            entity* g = new entity(renderer, "tiles/lighting/a-SHARPBRIGHTSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-        extraoffset = ((int)marker->y + 38) % 90;
-        if(occlusion) {
-            entity* h = new entity(renderer, "tiles/lighting/a-occlusion.png", marker->x, marker->y + marker->height + 23, marker->width, 2 * marker->height, 1, extraoffset - 23);
-            h->sortingOffset = -43;
-            //sides as well
+        int step = 4;
+        for (int i = 0; i < 64; i+=step) {
+            mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (i * XtoY), 0, step, wallheight, 1, (i * XtoY));
         }
 
         //make triangle
@@ -1390,109 +1346,15 @@ void write_map(entity* mapent) {
 
     }
     if(devinput[13] && !olddevinput[13]) {
-        //wall's corner is in top right
-        //make the gapcloser
-        entity* e = new entity(renderer, captex, marker->x, marker->y- wallheight + 38, marker->width, marker->height, 0);
-        e->sortingOffset = wallheight - 38;
-
-        //make chip
-        size_t pos = walltex.find("/");
-        string awalltex = walltex.substr (pos + 1);
-        pos = awalltex.find("/");
-        awalltex = awalltex.substr (pos + 1); 
-        awalltex = "tiles/sheared/b-" + awalltex;
-
-        float extraoffset = ((int)marker->y + wallheight) % 90;
-        float currentOffset = -22;
+        mapObject* m = new mapObject(renderer, captex, "tiles/engine/b.png", marker->x + 1, marker->y + 55 - 1, wallheight, 64 + 1, 54 + 1, 0, 0, 0);\
+        m = new mapObject(renderer, walltex, "tiles/engine/b.png", marker->x + 1, marker->y + 55 - 1, 0, 64 + 1, 54 + 1, 1, 0, 0);
         
-        for (int i = 0; i < wallheight; i+=38) {
-            float extraoffset = ((int)marker->y + 38) % 90;
-            
-            entity* f = new entity(renderer, awalltex, marker->x, marker->y + marker->height , marker->width, 2 * marker->height, 1, extraoffset);
-            f->sortingOffset = currentOffset;
-            currentOffset += 38;
-            marker->y-= 38;
-        }
-
-        marker->y += wallheight;
-
-        if(shine == 1) {
-            entity* g = new entity(renderer, "tiles/lighting/b-SMOOTHSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        if(shine == 2) {
-            entity* g = new entity(renderer, "tiles/lighting/b-SHARPSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        if(shine == 3) {
-            entity* g = new entity(renderer, "tiles/lighting/b-SHARPBRIGHTSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        extraoffset = ((int)marker->y + 38) % 90;
-
-        if(occlusion) {
-            entity* h = new entity(renderer, "tiles/lighting/b-occlusion.png", marker->x, marker->y + marker->height + 23, marker->width, 2 * marker->height, 1, extraoffset - 23);
-            h->sortingOffset = -43;
-        }
-
-        //make triangle
-        tri* n = new tri(marker->x, marker->y, marker->x+ marker->width, marker->y + marker->height);
-        g_triangles.push_back(n);
     }
     if(devinput[14] && !olddevinput[14]) {
-        //wall's corner is in bottom right
-
-        //make wall
-        entity* d = new entity(renderer, walltex, marker->x, marker->y + marker->height, marker->width, wallheight, 1);
-        d->sortingOffset = -4;
-        
-        //make chip
-        size_t pos = captex.find("/");
-        string acaptex = captex.substr (pos + 1);
-        pos = acaptex.find("/");
-        acaptex = acaptex.substr (pos + 1); 
-        acaptex = "tiles/sheared/c-" + acaptex;
-        
-        entity* e = new entity(renderer, acaptex, marker->x + 1, marker->y + 1 + marker->height - 15 - wallheight + 38, marker->width -1, marker->height * 2 -15, 0);
-        e->sortingOffset = wallheight - 38;
-
-        //hide the crappy black edges
-        entity* f = new entity(renderer, captex, marker->x + marker->width - 1, marker->y - wallheight + 38, 1, marker->height, 0);
-        f->sortingOffset = wallheight + marker->height;
-        entity* g = new entity(renderer, captex,  marker->x, marker->y + 1 - wallheight + 38, marker->width, 2, 0, 0);
-        g->sortingOffset = wallheight + 32;
- 
-
-        //make triangle
-        tri* n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y);
-        g_triangles.push_back(n);
+        mapObject* m = new mapObject(renderer, captex, "tiles/engine/c.png", marker->x + 1, marker->y + 55 + 1, wallheight, 64 + 1, 54 + 1, 0, 0, 0);
     }
     if(devinput[15] && !olddevinput[15]) {
-
-        //make wall
-        entity* d = new entity(renderer, walltex, marker->x, marker->y + marker->height, marker->width, wallheight, 1);
-        d->sortingOffset = -4;
-        
-        //make chip
-        size_t pos = captex.find("/");
-        string acaptex = captex.substr (pos + 1);
-        pos = acaptex.find("/");
-        acaptex = acaptex.substr (pos + 1); 
-        acaptex = "tiles/sheared/d-" + acaptex;
-        
-        entity* e = new entity(renderer, acaptex, marker->x + 1, marker->y + 1 + marker->height - 15 - wallheight + 38, marker->width - 2, marker->height * 2 -15, 0);
-        e->sortingOffset = wallheight - 38;
-
-
-        //hide the crappy black edges
-        entity* f = new entity(renderer, captex, marker->x, marker->y - wallheight+ 38, 1, marker->height, 0);
-        f->sortingOffset = wallheight + marker->height;
-        entity* g = new entity(renderer, captex, marker->x, marker->y + 1 - wallheight + 38, marker->width, 2, 0);
-        g->sortingOffset = wallheight + 32;
- 
+        mapObject* m = new mapObject(renderer, captex, "tiles/engine/d.png", marker->x, marker->y + 55 + 1, wallheight, 64 - 1, 54 + 1, 0, 0, 0);
 
         //make triangle
         tri* n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y);
@@ -1502,147 +1364,16 @@ void write_map(entity* mapent) {
 
     
     if(devinput[16] && !olddevinput[16]) {
-        //delete entities at cursor
-        //Door -> Entity -> Tile
-        bool foundFlag = 0;
-        SDL_Rect a = {marker->x, marker->y, marker->width, marker->height};
-        for (long long unsigned int i = 0; i < g_entities.size(); i++) {
-            if(g_entities[i]->inParty) { continue; }
-            SDL_Rect b = {g_entities[i]->x, g_entities[i]->y - g_entities[i]->height, g_entities[i]->width, g_entities[i]->height};
-            
-            if(RectOverlap(a, b)) {
-                delete g_entities[i];
-                foundFlag = 1;
-                break;
-            }
-            
-        }
-        if(!foundFlag) {
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
-                
-                if(g_tiles[i] == marker) { continue; }
-                if(g_tiles[i] == selection) { continue; }
-                SDL_Rect b = {g_tiles[i]->x, g_tiles[i]->y, g_tiles[i]->width, g_tiles[i]->height};
-                
-                if(RectOverlap(a, b)) {
-                    auto* holder = g_tiles[i];
-                    g_tiles.erase(g_tiles.begin() + i);
-                    delete holder;
-                }
-                break;
-            }
-        }
-    }
-
-        //make zslant block left
-    if(devinput[17] && !olddevinput[17]) {
-        //wall's corner is in top right
-        //make the gapcloser
-        entity* e = new entity(renderer, walltex, marker->x, marker->y- wallheight + 90, marker->width, marker->height, 1);
-        e->sortingOffset = wallheight - 90;
-        //make chip
-        size_t pos = captex.find("/");
-        string awalltex = captex.substr (pos + 1); 
-        awalltex = "tiles/sheared/b-" + awalltex;
-        D(awalltex);
-        float extraoffset = ((int)marker->y + wallheight) % 90;
-        float currentOffset = -22;
-        
-        for (int i = 0; i < wallheight; i+=38) {
-            float extraoffset = ((int)marker->y + 38) % 90;
-            
-            entity* f = new entity(renderer, awalltex,  marker->x, marker->y + marker->height , marker->width, 2 * marker->height, 0, extraoffset);
-            f->sortingOffset = currentOffset;
-            currentOffset += 38;
-            marker->y-= 38;
-        }
-
-        marker->y += wallheight;
-
-        if(shine == 1) {
-            entity* g = new entity(renderer, "tiles/lighting/b-SMOOTHSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 90, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5 -38;
-            //g->extraYOffset = 38;
-            //set it to not be a wallcap so that it doesnt render in two parts
-            g->wallcap = 0;
-        }
-
-        if(shine == 2) {
-            entity* g = new entity(renderer, "tiles/lighting/b-SHARPSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        if(shine == 3) {
-            entity* g = new entity(renderer, "tiles/lighting/b-SHARPBRIGHTSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        extraoffset = ((int)marker->y + 38) % 90;
-
-
-        //fix occlusion
-        if(occlusion) {
-            //add lower occlusion
-        }
-
-        //collision* c = new collision(marker->x, marker->y, marker->width, marker->height);
+       
     }
     
     //make zslant block right
     if(devinput[18] && !olddevinput[18]) {
-            //wall's corner is in top right
-        //make the gapcloser
-        entity* e = new entity(renderer, walltex, marker->x, marker->y- wallheight + 90, marker->width, marker->height, 1);
-        e->sortingOffset = wallheight - 90;
-        //make chip
-        size_t pos = captex.find("/");
-        string awalltex = captex.substr (pos + 1); 
-        awalltex = "tiles/sheared/a-" + awalltex;
-
-        float extraoffset = ((int)marker->y + wallheight) % 90;
-        float currentOffset = -22;
-        
-        for (int i = 0; i < wallheight; i+=38) {
-            float extraoffset = ((int)marker->y + 38) % 90;
-            
-            entity* f = new entity(renderer, awalltex, marker->x, marker->y + marker->height , marker->width, 2 * marker->height, 0, extraoffset);
-            f->sortingOffset = currentOffset;
-            currentOffset += 38;
-            marker->y-= 38;
-        }
-
-        marker->y += wallheight;
-
-        if(shine == 1) {
-            entity* g = new entity(renderer, "tiles/lighting/a-SMOOTHSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 90, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5 -38;
-            //g->extraYOffset = 38;
-            //set it to not be a wallcap so that it doesnt render in two parts
-            g->wallcap = 0;
-        }
-
-        if(shine == 2) {
-            entity* g = new entity(renderer, "tiles/lighting/a-SHARPSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        if(shine == 3) {
-            entity* g = new entity(renderer, "tiles/lighting/a-SHARPBRIGHTSHADING.png", marker->x, marker->y + marker->height - 22 - wallheight + 38, marker->width, 2 * marker->height, 1, extraoffset + 22);
-            g->sortingOffset = wallheight -5;
-        }
-
-        extraoffset = ((int)marker->y + 38) % 90;
-
-
-        //fix occlusion
-        if(occlusion) {
-            //add lower occlusion
-        }
-
-        //collision* c = new collision(marker->x, marker->y, marker->width, marker->height);
+       
     }
+
     if(devinput[19] && !olddevinput[19]) {
-        navNode* n = new navNode(px + marker->width/2, py + marker->height/2);
+        //navNode* n = new navNode(px + marker->width/2, py + marker->height/2);
     }
     
     
