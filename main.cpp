@@ -130,14 +130,18 @@ int main(int argc, char ** argv) {
 	}
 
 	//initialize collision matrix z
-	int top_layer = 12;
-	for (int i = 0; i < top_layer; i++) {
+	for (int i = 0; i < g_layers; i++) {
 		vector<collision*> v = {};
 		g_collisions.push_back(v);
 	}
 
-	if(devMode) {
-		load_map(renderer, "maps/empty/empty.map", "a");
+	for (int i = 0; i < g_layers; i++) {
+		vector<tri*> v = {};
+		g_triangles.push_back(v);
+	}
+
+	if(1/*devMode*/) {
+		load_map(renderer, "maps/gtest/gtest.map", "a");
 	} else {
 		load_map(renderer, "maps/mtest/mtest.map", "a");
 		srand (time(NULL));

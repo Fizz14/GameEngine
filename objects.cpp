@@ -180,29 +180,17 @@ public:
 	int type;
 	float m; //slope
 	int b; //offset
+	int layer = 0;
 
-	tri() {
-		x1=120; y1=120;
-		x2=60; y2 =60;
-		if(x2 < x1 && y2 > y1) {
-			type = 0; //  :'
-		}
-		if(x2 < x1 && y2 < y1) {
-			type = 1; //  :,
-		}
-		if(x2 > x1 && y2 < y1) {
-			type = 2; //  ,:
-		}
-		if(x2 > x1 && y2 > y1) {
-			type = 3; //  ':
-		}
-		m = (y1 -y2) / (x1 - x2);
-		b = y1 - (m * x1);
-	}
+	string walltexture;
+	string captexture;
 
-	tri(int fx1, int fy1, int fx2, int fy2) {
+	bool capped = 0;
+
+	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped) {
 		x1=fx1; y1=fy1;
 		x2=fx2; y2=fy2;
+		layer = flayer;
 		if(x2 < x1 && y2 > y1) {
 			type = 0; //  :'
 		}
@@ -217,10 +205,15 @@ public:
 		}
 		m = float(y1 -y2) / float(x1 - x2);
 		b = y1 - (m * x1);
+		walltexture = fwallt;
+		captexture = fcapt;
+		capped = fcapped;
+		g_triangles[layer].push_back(this);
 	}
 
 	~tri() {
-		g_triangles.erase(remove(g_triangles.begin(), g_triangles.end(), this), g_triangles.end());
+		D(layer);
+		g_triangles[layer].erase(remove(g_triangles[layer].begin(), g_triangles[layer].end(), this), g_triangles[layer].end());
 	}
 
 	void render(SDL_Renderer* renderer) {
@@ -229,8 +222,8 @@ public:
 		int tx2 = g_camera.zoom * (x2-g_camera.x);
 		
 
-		int ty1 = g_camera.zoom * (y1-g_camera.y);
-		int ty2 = g_camera.zoom * (y2-g_camera.y);
+		int ty1 = g_camera.zoom * (y1-g_camera.y)- layer * 38;
+		int ty2 = g_camera.zoom * (y2-g_camera.y)- layer * 38;
 		
 		
 		SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty2);
@@ -360,17 +353,22 @@ public:
 	rect bounds;
 	bool active = true;
 	int layer = 0;
-	collision(int x1f, int y1f, int x2f, int y2f, int flayer) {
+	string walltexture;
+	string captexture;
+	bool capped = false;
+	collision(int x1f, int y1f, int x2f, int y2f, int flayer, string fwallt, string fcapt, bool fcapped) {
 		bounds.x = x1f;
 		bounds.y = y1f;
 		bounds.width = x2f;
 		bounds.height = y2f;
 		layer = flayer;
+		walltexture = fwallt;
+		captexture = fcapt;
+		capped = fcapped;
 		g_collisions[layer].push_back(this);
 	}
 	~collision() {
-		int hold = layer;
-		g_collisions[hold].erase(remove(g_collisions[hold].begin(), g_collisions[hold].end(), this), g_collisions[hold].end());
+		g_collisions[layer].erase(remove(g_collisions[layer].begin(), g_collisions[layer].end(), this), g_collisions[layer].end());
 	}
 };
 
@@ -1820,7 +1818,7 @@ public:
 					
 				}
 				//update bounds with new pos
-				movedbounds = rect(bounds.x + x + (2*xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
 				//uh oh, did we collide with something?
 				if(RectOverlap(movedbounds, collisions[i]->bounds)) {
 					//collision detected
@@ -1829,62 +1827,21 @@ public:
 					
 				}
 			}
-
-			int ytemp = 0; //to be added to y to create sliding along diagonal walls, but cannot be applied mid-check
-			//try for triangles
-			bool overlap = 0;
 			
-			for(long long unsigned int i=0; i < g_triangles.size(); i++){
-				//test both components of velocity first -- player can move diagonally and avoid wall
-				if(!TriRectOverlap(g_triangles[i], this->x + (2* xvel * ((double) elapsed / 256.0)), this->y - this->bounds.height/2 + (2* yvel * ((double) elapsed / 256.0)), this->bounds.width, this->bounds.height, -1)) {
-					continue;
-					
-					
+			for(auto n : g_triangles[layer]){
+				rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * 2 * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+				if(TriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height, -3)) {
+					ycollide = true;
+					yvel = 0;
 				}
-				if(TriRectOverlap(g_triangles[i], this->x + (2* xvel * ((double) elapsed / 256.0)), this->y - this->bounds.height/2, this->bounds.width, this->bounds.height, -2)) {
-					
-					if(!TriRectOverlap(g_triangles[i], this->x + (2* xvel * ((double) elapsed / 256.0)), this->y - this->bounds.height/2 - (2*xvel * ((double) elapsed / 256.0)), this->bounds.width+ 1, this->bounds.height, -1) ) {
-						
-						//yaccel = -1 * yagil;
-						xvel *= 0.8;
-						ytemp-=(2*xvel * ((double) elapsed / 256.0));
-						
-					} else {
-						if(!TriRectOverlap(g_triangles[i], this->x + (2* xvel * ((double) elapsed / 256.0)), this->y - this->bounds.height/2 + ( 2* xvel * ((double) elapsed / 256.0)), this->bounds.width, this->bounds.height, -1) ) {
-							//yaccel = yagil;
-							xvel *= 0.8;
-							ytemp+= (2*xvel * ((double) elapsed / 256.0)) ;
-						} else {
-							xcollide = true;
-							//xvel = 0;
-						}
-					} 
-					
-				}
-					
-				
-				if(TriRectOverlap(g_triangles[i], this->x, this->y - this->bounds.height/2 + (2* yvel * ((double) elapsed / 256.0)), this->bounds.width, this->bounds.height, -2)) {
-					
-					
-					if(!TriRectOverlap(g_triangles[i], this->x - (2* yvel * ((double) elapsed / 256.0)), this->y - this->bounds.height/2 + (2* yvel * ((double) elapsed / 256.0)), this->bounds.width, this->bounds.height, -1) ) {
-						//xaccel = -1 * xagil;
-						yvel *= 0.8;
-						x-= (2*yvel * ((double) elapsed / 256.0));
-					
-					} else {
-						if(!TriRectOverlap(g_triangles[i], this->x + (2* yvel * ((double) elapsed / 256.0)), this->y - this->bounds.height/2 + (2* yvel * ((double) elapsed / 256.0)), this->bounds.width, this->bounds.height, -1) ) {
-							//xaccel = 1 * xagil;
-							yvel *= 0.8;
-							x+= (2*yvel * ((double) elapsed / 256.0));
-						} else {
-							ycollide = true;
-							//yvel = 0;
-						}
-					}
+
+				movedbounds = rect(bounds.x + x + (xvel * 2 * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+				if(TriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height, -3)) {
+					xcollide = true;
+					xvel = 0;
 				}
 				
 			}
-			y += ytemp;
 		}
 		
 
@@ -3476,10 +3433,12 @@ void clear_map(camera& cameraToReset) {
 		}
 	}
 	
-	size = g_triangles.size();
-	for(int i = 0; i < size; i++) {
-		delete g_triangles[0];
-
+	
+	for(int j = 0; j < g_layers; j++){
+		size = g_triangles[j].size();
+		for(int i = 0; i < size; i++) {
+			delete g_triangles[j][0];
+		}
 	}
 
 }

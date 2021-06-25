@@ -41,6 +41,7 @@ bool makeCollisions = 1;
 bool autoMakeWallcaps = 1; 
 
 tile* selection; 
+tile* markerz; 
 tile* marker; 
 tile* navNodeIcon; 
 tile* worldsoundIcon; 
@@ -106,8 +107,8 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "collision") {
             //M("loading collisisons" << endl;
-            iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5; 
-            collision* c = new collision(p1, p2, p3, p4, p5);
+            iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> s1 >> s2 >> p6; 
+            collision* c = new collision(p1, p2, p3, p4, p5, s1, s2, p6);
         }
         if(word == "entity") {
             //M("loading entity" << endl;
@@ -138,13 +139,11 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "triangle") {
             //M("loading triangle" << endl;
-            iss >> s0 >> p1 >> p2 >>p3 >> p4;
-            tri* t = new tri(p1, p2, p3, p4);
-            g_triangles.push_back(t);
+            iss >> s0 >> p1 >> p2 >>p3 >> p4 >> p5 >> s1 >> s2 >> p6;
+            tri* t = new tri(p1, p2, p3, p4, p5, s1, s2, p6);
         }
         if(word == "mapObject") {
             iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
-            //entity* e = new entity(renderer, s1, p1, p2, p3, p4, p6, p7, p8, p9);
             mapObject* e = new mapObject(renderer, s1, s2.c_str(), p1, p2, p3, p4, p5, p6, p7);
         }
         if(word == "door") {
@@ -203,6 +202,111 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             listener* l = new listener(s1, p1, p2, s2, p3, p4);
         }
     }
+    
+    {
+        //build map from collisions
+        for(int i = 0; i < g_collisions.size(); i++) {
+            for(collision* collision : g_collisions[i]) {
+                //handle rect
+                new mapObject(renderer, collision->walltexture, "&", collision->bounds.x, collision->bounds.y + collision->bounds.height, i * 64, collision->bounds.width, 55, 1);
+                //if there's no collision above, make a cap
+                if(collision->capped) {
+                    //related to resolution of wallcap
+                    int step = 5;
+                    for (int i = 0; i < collision->bounds.height; i+=step) {
+                        new mapObject(renderer, collision->captexture, "&", collision->bounds.x, collision->bounds.y + i + step, collision->layer * 64 + 64, collision->bounds.width, step, 0);
+                    }
+                    //shine
+                    new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", collision->bounds.x, collision->bounds.y + collision->bounds.height + 55/2,  collision->layer * 64 + 64, collision->bounds.width, 55);
+                        
+                    //back
+                    new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", collision->bounds.x, collision->bounds.y + 55/2, collision->layer * 64 + 64 + 1, collision->bounds.width, 55/2);
+                }
+                //floor shadows
+                if(collision->layer == 0) {
+                    //front shading
+                    D(collision->bounds.x);
+                    mapObject* m = new mapObject(renderer, "tiles/lighting/OCCLUSION.png",  "&", collision->bounds.x, collision->bounds.y + collision->bounds.height + 19, 0, collision->bounds.width, 55);
+
+                    //left
+                    int step = 5;
+                    for (int i = 0; i < collision->bounds.height; i+=step) {
+                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png",  "&", collision->bounds.x - 19, collision->bounds.y + i + 5, 0, 55/2, step);
+                    }
+                    for (int i = 0; i < collision->bounds.height; i+=step) {
+                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png",  "&", collision->bounds.x + collision->bounds.width, collision->bounds.y + i + 5, 0, 55/2, step);
+                    }
+                    
+                    
+                    
+                    //corner a
+                    mapObject* a = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", collision->bounds.x - (38 - 19), collision->bounds.y, 0, 32, 19, 0, 0, -20);
+
+                    //corner b
+                    mapObject* b = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", collision->bounds.x + collision->bounds.width, collision->bounds.y, 0, 32, 19, 0, 0, -20);
+
+                    //corner c
+                    mapObject* c = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", collision->bounds.x - (38 - 19), collision->bounds.y + collision->bounds.height + (38 - 19), 0, 19, 19, 0, 0, -20);
+
+                    //corner d
+                    mapObject* d = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", collision->bounds.x + collision->bounds.width, collision->bounds.y + collision->bounds.height + (38 - 19), 0, 19, 19, 0, 0, -20);
+                
+                }
+                 
+            }
+        }
+        for(vector<tri*> layer : g_triangles) {
+            for(auto triangle : layer) {
+                //handle tri
+                if(triangle->type == 0) {
+                    int step = 5;
+                    for (int i = 0; i < 55; i+=step) {
+                        mapObject* e = new mapObject(renderer, triangle->captexture, "tiles/engine/a.png", triangle->x2, triangle->y1 + i + step, wallheight, 64 - 1, step, 0);
+                    }
+                    
+                    //a tile on the floor to help with the edge of the diagonal wall pieces
+                    //this tile won't be saved, because it uses an engine mask
+                    tile* t = new tile(renderer, triangle->walltexture.c_str(), "tiles/engine/a.png", triangle->x2, triangle->y1 - 1, 64 - 1, 54 + 1, triangle->layer, 1, 1, 0, 0);    
+                    step = 1;
+                    int vstep = 64;
+                    for (int j = 0; j < wallheight; j+=vstep) {
+                        for (int i = 0; i < 64; i+=step) {
+                            mapObject* e = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - (i * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, (i * XtoY));
+                        }
+                    }
+                    
+                } else {
+                    if(triangle->type == 3) {
+                        int step = 5;
+                        for (int i = 0; i < 55; i+=step) {
+                            mapObject* e = new mapObject(renderer, triangle->captexture, "tiles/engine/b.png", triangle->x1 + 1, triangle->y1 + i + step, wallheight, 64 - 1, step, 0);
+                        }
+                        
+                        //a tile on the floor to help with the edge of the diagonal wall pieces
+                        //this tile won't be saved, because it uses an engine mask
+                        tile* t = new tile(renderer, triangle->walltexture.c_str(), "tiles/engine/b.png", triangle->x1, triangle->y1 - 1, 64 - 1, 54 + 1, triangle->layer, 1, 1, 0, 0);    
+                        step = 1;
+                        int vstep = 64;
+                        for (int j = 0; j < wallheight; j+=vstep) {
+                            for (int i = 0; i < 64; i+=step) {
+                                mapObject* e = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - i) * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, ((64 - i) * XtoY));
+                            }
+                        }
+                    } else {
+                        if(triangle->type == 2) {
+                            mapObject* m = new mapObject(renderer, triangle->captexture, "tiles/engine/c.png", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
+                        } else {
+                            //type is 1
+                            mapObject* m = new mapObject(renderer, triangle->captexture, "tiles/engine/d.png", triangle->x2, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 - 1, 54 + 1, 0, 0, 0);
+
+                        }
+                    }
+                }
+                
+            }
+        }
+    }
+
     Update_NavNode_Costs(g_navNodes);
     infile.close();
 
@@ -234,6 +338,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 //called on init if map_editing is true
 void init_map_writing(SDL_Renderer* renderer) {
     selection = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
+    markerz = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
     marker = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
     worldsoundIcon = new tile(renderer, "tiles/engine/speaker.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
     listenerIcon = new tile(renderer, "tiles/engine/listener.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
@@ -250,19 +355,38 @@ void init_map_writing(SDL_Renderer* renderer) {
 //called every frame if map_editing is true
 //each bool represents a button, if c is true, c was pressed that frame
 void write_map(entity* mapent) {
-    float temp = mapent->x - 64;
-    float px = round(temp/grid)*grid;
-    temp = mapent->y -mapent->height - 38;
-    //flawed now that the grid has changed to 64,38
-    float py = round(temp/(float)round(grid* XtoY))*(float)round(grid* XtoY);
-    
-  
-    // needed for proper grid in negative x or y
-    if(mapent->x < 0)
-        px-=grid;
+    float temp, px, py;
 
-    if(mapent->y < mapent->height)
-        py-=round(grid * XtoY);
+    if(g_mousemode){
+        int mxint, myint;
+        SDL_GetMouseState(&mxint, &myint);
+        D(mxint);
+        D(myint);
+        //px = mxint; py = myint;
+        float percentx = (float)mxint/(float)WIN_WIDTH;
+        float percenty =  (float)myint/(float)WIN_HEIGHT;
+        D(percentx/scalex);
+        D(percenty/scalex);
+        temp =  percentx/scalex * g_camera.width + (g_camera.x - 32);
+        px = round(temp/grid)*grid;
+        temp = percenty/scalex * g_camera.height + (g_camera.y - 26);
+        py =  round(temp/(float)round(grid* XtoY))*(float)round(grid* XtoY);
+        //add zoom support
+    } else {
+        temp = mapent->x - 64;
+        px = round(temp/grid)*grid;
+        temp = mapent->y -mapent->height - 38;
+        py = round(temp/(float)round(grid* XtoY))*(float)round(grid* XtoY);
+
+        // needed for proper grid in negative x or y
+        if(mapent->x < 0)
+            px-=grid;
+
+        if(mapent->y < mapent->height)
+            py-=round(grid * XtoY);
+    }
+  
+    
 
 
     //set marker
@@ -297,9 +421,11 @@ void write_map(entity* mapent) {
             }
             layer++;
         }
-        for (long long unsigned int i = 0; i < g_triangles.size(); i++) {
-            SDL_SetRenderDrawColor(renderer, 150, 50, 0, 255);
-            g_triangles[i]->render(renderer);
+        SDL_SetRenderDrawColor(renderer, 150, 50, 0, 255);
+        for(int i = 0; i < g_layers; i++) {
+            for (auto n : g_triangles[i]) {
+                n->render(renderer);
+            }
         }
         //draw navNodes
         for (int i = 0; i < g_navNodes.size(); i++) {
@@ -453,7 +579,9 @@ void write_map(entity* mapent) {
                 //string loadstr = "tiles/wall.png";
                 if(makeCollisions) {
                     for (int i = 0; i < wallheight / 64; i++) {
-                        collision* c = new collision(selection->x, selection->y, selection->width, selection->height, i);
+                        bool fcap = (!(i + 1 < wallheight/64));//&& autoMakeWallcaps;
+                        //bool fcap = 1;
+                        collision* c = new collision(selection->x, selection->y, selection->width, selection->height, i, walltex, captex, fcap);
                     }
                     D(wallheight);
                 }
@@ -477,12 +605,12 @@ void write_map(entity* mapent) {
 
                 if(shine == 1) {
                     //front
-                    mapObject* f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
+                    //mapObject* f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
                     
                     
 
                     //back
-                    f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
+                    //f = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
                     
                 }
 
@@ -499,13 +627,14 @@ void write_map(entity* mapent) {
                     //front shading
                     mapObject* m = new mapObject(renderer, "tiles/lighting/OCCLUSION.png",  "&", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
 
-                    //sides
+                    //left
                     int step = 5;
                     for (int i = 0; i < selection->height; i+=step) {
-                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png",  "&", selection->x - 19, selection->y + i + 5, 0, selection->width + 45, step);
-        
+                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png",  "&", selection->x - 19, selection->y + i + 5, 0, 55/2, step);
                     }
-                    D(selection->height);
+                    for (int i = 0; i < selection->height; i+=step) {
+                        mapObject* u = new mapObject(renderer, "tiles/lighting/h-OCCLUSION.png",  "&", selection->x + selection->width, selection->y + i + 5, 0, 55/2, step);
+                    }
                     
                     
                     
@@ -520,6 +649,7 @@ void write_map(entity* mapent) {
 
                     //corner d
                     mapObject* d = new mapObject(renderer, "tiles/lighting/x-OCCLUSION.png", "&", selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0, -20);
+                
                 }
 
                 
@@ -849,9 +979,10 @@ void write_map(entity* mapent) {
                         ofile << endl;
                     }
                      
-
-                    for (long long unsigned int i = 0; i < g_triangles.size(); i++) {
-                        ofile << "triangle " << g_triangles[i]->x1 << " " << g_triangles[i]->y1 << " " << g_triangles[i]->x2 << " " << g_triangles[i]->y2 << endl;
+                    for(int i = 0; i < g_layers; i ++) {
+                        for (auto n : g_triangles[i]) {
+                            ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture <<  " " << n->capped << " " << endl;
+                        }
                     }
                     for (long long unsigned int i = 0; i < g_entities.size(); i++) {
                         if(!g_entities[i]->inParty) {
@@ -862,7 +993,7 @@ void write_map(entity* mapent) {
                     }
                     
                     for (long long unsigned int i = 0; i < g_mapObjects.size(); i++) {    
-                        ofile << "mapObject " << g_mapObjects[i]->name << " " << g_mapObjects[i]->mask_fileaddress << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
+                        //ofile << "mapObject " << g_mapObjects[i]->name << " " << g_mapObjects[i]->mask_fileaddress << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
                     }
 
                     for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
@@ -882,9 +1013,9 @@ void write_map(entity* mapent) {
                         
                         ofile << "heightmap " << g_heightmaps[i]->binding << " " << g_heightmaps[i]->name << endl;
                     }
-                    for (long long unsigned int j = 0; j < g_collisions.size(); j++){
+                    for (long long unsigned int j = 0; j < g_layers; j++){
                         for (long long unsigned int i = 0; i < g_collisions[j].size(); i++){
-                            ofile << "collision " << to_string(g_collisions[j][i]->bounds.x) << " " << to_string(g_collisions[j][i]->bounds.y) << " " << to_string(g_collisions[j][i]->bounds.width) << " " << to_string(g_collisions[j][i]->bounds.height) << " " << j << endl;
+                            ofile << "collision " << to_string(g_collisions[j][i]->bounds.x) << " " << to_string(g_collisions[j][i]->bounds.y) << " " << to_string(g_collisions[j][i]->bounds.width) << " " << to_string(g_collisions[j][i]->bounds.height) << " " << j << " " << g_collisions[j][i]->walltexture << " " << g_collisions[j][i]->captexture << " " << g_collisions[j][i]->capped << endl;
                         }
                     }
                     for (long long unsigned int i = 0; i < g_doors.size(); i++){
@@ -1332,34 +1463,73 @@ void write_map(entity* mapent) {
     }
     
     if(devinput[12] && !olddevinput[12]) {
-        mapObject* m = new mapObject(renderer, captex, "tiles/engine/a.png", marker->x, marker->y + 55 - 1, wallheight, 64 - 1, 54 + 1, 0, 0, 0);
-        //m = new mapObject(renderer, walltex, "tiles/engine/a.png", marker->x, marker->y + 55 - 1, 0, 64 - 1, 54 + 1, 1, 0, 0);
-        
-        int step = 4;
-        for (int i = 0; i < 64; i+=step) {
-            mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (i * XtoY), 0, step, wallheight, 1, (i * XtoY));
+        if(autoMakeWallcaps) {
+            int step = 5;
+            for (int i = 0; i < 55; i+=step) {
+                mapObject* e = new mapObject(renderer, captex, "tiles/engine/a.png", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+            }
+            
+        }
+
+       
+        int step = 2;
+        int vstep = 64;
+        if(autoMakeWalls){
+            //a tile on the floor to help with the edge of the diagonal wall pieces
+            //this tile won't be saved, because it uses an engine mask
+            tile* t = new tile(renderer, walltex.c_str(), "tiles/engine/a.png", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
+            for (int j = 0; j < wallheight; j+=vstep) {
+                for (int i = 0; i < 64; i+=step) {
+                    mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (i * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, (i * XtoY));
+                }
+            }
         }
 
         //make triangle
-        tri* n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height);
-        g_triangles.push_back(n);
-
+        for(int i = 0; i < wallheight / 64; i++){
+            tri* n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, 1);
+        }
     }
     if(devinput[13] && !olddevinput[13]) {
-        mapObject* m = new mapObject(renderer, captex, "tiles/engine/b.png", marker->x + 1, marker->y + 55 - 1, wallheight, 64 + 1, 54 + 1, 0, 0, 0);\
-        m = new mapObject(renderer, walltex, "tiles/engine/b.png", marker->x + 1, marker->y + 55 - 1, 0, 64 + 1, 54 + 1, 1, 0, 0);
-        
+        if(autoMakeWallcaps) {
+            int step = 5;
+            for (int i = 0; i < 55; i+=step) {
+                mapObject* e = new mapObject(renderer, captex, "tiles/engine/b.png", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+            }
+            
+        }
+
+        //a tile on the floor to help with the edge of the diagonal wall pieces
+        tile* t = new tile(renderer, walltex.c_str(), "tiles/engine/b.png", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
+
+        int step = 2;
+        int vstep = 64;
+        if(autoMakeWalls){
+            for (int j = 0; j < wallheight; j+=vstep) {
+                for (int i = 0; i < 64; i+=step) {
+                    mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (((64 - step) - i) * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, ((64 - i) * XtoY));
+                }
+            }
+        }
+        //make triangle
+        for(int i = 0; i < wallheight / 64; i++){
+            tri* n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, 1);
+        }
     }
     if(devinput[14] && !olddevinput[14]) {
         mapObject* m = new mapObject(renderer, captex, "tiles/engine/c.png", marker->x + 1, marker->y + 55 + 1, wallheight, 64 + 1, 54 + 1, 0, 0, 0);
+        //make triangle
+        for(int i = 0; i < wallheight / 64; i++){
+            tri* n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, 1); 
+        }
     }
     if(devinput[15] && !olddevinput[15]) {
         mapObject* m = new mapObject(renderer, captex, "tiles/engine/d.png", marker->x, marker->y + 55 + 1, wallheight, 64 - 1, 54 + 1, 0, 0, 0);
 
         //make triangle
-        tri* n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y);
-        g_triangles.push_back(n);
-        
+        for(int i = 0; i < wallheight / 64; i++){
+            tri* n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, 1); 
+        }
     }
 
     
@@ -1376,7 +1546,15 @@ void write_map(entity* mapent) {
         //navNode* n = new navNode(px + marker->width/2, py + marker->height/2);
     }
     
-    
+    //update position of markerz
+    markerz->x = marker->x;
+    float boffset = wallheight;
+    boffset /= 2;
+    D(boffset);
+    markerz->y = marker->y - boffset;
+    markerz->width = marker->width;
+    markerz->height = marker->height;
+    markerz->wraptexture = 0;
 
     //done to prevent double keypresses
     for(int i = 0; i < 50; i++) {

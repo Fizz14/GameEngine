@@ -91,7 +91,7 @@ vector<textbox*> g_textboxes;
 
 vector<ui*> g_ui;
 
-vector<tri*> g_triangles;
+vector<vector<tri*>> g_triangles;
 
 vector<heightmap*> g_heightmaps;
 
@@ -286,6 +286,12 @@ float dialogue_cooldown = 0; //seconds until he can have dialogue again.
 //debuging
 SDL_Texture* nodeDebug;
 clock_t debugClock;
+
+//world
+int g_layers = 12; //max blocks in world
+
+//map editing
+bool g_mousemode = 1;
 
 //userdata
 string g_saveName = "A";
