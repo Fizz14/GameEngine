@@ -171,7 +171,32 @@ public:
 	}
 };
 
-class tri {
+class mapCollision {
+public:
+	//related to saving/displaying the block
+	string walltexture;
+	string captexture;
+	bool capped = false;
+	bool shineTop = false;
+	bool shineBot = false;
+
+	//tiles created from the mapCollision, to be appropriately deleted
+	vector<mapObject*> children;
+
+	//tri and boxes which are part of the map are pushed back on 
+	//an array of mapCollisions to be kept track of for deletion/undoing
+	mapCollision() {
+		M("mapCollision()");
+		g_mapCollisions.push_back(this);
+	}
+	~mapCollision() {
+		M("~mapCollision()");
+		g_mapCollisions.erase(remove(g_mapCollisions.begin(), g_mapCollisions.end(), this), g_mapCollisions.end());
+	}
+	
+};
+
+class tri:public mapCollision {
 public:
 	//if type is true, the right angle corner will be at the bottom.
 	//y1 > y2
@@ -182,15 +207,13 @@ public:
 	int b; //offset
 	int layer = 0;
 
-	string walltexture;
-	string captexture;
-
-	bool capped = 0;
-
-	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped) {
+	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool ftopshine, bool fbotshine) {
+		M("tri()");
 		x1=fx1; y1=fy1;
 		x2=fx2; y2=fy2;
 		layer = flayer;
+		shineTop = ftopshine;
+		shineBot = fbotshine;
 		if(x2 < x1 && y2 > y1) {
 			type = 0; //  :'
 		}
@@ -212,7 +235,7 @@ public:
 	}
 
 	~tri() {
-		D(layer);
+		M("~tri()");
 		g_triangles[layer].erase(remove(g_triangles[layer].begin(), g_triangles[layer].end(), this), g_triangles[layer].end());
 	}
 
@@ -282,7 +305,7 @@ bool RectOverlap(rect a, rect b) {
 }
 
 bool ElipseOverlap(rect a, rect b) {
-	//todo, check rectangles (bounding boxes) first and then elipse collisions
+	//todo, check rectangles (bounding boxes) first and then elipse boxs
 	return false;
 }
 
@@ -348,15 +371,14 @@ rect transformRect(rect input) {
 	return obj;
 }
 
-class collision {
+class box:public mapCollision {
 public:
 	rect bounds;
 	bool active = true;
 	int layer = 0;
-	string walltexture;
-	string captexture;
-	bool capped = false;
-	collision(int x1f, int y1f, int x2f, int y2f, int flayer, string fwallt, string fcapt, bool fcapped) {
+	
+	box(int x1f, int y1f, int x2f, int y2f, int flayer, string fwallt, string fcapt, bool fcapped, bool ftopshine, bool fbotshine) {
+		M("box()");
 		bounds.x = x1f;
 		bounds.y = y1f;
 		bounds.width = x2f;
@@ -365,10 +387,13 @@ public:
 		walltexture = fwallt;
 		captexture = fcapt;
 		capped = fcapped;
-		g_collisions[layer].push_back(this);
+		shineTop = ftopshine;
+		shineBot = fbotshine;
+		g_boxs[layer].push_back(this);
 	}
-	~collision() {
-		g_collisions[layer].erase(remove(g_collisions[layer].begin(), g_collisions[layer].end(), this), g_collisions[layer].end());
+	~box() {
+		M("~box()");
+		g_boxs[layer].erase(remove(g_boxs[layer].begin(), g_boxs[layer].end(), this), g_boxs[layer].end());
 	}
 };
 
@@ -385,8 +410,8 @@ bool LineTrace(int x1, int y1, int x2, int y2, int size = 30, int layer = 0) {
 		
 		// SDL_RenderDrawRect(renderer, &b);
 		
-		for (int j = 0; j < g_collisions[layer].size(); j++) {
-			if(RectOverlap(a, g_collisions[layer][j]->bounds)) {
+		for (int j = 0; j < g_boxs[layer].size(); j++) {
+			if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
 				return false;
 			}
 		}
@@ -663,7 +688,7 @@ class weapon {
 public:
 	float maxCooldown = 400; //ms
 	float cooldown = 0;
-	//collision data, data about movement
+	//box data, data about movement
 	int max_combo = 2;
 	int combo = 0; //increments
 	float maxComboResetSeconds = 1;
@@ -792,7 +817,7 @@ public:
 	void update(float elapsed) {
 		rect bounds = {x, y, width, height};
 		layer = max(z /64, 0.0f);
-		for(auto n : g_collisions[layer]) {
+		for(auto n : g_boxs[layer]) {
 			if(RectOverlap(bounds, n->bounds)) {
 				lifetime = 0;
 				return;
@@ -883,15 +908,11 @@ public:
 	int framewidth = 0;
 	int frameheight = 0;
 
-	//potentially removable
-	float curwidth;
-	float curheight;
-
 
 	string mask_fileaddress = "&"; //unset value
 
 	mapObject(SDL_Renderer * renderer, string imageadress, const char* mask_filename, int fx, int fy, int fz, int fwidth, int fheight, bool fwall = 0, float extrayoffset = 0, float fsortingoffset = 0) {
-		M("mapObject() fake");
+		//M("mapObject() fake");
 		
 		name = imageadress;
 		mask_fileaddress = mask_filename;
@@ -965,18 +986,16 @@ public:
 		this->y = fy;
 		this->z = fz;
 		this->height = fheight;
-		this->curheight = fheight;
-		this->curwidth = fwidth;
 		this->sortingOffset = fsortingoffset;
 		this->xoffset = int(this->x) % int(this->framewidth);
 		this->bounds.y = -55; //added after the ORIGIN was used for ent sorting rather than the FOOT.
 		//this essentially just gives the blocks an invisible hitbox starting from their "head" so that their origin is in the middle
-		//of the collision
+		//of the box
 
 		extraYOffset = extrayoffset;
 		this->yoffset = int(this->y - this->height) % int(this->frameheight) + extrayoffset;
 		if(fwall) {
-			this->yoffset = int(this->y - this->height - (z * 0.5)) % int(this->frameheight) + extrayoffset;
+			this->yoffset = int(this->y + this->height - (z * 0.5)) % int(this->frameheight) + extrayoffset;
 		}
 		g_mapObjects.push_back(this);
 		
@@ -1121,7 +1140,7 @@ public:
 	float xvel = 0;
 	float yvel = 0;
 	float zvel = 0;
-	int layer = 0; //related to z, used for collisions
+	int layer = 0; //related to z, used for boxs
 	bool grounded = 1; //is standing on ground
 	float xmaxspeed = 0;
 	float ymaxspeed = 0;
@@ -1160,7 +1179,7 @@ public:
 	
 
 	//object-related design
-	bool dynamic = true; //true for things such as wallcaps. movement/collision is not calculated if this is false
+	bool dynamic = true; //true for things such as wallcaps. movement/box is not calculated if this is false
 	bool inParty = false;
 	bool talks = false;
 	bool wallcap = false; //used for wallcaps 
@@ -1299,8 +1318,8 @@ public:
 		this->shadow->height = framewidth * fsize * (1/p_ratio);
 		
 		file >> comment;
-		bool setcollisionfromshadow;
-		file >> setcollisionfromshadow;
+		bool setboxfromshadow;
+		file >> setboxfromshadow;
 		
 
 		
@@ -1359,7 +1378,7 @@ public:
 		shadow->yoffset -= height - shadow->height;
 		
 
-		if(setcollisionfromshadow) {
+		if(setboxfromshadow) {
 			this->bounds.width = this->shadow->width;
 			this->bounds.height = this->shadow->height;
 			this->bounds.x = this->shadow->xoffset;
@@ -1705,7 +1724,7 @@ public:
 		T* ret;
 		bool flag = 1;
 
-		//todo check for collisions
+		//todo check for boxs
 		for (int i = 0; i < array.size(); i++) {
 			float dist = Distance(this->x, this->y, array[i]->x, array[i]->y);
 			if(dist < min_dist || flag) {
@@ -1719,7 +1738,7 @@ public:
 	}
 
 	//returns a pointer to a door that the player used
-	virtual door* update_movement(vector<collision*> collisions, vector<door*> doors, float elapsed) {
+	virtual door* update_movement(vector<box*> boxs, vector<door*> doors, float elapsed) {
 		
 		if(animate && !transition) {
 			curwidth = width * ((sin(animtime*animspeed))   + (1/animlimit)) * (animlimit);
@@ -1790,8 +1809,8 @@ public:
 
 		
 
-		//turn off collisions if using the map-editor
-		if(collisionsenabled) {
+		//turn off boxs if using the map-editor
+		if(boxsenabled) {
 			//..check door
 			if(this == protag) {
 				for (int i = 0; i < doors.size(); i++) {	
@@ -1805,11 +1824,11 @@ public:
 				}
 			}
 
-			for (int i = 0; i < collisions.size(); i++) {	
+			for (int i = 0; i < boxs.size(); i++) {	
 				//update bounds with new pos
 				rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, collisions[i]->bounds)) {
+				if(RectOverlap(movedbounds, boxs[i]->bounds)) {
 					ycollide = true;
 					yvel = 0;
 							
@@ -1820,8 +1839,8 @@ public:
 				//update bounds with new pos
 				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
 				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, collisions[i]->bounds)) {
-					//collision detected
+				if(RectOverlap(movedbounds, boxs[i]->bounds)) {
+					//box detected
 					xcollide = true;
 					xvel = 0;
 					
@@ -1946,12 +1965,12 @@ public:
 		}
 		
 		layer = max(z /64, 0.0f);
-		layer = min(layer, (int)g_collisions.size() - 1);
+		layer = min(layer, (int)g_boxs.size() - 1);
 		//should we fall?
 		bool should_fall = 1;
 		float floor = 0;
 		if(layer > 0) {
-			for (auto n : g_collisions[layer - 1]) {
+			for (auto n : g_boxs[layer - 1]) {
 				rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
 				if(RectOverlap(n->bounds, thisMovedBounds)) {
 					floor = 64 * (layer);
@@ -1968,7 +1987,7 @@ public:
 		if(layer > 0) {
 			bool breakflag = 0;
 			for(int i = layer - 1; i >= 0; i--) {
-				for (auto n : g_collisions[i]) {
+				for (auto n : g_boxs[i]) {
 					rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
 					if(RectOverlap(n->bounds, thisMovedBounds)) {
 						shadowFloor = 64 * (i + 1);
@@ -2003,7 +2022,7 @@ public:
 		
 		z = max(z, heightfloor);
 		layer = max(z /64, 0.0f);
-		layer = min(layer, (int)g_collisions.size() - 1);
+		layer = min(layer, (int)g_boxs.size() - 1);
 
 		shadow->x = x + shadow->xoffset;
 		shadow->y = y + shadow->yoffset;
@@ -2016,7 +2035,7 @@ public:
 
 		if(!invincible) {
 			//M("I'm not invincible");
-			//check for projectile collision
+			//check for projectile box
 			for(auto x : g_projectiles) {
 				rect thatMovedBounds = rect(x->x + x->bounds.x, x->y + x->bounds.y, x->bounds.width, x->bounds.height);
 				rect thisMovedBounds = rect(this->x + bounds.x, y + bounds.y, bounds.width, bounds.height);
@@ -2347,8 +2366,8 @@ public:
 		
 
 		file >> comment;
-		bool setcollisionfromshadow;
-		file >> setcollisionfromshadow;
+		bool setboxfromshadow;
+		file >> setboxfromshadow;
 		
 
 		
@@ -2409,7 +2428,7 @@ public:
 		shadow->xoffset += width/2 - shadow->width/2;
 		shadow->yoffset -= height - shadow->height;
 
-		if(setcollisionfromshadow) {
+		if(setboxfromshadow) {
 			this->bounds.width = this->shadow->width;
 			this->bounds.height = this->shadow->height;
 			this->bounds.x = this->shadow->xoffset;
@@ -2923,7 +2942,7 @@ public:
 		}
 	}
 
-	virtual void update_movement(vector<collision*> collisions, float elapsed) {
+	virtual void update_movement(vector<box*> boxs, float elapsed) {
 		if(xaccel > 0 && xvel < xmaxspeed) {
 			xvel += xaccel * ((double) elapsed / 256.0);
 		}
@@ -3348,14 +3367,11 @@ void clear_map(camera& cameraToReset) {
 		g_entities.push_back(party[i]);
 		g_actors.push_back(party[i]);
 	}
-	
-	size = g_mapObjects.size();
-	for(int i = 0; i < size; i++) {
-		delete g_mapObjects[0];
+	//push back any shadows we want to keep
+	for(auto n : g_shadows) {
+		g_actors.push_back(n);
 	}
 	
-	
-
 	size = g_tiles.size();
 	for(int i = 0; i < size; i++) {
 		delete g_tiles[0];
@@ -3426,21 +3442,49 @@ void clear_map(camera& cameraToReset) {
 	g_ais.clear();
 	g_projectiles.clear();
 	
-	for (int j = 0; j < g_collisions.size(); j++) {
-		size = g_collisions[j].size();
-		for(int i = 0; i < size; i++) {
-			delete g_collisions[j][0];
-		}
-	}
+	//old system: delete mapObjects, boxes, and triangles
+	// size = g_mapObjects.size();
+	// for(int i = 0; i < size; i++) {
+	// 	delete g_mapObjects[0];
+	// }
+
+	// for (int j = 0; j < g_boxs.size(); j++) {
+	// 	size = g_boxs[j].size();
+	// 	for(int i = 0; i < size; i++) {
+	// 		delete g_boxs[j][0];
+	// 	}
+	// }
 	
 	
-	for(int j = 0; j < g_layers; j++){
-		size = g_triangles[j].size();
-		for(int i = 0; i < size; i++) {
-			delete g_triangles[j][0];
+	// for(int j = 0; j < g_layers; j++){
+	// 	size = g_triangles[j].size();
+	// 	for(int i = 0; i < size; i++) {
+	// 		delete g_triangles[j][0];
+	// 	}
+	// }
+
+	// g_mapCollisions.clear();
+
+	//new, delete all mc, which will automatycznie delete the others
+	size = g_mapCollisions.size();
+	for (int i = 0; i < size; i++) {
+		//M("Lets delete a mapCol");
+		int jsize = g_mapCollisions[0]->children.size();
+		for (int j = 0; j < jsize; j ++) {
+			//M("Lets delete a mapCol child");
+			delete g_mapCollisions[0]->children[j];
 		}
+		delete g_mapCollisions[0];
 	}
 
+	//clear layers of boxes and triangles
+	for(int i = 0; i < g_boxs.size(); i++) {
+		g_boxs[i].clear();
+	}
+	for(int i = 0; i < g_triangles.size(); i++) {
+		g_triangles[i].clear();
+	}
+	
 }
 
 

@@ -39,7 +39,9 @@ class door;
 
 class rect;
 
-class collision;
+class mapCollision;
+
+class box;
 
 class tri;
 
@@ -85,11 +87,13 @@ vector<tile*> g_tiles;
 
 vector<door*> g_doors;
 
-vector<vector<collision*>> g_collisions;
+vector<vector<box*>> g_boxs;
 
 vector<textbox*> g_textboxes;
 
 vector<ui*> g_ui;
+
+vector<mapCollision*> g_mapCollisions;
 
 vector<vector<tri*>> g_triangles;
 
@@ -113,7 +117,7 @@ vector<projectile*> g_projectiles;
 
 vector<weapon*> g_weapons;
 
-bool collisionsenabled = true; //affects both map editor and full game. Dont edit here
+bool boxsenabled = true; //affects both map editor and full game. Dont edit here
 
 bool onionmode = 0; //hide custom graphics
 bool freecamera = 0;
@@ -151,7 +155,7 @@ string g_font = "fonts/ShortStack-Regular.ttf";
 //chinese
 //string g_font = "fonts/ZhiMangXing-Regular.ttf";
 float g_fontsize = 0.031;
-float g_transitionSpeed = 0;
+float g_transitionSpeed = 3;
 
 //inventory
 float attack_cooldown = 0;

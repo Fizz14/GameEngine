@@ -129,10 +129,10 @@ int main(int argc, char ** argv) {
 		
 	}
 
-	//initialize collision matrix z
+	//initialize box matrix z
 	for (int i = 0; i < g_layers; i++) {
-		vector<collision*> v = {};
-		g_collisions.push_back(v);
+		vector<box*> v = {};
+		g_boxs.push_back(v);
 	}
 
 	for (int i = 0; i < g_layers; i++) {
@@ -178,9 +178,9 @@ int main(int argc, char ** argv) {
 			g_camera.oldy = g_camera.y;
 			std::rotate(party.begin(), party.begin()+1, party.end());
 			protag = party[0];
-			cout << party.size() << endl;
+			std::cout << party.size() << endl;
 			for(auto x : party) {
-				cout << x << " " << x->name << endl;
+				std::cout << x << " " << x->name << endl;
 			}
 			protag->friction = 0.2;
 		}
@@ -200,7 +200,7 @@ int main(int argc, char ** argv) {
 		// ENTITY MOVEMENT
 		//dont update movement while transitioning
 		for(long long unsigned int i=0; i < g_entities.size(); i++){
-			door* taken = g_entities[i]->update_movement(g_collisions[g_entities[i]->layer], g_doors, elapsed);
+			door* taken = g_entities[i]->update_movement(g_boxs[g_entities[i]->layer], g_doors, elapsed);
 			if(taken != nullptr) {
 				//player took this door
 				//clear level
@@ -223,8 +223,7 @@ int main(int argc, char ** argv) {
 				break;
 			}
 		}
-
-
+		
 		//update weapons
 		for(auto n : g_weapons) {
 			n->cooldown -= elapsed;
@@ -877,8 +876,8 @@ void getInput(float &elapsed) {
 	//x = spawn entity
 	//c = set tile left corner
 	//v = set tile right corner
-	//b = set collision left corner
-	//n = set collision right corner
+	//b = set box left corner
+	//n = set box right corner
 	if(keystate[SDL_SCANCODE_LSHIFT] && devMode) {
 		protag->xmaxspeed = 250;
 		protag->ymaxspeed = 250;
@@ -925,11 +924,11 @@ void getInput(float &elapsed) {
 		devinput[8] = 1;
 	}
 	if(keystate[SDL_SCANCODE_KP_1] && devMode) {
-		//enable/disable collision
+		//enable/disable box
 		devinput[9] = 1;
 	}
 	if(keystate[SDL_SCANCODE_KP_2] && devMode) {
-		//visualize collisions
+		//visualize boxs
 		devinput[10] = 1;
 	}
 
