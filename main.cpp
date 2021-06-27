@@ -150,6 +150,45 @@ int main(int argc, char ** argv) {
 	bool storedJump = 0; //store the input from a jump if the player is off the ground, quake-style
 	
 	while (!quit) {
+
+		//some event handling
+		while( SDL_PollEvent( &event ) ){
+			switch(event.type) {
+				case SDL_MOUSEWHEEL:
+					if(event.wheel.y > 0) {
+						wallheight -= 64;
+						M("mw up");
+					}
+					else if(event.wheel.y < 0) {
+						wallheight += 64;
+						M("mw down");
+					}
+					if(wallheight < 64) {
+						wallheight = 64;
+					} else {
+						if(wallheight > 64 * g_layers) {
+							wallheight = 64 * g_layers;
+						}
+					}
+					break;
+				case SDL_MOUSEBUTTONDOWN:
+					if(event.button.button == SDL_BUTTON_LEFT){
+						devinput[3] = 1;
+					}
+					if(event.button.button == SDL_BUTTON_MIDDLE){
+						devinput[10] = 1;
+					}
+					if(event.button.button == SDL_BUTTON_RIGHT){
+						devinput[4] = 1;
+					}
+					break;
+
+				case SDL_QUIT:
+					quit = 1;
+					break;
+			}
+		}
+
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
 		
@@ -1032,12 +1071,5 @@ void getInput(float &elapsed) {
 	
 	
 
-	//window control
-	while( SDL_PollEvent( &event ) ){
-		switch(event.type) {
-			case SDL_QUIT:
-				quit = 1;
-				break;
-		}
-	}
+	
 }

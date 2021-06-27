@@ -110,8 +110,8 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "box") {
             //M("loading collisisons" << endl;
-            iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> s1 >> s2 >> p6 >> p7 >> p8; 
-            box* c = new box(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8);
+            iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> s1 >> s2 >> p6; 
+            box* c = new box(p1, p2, p3, p4, p5, s1, s2, p6);
         }
         if(word == "entity") {
             //M("loading entity" << endl;
@@ -142,8 +142,8 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "triangle") {
             //M("loading triangle" << endl;
-            iss >> s0 >> p1 >> p2 >>p3 >> p4 >> p5 >> s1 >> s2 >> p6 >> p7 >> p8;
-            tri* t = new tri(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8);
+            iss >> s0 >> p1 >> p2 >>p3 >> p4 >> p5 >> s1 >> s2 >> p6;
+            tri* t = new tri(p1, p2, p3, p4, p5, s1, s2, p6);
         }
         if(word == "mapObject") {
             iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
@@ -222,6 +222,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         child = new mapObject(renderer, box->captexture, "&", box->bounds.x, box->bounds.y + i + step, box->layer * 64 + 64, box->bounds.width, step, 0);
                         box->children.push_back(child);
                     }
+                    /*
                     if(box->shineBot){
                         //shine
                         child = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 55/2,  box->layer * 64 + 64, box->bounds.width, 55);
@@ -232,6 +233,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     child = new mapObject(renderer, "tiles/lighting/SMOOTHSHADING.png",  "&", box->bounds.x, box->bounds.y + 55/2, box->layer * 64 + 64 + 1, box->bounds.width, 55/2);
                     box->children.push_back(child);
                     }
+                    */
                 }
                 //floor shadows
                 if(box->layer == 0) {
@@ -272,9 +274,11 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                 //handle tri
                 if(triangle->type == 0) {
                     int step = 5;
-                    for (int i = 0; i < 55; i+=step) {
-                        child = new mapObject(renderer, triangle->captexture, "tiles/engine/a.png", triangle->x2, triangle->y1 + i + step, wallheight, 64 - 1, step, 0);
-                        triangle->children.push_back(child);
+                    if(triangle->capped) {
+                        for (int i = 0; i < 55; i+=step) {
+                            child = new mapObject(renderer, triangle->captexture, "tiles/engine/a.png", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                            triangle->children.push_back(child);
+                        }
                     }
                     
                     //a tile on the floor to help with the edge of the diagonal wall pieces
@@ -282,7 +286,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     tile* t = new tile(renderer, triangle->walltexture.c_str(), "tiles/engine/a.png", triangle->x2, triangle->y1 - 1, 64 - 1, 54 + 1, triangle->layer, 1, 1, 0, 0);    
                     step = 1;
                     int vstep = 64;
-                    for (int j = 0; j < wallheight; j+=vstep) {
+                    for (int j = 0; j < triangle->layer * 64 + 64; j+=vstep) {
                         for (int i = 0; i < 64; i+=step) {
                             child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - (i * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, (i * XtoY));
                             triangle->children.push_back(child);
@@ -292,9 +296,11 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                 } else {
                     if(triangle->type == 3) {
                         int step = 5;
-                        for (int i = 0; i < 55; i+=step) {
-                            child = new mapObject(renderer, triangle->captexture, "tiles/engine/b.png", triangle->x1 + 1, triangle->y1 + i + step, wallheight, 64 - 1, step, 0);
-                            triangle->children.push_back(child);
+                        if(triangle->capped) {
+                            for (int i = 0; i < 55; i+=step) {
+                                child = new mapObject(renderer, triangle->captexture, "tiles/engine/b.png", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                triangle->children.push_back(child);
+                            }
                         }
                         
                         //a tile on the floor to help with the edge of the diagonal wall pieces
@@ -302,21 +308,22 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         tile* t = new tile(renderer, triangle->walltexture.c_str(), "tiles/engine/b.png", triangle->x1 + 1, triangle->y1 - 1, 64 - 1, 54 + 1, triangle->layer, 1, 1, 0, 0);    
                         step = 1;
                         int vstep = 64;
-                        for (int j = 0; j < wallheight; j+=vstep) {
+                        for (int j = 0; j < triangle->layer * 64 + 64; j+=vstep) {
                             for (int i = 0; i < 64; i+=step) {
                                 child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - i) * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, ((64 - i) * XtoY));
                                 triangle->children.push_back(child);
                             }
                         }
                     } else {
-                        if(triangle->type == 2) {
+                        if(triangle->type == 2 && triangle->capped) {
                             child = new mapObject(renderer, triangle->captexture, "tiles/engine/c.png", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
                             triangle->children.push_back(child);
                         } else {
-                            //type is 1
-                            child = new mapObject(renderer, triangle->captexture, "tiles/engine/d.png", triangle->x2, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 - 1, 54 + 1, 0, 0, 0);
-                            triangle->children.push_back(child);
-
+                            if(triangle->capped) {
+                                //type is 1
+                                child = new mapObject(renderer, triangle->captexture, "tiles/engine/d.png", triangle->x2, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 - 1, 54 + 1, 0, 0, 0);
+                                triangle->children.push_back(child);
+                            }
                         }
                     }
                 }
@@ -591,7 +598,7 @@ void write_map(entity* mapent) {
                     for (int i = 0; i < wallheight / 64; i++) {
                         bool fcap = (!(i + 1 < wallheight/64));//&& autoMakeWallcaps;
                         //bool fcap = 1;
-                        box* c = new box(selection->x, selection->y, selection->width, selection->height, i, walltex, captex, fcap, 0, 0);
+                        box* c = new box(selection->x, selection->y, selection->width, selection->height, i, walltex, captex, fcap);
                     }
                     D(wallheight);
                 }
@@ -772,30 +779,50 @@ void write_map(entity* mapent) {
    
     if(devinput[7] && !olddevinput[7]) {
         //shrink grid
-        if(grid/2 > 0) {
-            grid /= 2;
-            M("Grid lowered to " + (int)grid);
-        }
+        // if(grid/2 > 0) {
+        //     grid /= 2;
+        //     M("Grid lowered to " + (int)grid);
+        // }
     }
 
     if(devinput[8] && !olddevinput[8]) {
         //grow grid
-        grid *= 2;
-        M("Grid raised to " + (int)grid);
+        // grid *= 2;
+        // M("Grid raised to " + (int)grid);
     }
 
     if(devinput[9] && !olddevinput[9]) {
         
         boxsenabled=!boxsenabled;
         if(boxsenabled) {
-            M("boxs ON");
+            M("collisions ON");
         } else {
-            M("boxs OFF");
+            M("collisions OFF");
         }
     }
 
     if(devinput[10] && !olddevinput[10]) {
-        
+        M("Heard you laud and clear");
+        //check for triangles at mouse
+        tri* deleteMe = 0;
+        bool breakFlag = 0;
+        //rect markerrect = {marker->x, marker->y, marker->width, marker->height };
+        for (int i = 0; i < g_triangles.size(); i++) {
+            for(auto n : g_triangles[i]) {
+                if(TriRectOverlap(n, marker->x, marker->y, marker->width, marker->height, 0)) {
+                    deleteMe = n;
+                    breakFlag = 1;
+                    break;
+                }
+            }
+            if(breakFlag) {
+                break;
+            }
+        }
+        if(deleteMe != 0) {
+            //we've found a triangle, lets delete it and make a new one
+            delete deleteMe;
+        }
     }
 
     if(devinput[11] && !olddevinput[11]) { 
@@ -984,7 +1011,7 @@ void write_map(entity* mapent) {
                         while(x < b->bounds.width + b->bounds.x) {
                             while(y < b->bounds.height + b->bounds.y) {
                                 M("using");
-                                new box(x, y, 64, 55, b->layer, b->walltexture, b->captexture, b->capped, 0, 0);
+                                new box(x, y, 64, 55, b->layer, b->walltexture, b->captexture, b->capped);
                                 y+=55;
                             }   
                             x+= 64; 
@@ -1001,16 +1028,16 @@ void write_map(entity* mapent) {
                     for(auto b : g_boxs[i]) {
                         rect uneighbor = {b->bounds.x, b->bounds.y - 55, b->bounds.width, b->bounds.height};
                         rect dneighbor = {b->bounds.x, b->bounds.y + 55, b->bounds.width, b->bounds.height};
-                        b->shineTop = true;
-                        b->shineBot = true;
+                        //b->shineTop = true;
+                        //b->shineBot = true;
                         //check for overlap with all other boxes
                         for(auto n : g_boxs[i]) {
                             if(n == b) {continue;}
                             if(RectOverlap(n->bounds, uneighbor)) {
-                                b->shineTop = false;
+                                //b->shineTop = false;
                             }
                             if(RectOverlap(n->bounds, dneighbor)) {
-                                b->shineBot = false;
+                                //b->shineBot = false;
                             }
                         }
                     }
@@ -1042,7 +1069,7 @@ void write_map(entity* mapent) {
                      
                     for(int i = 0; i < g_layers; i ++) {
                         for (auto n : g_triangles[i]) {
-                            ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture <<  " " << n->capped << " " << n->shineTop << " " << n->shineBot << endl;
+                            ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture <<  " " << n->capped << endl;
                         }
                     }
                     for (long long unsigned int i = 0; i < g_entities.size(); i++) {
@@ -1073,7 +1100,7 @@ void write_map(entity* mapent) {
                     }
                     for (long long unsigned int j = 0; j < g_layers; j++){
                         for (long long unsigned int i = 0; i < g_boxs[j].size(); i++){
-                            ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << " " << g_boxs[j][i]->shineTop << " " << g_boxs[j][i]->shineBot << " " << endl;
+                            ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << endl;
                         }
                     }
                     for (long long unsigned int i = 0; i < g_doors.size(); i++){
@@ -1547,7 +1574,8 @@ void write_map(entity* mapent) {
 
         //make triangle
         for(int i = 0; i < wallheight / 64; i++){
-            tri* n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, 1, 0, 0);
+            bool fcap = (!(i + 1 < wallheight/64));
+            tri* n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap);
         }
     }
     if(devinput[13] && !olddevinput[13]) {
@@ -1573,14 +1601,18 @@ void write_map(entity* mapent) {
         }
         //make triangle
         for(int i = 0; i < wallheight / 64; i++){
-            tri* n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, 1, 0, 0);
+            bool fcap = (!(i + 1 < wallheight/64));
+            tri* n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap);
         }
     }
     if(devinput[14] && !olddevinput[14]) {
         mapObject* m = new mapObject(renderer, captex, "tiles/engine/c.png", marker->x + 1, marker->y + 55 + 1, wallheight, 64 + 1, 54 + 1, 0, 0, 0);
         //make triangle
         for(int i = 0; i < wallheight / 64; i++){
-            tri* n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, 1, 0, 0); 
+            bool fcap = (!(i + 1 < wallheight/64));
+            D(fcap);
+            SDL_Delay(1000);
+            tri* n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap); 
         }
     }
     if(devinput[15] && !olddevinput[15]) {
@@ -1588,7 +1620,8 @@ void write_map(entity* mapent) {
 
         //make triangle
         for(int i = 0; i < wallheight / 64; i++){
-            tri* n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, 1, 0, 0); 
+            bool fcap = (!(i + 1 < wallheight/64));
+            tri* n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap); 
         }
     }
 
@@ -1807,7 +1840,7 @@ public:
 		} else {
             askingQuestion = false;
 		}
-        //write selfdata
+        //write selfdata 5->[4]
         if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
             string s = talker->sayings.at(talker->dialogue_index + 1);
             int value = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
@@ -1820,7 +1853,7 @@ public:
 			return;
         }
 
-        //read selfdata
+        //read selfdata [5]
 		if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("\\[[[:digit:]]+\\]"))) {
             int j = 1;
             //parse which block of memory we are interested in

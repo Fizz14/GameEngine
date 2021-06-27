@@ -177,8 +177,6 @@ public:
 	string walltexture;
 	string captexture;
 	bool capped = false;
-	bool shineTop = false;
-	bool shineBot = false;
 
 	//tiles created from the mapCollision, to be appropriately deleted
 	vector<mapObject*> children;
@@ -207,13 +205,11 @@ public:
 	int b; //offset
 	int layer = 0;
 
-	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool ftopshine, bool fbotshine) {
+	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped) {
 		M("tri()");
 		x1=fx1; y1=fy1;
 		x2=fx2; y2=fy2;
 		layer = flayer;
-		shineTop = ftopshine;
-		shineBot = fbotshine;
 		if(x2 < x1 && y2 > y1) {
 			type = 0; //  :'
 		}
@@ -377,7 +373,7 @@ public:
 	bool active = true;
 	int layer = 0;
 	
-	box(int x1f, int y1f, int x2f, int y2f, int flayer, string fwallt, string fcapt, bool fcapped, bool ftopshine, bool fbotshine) {
+	box(int x1f, int y1f, int x2f, int y2f, int flayer, string fwallt, string fcapt, bool fcapped) {
 		M("box()");
 		bounds.x = x1f;
 		bounds.y = y1f;
@@ -387,8 +383,6 @@ public:
 		walltexture = fwallt;
 		captexture = fcapt;
 		capped = fcapped;
-		shineTop = ftopshine;
-		shineBot = fbotshine;
 		g_boxs[layer].push_back(this);
 	}
 	~box() {
@@ -651,8 +645,8 @@ public:
 
 
 					//transform
-					dstrect.w = ceil(dstrect.w * fcamera.zoom);
-					dstrect.h = ceil(dstrect.h * fcamera.zoom);
+					dstrect.w = floor(dstrect.w * fcamera.zoom) + 1;
+					dstrect.h = floor(dstrect.h * fcamera.zoom) + 1;
 
 					dstrect.x = floor((dstrect.x - fcamera.x)* fcamera.zoom);
 					dstrect.y = floor((dstrect.y - fcamera.y)* fcamera.zoom);
@@ -907,7 +901,7 @@ public:
 	bool asset_sharer = 0;
 	int framewidth = 0;
 	int frameheight = 0;
-
+	bool diffuse = 1; //is this mapobject used for things such as walls or floors, as opposed to props or lighting
 
 	string mask_fileaddress = "&"; //unset value
 
@@ -924,6 +918,7 @@ public:
 			if(g_mapObjects[i]->name == this->name && g_mapObjects[i]->mask_fileaddress == mask_filename && g_mapObjects[i]->wall == this->wall) {
 				cached = true;
 				this->texture = g_mapObjects[i]->texture;
+				this->diffuse = g_mapObjects[i]->diffuse;
 				this->asset_sharer = 1;
 				break;
 			}
@@ -957,7 +952,7 @@ public:
 
 			if(fwall) {
 				wall = 1;
-				SDL_SetTextureColorMod(texture, -40, -40, -40);
+				SDL_SetTextureColorMod(texture, -90, -90, -90);
 			} else {
 				//SDL_SetTextureColorMod(texture, -35, -35, -35);
 				//SDL_SetTextureColorMod(texture, 0.8, 0.8, 0.8);
@@ -965,13 +960,14 @@ public:
 			if(name.find("SHADING") != string::npos) {
 				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
 				//SDL_SetTextureAlphaMod(texture, 150);
+				diffuse = 0;
 				
 			}
 			if(name.find("OCCLUSION") != string::npos) {
 				//cout << "blended " << name << endl;
 				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
 				//SDL_SetTextureAlphaMod(texture, 10);
-				
+				diffuse = 0;
 			}
 			
 		}
@@ -1090,8 +1086,13 @@ public:
 
 
 				//transform
-				dstrect.w = ceil(dstrect.w * fcamera.zoom);
-				dstrect.h = ceil(dstrect.h * fcamera.zoom);
+				if(diffuse) {
+					dstrect.w = floor(dstrect.w * fcamera.zoom) + 1;
+					dstrect.h = floor(dstrect.h * fcamera.zoom) + 1;
+				} else {
+					dstrect.w = floor(dstrect.w * fcamera.zoom);
+					dstrect.h = floor(dstrect.h * fcamera.zoom);
+				}
 
 				dstrect.x = floor((dstrect.x - fcamera.x)* fcamera.zoom);
 				dstrect.y = floor((dstrect.y - fcamera.y - height)* fcamera.zoom);
