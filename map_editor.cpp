@@ -502,7 +502,6 @@ void write_map(entity* mapent) {
     } else {
         if(devinput[0] && !olddevinput[0] && makingbox) {
             makingbox = 0;
-            std::cout << g_triggers.size() << endl;
             trigger* t = new trigger("unset", selection->x, selection->y, selection->width, selection->height, "protag");
             //set to unactive so that if we walk into it, we dont crash
             t->active = false;
@@ -804,24 +803,45 @@ void write_map(entity* mapent) {
     if(devinput[10] && !olddevinput[10]) {
         M("Heard you laud and clear");
         //check for triangles at mouse
-        tri* deleteMe = 0;
-        bool breakFlag = 0;
+        vector<tri*> deleteMe;
         //rect markerrect = {marker->x, marker->y, marker->width, marker->height };
         for (int i = 0; i < g_triangles.size(); i++) {
             for(auto n : g_triangles[i]) {
-                if(TriRectOverlap(n, marker->x, marker->y, marker->width, marker->height, 0)) {
-                    deleteMe = n;
-                    breakFlag = 1;
-                    break;
+                if(TriRectOverlap(n, marker->x + 6, marker->y + 6, marker->width - 12, marker->height - 12, -1)) {
+                    deleteMe.push_back(n);
                 }
             }
-            if(breakFlag) {
-                break;
-            }
         }
-        if(deleteMe != 0) {
-            //we've found a triangle, lets delete it and make a new one
-            delete deleteMe;
+        if(deleteMe.size() != 0) {
+            int type = deleteMe[0]->type;
+            for (auto n:deleteMe) {
+                for(auto child:n->children) {
+                    delete child;
+                }
+                delete n;
+            }
+            //make a new triangle with a different type and current wallheight
+            switch(type) {
+                case 0:
+                    M("0");
+                    devinput[15] = 1;
+                    break;
+                case 1:
+                    M("1");
+                    devinput[14] = 1;
+                    break;
+                case 2:
+                    M("2");
+                    devinput[13] = 1;
+                    break;
+                case 3:
+                    M("3");
+                    devinput[12] = 1;
+                    break;
+            }
+        } else {
+            //we looked and didnt find anything, lets make on
+            devinput[12] = 1;
         }
     }
 
@@ -1088,7 +1108,7 @@ void write_map(entity* mapent) {
                         //dont save map graphics
                         if(g_tiles[i]->fileaddress.find("engine") != string::npos ) { continue; }
                         //sheared tiles are made on map loading, so dont save em
-                        if(g_tiles[i]->mask_fileaddress.find("sheared") != string::npos ) { continue; }
+                        if(g_tiles[i]->mask_fileaddress.find("engine") != string::npos ) { continue; }
                         //lighting, but not occlusion is also generated on map load
                         if(g_tiles[i]->fileaddress.find("lighting") != string::npos && !(g_tiles[i]->fileaddress.find("OCCLUSION") != string::npos)) { continue; }
                         
@@ -1550,45 +1570,56 @@ void write_map(entity* mapent) {
     }
     
     if(devinput[12] && !olddevinput[12]) {
+        //make triangle
+        tri* n;
+        for(int i = 0; i < wallheight / 64; i++){
+            bool fcap = (!(i + 1 < wallheight/64));
+            n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap);
+        }
         if(autoMakeWallcaps) {
             int step = 5;
             for (int i = 0; i < 55; i+=step) {
                 mapObject* e = new mapObject(renderer, captex, "tiles/engine/a.png", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                n->children.push_back(e);
             }
             
         }
 
-       
+
         int step = 2;
         int vstep = 64;
         if(autoMakeWalls){
             //a tile on the floor to help with the edge of the diagonal wall pieces
             //this tile won't be saved, because it uses an engine mask
-            tile* t = new tile(renderer, walltex.c_str(), "tiles/engine/a.png", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
+            //tile* t = new tile(renderer, walltex.c_str(), "tiles/engine/a.png", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
             for (int j = 0; j < wallheight; j+=vstep) {
                 for (int i = 0; i < 64; i+=step) {
                     mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (i * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, (i * XtoY));
+                    n->children.push_back(e);
                 }
             }
         }
 
+        
+    }
+    if(devinput[13] && !olddevinput[13]) {
+        tri* n;
         //make triangle
         for(int i = 0; i < wallheight / 64; i++){
             bool fcap = (!(i + 1 < wallheight/64));
-            tri* n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap);
+            n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap);
         }
-    }
-    if(devinput[13] && !olddevinput[13]) {
         if(autoMakeWallcaps) {
             int step = 5;
             for (int i = 0; i < 55; i+=step) {
                 mapObject* e = new mapObject(renderer, captex, "tiles/engine/b.png", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                n->children.push_back(e);
             }
             
         }
 
         //a tile on the floor to help with the edge of the diagonal wall pieces
-        tile* t = new tile(renderer, walltex.c_str(), "tiles/engine/b.png", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
+        //tile* t = new tile(renderer, walltex.c_str(), "tiles/engine/b.png", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
 
         int step = 2;
         int vstep = 64;
@@ -1596,33 +1627,32 @@ void write_map(entity* mapent) {
             for (int j = 0; j < wallheight; j+=vstep) {
                 for (int i = 0; i < 64; i+=step) {
                     mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (((64 - step) - i) * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, ((64 - i) * XtoY));
+                    n->children.push_back(e);
                 }
             }
         }
-        //make triangle
-        for(int i = 0; i < wallheight / 64; i++){
-            bool fcap = (!(i + 1 < wallheight/64));
-            tri* n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap);
-        }
+        
     }
     if(devinput[14] && !olddevinput[14]) {
-        mapObject* m = new mapObject(renderer, captex, "tiles/engine/c.png", marker->x + 1, marker->y + 55 + 1, wallheight, 64 + 1, 54 + 1, 0, 0, 0);
+        tri* n;
         //make triangle
         for(int i = 0; i < wallheight / 64; i++){
             bool fcap = (!(i + 1 < wallheight/64));
-            D(fcap);
-            SDL_Delay(1000);
-            tri* n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap); 
+            n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap); 
         }
+        mapObject* e = new mapObject(renderer, captex, "tiles/engine/c.png", marker->x + 1, marker->y + 55 + 1, wallheight, 64 + 1, 54 + 1, 0, 0, 0);
+        n->children.push_back(e);
     }
     if(devinput[15] && !olddevinput[15]) {
-        mapObject* m = new mapObject(renderer, captex, "tiles/engine/d.png", marker->x, marker->y + 55 + 1, wallheight, 64 - 1, 54 + 1, 0, 0, 0);
-
+        tri* n;
         //make triangle
         for(int i = 0; i < wallheight / 64; i++){
             bool fcap = (!(i + 1 < wallheight/64));
-            tri* n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap); 
+            n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap); 
         }
+        mapObject* e = new mapObject(renderer, captex, "tiles/engine/d.png", marker->x, marker->y + 55 + 1, wallheight, 64 - 1, 54 + 1, 0, 0, 0);
+        n->children.push_back(e);
+        
     }
 
     

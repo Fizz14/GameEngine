@@ -122,14 +122,15 @@ bool boxsenabled = true; //affects both map editor and full game. Dont edit here
 bool onionmode = 0; //hide custom graphics
 bool freecamera = 0;
 bool devMode = 0;
+bool showDevMessages = 1;
 
 bool integerscaling = 1; //should always be 1, was used to acheive perfect scales at the cot of sprite jittering
 
 //quick debug info
-#define D(a) if(devMode) {std::cout << #a << ": " << (a) << endl;}
+#define D(a) if(devMode && showDevMessages) {std::cout << #a << ": " << (a) << endl;}
 
 template<typename T>
-void M(T msg, bool disable = 0) { if(!devMode) {return;} cout << msg; if(!disable) { cout << endl; } }
+void M(T msg, bool disable = 0) { if(!devMode || !showDevMessages) {return;} cout << msg; if(!disable) { cout << endl; } }
 
 //for camera/window zoom
 float scalex = 0.5;
@@ -237,8 +238,8 @@ public:
 	}
 };
 
-//int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
-int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
+int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
+//int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
 SDL_Window * window;
 SDL_DisplayMode DM;

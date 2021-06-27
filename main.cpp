@@ -218,9 +218,9 @@ int main(int argc, char ** argv) {
 			std::rotate(party.begin(), party.begin()+1, party.end());
 			protag = party[0];
 			std::cout << party.size() << endl;
-			for(auto x : party) {
-				std::cout << x << " " << x->name << endl;
-			}
+			// for(auto x : party) {
+			// 	std::cout << x << " " << x->name << endl;
+			// }
 			protag->friction = 0.2;
 		}
 		
