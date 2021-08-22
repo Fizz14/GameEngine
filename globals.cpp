@@ -31,8 +31,6 @@ class mapObject;
 
 class entity;
 
-class ai;
-
 class tile;
 
 class door;
@@ -48,8 +46,6 @@ class tri;
 class textbox;
 
 class ui;
-
-class chaser;
 
 class adventureUI;
 
@@ -81,7 +77,7 @@ vector<mapObject*> g_mapObjects;
 
 vector<entity*> g_entities;
 
-vector<ai*> g_ais;
+vector<entity*> g_solid_entities;
 
 vector<tile*> g_tiles;
 
@@ -123,6 +119,7 @@ bool onionmode = 0; //hide custom graphics
 bool freecamera = 0;
 bool devMode = 0;
 bool showDevMessages = 1;
+bool showErrorMessages = 1;
 
 bool integerscaling = 1; //should always be 1, was used to acheive perfect scales at the cot of sprite jittering
 
@@ -130,23 +127,35 @@ bool integerscaling = 1; //should always be 1, was used to acheive perfect scale
 #define D(a) if(devMode && showDevMessages) {std::cout << #a << ": " << (a) << endl;}
 
 template<typename T>
-void M(T msg, bool disable = 0) { if(!devMode || !showDevMessages) {return;} cout << msg; if(!disable) { cout << endl; } }
+void M(T msg, bool disableNewline = 0) { if(!devMode || !showDevMessages) {return;} cout << msg; if(!disableNewline) { cout << endl; } }
+
+//particularly for errors
+template<typename T>
+void E(T msg, bool disableNewline = 0) { if(!devMode || !showErrorMessages) {return;} cout << "ERROR: " << msg; if(!disableNewline) { cout << endl; } }
 
 //for camera/window zoom
-float scalex = 0.5;
-float scaley = 0.5;
-float min_scale = 0.3;
+float scalex = 0.4;
+float scaley = 0.4;
+float min_scale = 0.1;
 float max_scale = 2;
 float old_WIN_WIDTH = 640; //used for detecting change in window width to recalculate scalex and y
 
-//for visual style
+//for visuals
 float p_ratio = 1.151;
 bool g_vsync = true;
+SDL_Texture* background = 0;
+bool g_backgroundLoaded = 0;
+bool g_useBackgrounds = 1; //a user setting, if the user wishes to see black screens instead of colorful backgrounds
 //x length times x_z_ratio is proper screen length in z
 float XtoZ = 0.496; // 4/2.31, arctan (4/ 3.21) = 60 deg
 float XtoY = 0.866;
 float g_ratio = 1.618;
 bool transition = 0;
+int g_walldarkness = 75; //65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
+int g_platformResolution = 11; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
+
+int g_TiltResolution = 2; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
+bool g_protagHasBeenDrawnThisFrame = 0;
 //english
 string g_font = "fonts/ShortStack-Regular.ttf";
 //polish
@@ -156,7 +165,7 @@ string g_font = "fonts/ShortStack-Regular.ttf";
 //chinese
 //string g_font = "fonts/ZhiMangXing-Regular.ttf";
 float g_fontsize = 0.031;
-float g_transitionSpeed = 3;
+float g_transitionSpeed = 9; //3
 
 //inventory
 float attack_cooldown = 0;
@@ -173,7 +182,7 @@ bool protagGlimmerD = 0;
 //physics
 float g_gravity = 290;
 
-
+ 
 
 class camera {
 public:
@@ -181,8 +190,8 @@ public:
 	float oldy = 0;
 	float x = 200;
 	float y = 200;
-	int width = 640;
-	int height = 480;
+	float width = 640;
+	float height = 480;
 	float lag = 0.0;
 	const float DEFAULTLAGACCEL = 0.01;
 	float lagaccel = 0.01; //how much faster the camera gets while lagging
@@ -238,16 +247,17 @@ public:
 	}
 };
 
-int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
-//int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
+//int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
+int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
 SDL_Window * window;
 SDL_DisplayMode DM;
 bool g_fullscreen = false;
 camera g_camera(0,0);
 entity* protag;
+
 entity* g_focus;
-vector<chaser*> party;
+vector<entity*> party;
 float g_max_framerate = 120;
 float g_min_frametime = 1/g_max_framerate * 1000;
 SDL_Event event;
@@ -267,6 +277,7 @@ bool left_ui_refresh = false; //used to detect when arrows is pressed and then r
 bool right_ui_refresh = false;
 bool quit = false;
 string config = "default";
+bool g_holdingCTRL = 0;
 
 //sounds and music
 float g_volume = 0;
@@ -291,12 +302,16 @@ float dialogue_cooldown = 0; //seconds until he can have dialogue again.
 //debuging
 SDL_Texture* nodeDebug;
 clock_t debugClock;
+string g_lifecycle = "Pre-Alpha";
 
 //world
 int g_layers = 12; //max blocks in world
+float g_bhoppingBoost = 1; //the factor applied to friction whilst bhopping, not good, basically just airspeed modifier rn
 
 //map editing
 bool g_mousemode = 1;
+entity* nudge = 0; //for nudging entities while map-editing
+bool adjusting = 0; //wether to move selected entity or change its hitbox/shadow position
 
 //userdata
 string g_saveName = "A";
@@ -371,6 +386,15 @@ void writeSaveField(string field, int value) {
 	}
 }
 
+bool fileExists (const std::string& name) {
+    if (FILE *file = fopen(name.c_str(), "r")) {
+        fclose(file);	
+        return true;
+    } else {
+        return false;
+    }   
+}
+
 //combat
 enum Status { none, stunned, slowed, buffed, marked };
 
@@ -402,6 +426,86 @@ SDL_Texture* MaskTexture(SDL_Renderer* renderer, SDL_Texture* mask, SDL_Texture*
 
 float Distance(int x1, int y1, int x2, int y2) {
 	return pow(pow((x1 -x2), 2) + pow((y1 - y2), 2), 0.5);
+}
+
+template<class T>
+navNode* getNodeByPosition(vector<T*> array, int fx, int fy) {
+	//this is a placeholder solution for testing AI
+	//this requires a binary search and sorted nodes to work reasonably for larger maps
+	float min_dist = 0;
+		navNode* ret;
+		bool flag = 1;
+
+		//just pitifully slow
+		for (int i = 0; i < array.size(); i++) {
+			float dist = Distance(fx, fy, array[i]->x, array[i]->y);
+			if(dist < min_dist || flag) {
+				min_dist = dist;
+				ret = array[i];
+				flag = 0;
+			}
+		}
+		return ret;
+}
+
+//get cardinal points about a position
+// 0 is 12oclock, and 2 is 3oclock and so on
+vector<int> getCardinalPoint(int x, int y, float range, int index) {
+	float angle = 0;
+	switch(index) {
+		case 6:
+			angle = 0;
+			break;
+		case 7:
+			angle = M_PI/4;
+			break;
+		case 0:
+			angle = M_PI/2;
+			break;
+		case 1:
+			angle = M_PI * (3.0/4.0);
+			break;
+		case 2:
+			angle = M_PI;
+			break;
+		case 3:
+			angle = M_PI * (5.0/4.0);
+			break;
+		case 4:
+			angle = M_PI * (3.0/2.0);
+			break;
+		case 5:
+			angle = M_PI * (7.0/4.0);
+			break;
+	}
+	vector<int> ret;
+	ret.push_back( x +( range * cos(angle)));
+	ret.push_back(y + (range * sin(angle) * XtoY));
+	return ret;
+}
+
+//measures distance in the world, not by the screen.
+float XYWorldDistance(int x1, int y1, int x2, int y2) {
+	y1 *= 1/XtoY;
+	y2 *= 1/XtoY;
+	return pow(pow((x1 -x2), 2) + pow((y1 - y2), 2), 0.5);
+}
+
+vector<string> splitString (string s, char delimiter) {
+    int start, end;
+	start = 0;
+    string token;
+    vector<string> ret;
+	end = s.find(delimiter, start);
+    while (end != string::npos) {
+        token = s.substr (start, end - start);
+        start = end + 1;
+        ret.push_back (token);
+		end = s.find(delimiter, start);
+    }
+
+    ret.push_back (s.substr (start));
+    return ret;
 }
 
 int yesNoPrompt(string msg) {
