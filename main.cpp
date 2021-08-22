@@ -43,7 +43,7 @@ int main(int argc, char ** argv) {
 	
 	window = SDL_CreateWindow("Carbin",
 	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
-	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED);
+	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048);
 	SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
@@ -54,11 +54,12 @@ int main(int argc, char ** argv) {
 	SDL_RenderSetScale(renderer, scalex, scaley);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
-	chaser* fomm = new chaser(renderer, "fomm");
-	fomm->inParty= 1;
+	entity* fomm = new entity(renderer, "fomm");
+	fomm->inParty = 1;
+	party.push_back(fomm);
 	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
 	fomm->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
-	protag = party[0];
+	protag = fomm;
 	g_focus = protag;
 	
 	//load save	
@@ -85,8 +86,9 @@ int main(int argc, char ** argv) {
 	if(devMode) {
 		init_map_writing(renderer);
 		//done once, because textboxes aren't cleared during clear_map()
-		nodeInfoText = new textbox(renderer, "Info", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
+		nodeInfoText = new textbox(renderer, "", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
 		config = "edit";
+		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("tiles/engine/walker.png"));
 	}
 	//set bindings from file
 	ifstream bindfile;
@@ -117,7 +119,7 @@ int main(int argc, char ** argv) {
 	bindfile.close();
 	
 	//apply vsync
-	SDL_GL_SetSwapInterval(g_vsync);
+	//SDL_GL_SetSwapInterval(g_vsync);
 
 	//apply fullscreen
 	if(g_fullscreen) {
@@ -140,37 +142,85 @@ int main(int argc, char ** argv) {
 		g_triangles.push_back(v);
 	}
 
-	if(1/*devMode*/) {
-		load_map(renderer, "maps/gtest/gtest.map", "a");
+	if(0) {
+		//empty map or default map for map editing, perhaps a tutorial even
+		protag->x = 100000;
+		protag->y = 100000;
+		//load_map(renderer, "maps/petscop2/petscop2.map", "a");
 	} else {
-		load_map(renderer, "maps/mtest/mtest.map", "a");
-		srand (time(NULL));
+		//load the titlescreen
+		load_map(renderer, "maps/g/g.map", "a");
+		srand(time(NULL));
 	}
 
-	bool storedJump = 0; //store the input from a jump if the player is off the ground, quake-style
+	//why do I do this? It shouldnt matter, right?
+	//well, the camera actually has some lag when the player launches the game
+	//if it doesnt, there's some weird jostle the first time we try to use camera lag
+	//during a cutscene
+	//this basically means lag is set but inconsequential	
 	
-	while (!quit) {
+	
 
+	bool storedJump = 0; //buffer the input from a jump if the player is off the ground, quake-style
+	
+	//software lifecycle text
+	new textbox(renderer, g_lifecycle.c_str(), 40, 0,0, WIN_WIDTH * 0.2);
+
+	//temporary for debugging stutter
+	//g_camera.update_movement(elapsed, (g_focus->getOriginX() - (g_camera.width/(2 * g_camera.zoom))), ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom))) );
+
+	while (!quit) {
 		//some event handling
-		while( SDL_PollEvent( &event ) ){
+		while(SDL_PollEvent(&event) && devMode) {
 			switch(event.type) {
+				case SDL_KEYDOWN:
+					switch( event.key.keysym.sym ){
+                    	case SDLK_TAB:
+							g_holdingCTRL = 1;
+							break;
+					}
+					break;
+				case SDL_KEYUP:
+					switch( event.key.keysym.sym ){
+                    	case SDLK_TAB:
+							g_holdingCTRL = 0;
+							break;
+					}
+					break;
 				case SDL_MOUSEWHEEL:
+				if(g_holdingCTRL) {
+					if(event.wheel.y > 0) {
+						wallstart -= 64;
+					}
+					else if(event.wheel.y < 0) {
+						wallstart += 64;
+					}
+					if(wallstart < 0) {
+						wallstart = 0;
+					} else {
+						if(wallstart > 64 * g_layers) {
+							wallstart = 64 * g_layers;
+						}
+						if(wallstart > wallheight - 64) {
+							wallstart = wallheight - 64;
+						}
+					}
+				} else {
 					if(event.wheel.y > 0) {
 						wallheight -= 64;
-						M("mw up");
 					}
 					else if(event.wheel.y < 0) {
 						wallheight += 64;
-						M("mw down");
 					}
-					if(wallheight < 64) {
-						wallheight = 64;
+					if(wallheight < wallstart + 64) {
+						wallheight = wallstart + 64;
 					} else {
 						if(wallheight > 64 * g_layers) {
 							wallheight = 64 * g_layers;
 						}
 					}
 					break;
+				}
 				case SDL_MOUSEBUTTONDOWN:
 					if(event.button.button == SDL_BUTTON_LEFT){
 						devinput[3] = 1;
@@ -182,49 +232,27 @@ int main(int argc, char ** argv) {
 						devinput[4] = 1;
 					}
 					break;
-
+				
 				case SDL_QUIT:
 					quit = 1;
 					break;
 			}
-		}
+		}	
 
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
-		
-		//lock framerate
-		if(g_vsync && elapsed < g_min_frametime) {
-			SDL_Delay(g_min_frametime - elapsed);
-			ticks = SDL_GetTicks();
-			elapsed = ticks - lastticks;	
-		}
 		lastticks = ticks;
 
-		//cooldownsA
+		//cooldowns
 		halfsecondtimer+=elapsed;
 		attack_cooldown -= elapsed / 1000;
 		musicFadeTimer += elapsed;
 		musicUpdateTimer += elapsed;
 
-		// INPUT
+		//INPUT
 		getInput(elapsed);
-
-
-		//rearrange party
-		if(input[9] && !oldinput[9]) {
-			g_camera.lag = 4;
-			g_camera.oldx = g_camera.x;
-			g_camera.oldy = g_camera.y;
-			std::rotate(party.begin(), party.begin()+1, party.end());
-			protag = party[0];
-			std::cout << party.size() << endl;
-			// for(auto x : party) {
-			// 	std::cout << x << " " << x->name << endl;
-			// }
-			protag->friction = 0.2;
-		}
 		
-		//jump
+		//spring
 		if(input[8] && !oldinput[8] && protag->grounded && protag_can_move || input[8] && storedJump && protag->grounded && protag_can_move) {
 			protag->zaccel = 350;
 			storedJump = 0;
@@ -233,35 +261,15 @@ int main(int argc, char ** argv) {
 				storedJump = 1;
 			}
 		}
+
+		//background
+		SDL_RenderClear(renderer);
+		if(g_backgroundLoaded && g_useBackgrounds) { //if the level has a background and the user would like to see it
+			SDL_RenderCopy(renderer, background, NULL, NULL);
+		}
 		
 
-
-		// ENTITY MOVEMENT
-		//dont update movement while transitioning
-		for(long long unsigned int i=0; i < g_entities.size(); i++){
-			door* taken = g_entities[i]->update_movement(g_boxs[g_entities[i]->layer], g_doors, elapsed);
-			if(taken != nullptr) {
-				//player took this door
-				//clear level
-				
-				//we will now clear the map, so we will save the door's destination map as a string
-				const string savemap = "maps/" + taken->to_map + ".map";
-				const string dest_waypoint = taken->to_point;
-
-				//render this frame
-
-				clear_map(g_camera);
-				load_map(renderer, savemap, dest_waypoint);
-				
-
-				//clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
-				if(devMode) { init_map_writing(renderer);}
-				
-
-
-				break;
-			}
-		}
+		
 		
 		//update weapons
 		for(auto n : g_weapons) {
@@ -346,7 +354,7 @@ int main(int argc, char ** argv) {
 		if(freecamera) {
 			g_camera.update_movement(elapsed, camx, camy);
 		} else {
-			g_camera.update_movement(elapsed, (g_focus->x - (g_camera.width/(2 * g_camera.zoom))) + (g_focus->width/2), ((g_focus->y - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom))) );
+			g_camera.update_movement(elapsed, (g_focus->getOriginX() - (g_camera.width/(2 * g_camera.zoom))), ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom))) );
 		}
 		//update ui
 		curTextWait += elapsed * text_speed_up;
@@ -355,25 +363,7 @@ int main(int argc, char ** argv) {
 			curTextWait = 0;
 		}
 		
-		//background
-		SDL_RenderClear(renderer);
 		
-		//update AI
-		// for (long long unsigned int i = 0; i < g_ais.size(); i++) {
-		// 	g_ais[i]->update(protag, elapsed);
-		// }
-
-		//update party
-		for (int i = 1; i < party.size(); i++) {
-			party[i]->update(party[i-1], elapsed);
-		}
-		
-
-		
-
-        
-
-
 		//tiles
 		for(long long unsigned int i=0; i < g_tiles.size(); i++){
 			if(g_tiles[i]->z ==0) {
@@ -503,7 +493,32 @@ int main(int argc, char ** argv) {
 		for(long long unsigned int i=0; i < g_textboxes.size(); i++){
 			g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
 		}	
-		
+		// ENTITY MOVEMENT
+		//dont update movement while transitioning
+		for(long long unsigned int i=0; i < g_entities.size(); i++){
+			door* taken = g_entities[i]->update(g_boxs[g_entities[i]->layer], g_doors, elapsed);
+			if(taken != nullptr) {
+				//player took this door
+				//clear level
+				
+				//we will now clear the map, so we will save the door's destination map as a string
+				const string savemap = "maps/" + taken->to_map + "/" + taken->to_map + ".map";
+				const string dest_waypoint = taken->to_point;
+
+				//render this frame
+
+				clear_map(g_camera);
+				load_map(renderer, savemap, dest_waypoint);
+				
+
+				//clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
+				if(devMode) { init_map_writing(renderer);}
+				
+
+
+				break;
+			}
+		}
 
 		//worldsounds
 		for (int i = 0; i < g_worldsounds.size(); i++) {
@@ -597,11 +612,16 @@ int main(int argc, char ** argv) {
 			}
 			
 		}
-		if(fadeFlag && musicFadeTimer > 1000) {
+		if(fadeFlag && musicFadeTimer > 1000 && newClosest != 0) {
 			fadeFlag = 0;
 			Mix_HaltMusic();
 			Mix_FadeInMusic(newClosest->blip, -1, 1000);
 			
+		}
+
+		//wakeup manager if it is sleeping
+		if(adventureUIManager->sleepflag) {
+			adventureUIManager->continueDialogue();
 		}
 	}
 
@@ -613,9 +633,9 @@ int main(int argc, char ** argv) {
 	SDL_DestroyWindow(window);
 	SDL_FreeSurface(transitionSurface);
 	SDL_DestroyTexture(transitionTexture);
+	SDL_DestroyTexture(background);
 	IMG_Quit();
 	Mix_CloseAudio();
-	TTF_Quit();
 	TTF_Quit();
 	
 	return 0;
@@ -751,7 +771,6 @@ int interact(float elapsed, entity* protag) {
 				} else {
 					//yaxis is more important
 					g_entities[i]->flip = SDL_FLIP_NONE;
-					M("check yaxis");
 					if(ydiff > 0) {
 						g_entities[i]->animation = 0;
 					} else {
@@ -776,7 +795,9 @@ int interact(float elapsed, entity* protag) {
 				adventureUIManager->talker = g_entities[i];
 				adventureUIManager->talker->dialogue_index = -1;
 				adventureUIManager->continueDialogue();
-				protag_is_talking = 1;
+				//removing this in early july to fix problem moving after a script changes map
+				//may cause unexpected problems
+				//protag_is_talking = 1;
 				break;
 			}
 			//no one to talk to, lets do an attack instead
@@ -829,17 +850,33 @@ void getInput(float &elapsed) {
 		if(keystate[bindings[7]]) {
 			protag->shoot_right();
 		}
-		if(keystate[bindings[0]]) {
-			protag->move_up();
-		}
-		if(keystate[bindings[1]]) {
-			protag->move_down();
-		}
-		if(keystate[bindings[2]]) {
-			protag->move_left();
-		}
-		if(keystate[bindings[3]]) {
-			protag->move_right();
+		if(!(devMode && nudge != 0)) {
+			if(keystate[bindings[0]]) {
+				protag->move_up();
+			}
+			if(keystate[bindings[1]]) {
+				protag->move_down();
+			}
+			if(keystate[bindings[2]]) {
+				protag->move_left();
+			}
+			if(keystate[bindings[3]]) {
+				protag->move_right();
+			}
+		} else {
+			//nudge an entity
+			if(keystate[bindings[0]]) {
+				nudge->y -= 1;
+			}
+			if(keystate[bindings[1]]) {
+				nudge->y += 1;
+			}
+			if(keystate[bindings[2]]) {
+				nudge->x -= 1;
+			}
+			if(keystate[bindings[3]]) {
+				nudge->x += 1;
+			}
 		}
 		
 	} else {
@@ -918,21 +955,20 @@ void getInput(float &elapsed) {
 	//b = set box left corner
 	//n = set box right corner
 	if(keystate[SDL_SCANCODE_LSHIFT] && devMode) {
-		protag->xmaxspeed = 250;
-		protag->ymaxspeed = 250;
+		protag->xmaxspeed = 140;
+		protag->ymaxspeed = 140;
 	}
-	if(keystate[SDL_SCANCODE_TAB] && devMode) {
+	if(keystate[SDL_SCANCODE_LCTRL] && devMode) {
 		protag->xmaxspeed = 20;
 		protag->ymaxspeed = 20;
 	}
 	if(keystate[SDL_SCANCODE_CAPSLOCK] && devMode) {
-		protag->xmaxspeed = 140;
-		protag->ymaxspeed = 140;
+		protag->xmaxspeed = 250;
+		protag->ymaxspeed = 250;
 	}
 	
-	
 	if(keystate[SDL_SCANCODE_SLASH] && devMode) {
-			devinput[0] = 1;
+		devinput[0] = 1;
 	}
 	if(keystate[SDL_SCANCODE_X] && devMode) {
 		devinput[1] = 1;
@@ -963,7 +999,7 @@ void getInput(float &elapsed) {
 		devinput[8] = 1;
 	}
 	if(keystate[SDL_SCANCODE_KP_1] && devMode) {
-		//enable/disable box
+		//enable/disable collisions
 		devinput[9] = 1;
 	}
 	if(keystate[SDL_SCANCODE_KP_2] && devMode) {
@@ -979,34 +1015,7 @@ void getInput(float &elapsed) {
 		elapsed = 0;
 		//pull up console
 		devinput[11] = 1;
-	}
-	//for diagonal walls
-	if(keystate[SDL_SCANCODE_KP_7] && devMode) {
-		devinput[12] = 1;
-	}
-	if(keystate[SDL_SCANCODE_KP_8] && devMode) {
-		devinput[13] = 1;
-	}
-	if(keystate[SDL_SCANCODE_KP_5] && devMode) {
-		devinput[14] = 1;
-	}
-	if(keystate[SDL_SCANCODE_KP_4] && devMode) {
-		devinput[15] = 1;
-	}
-
-	//make zslant left
-	if(keystate[SDL_SCANCODE_KP_9]&& devMode) {
-		devinput[17] = 1;
-	}
 	
-	//make zslant right
-	if(keystate[SDL_SCANCODE_KP_6]) {
-		devinput[18] = 1;
-	}
-
-	if(keystate[SDL_SCANCODE_PERIOD] && devMode) {
-		//make navnode
-		devinput[19] = 1;
 	}
 
 	if(keystate[SDL_SCANCODE_COMMA] && devMode) {
@@ -1017,7 +1026,7 @@ void getInput(float &elapsed) {
 	if(keystate[SDL_SCANCODE_ESCAPE]) {
 		quit = 1;
 	}
-	if(keystate[SDL_SCANCODE_Q]) {
+	if(keystate[SDL_SCANCODE_Q] && devMode) {
 		
 		scalex-= 0.001 * elapsed;
 		
@@ -1031,7 +1040,7 @@ void getInput(float &elapsed) {
 		SDL_RenderSetScale(renderer, scalex, scaley);
 	}
 	
-	if(keystate[SDL_SCANCODE_E]) {
+	if(keystate[SDL_SCANCODE_E] && devMode) {
 		scalex+= 0.001 * elapsed;
 		
 		if(scalex < min_scale) {
@@ -1068,8 +1077,15 @@ void getInput(float &elapsed) {
 		}
 	}
 
-	
-	
+	if(keystate[SDL_SCANCODE_1] && devMode) {
+		devinput[16] = 1;
+	}
 
-	
+	if(keystate[SDL_SCANCODE_2] && devMode) {
+		devinput[17] = 1;
+	}
+
+	if(keystate[SDL_SCANCODE_3] && devMode) {
+		devinput[18] = 1;
+	}
 }
