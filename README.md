@@ -1,11 +1,10 @@
 # AdventureGameEngine
-An engine written in c++ to quickly develop top-down adventure games, with platforming, shooting, and puzzle elements.
+A WIP engine written in c++ to quickly develop top-down adventure games, with platforming, shooting, and puzzle elements.
 
 The engine is 3d, meaning that the player can move in 3 dimensions to navigate a map or dodge bullets, but the rendering isn't, so no models, just sprites in 3d space.
 
 Features:
   - Quick and easy block-based map-editor
-    - Launch the game in developermode to access the mapeditor
     - Blocks and entities can be placed in the level
       -easy enough for my family and friends to be able to make 3d maps easily.
     - A few clicks to add a suitable navigation-mesh for AI
