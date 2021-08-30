@@ -14,15 +14,26 @@ Features:
     - Doors and waypoints to "stitch together" the game.
       - Every door is linked to a waypoint in another map
      - A few ways to incorporate sound into the level
+     - Heightmaps can be applied to floors to make them seem less flat
     - (Upcoming) Cutscene-editor
   - Entity-system
     - For NPCs, enemies, or puzzle elements (such as a lever on a wall)
     - Entities can have customizable movement, combat, dialogue, and animation.
       - Enemy agression can be tweaked to attack on sight, or when attacked by another entity (e.g. player)
     - Dynamic entities move intelligently in 3d space thanks to Dijkstra's algorithm
+    - Entities can be given a cost to spawn in the map, and maps can be given a budget with which entities will be spawned procedurally
   - Scripting-system
     - Triggers to call scripts when the player overlaps them
     - Interface to entities, combat, cutscenes, puzzles, more complicated mechanics... pretty much any event you would like to have happen
     - Not c++, so it's not compiled.
   - Sound-system
     - Music-nodes placed in the level determine what song is played. The closest music node will play its song.
+    - Cue-nodes are used to play sounds during cutscenes and if the player walks within a certain radius (e.g. a one-off strike of lightning)
+    - Worldsound-nodes add ambience to a map, playing their sounds randomly at controlled intervals at a position (e.g. a croaking frog)
+  - Save-game-system (to save player progress)
+  - Appropriate attention to the technical side
+    - Careful management/recycling of resources (e.g. textures) to keep loading-times down and good performance
+    - 
+
+I'm creating a game alongside this engine. This, as you may guess, guides my decision-making for the engine.
+The ultimate goal, and what I see as the definition of this engine, is to be able to make whatever top-down adventure game you would like to without writing a line of c++
