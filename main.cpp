@@ -54,7 +54,13 @@ int main(int argc, char ** argv) {
 	SDL_RenderSetScale(renderer, scalex, scaley);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
-	entity* fomm = new entity(renderer, "fomm");
+	entity* fomm;
+	if(devMode) {
+		fomm = new entity(renderer, "fommconstruction"); 
+	} else {
+		fomm = new entity(renderer, "fomm"); 
+	}
+	
 	fomm->inParty = 1;
 	party.push_back(fomm);
 	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
@@ -142,11 +148,12 @@ int main(int argc, char ** argv) {
 		g_triangles.push_back(v);
 	}
 
-	if(0) {
+	if(devMode) {
 		//empty map or default map for map editing, perhaps a tutorial even
-		protag->x = 100000;
-		protag->y = 100000;
-		//load_map(renderer, "maps/petscop2/petscop2.map", "a");
+		load_map(renderer, "maps/editordefault/editordefault.map","a");
+		g_map = "g";
+		// protag->x = 100000;
+		// protag->y = 100000;
 	} else {
 		//load the titlescreen
 		load_map(renderer, "maps/g/g.map", "a");
@@ -164,12 +171,15 @@ int main(int argc, char ** argv) {
 	bool storedJump = 0; //buffer the input from a jump if the player is off the ground, quake-style
 	
 	//software lifecycle text
-	new textbox(renderer, g_lifecycle.c_str(), 40, 0,0, WIN_WIDTH * 0.2);
+	new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
 
 	//temporary for debugging stutter
 	//g_camera.update_movement(elapsed, (g_focus->getOriginX() - (g_camera.width/(2 * g_camera.zoom))), ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom))) );
 
 	while (!quit) {
+
+		D(g_weapons.size());
+
 		//some event handling
 		while(SDL_PollEvent(&event) && devMode) {
 			switch(event.type) {
