@@ -12,7 +12,7 @@ Features:
     - Triggers and Event-listeners can be placed to drive scripts
     - Exits and entrances for the player to travel between maps.
      - A few ways to incorporate sound into the level
-     - Heightmaps can be applied to floors to make them seem less flat
+     - Heightmaps can be applied to floors to simulate geometry in the z axis
     - (Upcoming) Cutscene-editor
   - Entity-system
     - For NPCs, enemies, or puzzle elements (such as a lever on a wall)
