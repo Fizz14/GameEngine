@@ -37,4 +37,4 @@ Features:
 
 I'm creating a game alongside this engine. This guides my decision-making for the engine.
 The ultimate goal, and what I see as the definition of this engine, is to be able to make whatever top-down adventure game you would like to without writing a line of c++.
-I might make an acception for complicated combat-abilities, which might deserve their own c++ implementation rather than a script.
+I might make an exception for complicated combat-abilities, which might deserve their own c++ implementation rather than a script.
