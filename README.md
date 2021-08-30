@@ -11,7 +11,7 @@ Features:
     - A few clicks to add a suitable navigation-mesh for AI
     - Simple 2d baked lighting
     - Triggers and Event-listeners can be placed to drive scripts
-    - Exits and entrances to "stitch together" the game.
+    - Exits and entrances for the player to travel between maps.
      - A few ways to incorporate sound into the level
      - Heightmaps can be applied to floors to make them seem less flat
     - (Upcoming) Cutscene-editor
