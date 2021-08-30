@@ -11,15 +11,13 @@ Features:
     - A few clicks to add a suitable navigation-mesh for AI
     - Simple 2d baked lighting
     - Triggers and Event-listeners can be placed to drive scripts
-    - Doors and waypoints to "stitch together" the game.
-      - Every door is linked to a waypoint in another map
+    - Exits and entrances to "stitch together" the game.
      - A few ways to incorporate sound into the level
      - Heightmaps can be applied to floors to make them seem less flat
     - (Upcoming) Cutscene-editor
   - Entity-system
     - For NPCs, enemies, or puzzle elements (such as a lever on a wall)
     - Entities can have customizable movement, combat, dialogue, and animation.
-      - Enemy agression can be tweaked to attack on sight, or when attacked by another entity (e.g. player)
     - Dynamic entities move intelligently in 3d space thanks to Dijkstra's algorithm
     - Entities can be given a cost to spawn in the map, and maps can be given a budget with which entities will be spawned procedurally
   - Scripting-system
@@ -32,7 +30,7 @@ Features:
     - Worldsound-nodes add ambience to a map, playing their sounds randomly at controlled intervals at a position (e.g. a croaking frog)
   - Save-game-system (to save player progress)
   - Appropriate attention to the technical side
-    - Careful management/recycling of resources (e.g. textures) to keep loading-times down and good performance
+    - Careful management/recycling of resources (e.g. textures) to keep loading-times down and performance up
     - 
 
 I'm creating a game alongside this engine. This, as you may guess, guides my decision-making for the engine.
