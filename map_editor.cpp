@@ -28,14 +28,18 @@ bool showMarker = 1;
 int lastAction = 0; //for saving the user's last action to be easily repeated
 int navMeshDensity = 2; //navnodes every two blocks
 int limits[4] = {0};
-string textureDirectory = ""; //for choosing a file to load textures from, i.e. keep textures for a desert style level, a laboratory level, and a forest level separa
+int m_enemyPoints = 0; //points the map has to spend on enemies when spawned and every x seconds afterwards
+string textureDirectory = "mapeditor"; //for choosing a file to load textures from, i.e. keep textures for a desert style level, a laboratory level, and a forest level separa
 float mapeditorNavNodeTraceRadius = 100;  //for choosing the radius of the traces between navNodes when creating them in the editor. Should be the radius of the biggest entity
-                                    //in the level, so that he does not get stuck on corners
+                                          //in the level, so that he does not get stuck on corners
 
+//for checking old console commandss
+vector<string> consolehistory;
+int consolehistoryindex = 0;
 
-string captex = "tiles/diffuse/grey.png"; 
-string walltex = "tiles/diffuse/grey.png"; 
-string floortex = "tiles/diffuse/grey.png"; 
+string captex = "tiles/diffuse/mapeditor/a.png"; 
+string walltex = "tiles/diffuse/mapeditor/c.png"; 
+string floortex = "tiles/diffuse/mapeditor/b.png"; 
 string masktex = "&";
 //vector of strings to be filled with each texture in the user's texture directory, for easier selection 
 vector<string> texstrs;
@@ -97,9 +101,21 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
     
     background = 0;
 
+    std::getline(infile, line);
+    line.erase(0,line.find(" "));
+    word = line;
+    D(word);
+    g_budget = stoi(word);
+
     while (std::getline(infile, line)) {
         istringstream iss(line);
         word = line.substr(0, line.find(" "));
+        
+        if(word == "enemy") {
+            iss >> s0 >> s1 >> p0;
+            enemiesMap[s1] = p0;
+        }
+
         if(word == "limits") {
             iss >> s0 >> p1 >> p2 >> p3 >> p4; 
             g_camera.lowerLimitX = p1;
@@ -403,10 +419,43 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         }
                     }
                 }
-                
             }
         }
     }
+
+    //put enemies in map
+    bool stillAdding = !devMode; //don't spawn procedural enemies in devmode because then I'd save them into maps
+    int currentBudget = g_budget; //we'll subtract from this current budget until we can't fit any more entities in the map
+    vector<string> possibleEntities; //a vector of entities that we could add to the map.
+    vector<int> associatedCosts; //a vector of costs for each entity
+    for (std::map<string,int>::iterator it=enemiesMap.begin(); it !=enemiesMap.end(); ++it) {
+        possibleEntities.push_back(it->first);
+        associatedCosts.push_back(it->second);
+    }
+    if(possibleEntities.size() > 0 && g_navNodes.size() > 0) {
+        while(stillAdding) {
+            //pick an entity from possible entities
+            int randomElement = rand() % possibleEntities.size();
+            if( associatedCosts[randomElement] <= currentBudget) {
+                //add this enemy
+                entity* a = new entity(renderer, possibleEntities[randomElement]);
+                int randomNavnode = rand() % g_navNodes.size();
+                a->x = g_navNodes[randomNavnode]->x - a->bounds.width;
+                a->y = g_navNodes[randomNavnode]->y - a->bounds.height;
+                currentBudget -= associatedCosts[randomElement];
+            } else {
+                //we can't afford this guy, take him out of the lists
+                possibleEntities.erase(possibleEntities.begin()+randomElement);
+                associatedCosts.erase(associatedCosts.begin()+randomElement);
+            }
+
+            if(possibleEntities.size() <= 0 || currentBudget <= 0) {
+                stillAdding = 0;
+            }
+            
+        }
+    }
+
 
     Update_NavNode_Costs(g_navNodes);
     infile.close();
@@ -439,6 +488,115 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 } 
 
 
+bool mapeditor_save_map(string word) {
+    //add warning for file overright
+    if(word != g_map &&fileExists("maps/" + word + "/" + word + ".map")) {
+        if(yesNoPrompt("Map \"" + word + "\" already exists, would you like to overwrite?") == 1) { 
+            M("Canceled overwrite");
+            return 1;
+        }
+    }
+    
+    std::filesystem::create_directories("maps/" + word);
+    word = "maps/" + word  + "/" + word + ".map";
+    
+    ofile.open(word);
+
+    //write enemies and budget
+    ofile << "budget " << g_budget << endl;
+    for (std::map<string,int>::iterator it=enemiesMap.begin(); it !=enemiesMap.end(); ++it) {
+        ofile << "enemy " << it->first << " " << it->second << endl;
+    }
+
+    bool limitflag = 0;
+    for (auto x: limits) { if(x != 0) {limitflag = 1; }}
+    
+    if(limitflag) {
+        ofile << "limits";
+        for (auto x: limits) {ofile << " " << x; }
+        ofile << endl;
+    }
+    if(g_backgroundLoaded && backgroundstr != "") {
+        ofile << "bg " << backgroundstr << endl;
+    }
+    for(int i = 0; i < g_layers; i ++) {
+        for (auto n : g_triangles[i]) {
+            ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture <<  " " << n->capped << " " << n->shaded << endl;
+        }
+    }
+    for (long long unsigned int i = 0; i < g_entities.size(); i++) {
+        if(!g_entities[i]->inParty) {
+            ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) << endl;
+            
+        }
+    }
+    
+    for (long long unsigned int i = 0; i < g_mapObjects.size(); i++) {    
+        //ofile << "mapObject " << g_mapObjects[i]->name << " " << g_mapObjects[i]->mask_fileaddress << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
+    }
+
+    for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
+        //dont save map graphics
+        if(g_tiles[i]->fileaddress.find("engine") != string::npos ) { continue; }
+        //sheared tiles are made on map loading, so dont save em
+        if(g_tiles[i]->mask_fileaddress.find("engine") != string::npos ) { continue; }
+        //lighting, but not occlusion is also generated on map load
+        if(g_tiles[i]->fileaddress.find("lighting") != string::npos && !(g_tiles[i]->fileaddress.find("OCCLUSION") != string::npos)) { continue; }
+        
+        ofile << "tile " << g_tiles[i]->fileaddress << " " << g_tiles[i]->mask_fileaddress << " " << to_string(g_tiles[i]->x) << " " << to_string(g_tiles[i]->y) << " " << to_string(g_tiles[i]->width) << " " << to_string(g_tiles[i]->height) << " " << g_tiles[i]->z << " " << g_tiles[i]->wraptexture << " " << g_tiles[i]->wall << " " << g_tiles[i]->dxoffset << " " << g_tiles[i]->dyoffset << endl;
+    }
+    for (long long unsigned int i = 0; i < g_heightmaps.size(); i++) {
+        
+        ofile << "heightmap " << g_heightmaps[i]->binding << " " << g_heightmaps[i]->name << " " << g_heightmaps[i]->magnitude << endl;
+    }
+    for (long long unsigned int j = 0; j < g_layers; j++){
+        for (long long unsigned int i = 0; i < g_boxs[j].size(); i++){
+            string shadestring = "";
+            if(g_boxs[j][i]->shadeTop) {shadestring+= "1";} else {shadestring+= "0";}
+            if(g_boxs[j][i]->shadeBot == 1) {shadestring+= "1";} else {if(g_boxs[j][i]->shadeBot == 2) {shadestring+= "2";} else {shadestring+="0";}}
+            if(g_boxs[j][i]->shadeLeft) {shadestring+= "1";} else {shadestring+= "0";}
+            if(g_boxs[j][i]->shadeRight) {shadestring+= "1";} else {shadestring+= "0";}
+            ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << " " << g_boxs[j][i]->shineTop << " " << g_boxs[j][i]->shineBot << " " << shadestring << endl;
+        }
+    }
+    for (long long unsigned int i = 0; i < g_doors.size(); i++){
+        ofile << "door " << g_doors[i]->to_map << " " << g_doors[i]->to_point << " " << g_doors[i]->x << " " << g_doors[i]->y << " " << g_doors[i]->width << " " << g_doors[i]->height << endl;
+    }
+    for (long long unsigned int i = 0; i < g_triggers.size(); i++){
+        ofile << "trigger " << g_triggers[i]->binding << " " << g_triggers[i]->x << " " << g_triggers[i]->y << " " << g_triggers[i]->width << " " << g_triggers[i]->height << " " << g_triggers[i]->targetEntity << endl;
+    }
+    for (int i = 0; i < g_worldsounds.size(); i++) {
+        ofile << "worldsound " << g_worldsounds[i]->name << " " << g_worldsounds[i]->x << " " << g_worldsounds[i]->y << endl;
+    }
+    for (int i = 0; i < g_musicNodes.size(); i++) {
+        ofile << "music " << g_musicNodes[i]->name << " " << g_musicNodes[i]->x << " " << g_musicNodes[i]->y << endl;
+    }
+    for (int i = 0; i < g_cueSounds.size(); i++) {
+        ofile << "cue " << g_cueSounds[i]->name << " " << g_cueSounds[i]->x << " " << g_cueSounds[i]->y << " " << g_cueSounds[i]->radius << endl;
+    }
+    for (int i = 0; i < g_waypoints.size(); i++) {
+        ofile << "waypoint " << g_waypoints[i]->name << " " << g_waypoints[i]->x << " " << g_waypoints[i]->y << endl;
+    }
+    for (int i = 0; i < g_navNodes.size(); i++) {
+        ofile << "navNode " << g_navNodes[i]->x << " " << g_navNodes[i]->y << endl;
+    }
+    for (int i = 0; i < g_navNodes.size(); i++) {
+        ofile << "navNodeEdge " << i << " ";
+        for (int j = 0; j < g_navNodes[i]->friends.size(); j++) {
+            auto itr = find(g_navNodes.begin(), g_navNodes.end(), g_navNodes[i]->friends[j]);
+            ofile << std::distance(g_navNodes.begin(), itr) << " ";
+        }
+        ofile << endl;
+    }
+    for (int i = 0; i < g_listeners.size(); i++) {
+        ofile << "listener " << g_listeners[i]->entityName << " " << g_listeners[i]->block << " " << g_listeners[i]->condition << " " << g_listeners[i]->binding << " " << g_listeners[i]->x << " " << g_listeners[i]->y << endl;
+    }
+    
+    
+    ofile.close();
+    return 0;
+}
+
 //called on init if map_editing is true
 void init_map_writing(SDL_Renderer* renderer) {
     selection = new tile(renderer, "tiles/engine/marker.png", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
@@ -470,7 +628,7 @@ void init_map_writing(SDL_Renderer* renderer) {
     captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, 0);
 
     texstrs.clear();
-    string path = "tiles/diffuse/";
+    string path = "tiles/diffuse/" + textureDirectory;
     for (const auto & entry : filesystem::directory_iterator(path)) {
         texstrs.push_back(entry.path());
     }
@@ -625,10 +783,10 @@ void write_map(entity* mapent) {
         
         // //actually spawn the entity in the world
         // //entstring = "entities/" + entstring + ".ent";
-        // const char* plik = entstring.c_str();
-        // entity* e = new entity(renderer,  plik);
-        // e->x = px;
-        // e->y = py + mapent->height -(grid/2);
+        const char* plik = entstring.c_str();
+        entity* e = new entity(renderer,  plik);
+        e->x = px;
+        e->y = py + mapent->height -(grid/2);
     }
     if(devinput[2] && !olddevinput[2] && makingtile == 0) {
 
@@ -885,10 +1043,12 @@ void write_map(entity* mapent) {
                 makingbox = 0;
                 makingtile = 0;
             } else {
+                bool deleteflag = 1;
                 for(auto n : g_entities) {
                     if(n == protag) {continue;}
                     if(RectOverlap(n->getMovedBounds(), marker->getMovedBounds())) {
                         delete n;
+                        deleteflag = 0;
                         break;
                     }
                 }
@@ -901,6 +1061,7 @@ void write_map(entity* mapent) {
                     for(auto n : g_boxs[i]) {
                         if(RectOverlap(markerrect, n->bounds)) {
                             deleteRects.push_back(n);
+                            deleteflag = 0;
                         }
                     }
                 }
@@ -908,39 +1069,52 @@ void write_map(entity* mapent) {
                     for(auto n : g_triangles[i]) {
                         if(TriRectOverlap(n, marker->x + 6, marker->y + 6, marker->width - 12, marker->height - 12)) {
                             deleteTris.push_back(n);
+                            deleteflag = 0;
                         }
                     }
                 }
                 
+                //only delete tiles if we haven't already deleted something else
+                
+
                 for(auto n: deleteTris) {
                     for(auto child:n->children) {
                         delete child;
                     }
                     delete n;
+                    deleteflag = 0;
                 }
                 for(auto n: deleteRects) {
                     for(auto child:n->children) {
                         delete child;
                     }
                     delete n;
+                    deleteflag = 0;
                 }
 
                 //delete navmesh
                 for(auto x : g_navNodes) {
-                    rect b = {x->x - 10, x->x - 10, x->x + 10, x->y + 10};
+                    rect markerrect = {marker->x, marker->y, marker->width, marker->height};
+                    rect b = {x->x - 10, x->y - 10, 20, 20};
+
                     if(RectOverlap(markerrect, b)) {
-                        //delete x;
+                        RecursiveNavNodeDelete(x);
+                        deleteflag = 0;
+                        break;
                     }
                 }
-
-                //rect markerrect = {marker->x, marker->y, marker->width, marker->height};
-                for(int i = 0; i < g_tiles.size(); i++) {
-                    //M(g_tiles[i]->width);
-                    
-                    if(g_tiles[i]->software == 1) {continue;}
-                    if(RectOverlap(g_tiles[i]->getMovedBounds(), markerrect)) {
-                        delete g_tiles[i];
-                        break;
+                D(markerz->z);
+                
+                if(wallheight == 64 && deleteflag){
+                    //rect markerrect = {marker->x, marker->y, marker->width, marker->height};
+                    for(int i = 0; i < g_tiles.size(); i++) {
+                        //M(g_tiles[i]->width);
+                        
+                        if(g_tiles[i]->software == 1) {continue;}
+                        if(RectOverlap(g_tiles[i]->getMovedBounds(), markerrect)) {
+                            delete g_tiles[i];
+                            break;
+                        }
                     }
                 }
             }
@@ -1080,6 +1254,32 @@ void write_map(entity* mapent) {
                                 input += " ";
                                 break;
                             }
+                            if(name == "Up") {
+                                consolehistoryindex--;
+                                if(consolehistoryindex > consolehistory.size()-1) {
+                                    consolehistoryindex = consolehistory.size()-1;
+                                }
+                                if(consolehistoryindex < 0 ) {
+                                    consolehistoryindex = 0;
+                                }
+                                if(consolehistory.size()) {
+                                    input = consolehistory.at(consolehistoryindex);
+                                }
+                                break;
+                            }
+                            if(name == "Down"){
+                                consolehistoryindex++;
+                                if(consolehistoryindex > consolehistory.size()-1) {
+                                    consolehistoryindex = consolehistory.size()-1;
+                                }
+                                if(consolehistoryindex < 0 ) {
+                                    consolehistoryindex = 0;
+                                }
+                                if(consolehistory.size()) {
+                                    input = consolehistory.at(consolehistoryindex);
+                                }
+                                break;
+                            }
                             if(name == "Backspace") {
                                 if(input.length() > 0) {
                                     input = input.substr(0, input.size()-1);
@@ -1099,6 +1299,11 @@ void write_map(entity* mapent) {
                 
                 }
             }
+            consolehistory.push_back(input);
+            if(consolehistory.size() > 10) {
+                consolehistory.erase(consolehistory.begin() + 9);
+            }
+            consolehistoryindex = 0;
             SDL_GL_SetSwapInterval(1);
             delete consoleDisplay;
             
@@ -1108,6 +1313,10 @@ void write_map(entity* mapent) {
             string word = "";
             
             while(line >> word) {
+                if(word == "sb") {
+                    drawhitboxes = !drawhitboxes;
+                    break;
+                }
                 if(word == "show") {
                     line >> word;
                     if(word == "hitboxes") {
@@ -1209,6 +1418,327 @@ void write_map(entity* mapent) {
                     delete g_mapCollisions[g_mapCollisions.size() - 1];
                     //segfaults on save smt
                 }
+
+                if(word == "easybake" || word == "eb") {
+                    //split the box collisions into grid-sized blocks
+                    //copy array
+                    for(int i = 0; i < g_boxs.size(); i++) {
+                        vector<box*> tempboxes;
+                        for(auto b : g_boxs[i]) {
+                            tempboxes.push_back(b);
+                        }
+                        for(auto b : tempboxes) {
+                            int x = b->bounds.x;
+                            int y = b->bounds.y;
+                            while(x < b->bounds.width + b->bounds.x) {
+                                while(y < b->bounds.height + b->bounds.y) {
+                                    new box(x, y, 64, 55, b->layer, b->walltexture, b->captexture, b->capped, 0, 0, "0000");
+                                    y+=55;
+                                }   
+                                x+= 64; 
+                                y = b->bounds.y;
+                            }
+
+                            for(auto child:b->children) {
+                                delete child;
+                            }
+
+                            delete b;
+                        }
+                    }
+
+                    ///////////////////
+
+                    //set capped
+                    for(int i = 0; i < g_boxs.size(); i++) {
+                        for(auto b : g_boxs[i]) {
+                            rect inneighbor = {b->bounds.x + 2, b->bounds.y + 2, b->bounds.width - 4, b->bounds.height - 4};
+                            //set capped for each box
+                            if(i == g_layers) { continue; }
+                            for(auto n : g_boxs[i+1]) {
+                                if(RectOverlap(inneighbor, n->bounds)) {
+                                    b->capped = false;
+                                }
+                            }
+                        }
+                    }
+                    for(int i = 0; i < g_triangles.size(); i++) {
+                        for(auto b : g_triangles[i]) {
+                            //set capped for each box
+                            if(i == g_layers) { continue; }
+                            rect a = {((b->x1 + b->x2) /2) - 4, ((b->y1 + b->y2) / 2) - 4, 8, 8};
+                            for(auto n : g_triangles[i+1]) {
+                                if(TriRectOverlap(n, a)) {
+                                    b->capped = false;
+                                }
+                            }
+                        }
+                    }
+                    //get lighting data to mapcollisions
+                    for(int i = 0; i < g_boxs.size(); i++) {
+                        
+                        for(auto b : g_boxs[i]) {
+                            //shade
+                            b->shadeTop = false;
+                            b->shadeBot = false;
+                            b->shadeLeft = false;
+                            b->shadeRight = false;
+                            rect uneighbor = {b->bounds.x + 2, b->bounds.y - 55 + 2, b->bounds.width - 4, 55 - 4};
+                            rect dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};b->shineTop = true;
+                            b->shineBot = true;
+                            //check for overlap with all other boxes
+                            for(auto n : g_boxs[i]) {
+                                if(n == b) {continue;}
+                                
+                                if(RectOverlap(n->bounds, uneighbor)) {
+                                    b->shineTop = false;
+                                }
+                                if(RectOverlap(n->bounds, dneighbor)) {
+                                    b->shineBot = false;
+                                }
+                            }
+                            for(auto n : g_triangles[i]) {
+                                if(TriRectOverlap(n, uneighbor.x, uneighbor.y, uneighbor.width, uneighbor.height)) {
+                                    b->shineTop = false;
+                                }
+                                if(TriRectOverlap(n, dneighbor.x, dneighbor.y, dneighbor.width, dneighbor.height)) {
+                                    b->shineBot = false; 
+                                    b->shadeBot = 2; //new change
+                                }
+                                
+                            }
+                            if(!b->capped) {b->shineTop = false; b->shineBot = false;}
+
+                            
+                            uneighbor = {b->bounds.x + 2, b->bounds.y - 55 + 2, b->bounds.width - 4, 55 - 4};
+                            dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};
+                            rect lneighbor = {b->bounds.x + 2 - 64, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
+                            rect rneighbor = {b->bounds.x + 2 + b->bounds.width, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
+                            //check for overlap with tiles if it is on layer 0 and with boxes and triangles a layer below for each dir
+                            if(i == 0) {
+                                for(auto t: g_tiles) {
+                                    if(RectOverlap(t->getMovedBounds(), uneighbor)) {
+                                        b->shadeTop = true;
+                                    }
+                                    if(RectOverlap(t->getMovedBounds(), dneighbor) && b->shadeBot != 2) {
+                                        b->shadeBot = true;
+                                    }
+                                    if(RectOverlap(t->getMovedBounds(), lneighbor)) {
+                                        b->shadeLeft = true;
+                                    }
+                                    if(RectOverlap(t->getMovedBounds(), rneighbor)) {
+                                        b->shadeRight = true;
+                                    }
+                                }
+                                //but, if there is a layer 0 block overlapping our neighbor rect, we want to disable that shading
+                                //because that would be a random shadow under a block with visible corners
+                                for(auto n: g_boxs[0]) {
+                                    if(n == b) {continue;}
+                                    if(RectOverlap(n->bounds, uneighbor)) {
+                                        b->shadeTop = false;
+                                    }
+                                    if(RectOverlap(n->bounds, dneighbor) && b->shadeBot != 2) {
+                                        b->shadeBot = false;
+                                    }
+                                    if(RectOverlap(n->bounds, lneighbor)) {
+                                        b->shadeLeft = false;
+                                    }
+                                    if(RectOverlap(n->bounds, rneighbor)) {
+                                        b->shadeRight = false;
+                                    }
+                                }
+                                //same for tris
+                                for(auto t: g_triangles[0]) {
+                                    
+                                    if(TriRectOverlap(t, uneighbor)) {
+                                        //b->shadeTop = false;
+                                    }
+                                    if(TriRectOverlap(t, dneighbor) && b->shadeBot != 2) {
+                                        b->shadeBot = false;
+                                    }
+                                    if(TriRectOverlap(t, lneighbor)) {
+                                        b->shadeLeft = false;
+                                    }
+                                    if(TriRectOverlap(t, rneighbor)) {
+                                        b->shadeRight = false;
+                                    }
+                                }
+                            }
+                            if(i > 0){
+                                for(auto n: g_boxs[i-1]) {
+                                    if(!n->capped) {continue;}
+                                    if(RectOverlap(n->bounds, uneighbor)) {
+                                        b->shadeTop = true;
+                                    }
+                                    if(RectOverlap(n->bounds, dneighbor)) {
+                                        b->shadeBot = true;
+                                    }
+                                    if(RectOverlap(n->bounds, lneighbor)) {
+                                        b->shadeLeft = true;
+                                    }
+                                    if(RectOverlap(n->bounds, rneighbor)) {
+                                        b->shadeRight = true;
+                                    }
+                                }
+                                for(auto t: g_triangles[i-1]) {
+                                    if(!t->capped) {continue;}
+                                    if(TriRectOverlap(t, uneighbor)) {
+                                        b->shadeTop = true;
+                                    }
+                                    if(TriRectOverlap(t, dneighbor)) {
+                                        b->shadeBot = true;
+                                    }
+                                    if(TriRectOverlap(t, lneighbor)) {
+                                        b->shadeLeft = true;
+                                    }
+                                    if(TriRectOverlap(t, rneighbor)) {
+                                        b->shadeRight = true;
+                                    }
+                                }
+                                
+                                
+                            }
+                        }
+                    }
+
+                    //bake triangles
+                    for(int i = 0; i < g_layers; i++) {
+                        for(auto tri : g_triangles[i]) {
+                            tri->shaded = 0;
+                            if(tri->layer == 0) {
+                                for(auto tile : g_tiles) {
+                                    if(TriRectOverlap(tri, tile->getMovedBounds())) {
+                                        tri->shaded = 1;
+                                    }
+                                }
+                            } else {
+                                for(auto b : g_boxs[i-1]) {
+                                    if(TriRectOverlap(tri, b->bounds.x + 2, b->bounds.y + 2,b->bounds.width - 4, b->bounds.height - 4)) {
+                                        tri->shaded = 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    ///////////////////
+
+                    //combine box collisions where possible, likely after a split operation
+                    bool refresh = true; //wether to restart the operation
+                    while(refresh) {
+                        refresh = false;
+                        for(int i = 0; i < g_boxs.size(); i++) {
+                            for(auto him: g_boxs[i]) {
+                                
+                                //is there a collision in the space one block to the right of this block, and at the top?
+                                //  * * x
+                                //  * *
+                                for(auto other: g_boxs[i]) {
+                                    if(RectOverlap(rect(him->bounds.x + him->bounds.width + 2, him->bounds.y + 2, 64 - 4, 55 - 4), other->bounds)) {
+                                        //does it have the same shineTop as him?
+                                        if(him->shineTop == other->shineTop) {
+                                            //does it have the same height and y position as him?
+                                            if(him->bounds.y == other->bounds.y && him->bounds.height == other->bounds.height) {
+                                                //does it have the same shineBot as him?
+                                                if(him->shineBot == other->shineBot) {
+                                                    //shading?
+                                                    if(him->shadeBot == other->shadeBot && him->shadeTop == other->shadeTop) {
+                                                        //textures?
+                                                        if(him->captexture == other->captexture && him->walltexture == other->walltexture) {
+                                                            //both capped or not capped?
+                                                            if(him->capped == other->capped) {
+                                                                //join the two blocks
+                                                                string shadestring = "";
+                                                                if(him->shadeTop) {shadestring+= "1";} else {shadestring+= "0";}
+                                                                if(him->shadeBot) {shadestring+= "1";} else {shadestring+= "0";}
+                                                                if(him->shadeLeft) {shadestring+= "1";} else {shadestring+= "0";}
+                                                                if(other->shadeRight) {shadestring+= "1";} else {shadestring+= "0";}
+                                                            
+                                                                new box(him->bounds.x, him->bounds.y, him->bounds.width + other->bounds.width, him->bounds.height, him->layer, him->walltexture, him->captexture, him->capped, him->shineTop, him->shineBot, shadestring.c_str());
+                                                                for(auto child:him->children) {
+                                                                    delete child;
+                                                                }
+                                                                delete him; 
+                                                                for(auto child:other->children) {
+                                                                    delete child;
+                                                                }
+                                                                delete other;
+                                                                refresh = true;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    //vertical pass
+                    refresh = true;
+                    while(refresh) {
+                        refresh = false;
+                        for(int i = 0; i < g_boxs.size(); i++) {
+                            for(auto him: g_boxs[i]) {
+                                //is there a collision in the space directly below this block
+                                //  * * 
+                                //  * *
+                                //  x
+                                for(auto other: g_boxs[i]) {
+                                    if(RectOverlap(rect(him->bounds.x + 2, him->bounds.y + him->bounds.height + 2, 64 - 4, 55 - 4), other->bounds)) {
+                                        //does it have the same width and x position as him?
+                                        if(him->bounds.x == other->bounds.x && him->bounds.width == other->bounds.width) {
+                                            if(him->shadeLeft == other->shadeLeft && him->shadeRight == other->shadeRight) {
+                                                //textures?
+                                                if(him->captexture == other->captexture && him->walltexture == other->walltexture) {
+                                                    //both capped or not capped?
+                                                    if(him->capped == other->capped) {
+                                                        //join the two blocks
+                                                        string shadestring = "";
+                                                        if(him->shadeTop) {shadestring+= "1";} else {shadestring+= "0";}
+                                                        if(other->shadeBot) {shadestring+= "1";} else {shadestring+= "0";}
+                                                        if(him->shadeLeft) {shadestring+= "1";} else {shadestring+= "0";}
+                                                        if(him->shadeRight) {shadestring+= "1";} else {shadestring+= "0";}
+                                                    
+                                                        new box(him->bounds.x, him->bounds.y, him->bounds.width, him->bounds.height + other->bounds.height, him->layer, him->walltexture, him->captexture, him->capped, him->shineTop, other->shineBot, shadestring.c_str());
+                                                        for(auto child:him->children) {
+                                                            delete child;
+                                                        }
+                                                        delete him; 
+                                                        for(auto child:other->children) {
+                                                            delete child;
+                                                        }
+                                                        delete other;
+                                                        refresh = true;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    ///////////////////////
+
+                    if(g_map != "") {
+                        mapeditor_save_map(g_map);
+                    }
+                    ofile.close();
+                    word = "maps/" + g_map + "/" + g_map + ".map";
+                    clear_map(g_camera);
+                    int savex = mapent->x;
+                    int savey = mapent->y;
+                    load_map(renderer, word.c_str(), "a");
+                    init_map_writing(renderer);
+                    mapent->x = savex;
+                    mapent->y = savey;
+                    break;
+
+                }
+
                 if(word == "split") {
                     //split the box collisions into grid-sized blocks
                     //copy array
@@ -1509,108 +2039,24 @@ void write_map(entity* mapent) {
                         }
                     }
                 }
+                if(word == "reload") {
+                    if(g_map != "") {
+                        mapeditor_save_map(g_map);
+                    }
+                    ofile.close();
+                    word = "maps/" + g_map + "/" + g_map + ".map";
+                    clear_map(g_camera);
+                    int savex = mapent->x;
+                    int savey = mapent->y;
+                    load_map(renderer, word.c_str(), "a");
+                    init_map_writing(renderer);
+                    mapent->x = savex;
+                    mapent->y = savey;
+                    break;
+                }
                 if(word == "save") {
                     if(line >> word) { 
-                        
-                        //add warning for file overright
-                        if(word != g_map &&fileExists("maps/" + word + "/" + word + ".map")) {
-                            if(yesNoPrompt("Map \"" + word + "\" already exists, would you like to overwrite?") == 1) { 
-                                M("Canceled overwrite");
-                                break;
-                            }
-                        }
-                        
-                        std::filesystem::create_directories("maps/" + word);
-                        word = "maps/" + word  + "/" + word + ".map";
-                        
-                        ofile.open(word);
-
-                        bool limitflag = 0;
-                        for (auto x: limits) { if(x != 0) {limitflag = 1; }}
-                        
-                        if(limitflag) {
-                            ofile << "limits";
-                            for (auto x: limits) {ofile << " " << x; }
-                            ofile << endl;
-                        }
-                        if(g_backgroundLoaded && backgroundstr != "") {
-                            ofile << "bg " << backgroundstr << endl;
-                        }
-                        for(int i = 0; i < g_layers; i ++) {
-                            for (auto n : g_triangles[i]) {
-                                ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture <<  " " << n->capped << " " << n->shaded << endl;
-                            }
-                        }
-                        for (long long unsigned int i = 0; i < g_entities.size(); i++) {
-                            if(!g_entities[i]->inParty) {
-                                ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) << endl;
-                                
-                            }
-                        }
-                        
-                        for (long long unsigned int i = 0; i < g_mapObjects.size(); i++) {    
-                            //ofile << "mapObject " << g_mapObjects[i]->name << " " << g_mapObjects[i]->mask_fileaddress << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
-                        }
-
-                        for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
-                            //dont save map graphics
-                            if(g_tiles[i]->fileaddress.find("engine") != string::npos ) { continue; }
-                            //sheared tiles are made on map loading, so dont save em
-                            if(g_tiles[i]->mask_fileaddress.find("engine") != string::npos ) { continue; }
-                            //lighting, but not occlusion is also generated on map load
-                            if(g_tiles[i]->fileaddress.find("lighting") != string::npos && !(g_tiles[i]->fileaddress.find("OCCLUSION") != string::npos)) { continue; }
-                            
-                            ofile << "tile " << g_tiles[i]->fileaddress << " " << g_tiles[i]->mask_fileaddress << " " << to_string(g_tiles[i]->x) << " " << to_string(g_tiles[i]->y) << " " << to_string(g_tiles[i]->width) << " " << to_string(g_tiles[i]->height) << " " << g_tiles[i]->z << " " << g_tiles[i]->wraptexture << " " << g_tiles[i]->wall << " " << g_tiles[i]->dxoffset << " " << g_tiles[i]->dyoffset << endl;
-                        }
-                        for (long long unsigned int i = 0; i < g_heightmaps.size(); i++) {
-                            
-                            ofile << "heightmap " << g_heightmaps[i]->binding << " " << g_heightmaps[i]->name << " " << g_heightmaps[i]->magnitude << endl;
-                        }
-                        for (long long unsigned int j = 0; j < g_layers; j++){
-                            for (long long unsigned int i = 0; i < g_boxs[j].size(); i++){
-                                string shadestring = "";
-                                if(g_boxs[j][i]->shadeTop) {shadestring+= "1";} else {shadestring+= "0";}
-                                if(g_boxs[j][i]->shadeBot == 1) {shadestring+= "1";} else {if(g_boxs[j][i]->shadeBot == 2) {shadestring+= "2";} else {shadestring+="0";}}
-                                if(g_boxs[j][i]->shadeLeft) {shadestring+= "1";} else {shadestring+= "0";}
-                                if(g_boxs[j][i]->shadeRight) {shadestring+= "1";} else {shadestring+= "0";}
-                                ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << " " << g_boxs[j][i]->shineTop << " " << g_boxs[j][i]->shineBot << " " << shadestring << endl;
-                            }
-                        }
-                        for (long long unsigned int i = 0; i < g_doors.size(); i++){
-                            ofile << "door " << g_doors[i]->to_map << " " << g_doors[i]->to_point << " " << g_doors[i]->x << " " << g_doors[i]->y << " " << g_doors[i]->width << " " << g_doors[i]->height << endl;
-                        }
-                        for (long long unsigned int i = 0; i < g_triggers.size(); i++){
-                            ofile << "trigger " << g_triggers[i]->binding << " " << g_triggers[i]->x << " " << g_triggers[i]->y << " " << g_triggers[i]->width << " " << g_triggers[i]->height << " " << g_triggers[i]->targetEntity << endl;
-                        }
-                        for (int i = 0; i < g_worldsounds.size(); i++) {
-                            ofile << "worldsound " << g_worldsounds[i]->name << " " << g_worldsounds[i]->x << " " << g_worldsounds[i]->y << endl;
-                        }
-                        for (int i = 0; i < g_musicNodes.size(); i++) {
-                            ofile << "music " << g_musicNodes[i]->name << " " << g_musicNodes[i]->x << " " << g_musicNodes[i]->y << endl;
-                        }
-                        for (int i = 0; i < g_cueSounds.size(); i++) {
-                            ofile << "cue " << g_cueSounds[i]->name << " " << g_cueSounds[i]->x << " " << g_cueSounds[i]->y << " " << g_cueSounds[i]->radius << endl;
-                        }
-                        for (int i = 0; i < g_waypoints.size(); i++) {
-                            ofile << "waypoint " << g_waypoints[i]->name << " " << g_waypoints[i]->x << " " << g_waypoints[i]->y << endl;
-                        }
-                        for (int i = 0; i < g_navNodes.size(); i++) {
-                            ofile << "navNode " << g_navNodes[i]->x << " " << g_navNodes[i]->y << endl;
-                        }
-                        for (int i = 0; i < g_navNodes.size(); i++) {
-                            ofile << "navNodeEdge " << i << " ";
-                            for (int j = 0; j < g_navNodes[i]->friends.size(); j++) {
-                                auto itr = find(g_navNodes.begin(), g_navNodes.end(), g_navNodes[i]->friends[j]);
-                                ofile << std::distance(g_navNodes.begin(), itr) << " ";
-                            }
-                            ofile << endl;
-                        }
-                        for (int i = 0; i < g_listeners.size(); i++) {
-                            ofile << "listener " << g_listeners[i]->entityName << " " << g_listeners[i]->block << " " << g_listeners[i]->condition << " " << g_listeners[i]->binding << " " << g_listeners[i]->x << " " << g_listeners[i]->y << endl;
-                        }
-                        
-                        
-                        ofile.close();
+                        mapeditor_save_map(word);
                         break;
                     }
                 }
@@ -1625,8 +2071,6 @@ void write_map(entity* mapent) {
                         ofile.close();
                         word = "maps/" + word + "/" + word + ".map";
                         clear_map(g_camera);
-                        M("Lets check boxs size after clearing and before loading");
-                        D(g_boxs[0].size());
                         load_map(renderer, word.c_str(), "a");
                         init_map_writing(renderer);
                         break;
@@ -1669,6 +2113,13 @@ void write_map(entity* mapent) {
                 }
                 if(word == "set" || word == "s") {
                     line >> word;
+                    if(word == "budget") {
+                        int a;
+                        if(line >> a) {
+                            g_budget = a;
+                        }
+                    }
+                    break;
                     
                     if(word == "navnodecorneringwidth" || word == "nncw" || word == "navcornering") {
                         //this is the width of a boxtrace used for testing if navnodes should be joined.
@@ -1768,8 +2219,11 @@ void write_map(entity* mapent) {
                         limits[3] = d;
                         break;
                     }
-                    if(word == "navdensity") {
+                    if(word == "navdensity" || "navnodedensity") {
                         line >> navMeshDensity;
+                        if(navMeshDensity < 1) {
+                            navMeshDensity = 1;
+                        }
                         break;
                     }
                     
@@ -1783,19 +2237,13 @@ void write_map(entity* mapent) {
                         wallstart *= 64;
                         break;
                     }
-                    if(word == "occlusion" || word == "o") {
-                        line >> occlusion;
-                        break;
-                    }
                     if(word == "wall" || word == "w") {
                         line >> walltex;
                         walltex = "tiles/diffuse/" + textureDirectory + walltex + ".png";
 
                         break;
                     }
-                    D("time to set the floor");
                     if(word == "floor" || word == "f") {
-                        D("time to set the floor");
                         line >> floortex;
                         D(textureDirectory);
                         floortex = "tiles/diffuse/" + textureDirectory + floortex + ".png";
@@ -1817,35 +2265,6 @@ void write_map(entity* mapent) {
                         if(line >> number) {
                             layer = number;
                         };
-                        break;
-                    }
-                    if(word == "mwalls") {
-                        bool input;
-                        if(line >> input) {
-                            autoMakeWalls = input;
-                        }
-                        break;
-                    }
-                    if(word == "mwallscaps") {
-                        bool input;
-                        if(line >> input) {
-                            autoMakeWalls = input;
-                            autoMakeWallcaps = input;
-                        }
-                        break;
-                    }
-                    if(word == "msolid") {
-                        bool input;
-                        if(line >> input) {
-                            makeboxs = input;
-                        }
-                        break;
-                    }
-                    if(word == "mcaps") {
-                        bool input;
-                        if(line >> input) {
-                            autoMakeWallcaps = input;
-                        }
                         break;
                     }
                     if(word == "my") {
@@ -1905,6 +2324,23 @@ void write_map(entity* mapent) {
                     }
                 }
                 
+                //procedurally add enemies to the map with associated cost.
+                //can be extended (and I want to) to spawn enemies continuously (from spawners?) to make it feel real
+                if(word == "enemy") {
+                    string name;
+                    //make the entity to get the cost
+                    line >> name;
+                    if(name != "") {
+                        entity* a = new entity(renderer, name);
+                        int cost = a->cost;
+                        delete a;
+                        enemiesMap[name] = cost;
+                    }
+                    break;
+                }
+                
+                
+
                 if(word == "adj" || word == "adjust") {
                     //adjust
                     line >> word;
@@ -1945,8 +2381,13 @@ void write_map(entity* mapent) {
                 }
                 if(word == "reset"  || word == "rs") {
                     line >> word;
+                    if(word == "enemies") {
+                        enemiesMap.clear();
+                        break;
+                    }
+
                     if(word == "texturedirectory" || word == "td" || word == "theme") {
-                        textureDirectory = "";
+                        textureDirectory = "mapeditor";
                         break;
                     }
                     if(word == "grid") {
@@ -2813,6 +3254,33 @@ public:
         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/hideui") {
             //this->hideTalkingUI();
             
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
+        }
+
+        //agro/unagro enemy
+        // /agro oilman 1
+        // /agro wubba 0
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/agro") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 6);
+            D(s);
+			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            D(s);
+            string agrostatestr = "0";
+            agrostatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            D(name);
+            D(agrostatestr);
+            float agrostate = stof(agrostatestr);
+            
+            
+            entity* hopeful = searchEntities(name);
+			if(hopeful != nullptr) {
+                hopeful->agrod = agrostate;
+            }
+
+
             talker->dialogue_index++;
             this->continueDialogue();
             return;
