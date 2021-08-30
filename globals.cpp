@@ -113,6 +113,9 @@ vector<projectile*> g_projectiles;
 
 vector<weapon*> g_weapons;
 
+map<string, int> enemiesMap; //stores (file,cost) for enemies to be spawned procedurally in the map
+int g_budget = 0; //how many points this map can spend on enemies;
+
 bool boxsenabled = true; //affects both map editor and full game. Dont edit here
 
 bool onionmode = 0; //hide custom graphics
@@ -120,8 +123,6 @@ bool freecamera = 0;
 bool devMode = 0;
 bool showDevMessages = 1;
 bool showErrorMessages = 1;
-
-bool integerscaling = 1; //should always be 1, was used to acheive perfect scales at the cot of sprite jittering
 
 //quick debug info
 #define D(a) if(devMode && showDevMessages) {std::cout << #a << ": " << (a) << endl;}
@@ -151,10 +152,10 @@ float XtoZ = 0.496; // 4/2.31, arctan (4/ 3.21) = 60 deg
 float XtoY = 0.866;
 float g_ratio = 1.618;
 bool transition = 0;
-int g_walldarkness = 75; //65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
+int g_walldarkness = 55; //65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
 int g_platformResolution = 11; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
 
-int g_TiltResolution = 2; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
+int g_TiltResolution = 1; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
 bool g_protagHasBeenDrawnThisFrame = 0;
 //english
 string g_font = "fonts/ShortStack-Regular.ttf";
