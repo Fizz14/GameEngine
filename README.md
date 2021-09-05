@@ -1,10 +1,12 @@
-![demo1](https://user-images.githubusercontent.com/74583686/132134718-c85cc70c-3844-4f9f-9d4b-9a1310ff92c4.png)
-![demo2](https://user-images.githubusercontent.com/74583686/132134918-490ed6be-9cc4-4616-a9e4-f266af0922f2.png)
-
 # AdventureGameEngine
 A WIP engine written in c++ to quickly develop top-down adventure games, with platforming, fighting, and puzzle elements.
 
-The engine is 3d, meaning that the player can move in 3 dimensions to navigate a map or dodge bullets, but the rendering isn't, so no models, just sprites in 3d space.
+![demo1](https://user-images.githubusercontent.com/74583686/132134718-c85cc70c-3844-4f9f-9d4b-9a1310ff92c4.png)
+![demo2](https://user-images.githubusercontent.com/74583686/132134918-490ed6be-9cc4-4616-a9e4-f266af0922f2.png)
+![demo3](https://user-images.githubusercontent.com/74583686/132135089-804e84e4-64bf-40ad-96dd-efffe1ac00de.png)
+![demo4](https://user-images.githubusercontent.com/74583686/132135462-55b34f87-039b-45d0-8f85-717f1a008576.gif)
+
+
 
 Features:
   - Quick and easy block-based map-editor
