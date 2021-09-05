@@ -18,9 +18,12 @@ using namespace std;
 //   return a->y+ a->z  + a->sortingOffset < b->y +b->z + b->sortingOffset;
 // }
 
+// int compare_ent (actor* a, actor* b) {
+//   	return a->getOriginY() + a->z < b->getOriginY() +b->z;
+// }
 
 int compare_ent (actor* a, actor* b) {
-  	return a->getOriginY() + a->z < b->getOriginY() +b->z;
+  	return a->y + a->z + a->sortingOffset < b->y + b->z + b->sortingOffset;
 }
 
 void sort_by_y(vector<actor*> &g_entities) {
@@ -35,6 +38,9 @@ int main(int argc, char ** argv) {
 	//load first arg into variable devmode
 	if(argc > 1) {
 		devMode = (argv[1][0] == '1');
+	}
+	if(argc > 2) {
+		onionmode = (argv[2][0] == '1');
 	}
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -56,11 +62,14 @@ int main(int argc, char ** argv) {
 
 	entity* fomm;
 	if(devMode) {
-		fomm = new entity(renderer, "fommconstruction"); 
+		//fomm = new entity(renderer, "fommconstruction"); 
+		fomm = new entity(renderer, "generic"); 
 	} else {
-		fomm = new entity(renderer, "fomm"); 
+		fomm = new entity(renderer, "generic"); 
 	}
 	
+	
+
 	fomm->inParty = 1;
 	party.push_back(fomm);
 	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
@@ -73,7 +82,7 @@ int main(int argc, char ** argv) {
 	
 
 	//for transition
-	SDL_Surface* transitionSurface = IMG_Load("tiles/engine/transition.png");
+	SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.png");
 
 	int transitionImageWidth = transitionSurface->w;
 	int transitionImageHeight = transitionSurface->h;
@@ -94,7 +103,7 @@ int main(int argc, char ** argv) {
 		//done once, because textboxes aren't cleared during clear_map()
 		nodeInfoText = new textbox(renderer, "", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
 		config = "edit";
-		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("tiles/engine/walker.png"));
+		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("textures/engine/walker.png"));
 	}
 	//set bindings from file
 	ifstream bindfile;
@@ -103,7 +112,7 @@ int main(int argc, char ** argv) {
 	for (int i = 0; i < 13; i++) {
 		getline(bindfile, line);
 		bindings[i] = SDL_GetScancodeFromName(line.c_str());
-		D(bindings[i]);
+		//D(bindings[i]);
 	}
 	//set vsync and g_fullscreen from config
 	string valuestr; int value;
@@ -148,6 +157,7 @@ int main(int argc, char ** argv) {
 		g_triangles.push_back(v);
 	}
 
+	srand(time(NULL));
 	if(devMode) {
 		//empty map or default map for map editing, perhaps a tutorial even
 		load_map(renderer, "maps/editordefault/editordefault.map","a");
@@ -157,29 +167,23 @@ int main(int argc, char ** argv) {
 	} else {
 		//load the titlescreen
 		load_map(renderer, "maps/g/g.map", "a");
-		srand(time(NULL));
+		//srand(time(NULL));
 	}
 
-	//why do I do this? It shouldnt matter, right?
-	//well, the camera actually has some lag when the player launches the game
-	//if it doesnt, there's some weird jostle the first time we try to use camera lag
-	//during a cutscene
-	//this basically means lag is set but inconsequential	
-	
-	
+	ui* inventoryMarker = new ui(renderer, "textures/ui/non_selector.png", 0, 0, 0.15, 0.15, 2);
+	inventoryMarker->show = 0;
+	inventoryMarker->persistent = 1;
+
+	textbox* inventoryText = new textbox(renderer, "1", 40, WIN_WIDTH * 0.8, 0, WIN_WIDTH * 0.2);
+	inventoryText->show = 0;
+	inventoryText->rightalign = 1;
 
 	bool storedJump = 0; //buffer the input from a jump if the player is off the ground, quake-style
 	
 	//software lifecycle text
-	new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
-
-	//temporary for debugging stutter
-	//g_camera.update_movement(elapsed, (g_focus->getOriginX() - (g_camera.width/(2 * g_camera.zoom))), ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom))) );
-
+	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
+		
 	while (!quit) {
-
-		D(g_weapons.size());
-
 		//some event handling
 		while(SDL_PollEvent(&event) && devMode) {
 			switch(event.type) {
@@ -187,6 +191,7 @@ int main(int argc, char ** argv) {
 					switch( event.key.keysym.sym ){
                     	case SDLK_TAB:
 							g_holdingCTRL = 1;
+							//protag->getItem(a, 1);
 							break;
 					}
 					break;
@@ -255,13 +260,19 @@ int main(int argc, char ** argv) {
 
 		//cooldowns
 		halfsecondtimer+=elapsed;
-		attack_cooldown -= elapsed / 1000;
+		use_cooldown -= elapsed / 1000;
 		musicFadeTimer += elapsed;
 		musicUpdateTimer += elapsed;
 
+		
+		if(inPauseMenu) {
+			//if we're paused, freeze gametime
+			elapsed = 0;
+		}
+
 		//INPUT
 		getInput(elapsed);
-		
+
 		//spring
 		if(input[8] && !oldinput[8] && protag->grounded && protag_can_move || input[8] && storedJump && protag->grounded && protag_can_move) {
 			protag->zaccel = 350;
@@ -282,7 +293,7 @@ int main(int argc, char ** argv) {
 		
 		
 		//update weapons
-		for(auto n : g_weapons) {
+		for(auto n : g_entities) {
 			n->cooldown -= elapsed;
 		}
 
@@ -305,7 +316,7 @@ int main(int argc, char ** argv) {
 			entity* checkHim = searchEntities(g_triggers[i]->targetEntity);
 			if(checkHim == nullptr) {continue;}
 			rect movedbounds = rect(checkHim->x, checkHim->y - checkHim->bounds.height, checkHim->bounds.width, checkHim->bounds.height);
-			if(RectOverlap(movedbounds, trigger)) {
+			if(RectOverlap(movedbounds, trigger) && (checkHim->z >= g_triggers[i]->z && checkHim->z <= g_triggers[i]->z + g_triggers[i]->zeight)  ) {
 				adventureUIManager->blip = g_ui_voice; 
 				adventureUIManager->sayings = &g_triggers[i]->script;
 				adventureUIManager->talker = checkHim;
@@ -338,8 +349,7 @@ int main(int argc, char ** argv) {
 		//detect change in window
 		if(old_WIN_WIDTH != WIN_WIDTH) {
 			//user scaled window
-			
-			scalex *= WIN_WIDTH / old_WIN_WIDTH;
+			scalex = ((float)WIN_WIDTH / old_WIN_WIDTH);
 			if(scalex < min_scale) {
 				scalex = min_scale;
 			}
@@ -351,7 +361,8 @@ int main(int argc, char ** argv) {
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 		}
 		
-		old_WIN_WIDTH = WIN_WIDTH;
+		//moved this line to the start of the program, since the zoom could get screwed up
+		//old_WIN_WIDTH = WIN_WIDTH;
 
 		WIN_WIDTH /= scalex;
 		WIN_HEIGHT /= scaley;
@@ -452,7 +463,7 @@ int main(int argc, char ** argv) {
 			}
 
 			for (int i = 0; i < g_waypoints.size(); i++) {
-				SDL_Rect obj = {(g_waypoints[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_waypoints[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+				SDL_Rect obj = {(g_waypoints[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
 				SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
 				nodeInfoText->x = obj.x;
 				nodeInfoText->y = obj.y - 20;
@@ -462,8 +473,11 @@ int main(int argc, char ** argv) {
 
 			//doors
 			for (int i = 0; i < g_doors.size(); i++) {
-				SDL_Rect obj = {(g_doors[i]->x -g_camera.x)* g_camera.zoom , ((g_doors[i]->y - g_camera.y) * g_camera.zoom), (g_doors[i]->width * g_camera.zoom), (g_doors[i]->height * g_camera.zoom)};
+				SDL_Rect obj = {(g_doors[i]->x -g_camera.x)* g_camera.zoom , ((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom), (g_doors[i]->width * g_camera.zoom), (g_doors[i]->height * g_camera.zoom)};
 				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
+				//the wall
+				SDL_Rect obj2 = {(g_doors[i]->x -g_camera.x)* g_camera.zoom, ((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom), (g_doors[i]->width * g_camera.zoom), ( (g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom)};
+				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
 				nodeInfoText->x = obj.x + 25;
 				nodeInfoText->y = obj.y + 25;
 				nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, 15, 15);
@@ -471,8 +485,12 @@ int main(int argc, char ** argv) {
 			}
 
 			for (int i = 0; i < g_triggers.size(); i++) {
-				SDL_Rect obj = {(g_triggers[i]->x -g_camera.x)* g_camera.zoom , ((g_triggers[i]->y - g_camera.y) * g_camera.zoom), (g_triggers[i]->width * g_camera.zoom), (g_triggers[i]->height * g_camera.zoom)};
+				SDL_Rect obj = {(g_triggers[i]->x -g_camera.x)* g_camera.zoom , ((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom), (g_triggers[i]->width * g_camera.zoom), (g_triggers[i]->height * g_camera.zoom)};
 				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
+				//the wall
+				SDL_Rect obj2 = {(g_triggers[i]->x -g_camera.x)* g_camera.zoom, ((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom), (g_triggers[i]->width * g_camera.zoom), ( (g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom)};
+				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
+
 				nodeInfoText->x = obj.x + 25;
 				nodeInfoText->y = obj.y + 25;
 				nodeInfoText->updateText(g_triggers[i]->binding, 15, 15);
@@ -503,6 +521,72 @@ int main(int argc, char ** argv) {
 		for(long long unsigned int i=0; i < g_textboxes.size(); i++){
 			g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
 		}	
+
+		//draw pause screen
+		if(inPauseMenu) {
+			
+			//iterate thru inventory and draw items on screen
+			float defaultX = WIN_WIDTH * 0.05;
+			float defaultY = WIN_WIDTH * 0.05;
+			float x = defaultX;
+			float y = defaultY;
+			float maxX = WIN_WIDTH * 0.9;
+			float maxY = WIN_HEIGHT * 0.60;
+			float itemWidth = WIN_WIDTH * 0.07;
+			float padding = WIN_WIDTH * 0.01;
+
+	
+			int i = 0;
+			for(auto it =  protag->inventory.rbegin(); it != protag->inventory.rend(); ++it) {
+
+				if(i < itemsPerRow * inventoryScroll) {
+					//this item won't be rendered
+					i++;
+					continue;
+				}
+
+				
+				
+				SDL_Rect drect = {x, y, itemWidth, itemWidth};
+				SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
+
+				//draw number
+				if(it->second != 1) {
+					inventoryText->show = 1;
+					inventoryText->updateText( to_string(it->second), 35, 100);
+					inventoryText->boxX = (x + itemWidth ) / WIN_WIDTH;
+					inventoryText->boxY = (y + itemWidth - inventoryText->boxHeight/2 ) / WIN_HEIGHT;
+					inventoryText->worldspace = 1;
+					inventoryText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+				}
+
+				if(i == inventorySelection) {
+					//this item should have the marker
+					inventoryMarker->show = 1;
+					inventoryMarker->x = x / WIN_WIDTH;
+					inventoryMarker->y = y / WIN_HEIGHT;
+					inventoryMarker->width = itemWidth / WIN_WIDTH;
+					inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH/(float)WIN_HEIGHT);
+					inventoryMarker->render(renderer, g_camera);
+				}
+
+				x += itemWidth + padding;
+				if(x > maxX) {
+					x = defaultX;
+					y += itemWidth + padding;
+					if(y > maxY) {
+						//we filled up the entire inventory, so lets leave
+						break;
+					}
+				}
+				i++;
+			}
+			g_itemsInInventory = protag->inventory.size();
+		} else {
+			inventoryMarker->show = 0;
+			inventoryText->show = 0;
+		}
+
 		// ENTITY MOVEMENT
 		//dont update movement while transitioning
 		for(long long unsigned int i=0; i < g_entities.size(); i++){
@@ -763,58 +847,72 @@ int interact(float elapsed, entity* protag) {
 			SDL_Rect hisrect = {g_entities[i]->x+ g_entities[i]->bounds.x, g_entities[i]->y + g_entities[i]->bounds.y, g_entities[i]->bounds.width, g_entities[i]->bounds.height};				
 			hisrect = transformRect(hisrect);
 			
-			if(g_entities[i]->talks && RectOverlap(hisrect, srect)) {
-				g_entities[i]->animate = 1;
-				//make ent look at player
-				
-				int xdiff = (g_entities[i]->getOriginX()) - (protag->getOriginX());
-				int ydiff = (g_entities[i]->getOriginY()) - (protag->getOriginY());
-				int axdiff = ( abs(xdiff) - abs(ydiff) );
-				if(axdiff > 0) {
-					//xaxis is more important
-					g_entities[i]->animation = 2;
-					if(xdiff > 0) {
-						g_entities[i]->flip = SDL_FLIP_NONE;
-					} else {
-						g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
-					}
-				} else {
-					//yaxis is more important
-					g_entities[i]->flip = SDL_FLIP_NONE;
-					if(ydiff > 0) {
-						g_entities[i]->animation = 0;
-					} else {
-						g_entities[i]->animation = 4;
-					}
+			if(g_entities[i] != protag && RectOverlap(hisrect, srect)) {
+				if(g_entities[i]->isWorlditem) {
+					//add item to inventory
+					indexItem* a = new indexItem(g_entities[i]->name, 0);
+					protag->getItem(a, 1);
+					delete g_entities[i];
+					break;
 				}
-				if(abs(axdiff) < 45) {
-					if(xdiff > 0) {
+				if(g_entities[i]->talks) {
+					g_entities[i]->animate = 1;
+					//make ent look at player
+					
+					int xdiff = (g_entities[i]->getOriginX()) - (protag->getOriginX());
+					int ydiff = (g_entities[i]->getOriginY()) - (protag->getOriginY());
+					int axdiff = ( abs(xdiff) - abs(ydiff) );
+					if(axdiff > 0) {
+						//xaxis is more important
+						g_entities[i]->animation = 2;
+						if(xdiff > 0) {
+							g_entities[i]->flip = SDL_FLIP_NONE;
+						} else {
+							g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
+						}
+					} else {
+						//yaxis is more important
 						g_entities[i]->flip = SDL_FLIP_NONE;
-					} else {
-						g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
+						if(ydiff > 0) {
+							g_entities[i]->animation = 0;
+						} else {
+							g_entities[i]->animation = 4;
+						}
 					}
-					if(ydiff > 0) {
-						g_entities[i]->animation = 1;
-					} else {
-						g_entities[i]->animation = 3;
+					if(abs(axdiff) < 45) {
+						if(xdiff > 0) {
+							g_entities[i]->flip = SDL_FLIP_NONE;
+						} else {
+							g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
+						}
+						if(ydiff > 0) {
+							g_entities[i]->animation = 1;
+						} else {
+							g_entities[i]->animation = 3;
+						}
 					}
+					
+					adventureUIManager->blip = g_entities[i]->voice;
+					adventureUIManager->sayings = &g_entities[i]->sayings;
+					adventureUIManager->talker = g_entities[i];
+					adventureUIManager->talker->dialogue_index = -1;
+					adventureUIManager->continueDialogue();
+					//removing this in early july to fix problem moving after a script changes map
+					//may cause unexpected problems
+					//protag_is_talking = 1;
+					break;
 				}
-				
-				adventureUIManager->blip = g_entities[i]->voice;
-				adventureUIManager->sayings = &g_entities[i]->sayings;
-				adventureUIManager->talker = g_entities[i];
-				adventureUIManager->talker->dialogue_index = -1;
-				adventureUIManager->continueDialogue();
-				//removing this in early july to fix problem moving after a script changes map
-				//may cause unexpected problems
-				//protag_is_talking = 1;
-				break;
 			}
-			//no one to talk to, lets do an attack instead
-			if(attack_cooldown <= 0) {
-				//blenderblade attack
-				//M( "pow pow!");
-				//attack_cooldown = AdventureWeaponSet[0]->maxCooldown;
+			//no one to talk to, lets do x instead (heres where it goes)
+			if(use_cooldown <= 0) {
+				// if(inPauseMenu) {
+				// 	inPauseMenu = 0;
+				// 	adventureUIManager->hideInventoryUI();
+				// } else {
+				// 	inPauseMenu = 1;
+				// 	adventureUIManager->showInventoryUI();
+				// }
+				
 			}
 
 		}
@@ -848,45 +946,143 @@ void getInput(float &elapsed) {
 		protag->right = 0;
 		protag->up = 0;
 		protag->down = 0;
+
 		if(keystate[bindings[4]]) {
 			protag->shoot_up();
 		}
+
 		if(keystate[bindings[5]]) {
 			protag->shoot_down();
 		}
+
 		if(keystate[bindings[6]]) {
 			protag->shoot_left();
 		}
+
 		if(keystate[bindings[7]]) {
 			protag->shoot_right();
 		}
-		if(!(devMode && nudge != 0)) {
-			if(keystate[bindings[0]]) {
+		
+		if(keystate[bindings[0]]) {
+			if(inPauseMenu && SoldUIUp <= 0) {
+				//if(inventorySelection - itemsPerRow >= 0) {
+					inventorySelection-= itemsPerRow;
+					
+					
+				//}
+				SoldUIUp = (oldUIUp) ? 6 : 30;				
+			} else {
 				protag->move_up();
 			}
-			if(keystate[bindings[1]]) {
+			oldUIUp = 1;
+		} else {
+			oldUIUp = 0;
+			SoldUIUp = 0;
+		}
+		SoldUIUp--;
+		
+		if(keystate[bindings[1]]) {
+			if(inPauseMenu && SoldUIDown <= 0) {
+				//if(inventorySelection + itemsPerRow < g_itemsInInventory) {
+					
+
+					if( ceil((float)(inventorySelection+1) / (float)itemsPerRow) < (g_itemsInInventory / g_inventoryRows) ) {
+						inventorySelection += itemsPerRow;
+					}
+				//}
+				SoldUIDown = (oldUIDown) ? 6 : 30;
+			} else {
 				protag->move_down();
 			}
-			if(keystate[bindings[2]]) {
+			oldUIDown = 1;
+		} else {
+			oldUIDown = 0;
+			SoldUIDown = 0;
+		}
+		SoldUIDown--;
+		
+		if(keystate[bindings[2]]) {
+			if(inPauseMenu && SoldUILeft <= 0) {
+				if(inventorySelection > 0) {
+					if(inventorySelection % itemsPerRow != 0) {
+						inventorySelection--;
+					}
+				}
+				SoldUILeft = (oldUILeft) ? 6 : 30;
+			} else {
 				protag->move_left();
 			}
-			if(keystate[bindings[3]]) {
+			oldUILeft = 1;
+		} else {
+			oldUILeft = 0;
+			SoldUILeft = 0;
+		}
+		SoldUILeft--;
+		
+		
+		//constrain inventorySelection based on itemsInInventory
+		if(inventorySelection > g_itemsInInventory - 1) {
+			//M(g_itemsInInventory - 1);
+			inventorySelection = g_itemsInInventory - 1;
+		}
+
+		if(inventorySelection < 0) {
+			inventorySelection = 0;
+		}
+		
+		
+
+		if(keystate[bindings[3]]) {
+			if(inPauseMenu && SoldUIRight <= 0) {
+				if(inventorySelection <= g_itemsInInventory) {
+					//dont want this to wrap around
+					if(inventorySelection % itemsPerRow != itemsPerRow -1 ) { 
+						inventorySelection++;
+					}
+				}
+				SoldUIRight = (oldUIRight) ? 6 : 30;
+			} else {
 				protag->move_right();
 			}
+			oldUIRight = 1;
 		} else {
-			//nudge an entity
-			if(keystate[bindings[0]]) {
-				nudge->y -= 1;
+			oldUIRight = 0;
+			SoldUIRight = 0;
+		}
+		SoldUIRight--;
+
+		
+		// //fix inventory input
+		// if(inventorySelection < 0) {
+		// 	inventorySelection = 0;
+		// }
+
+		//check if the stuff is onscreen
+		if(inventorySelection >= (g_inventoryRows * itemsPerRow) + (inventoryScroll * itemsPerRow) ) {
+			inventoryScroll++;
+		} else {
+			if(inventorySelection < (inventoryScroll * itemsPerRow) ) {
+				inventoryScroll--;
 			}
-			if(keystate[bindings[1]]) {
-				nudge->y += 1;
+		}
+
+		if(keystate[bindings[12]] && !old_pause_value && protag_can_move) {
+			//pause menu 
+			if(inPauseMenu) {
+				inPauseMenu = 0;
+				adventureUIManager->hideInventoryUI();
+			
+			} else {
+				inPauseMenu = 1;
+				inventorySelection = 0;
+				adventureUIManager->showInventoryUI();
 			}
-			if(keystate[bindings[2]]) {
-				nudge->x -= 1;
-			}
-			if(keystate[bindings[3]]) {
-				nudge->x += 1;
-			}
+		}
+		
+		if(keystate[bindings[12]]) {
+			old_pause_value = 1;
+		} else {
+			old_pause_value = 0;
 		}
 		
 	} else {
@@ -924,7 +1120,7 @@ void getInput(float &elapsed) {
 		input[9] = 0;
 	}
 
-	if(keystate[bindings[11]] && !old_z_value) {
+	if(keystate[bindings[11]] && !old_z_value && !inPauseMenu) {
 		if(protag_is_talking == 1) {
 			if(!adventureUIManager->typing) {
 				adventureUIManager->continueDialogue();
@@ -932,7 +1128,7 @@ void getInput(float &elapsed) {
 		}	
 	}
 	dialogue_cooldown -= elapsed;
-	if(keystate[bindings[11]]) {
+	if(keystate[bindings[11]] && !inPauseMenu) {
 		
 		if(protag_is_talking == 1) {
 			//advance or speedup diaglogue
@@ -965,20 +1161,20 @@ void getInput(float &elapsed) {
 	//b = set box left corner
 	//n = set box right corner
 	if(keystate[SDL_SCANCODE_LSHIFT] && devMode) {
-		protag->xmaxspeed = 140;
-		protag->ymaxspeed = 140;
+		protag->xmaxspeed = 145;
+		protag->ymaxspeed = 145;
 	}
 	if(keystate[SDL_SCANCODE_LCTRL] && devMode) {
 		protag->xmaxspeed = 20;
 		protag->ymaxspeed = 20;
 	}
 	if(keystate[SDL_SCANCODE_CAPSLOCK] && devMode) {
-		protag->xmaxspeed = 250;
-		protag->ymaxspeed = 250;
+		protag->xmaxspeed = 750;
+		protag->ymaxspeed = 750;
 	}
 	
 	if(keystate[SDL_SCANCODE_SLASH] && devMode) {
-		devinput[0] = 1;
+		
 	}
 	if(keystate[SDL_SCANCODE_X] && devMode) {
 		devinput[1] = 1;
@@ -990,7 +1186,8 @@ void getInput(float &elapsed) {
 		devinput[3] = 1;
 	}
 	if(keystate[SDL_SCANCODE_B] && devMode) {
-		devinput[4] = 1;
+		//this is make-trigger
+		devinput[0] = 1;
 	}
 	if(keystate[SDL_SCANCODE_N] && devMode) {
 		devinput[5] = 1;
@@ -1034,7 +1231,13 @@ void getInput(float &elapsed) {
 	}
 
 	if(keystate[SDL_SCANCODE_ESCAPE]) {
-		quit = 1;
+		if(devMode) {
+			quit = 1;
+		} else {
+			if(inPauseMenu) {
+				quit = 1;
+			}
+		}
 	}
 	if(keystate[SDL_SCANCODE_Q] && devMode) {
 		

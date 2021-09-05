@@ -69,6 +69,10 @@ class trigger;
 
 class listener;
 
+class worldItem;
+
+class indexItem;
+
 vector<cshadow*> g_shadows;
 
 vector<actor*> g_actors;
@@ -113,12 +117,17 @@ vector<projectile*> g_projectiles;
 
 vector<weapon*> g_weapons;
 
+vector<worldItem*> g_worldItems;
+
+vector<indexItem*> g_indexItems; 
+
 map<string, int> enemiesMap; //stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0; //how many points this map can spend on enemies;
 
 bool boxsenabled = true; //affects both map editor and full game. Dont edit here
 
 bool onionmode = 0; //hide custom graphics
+bool genericmode = 1;
 bool freecamera = 0;
 bool devMode = 0;
 bool showDevMessages = 1;
@@ -134,12 +143,7 @@ void M(T msg, bool disableNewline = 0) { if(!devMode || !showDevMessages) {retur
 template<typename T>
 void E(T msg, bool disableNewline = 0) { if(!devMode || !showErrorMessages) {return;} cout << "ERROR: " << msg; if(!disableNewline) { cout << endl; } }
 
-//for camera/window zoom
-float scalex = 0.4;
-float scaley = 0.4;
-float min_scale = 0.1;
-float max_scale = 2;
-float old_WIN_WIDTH = 640; //used for detecting change in window width to recalculate scalex and y
+
 
 //for visuals
 float p_ratio = 1.151;
@@ -153,12 +157,15 @@ float XtoY = 0.866;
 float g_ratio = 1.618;
 bool transition = 0;
 int g_walldarkness = 55; //65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
-int g_platformResolution = 11; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
+int g_platformResolution = 5; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
 
 int g_TiltResolution = 1; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
 bool g_protagHasBeenDrawnThisFrame = 0;
+//generic
+string g_font = "fonts/OpenSans-Regular.ttf";
+
 //english
-string g_font = "fonts/ShortStack-Regular.ttf";
+//string g_font = "fonts/ShortStack-Regular.ttf";
 //polish
 //string g_font = "fonts/Itim-Regular.ttf";
 //japanese
@@ -169,8 +176,26 @@ float g_fontsize = 0.031;
 float g_transitionSpeed = 9; //3
 
 //inventory
-float attack_cooldown = 0;
+float use_cooldown = 0; //misleading, its not for attacks at all
 vector<weapon*> AdventureWeaponSet;
+int inPauseMenu = 0;
+bool old_pause_value = 1; //wait until the user releases the button to not count extra presses
+int inventoryScroll = 0; //how many rows in the inventory we've scrolled thru
+int inventorySelection = 1; //which item in the inventory is selected
+int itemsPerRow = ceil( ( 0.9 - 0.05 ) / ( 0.07 + 0.01) );
+int g_inventoryColumns = ceil( (0.74 - 0.05) / 0.07);
+int g_itemsInInventory = 0;
+int g_inventoryRows = 4;
+//for not counting extra presses in UI for shooting and moving axisen
+int oldUIUp = 1;
+int oldUIDown = 1;
+int oldUILeft = 1;
+int oldUIRight = 1;
+int SoldUIUp = 1;
+int SoldUIDown = 1;
+int SoldUILeft = 1;
+int SoldUIRight = 1;
+
 
 //draw player thrue wall if he is covered
 bool drawProtagGlimmer = 0;
@@ -251,18 +276,25 @@ public:
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
 int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
+int old_WIN_WIDTH = WIN_WIDTH; //used for detecting change in window width to recalculate scalex and y
 SDL_Window * window;
 SDL_DisplayMode DM;
 bool g_fullscreen = false;
 camera g_camera(0,0);
 entity* protag;
 
+//for camera/window zoom
+float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH);
+float scaley = scalex;
+float min_scale = 0.1;
+float max_scale = 2;
+
 entity* g_focus;
 vector<entity*> party;
 float g_max_framerate = 120;
 float g_min_frametime = 1/g_max_framerate * 1000;
 SDL_Event event;
-float ticks, lastticks, elapsed = 5, halfsecondtimer;
+float ticks, lastticks, elapsed = 0, halfsecondtimer;
 float camx = 0;
 float camy = 0;
 SDL_Renderer * renderer;
@@ -298,7 +330,10 @@ float textWait = 50; //seconds to wait between typing characters of text
 float text_speed_up = 1; //speed up text if player holds button. set to 1 if the player isn't pressing it, or 1.5 if she is
 float curTextWait = 0;
 bool old_z_value = 1; //the last value of the z key. used for advancing dialogue, i.e. z key was down and is now up or was up and is now down if old_z_value != SDL[SDL_SCANCODE_Z]
+
 float dialogue_cooldown = 0; //seconds until he can have dialogue again.
+entity* g_talker = 0; //drives scripts, must be referenced before deleting an entity to avoid crashes
+bool g_forceEndDialogue = 0; //used to end dialogue when the talking entity has been destroyed.
 
 //debuging
 SDL_Texture* nodeDebug;
@@ -545,6 +580,8 @@ int yesNoPrompt(string msg) {
 	return buttonid;
 }
 
+//TUDO:
+//set minimum window width and height to prevent crashes wenn the window is very small
 
 
 
