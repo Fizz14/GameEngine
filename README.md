@@ -1,4 +1,4 @@
-# AdventureGameEngine
+# GameEngine
 A WIP engine written in c++ to quickly develop top-down adventure games, with platforming, fighting, and puzzle elements.
 
 ![demo1](https://user-images.githubusercontent.com/74583686/132134718-c85cc70c-3844-4f9f-9d4b-9a1310ff92c4.png)
