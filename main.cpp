@@ -34,13 +34,12 @@ void getInput(float& elapsed);
  
 
 int main(int argc, char ** argv) {
-
 	//load first arg into variable devmode
 	if(argc > 1) {
 		devMode = (argv[1][0] == '1');
 	}
 	if(argc > 2) {
-		onionmode = (argv[2][0] == '1');
+		genericmode = (argv[2][0] == '1');
 	}
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -60,16 +59,22 @@ int main(int argc, char ** argv) {
 	SDL_RenderSetScale(renderer, scalex, scaley);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
+	//set global shadow-texture
+
+	SDL_Surface* image = IMG_Load("textures/sprites/shadow.png");
+	g_shadowTexture = SDL_CreateTextureFromSurface(renderer, image);
+	SDL_FreeSurface(image);
+
+
 	entity* fomm;
 	if(devMode) {
 		//fomm = new entity(renderer, "fommconstruction"); 
-		fomm = new entity(renderer, "generic"); 
+		fomm = new entity(renderer, "fomm"); 
 	} else {
-		fomm = new entity(renderer, "generic"); 
+		fomm = new entity(renderer, "fomm"); 
 	}
 	
 	
-
 	fomm->inParty = 1;
 	party.push_back(fomm);
 	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
@@ -77,8 +82,7 @@ int main(int argc, char ** argv) {
 	protag = fomm;
 	g_focus = protag;
 	
-	//load save	
-	loadSave(g_saveName);
+	g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
 	
 
 	//for transition
@@ -95,6 +99,14 @@ int main(int argc, char ** argv) {
 
 	float transitionDelta = transitionImageHeight;
 
+	//font
+	//g_font = (genericmode) ? "fonts/OpenSans-Regular.ttf" : "fonts/ShortStack-Regular.ttf";
+	//g_font = "fonts/SecularOne-Regular.ttf";
+	//g_font = "fonts/Itim-Regular.ttf";
+	//g_font = "fonts/SawarabiMincho-Regular.ttf";
+	//g_font = "fonts/Recursive_Monospace-SemiBold.ttf";
+	g_font = "fonts/Monda-Bold.ttf";
+
 	//setup UI
 	adventureUIManager = new adventureUI(renderer);
 	
@@ -104,6 +116,7 @@ int main(int argc, char ** argv) {
 		nodeInfoText = new textbox(renderer, "", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
 		config = "edit";
 		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("textures/engine/walker.png"));
+		
 	}
 	//set bindings from file
 	ifstream bindfile;
@@ -159,14 +172,18 @@ int main(int argc, char ** argv) {
 
 	srand(time(NULL));
 	if(devMode) {
+		//!!!
+		loadSave();
 		//empty map or default map for map editing, perhaps a tutorial even
 		load_map(renderer, "maps/editordefault/editordefault.map","a");
 		g_map = "g";
 		// protag->x = 100000;
 		// protag->y = 100000;
+		
+		
 	} else {
 		//load the titlescreen
-		load_map(renderer, "maps/g/g.map", "a");
+		load_map(renderer, "maps/" + g_map + "/" + g_map + ".map", "a");
 		//srand(time(NULL));
 	}
 
@@ -176,16 +193,15 @@ int main(int argc, char ** argv) {
 
 	textbox* inventoryText = new textbox(renderer, "1", 40, WIN_WIDTH * 0.8, 0, WIN_WIDTH * 0.2);
 	inventoryText->show = 0;
-	inventoryText->rightalign = 1;
+	inventoryText->align = 1;
 
 	bool storedJump = 0; //buffer the input from a jump if the player is off the ground, quake-style
 	
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
-		
 	while (!quit) {
 		//some event handling
-		while(SDL_PollEvent(&event) && devMode) {
+		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
 				case SDL_KEYDOWN:
 					switch( event.key.keysym.sym ){
@@ -275,11 +291,76 @@ int main(int argc, char ** argv) {
 
 		//spring
 		if(input[8] && !oldinput[8] && protag->grounded && protag_can_move || input[8] && storedJump && protag->grounded && protag_can_move) {
-			protag->zaccel = 350;
+			protag->zaccel = 180;
 			storedJump = 0;
 		} else { 
 			if(input[8] && !oldinput[8] && !protag->grounded) {
 				storedJump = 1;
+			}
+		}
+		//if we die don't worry about not being able to switch because we can't shoot yet
+		if(protag->hp <= 0) {protag->cooldown = 0;}
+		//cycle right if the current character dies
+		if( (input[9] && !oldinput[9]) || protag->hp <= 0) {
+			//keep switching if we switch to a dead partymember
+			int i = 0;
+			
+			if(party.size() > 1 && protag->cooldown <= 0) {
+				do {
+					M("Cycle party right");
+					std::rotate(party.begin(),party.begin()+1,party.end());
+					protag->tangible = 0;
+					party[0]->tangible = 1;
+					party[0]->x = protag->getOriginX() - party[0]->bounds.x - party[0]->bounds.width/2;
+					party[0]->y = protag->getOriginY() - party[0]->bounds.y - party[0]->bounds.height/2;
+					party[0]->z = protag->z;
+					party[0]->xvel = protag->xvel;
+					party[0]->yvel = protag->yvel;
+					party[0]->zvel = protag->zvel;
+					
+					party[0]->animation = protag->animation;
+					party[0]->flip = protag->flip;
+					protag->zvel = 0;
+					protag->xvel = 0;
+					protag->yvel = 0;
+					protag=party[0];
+					protag->shadow->x = protag->x + protag->shadow->xoffset;
+					protag->shadow->y = protag->y + protag->shadow->yoffset;
+					g_focus = protag;
+					//prevent infinite loop
+					i++;
+					if(i > 600) {M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)"); break; quit = 1;}
+				}while(protag->hp <= 0);
+			}
+		}
+		//party swap
+		if(input[10] && !oldinput[10]) {
+			if(party.size() > 1 && protag->cooldown <= 0) {
+				int i = 0;
+				do {
+					M("Cycle party left");
+					std::rotate(party.begin(),party.begin()+party.size()-1,party.end());
+					protag->tangible = 0;
+					party[0]->tangible = 1;
+					party[0]->x = protag->getOriginX() - party[0]->bounds.x - party[0]->bounds.width/2;
+					party[0]->y = protag->getOriginY() - party[0]->bounds.y - party[0]->bounds.height/2;
+					party[0]->z = protag->z;
+					party[0]->xvel = protag->xvel;
+					party[0]->yvel = protag->yvel;
+					party[0]->zvel = protag->zvel;
+					
+					party[0]->animation = protag->animation;
+					party[0]->flip = protag->flip;
+					protag->zvel = 0;
+					protag->xvel = 0;
+					protag->yvel = 0;
+					protag=party[0];
+					protag->shadow->x = protag->x + protag->shadow->xoffset;
+					protag->shadow->y = protag->y + protag->shadow->yoffset;
+					g_focus = protag;
+					i++;
+					if(i > 600) {M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)"); break; quit = 1;}
+				} while(protag->hp <= 0);
 			}
 		}
 
@@ -292,7 +373,6 @@ int main(int argc, char ** argv) {
 
 		
 		
-		//update weapons
 		for(auto n : g_entities) {
 			n->cooldown -= elapsed;
 		}
@@ -308,6 +388,7 @@ int main(int argc, char ** argv) {
 				i--;
 			}
 		}
+
 
 		//triggers
 		for (int i = 0; i < g_triggers.size(); i++) {
@@ -416,17 +497,17 @@ int main(int argc, char ** argv) {
 			}
 		} 
 		//if drawProtagGlimmer was set to 1, lets draw the glimmer on top of everything
-		if(protagGlimmerA && protagGlimmerB && protagGlimmerC && protagGlimmerD && 0) {
-			SDL_SetTextureColorMod(protag->texture, 0,0,0);
-			SDL_SetTextureAlphaMod(protag->texture, 50);
-			//redraw player ontop of everything
-			protag->sortingOffset = 1000000;
-			protag->render(renderer, g_camera);
-		} else {
-			protag->sortingOffset = 0;
-			SDL_SetTextureColorMod(protag->texture, 255, 255, 255);
-			SDL_SetTextureAlphaMod(protag->texture, 255);
-		}
+		// if(protagGlimmerA && protagGlimmerB && protagGlimmerC && protagGlimmerD && 0) {
+		// 	SDL_SetTextureColorMod(protag->texture, 0,0,0);
+		// 	SDL_SetTextureAlphaMod(protag->texture, 50);
+		// 	//redraw player ontop of everything
+		// 	//protag->sortingOffset = 1000000;
+		// 	protag->render(renderer, g_camera);
+		// } else {
+		// 	//protag->sortingOffset = 0;
+		// 	SDL_SetTextureColorMod(protag->texture, 255, 255, 255);
+		// 	SDL_SetTextureAlphaMod(protag->texture, 255);
+		// }
 
 		
 		//map editing
@@ -515,6 +596,15 @@ int main(int argc, char ** argv) {
 		}
 		
 		//ui
+		if(!inPauseMenu && g_showHUD) {
+			adventureUIManager->healthText->updateText( to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), WIN_WIDTH * g_fontsize, 0.9 ); 
+			adventureUIManager->healthText->show = 1;
+			
+		} else {
+			adventureUIManager->healthText->show = 0;
+			
+		}
+		adventureUIManager->healthbox->show = g_showHUD;
 		for(long long unsigned int i=0; i < g_ui.size(); i++){
 			g_ui[i]->render(renderer, g_camera);
 		}	
@@ -537,7 +627,7 @@ int main(int argc, char ** argv) {
 
 	
 			int i = 0;
-			for(auto it =  protag->inventory.rbegin(); it != protag->inventory.rend(); ++it) {
+			for(auto it =  mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it) {
 
 				if(i < itemsPerRow * inventoryScroll) {
 					//this item won't be rendered
@@ -581,7 +671,7 @@ int main(int argc, char ** argv) {
 				}
 				i++;
 			}
-			g_itemsInInventory = protag->inventory.size();
+			g_itemsInInventory = mainProtag->inventory.size();
 		} else {
 			inventoryMarker->show = 0;
 			inventoryText->show = 0;
@@ -614,11 +704,19 @@ int main(int argc, char ** argv) {
 			}
 		}
 
+		//did the protag die?
+		if(protag->hp <= 0 && protag->essential) {
+			playSound(-1, g_deathsound, 0);
+			clear_map(g_camera);
+			SDL_Delay(5000);
+			load_map(renderer, "maps/sp-death/sp-death.map","a");
+			protag->hp = 0.1;
+			if(devMode) { init_map_writing(renderer);}
+		}
+
 		//worldsounds
 		for (int i = 0; i < g_worldsounds.size(); i++) {
 			g_worldsounds[i]->update(elapsed);
-			
-			
 		}
 		
 		//transition
@@ -728,6 +826,7 @@ int main(int argc, char ** argv) {
 	SDL_FreeSurface(transitionSurface);
 	SDL_DestroyTexture(transitionTexture);
 	SDL_DestroyTexture(background);
+	SDL_DestroyTexture(g_shadowTexture);
 	IMG_Quit();
 	Mix_CloseAudio();
 	TTF_Quit();
@@ -736,6 +835,7 @@ int main(int argc, char ** argv) {
 }
 
 int interact(float elapsed, entity* protag) {
+	M("interact()");
 	SDL_Rect srect;
 		switch(protag->animation) {
 			
@@ -749,12 +849,12 @@ int interact(float elapsed, entity* protag) {
 			srect.y -= 55;
 			
 			srect = transformRect(srect);
-			if(drawhitboxes) {
-				SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
-				SDL_RenderFillRect(renderer, &srect);
-				SDL_RenderPresent(renderer);	
-				SDL_Delay(500);
-			}
+			// if(drawhitboxes) {
+			// 	SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+			// 	SDL_RenderFillRect(renderer, &srect);
+			// 	SDL_RenderPresent(renderer);	
+			// 	SDL_Delay(500);
+			// }
 			break;
 		case 1:
 			srect.h = protag->bounds.height;
@@ -850,45 +950,61 @@ int interact(float elapsed, entity* protag) {
 			if(g_entities[i] != protag && RectOverlap(hisrect, srect)) {
 				if(g_entities[i]->isWorlditem) {
 					//add item to inventory
-					indexItem* a = new indexItem(g_entities[i]->name, 0);
+
+					//if the item exists, dont make a new one
+					indexItem* a = nullptr;
+					for(auto x : g_indexItems) {
+						if(g_entities[i]->name == x->name) {
+							a = x;
+						}
+					}
+					//no resource found, so lets just make one
+					if(a == nullptr) {
+						a = new indexItem(g_entities[i]->name, 0);
+					}
+					
 					protag->getItem(a, 1);
 					delete g_entities[i];
 					break;
 				}
-				if(g_entities[i]->talks) {
-					g_entities[i]->animate = 1;
-					//make ent look at player
-					
-					int xdiff = (g_entities[i]->getOriginX()) - (protag->getOriginX());
-					int ydiff = (g_entities[i]->getOriginY()) - (protag->getOriginY());
-					int axdiff = ( abs(xdiff) - abs(ydiff) );
-					if(axdiff > 0) {
-						//xaxis is more important
-						g_entities[i]->animation = 2;
-						if(xdiff > 0) {
-							g_entities[i]->flip = SDL_FLIP_NONE;
-						} else {
-							g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
-						}
-					} else {
-						//yaxis is more important
-						g_entities[i]->flip = SDL_FLIP_NONE;
-						if(ydiff > 0) {
-							g_entities[i]->animation = 0;
-						} else {
-							g_entities[i]->animation = 4;
-						}
+				if(g_entities[i]->talks && g_entities[i]->tangible) {
+					if(g_entities[i]->animlimit != 0) {
+						g_entities[i]->animate = 1;
 					}
-					if(abs(axdiff) < 45) {
-						if(xdiff > 0) {
+					//make ent look at player, if they have the frames
+					if(g_entities[i]->turnToFacePlayer && g_entities[i]->yframes >= 5) {
+						
+						int xdiff = (g_entities[i]->getOriginX()) - (protag->getOriginX());
+						int ydiff = (g_entities[i]->getOriginY()) - (protag->getOriginY());
+						int axdiff = ( abs(xdiff) - abs(ydiff) );
+						if(axdiff > 0) {
+							//xaxis is more important
+							g_entities[i]->animation = 2;
+							if(xdiff > 0) {
+								g_entities[i]->flip = SDL_FLIP_NONE;
+							} else {
+								g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
+							}
+						} else {
+							//yaxis is more important
 							g_entities[i]->flip = SDL_FLIP_NONE;
-						} else {
-							g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
+							if(ydiff > 0) {
+								g_entities[i]->animation = 0;
+							} else {
+								g_entities[i]->animation = 4;
+							}
 						}
-						if(ydiff > 0) {
-							g_entities[i]->animation = 1;
-						} else {
-							g_entities[i]->animation = 3;
+						if(abs(axdiff) < 45) {
+							if(xdiff > 0) {
+								g_entities[i]->flip = SDL_FLIP_NONE;
+							} else {
+								g_entities[i]->flip = SDL_FLIP_HORIZONTAL;
+							}
+							if(ydiff > 0) {
+								g_entities[i]->animation = 1;
+							} else {
+								g_entities[i]->animation = 3;
+							}
 						}
 					}
 					
@@ -896,6 +1012,7 @@ int interact(float elapsed, entity* protag) {
 					adventureUIManager->sayings = &g_entities[i]->sayings;
 					adventureUIManager->talker = g_entities[i];
 					adventureUIManager->talker->dialogue_index = -1;
+					g_forceEndDialogue = 0;
 					adventureUIManager->continueDialogue();
 					//removing this in early july to fix problem moving after a script changes map
 					//may cause unexpected problems
@@ -961,6 +1078,18 @@ void getInput(float &elapsed) {
 
 		if(keystate[bindings[7]]) {
 			protag->shoot_right();
+		}
+
+		if(keystate[bindings[9]]) {
+			input[9] = 1;	
+		} else {
+			input[9] = 0;
+		}
+
+		if(keystate[bindings[10]]) {
+			input[10] = 1;
+		} else {
+			input[10] = 0;
 		}
 		
 		if(keystate[bindings[0]]) {
@@ -1067,7 +1196,7 @@ void getInput(float &elapsed) {
 		}
 
 		if(keystate[bindings[12]] && !old_pause_value && protag_can_move) {
-			//pause menu 
+			//pause menu
 			if(inPauseMenu) {
 				inPauseMenu = 0;
 				adventureUIManager->hideInventoryUI();
@@ -1230,6 +1359,11 @@ void getInput(float &elapsed) {
 		devinput[20] = 1;
 	}
 
+	if(keystate[SDL_SCANCODE_PERIOD] && devMode) {
+		//make navnode box
+		devinput[21] = 1;
+	}
+
 	if(keystate[SDL_SCANCODE_ESCAPE]) {
 		if(devMode) {
 			quit = 1;
@@ -1239,7 +1373,7 @@ void getInput(float &elapsed) {
 			}
 		}
 	}
-	if(keystate[SDL_SCANCODE_Q] && devMode) {
+	if(keystate[SDL_SCANCODE_Q] && devMode && g_holdingCTRL) {
 		
 		scalex-= 0.001 * elapsed;
 		
@@ -1253,7 +1387,7 @@ void getInput(float &elapsed) {
 		SDL_RenderSetScale(renderer, scalex, scaley);
 	}
 	
-	if(keystate[SDL_SCANCODE_E] && devMode) {
+	if(keystate[SDL_SCANCODE_E] && devMode && g_holdingCTRL) {
 		scalex+= 0.001 * elapsed;
 		
 		if(scalex < min_scale) {

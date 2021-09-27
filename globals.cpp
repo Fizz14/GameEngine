@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <SDL2/SDL.h>        
 #include <SDL2/SDL_image.h>
@@ -49,6 +50,8 @@ class ui;
 
 class adventureUI;
 
+class attack;
+
 class weapon;
 
 class projectile;
@@ -72,6 +75,10 @@ class listener;
 class worldItem;
 
 class indexItem;
+
+class effectIndex;
+
+class particle;
 
 vector<cshadow*> g_shadows;
 
@@ -115,11 +122,15 @@ vector<listener*> g_listeners;
 
 vector<projectile*> g_projectiles;
 
+vector<attack*> g_attacks;
+
 vector<weapon*> g_weapons;
 
 vector<worldItem*> g_worldItems;
 
 vector<indexItem*> g_indexItems; 
+
+vector<particle*> g_particles;
 
 map<string, int> enemiesMap; //stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0; //how many points this map can spend on enemies;
@@ -127,7 +138,7 @@ int g_budget = 0; //how many points this map can spend on enemies;
 bool boxsenabled = true; //affects both map editor and full game. Dont edit here
 
 bool onionmode = 0; //hide custom graphics
-bool genericmode = 1;
+bool genericmode = 0;
 bool freecamera = 0;
 bool devMode = 0;
 bool showDevMessages = 1;
@@ -158,11 +169,15 @@ float g_ratio = 1.618;
 bool transition = 0;
 int g_walldarkness = 55; //65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
 int g_platformResolution = 5; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
+float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 
 int g_TiltResolution = 1; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
 bool g_protagHasBeenDrawnThisFrame = 0;
+SDL_Texture* g_shadowTexture;
+
 //generic
-string g_font = "fonts/OpenSans-Regular.ttf";
+string g_font; //= (genericmode) ? "fonts/OpenSans-Regular.ttf" : "fonts/ShortStack-Regular.ttf";
+//string g_font = "fonts/OpenSans-Regular.ttf";
 
 //english
 //string g_font = "fonts/ShortStack-Regular.ttf";
@@ -177,7 +192,7 @@ float g_transitionSpeed = 9; //3
 
 //inventory
 float use_cooldown = 0; //misleading, its not for attacks at all
-vector<weapon*> AdventureWeaponSet;
+vector<attack*> AdventureattackSet;
 int inPauseMenu = 0;
 bool old_pause_value = 1; //wait until the user releases the button to not count extra presses
 int inventoryScroll = 0; //how many rows in the inventory we've scrolled thru
@@ -206,7 +221,7 @@ bool protagGlimmerC = 0;
 bool protagGlimmerD = 0;
 
 //physics
-float g_gravity = 290;
+float g_gravity = 220;
 
  
 
@@ -282,9 +297,10 @@ SDL_DisplayMode DM;
 bool g_fullscreen = false;
 camera g_camera(0,0);
 entity* protag;
+entity* mainProtag; //for letting other entities use this ones inventory; game ends when this one dies
 
 //for camera/window zoom
-float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH);
+float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH) * 0.8;
 float scaley = scalex;
 float min_scale = 0.1;
 float max_scale = 2;
@@ -298,7 +314,10 @@ float ticks, lastticks, elapsed = 0, halfsecondtimer;
 float camx = 0;
 float camy = 0;
 SDL_Renderer * renderer;
-string g_map = "title";
+string g_map = "sp-title";
+string g_waypoint;
+string g_mapOfLastSave = "sp-title";
+string g_waypointOfLastSave = "a";
 
 //input
 const Uint8* keystate = SDL_GetKeyboardState(NULL);
@@ -316,6 +335,7 @@ bool g_holdingCTRL = 0;
 float g_volume = 0;
 bool g_mute = 0;
 Mix_Chunk* g_ui_voice = Mix_LoadWAV("sounds/voice-normal.wav");
+Mix_Chunk* g_deathsound;
 musicNode* closestMusicNode;
 musicNode* newClosest;
 int musicFadeTimer = 0;
@@ -334,6 +354,7 @@ bool old_z_value = 1; //the last value of the z key. used for advancing dialogue
 float dialogue_cooldown = 0; //seconds until he can have dialogue again.
 entity* g_talker = 0; //drives scripts, must be referenced before deleting an entity to avoid crashes
 bool g_forceEndDialogue = 0; //used to end dialogue when the talking entity has been destroyed.
+bool g_showHUD = 0;
 
 //debuging
 SDL_Texture* nodeDebug;
@@ -349,78 +370,11 @@ bool g_mousemode = 1;
 entity* nudge = 0; //for nudging entities while map-editing
 bool adjusting = 0; //wether to move selected entity or change its hitbox/shadow position
 
-//userdata
-string g_saveName = "A";
+//userdata - will be set on some file-select-screen
+string g_saveName = "a";
 
 std::map<string, int> g_save = {};
 
-int loadSave(string address) {
-	g_save.clear();
-	ifstream file;
-	string line;
-
-	address = "user/saves/" + address + ".txt";
-	D(address);
-	const char* plik = address.c_str();
-	file.open(plik);
-	
-	string field = "";
-	string value = "";
-
-	//load fields
-	while(getline(file, line)) {
-		field = line.substr(0, line.find(' '));
-		value = line.substr(line.find(" "), line.length()-1);
-		D(value + "->" + field);
-		try {
-			g_save.insert( pair<string, int>(field, stoi(value)) );
-		} catch(...) {
-			M("Error writing");
-			return -1;
-		}
-	}
-	file.close();
-	return 0;
-}
-
-int writeSave(string address) {
-	ofstream file;
-	
-	address = "user/saves/" + address + ".txt";
-	const char* plik = address.c_str();
-	file.open(plik);
-
-	auto it = g_save.begin();
-
-	while (it != g_save.end() ) {
-		file << it->first << " " << it->second << endl;
-		D(it->first);
-		D(it->second);
-		M("---");
-		it++;
-	}
-	file.close();
-	return 0;
-}
-
-int checkSaveField(string field) {
-	std::map<string, int>::iterator it = g_save.find(field);
-	if(it != g_save.end()) {
-		return it->second;
-	} else {
-		return 0;
-	}
-}
-
-void writeSaveField(string field, int value) {
-	auto it = g_save.find(field);
-
-	if (it == g_save.end()) {
-		g_save.insert(std::make_pair(field, value));
-	} else {
-		g_save[field] = value;
-	}
-}
 
 bool fileExists (const std::string& name) {
     if (FILE *file = fopen(name.c_str(), "r")) {
@@ -580,9 +534,44 @@ int yesNoPrompt(string msg) {
 	return buttonid;
 }
 
+// string stringToHex(string input) {
+// 	stringstream ss;
+// 	for(auto x : input){
+// 		ss << std::hex << int(x);
+// 	}
+// 	string ret ( ss.str() );
+
+// 	return ret;
+// }
+
+// string hexToString(const string& in) {
+//     string ret;
+
+//     size_t cnt = in.length() / 2;
+
+//     for (size_t i = 0; cnt > i; ++i) {
+//         uint32_t s = 0;
+//         stringstream ss;
+//         ss << std::hex << in.substr(i * 2, 2);
+//         ss >> s;
+
+//         ret.push_back(static_cast<unsigned char>(s));
+//     }
+
+//     return ret;
+// } 	
+
+// //these are both shite, fix em later
+// string intToHex(int input) {
+// 	string s = to_string(input);
+// 	return stringToHex(s);
+// }
+
+// int hexToInt(string input) {
+// 	return stoi(hexToString(input));
+// }
+
 //TUDO:
 //set minimum window width and height to prevent crashes wenn the window is very small
-
-
 
 #endif

@@ -160,8 +160,11 @@ class rect {
 public:
 	int x;
 	int y;
+	int z; //rarely used
 	int width;
 	int height;
+	int zeight = 32;
+
 
 	rect() {
 		x=0;
@@ -269,7 +272,7 @@ public:
 bool PointInsideRightTriangle(tri* t, int px, int py) {
 	switch(t->type) {
 		case(0):
-			if(px >= t->x2 && py >= t->y1 && py <= (t->m * px)  + t->b) {
+			if(px >= t->x2 && py >= t->y1 && py < floor(t->m * px)  + t->b) {
 				
 				
 				return true;
@@ -277,7 +280,7 @@ bool PointInsideRightTriangle(tri* t, int px, int py) {
 			break;
 
 		case(1):
-			if(px >= t->x2 && py <= t->y1 && py >= (t->m * px) + t->b) {
+			if(px >= t->x2 && py <= t->y1 && py > ceil(t->m * px) + t->b) {
 				
 				
 				return true;
@@ -285,7 +288,7 @@ bool PointInsideRightTriangle(tri* t, int px, int py) {
 			break;
 
 		case(2):
-			if(px <= t->x2 && py <= t->y1 && py >= (t->m * px) + t->b) {
+			if(px <= t->x2 && py <= t->y1 && py > ceil(t->m * px) + t->b) {
 				
 				
 				return true;
@@ -293,7 +296,7 @@ bool PointInsideRightTriangle(tri* t, int px, int py) {
 			break;
 
 		case(3):
-			if(px <= t->x2 && py >= t->y1 && py <= (t->m * px)  + t->b) {
+			if(px <= t->x2 && py >= t->y1 && py < floor(t->m * px)  + t->b) {
 				
 				
 				return true;
@@ -312,9 +315,8 @@ bool RectOverlap(rect a, rect b) {
 	}
 }
 
-//simple solution- each rect will take up exactly a layer
-bool pseudo3dRectOverlap(rect a, rect b, int za, int zb) {
-	return ( RectOverlap(a, b) && abs(za - zb) < 64 );
+bool RectOverlap3d(rect a, rect b) {
+	return ( RectOverlap(a, b) && a.z < b.z + b.zeight && a.z + a.zeight > b.z);
 }
 
 bool ElipseOverlap(rect a, rect b) {
@@ -328,6 +330,18 @@ bool ElipseOverlap(rect a, rect b) {
 
 	//circle collision test using widths of rectangles as radiusen
 	return (Distance(midpointA.x, midpointA.y, midpointB.x, midpointB.y) < (a.width + b.width)/2);
+}
+bool CylinderOverlap(rect a, rect b) {
+	//get midpoints
+	coord midpointA = {a.x + a.width/2, a.y + a.height/2};
+	coord midpointB = {b.x + b.width/2, b.y + b.height/2};
+	
+	//"unfold" crumpled y axis by multiplying by 1/XtoY
+	midpointA.y *= 1/XtoY;
+	midpointB.y *= 1/XtoY;
+
+	//circle collision test using widths of rectangles as radiusen
+	return (Distance(midpointA.x, midpointA.y, midpointB.x, midpointB.y) < (a.width + b.width)/2)&& a.z < b.z + b.zeight && a.z + a.zeight > b.z;
 }
 
 bool RectOverlap(SDL_Rect a, SDL_Rect b) {
@@ -464,8 +478,10 @@ public:
 		M("box()");
 		bounds.x = x1f;
 		bounds.y = y1f;
+		bounds.z = flayer * 32;
 		bounds.width = x2f;
 		bounds.height = y2f;
+		bounds.zeight = 32;
 		layer = flayer;
 		walltexture = fwallt;
 		captexture = fcapt;
@@ -660,7 +676,7 @@ public:
 			
 			SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
 			if(fileaddress.find("OCCLUSION") != string::npos) {
-				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
+				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
 				
 			}
 			if(mask_filename[0] != '&') {
@@ -669,8 +685,8 @@ public:
 				SDL_Surface* smask = IMG_Load(mask_filename);
 				SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
 				SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
-				\
-				SDL_SetTextureColorMod(diffuse, -20, -20, -20);
+				
+				//SDL_SetTextureColorMod(diffuse, -20, -20, -20);
 				texture = MaskTexture(renderer, diffuse, mask);
 				SDL_FreeSurface(smask);
 				SDL_DestroyTexture(mask);
@@ -828,23 +844,16 @@ public:
 	}
 };
 
-class weapon {
+
+class attack {
 public:
-	
-	
 	float maxCooldown = 400; //ms
 	float cooldown = 0;
 	string name = "";
-	//box data, data about movement
-	int max_combo = 2;
-	int combo = 0; //increments
-	float maxComboResetSeconds = 1;
-	float comboResetSeconds = 0;
 	bool canBeHeldDown = 1;
 	float shotLifetime = 500; //ms
 	int width = 20;
 	int height = 20;
-	int faction = 1;
 	int damage = 1;
 	float spread = 0;
 	float randomspread = 0;
@@ -855,6 +864,17 @@ public:
 	SDL_Texture* texture;
 
 	float xoffset = 5;
+
+	bool assetsharer = 0;
+	string spritename = "";
+
+
+	//animation
+	int framewidth;
+	int frameheight;
+	int xframes;
+	int yframes;
+	vector<coord> framespots;
 
 	//given some float time, return floats for x and y position
 	//will be rotated/flipped
@@ -869,28 +889,14 @@ public:
 		return 0;
 	}
 
-	// weapon(string spriteadress) {
-	// 	string spritefile = "textures/sprites/" + spriteadress + ".png";
-	// 	SDL_Surface* image = IMG_Load(spritefile.c_str());
-	// 	if(onionmode) {
-	// 		image = IMG_Load("textures/sprites/onionmode/onion.png");
-	// 	}
-	// 	texture = SDL_CreateTextureFromSurface(renderer, image);
-	// 	SDL_QueryTexture(texture, NULL, NULL, &width, &height);
-	// 	width *= size;
-	// 	height *= size;
-	// 	SDL_FreeSurface(image);
-	// 	g_weapons.push_back(this);
-	// }
-
-	weapon(string filename) {
-		M("weapon()");
+	attack(string filename) {
+		M("attack()");
 		this->name = filename;
 		ifstream file;
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_map + "/" + filename + ".wep";
+		loadstr = "maps/" + g_map + "/" + filename + ".atk";
 		//D(loadstr);
 		const char* plik = loadstr.c_str();
 		
@@ -898,7 +904,7 @@ public:
 		
 		if (!file.is_open()) {
 			//load from global folder
-			loadstr = "entities/weapons/" + filename + ".wep";
+			loadstr = "entities/attacks/" + filename + ".atk";
 			//D(loadstr);
 			const char* plik = loadstr.c_str();
 			
@@ -906,32 +912,58 @@ public:
 			
 			if (!file.is_open()) {
 				//just make a default entity
-				string newfile = "entities/weapons/default.wep";
+				string newfile = "entities/attacks/default.atk";
 				//D(loadstr);
 				file.open(newfile);
 			}
 		}
-		
-		string temp;
-		file >> temp;
-		temp = "textures/sprites/" + temp + ".png";
 
-		
+		file >> spritename;
+		string temp = "textures/sprites/" + spritename + ".png";
 
-		SDL_Surface* image = IMG_Load(temp.c_str());
-		if(onionmode) {
-			image = IMG_Load("textures/sprites/onionmode/onion.png");
+		for(auto x : g_attacks){
+			if(x->spritename == this->spritename || genericmode) {
+				this->texture = x->texture;
+				assetsharer = 1;
+				
+			}
 		}
-		
-		texture = SDL_CreateTextureFromSurface(renderer, image);
+		file >> framewidth;
+		file >> frameheight;
+		if(!assetsharer) {
+
+			SDL_Surface* image;
+			if(genericmode) {
+				image = IMG_Load("textures/sprites/genericmode/shot.png");
+			} else {
+				image = IMG_Load(temp.c_str());
+			}
+			texture = SDL_CreateTextureFromSurface(renderer, image);
+			SDL_FreeSurface(image);
+		}
+
 		file >> this->maxCooldown;
 		float size;
 		file >> size;
 		
 		SDL_QueryTexture(texture, NULL, NULL, &width, &height);
-		width *= size;
-		height *= size;
-		SDL_FreeSurface(image);
+
+		xframes = width / framewidth;
+		yframes = height / frameheight;
+		
+	
+
+		for (int j = 0; j < height; j+=frameheight) {
+			for (int i = 0; i < width; i+= framewidth) {
+				coord a; 
+				a.x = i;
+				a.y = j;
+				framespots.push_back(a);
+			}
+		}
+
+		width = framewidth * size;
+		height = frameheight * size;
 
 
 		
@@ -943,15 +975,59 @@ public:
 		file >> this->randomspread;
 		randomspread *= M_PI;
 		file >> this->numshots;
+		file >> this->range;
 		
 
-
-		g_weapons.push_back(this);
+		g_attacks.push_back(this);
 	}
 
+	~attack() {
+		if(!assetsharer) {
+			SDL_DestroyTexture(texture);
+		}
+		g_attacks.erase(remove(g_attacks.begin(), g_attacks.end(), this), g_attacks.end());
+	}
+};
+
+
+class weapon {
+public:
+	string name;
+	int combo = 0;
+	float maxComboResetMS = 1000;
+	float comboResetMS = 0;
+	vector<attack*> attacks;
+
+	weapon() {}
+
+	//add constructor and field on entity object
+	weapon(string fname) {
+		name = fname;
+
+		ifstream file;
+		string line;
+		string address = "entities/weapons/" + name + ".wep";
+		string field = "";
+		string value = "";
+		file.open(address);
+
+		while(getline(file, line)) {
+			if(line == "&") { break; }
+			field = line.substr(0, line.find(' '));
+			attack* a = new attack(line);
+			//a->faction = faction;
+			attacks.push_back(a);
+		}
+		file >> maxComboResetMS;		
+		file.close();
+		g_weapons.push_back(this);
+	}
 	~weapon() {
-		SDL_DestroyTexture(texture);
+		for(auto x: attacks) {
+			delete x;
+		}
 		g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), this), g_weapons.end());
+
 	}
 };
 
@@ -963,10 +1039,13 @@ public:
 	float z = 0;
 	float width = 0;
 	float height = 0;
+	float zeight = 0;
 	float sortingOffset = 0;
 	SDL_Texture* texture;
 	rect bounds;
 	string name;
+
+	bool tangible = 1;
 
 	//add entities and mapObjects to g_actors with dc
 	actor() {
@@ -998,33 +1077,17 @@ public:
 	float size;
 	actor* owner = 0;
 	SDL_Surface* image = 0;
-	SDL_Texture* texture = 0;
-	bool asset_sharer = 0;
+	SDL_Texture* texture = g_shadowTexture;
 	int xoffset = 0;
 	int yoffset = 0;
 
 	cshadow(SDL_Renderer * renderer, float fsize) {
-		M("cshadow()");
-		
-		D(fsize);
 		size = fsize;
-		//if there is another shadow steal his texture
-		if( g_shadows.size() > 0) {
-			texture = g_shadows[0]->texture;
-			this->asset_sharer = 1;	
-		} else {
-			image = IMG_Load("textures/sprites/shadow.png");
-			texture = SDL_CreateTextureFromSurface(renderer, image);
-			SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
-			SDL_FreeSurface(image);
-		}
-		
 		g_shadows.push_back(this);
 	}
 
 	~cshadow() {
-		M("~cshadow()" );
-		if(!asset_sharer) { SDL_DestroyTexture(texture);}
+		//M("~cshadow()" );
 		g_shadows.erase(remove(g_shadows.begin(), g_shadows.end(), this), g_shadows.end());
 	}
 	void render(SDL_Renderer* renderer, camera fcamera);
@@ -1045,6 +1108,7 @@ public:
 	int animation = 0;
 	int xframes = 0;
 	int frameInAnimation = 0;
+	SDL_RendererFlip flip = SDL_FLIP_NONE;
 	
 	int curheight = 0;
 	int curwidth = 0;
@@ -1053,28 +1117,29 @@ public:
 	float maxLifetime = 0.4;
 	float lifetime = 500;
 	float angle = 0;
-	weapon* gun;
+	attack* gun;
 	cshadow * shadow = 0;
 
-	projectile(weapon* fweapon) {
+	projectile(attack* fattack) {
 		M("projectile()");
-		this->width = fweapon->width;
-		this->height = fweapon->height;
+		this->sortingOffset = 12;
+		this->width = fattack->width;
+		this->height = fattack->height;
 		this->bounds.width = this->width;
 		this->bounds.height = this->height * XtoY;
 		this->bounds.y = this->height - this->bounds.height;
 		
-		this->gun = fweapon;
-		this->maxLifetime = fweapon->shotLifetime;
-		this->lifetime = fweapon->shotLifetime;
+		this->gun = fattack;
+		this->maxLifetime = fattack->shotLifetime;
+		this->lifetime = fattack->shotLifetime;
 		
-		shadow = new cshadow(renderer, fweapon->size);
+		shadow = new cshadow(renderer, fattack->size);
 		this->shadow->owner = this;
 		shadow->width = width;
 		shadow->height = bounds.height;
 		
 
-		gun = fweapon;
+		gun = fattack;
 		texture = gun->texture;
 		asset_sharer = 1;
 		
@@ -1141,14 +1206,13 @@ public:
 
 			
 			
-			if(0/*framespots.size() > 0*/) {
-				//frame = animation * xframes + frameInAnimation;
-				//SDL_Rect dstrect = { obj.x, obj.y, obj.width, obj.height};
-				//SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
-				//const SDL_Point center = {0 ,0};
-				//if(texture != NULL) {
-				//	SDL_RenderCopyEx(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
-				//}
+			if(gun->framespots.size() > 1) {
+				frame = animation * gun->xframes + frameInAnimation;
+				SDL_Rect srcrect = {gun->framespots[frame].x, gun->framespots[frame].y, gun->framewidth, gun->frameheight};
+				const SDL_FPoint center = {0 ,0};
+				if(texture != NULL) {
+					SDL_RenderCopyExF(renderer, texture, &srcrect, &obj, 0, &center, flip);
+				}
 			} else {
 				if(texture != NULL) {
 					SDL_RenderCopyF(renderer, texture, NULL, &obj);
@@ -1166,7 +1230,7 @@ public:
 	float xoffset = 0;
 	float yoffset = 64;
 	bool wall; //to darken entwalls
-	float sortingOffset = 0; //to make entites float in the air, or sort as if they are higher or lower than they are first use was for building diagonal walls
+	//float sortingOffset = 0; //to make entites float in the air, or sort as if they are higher or lower than they are first use was for building diagonal walls
 	float extraYOffset = 0; //used to encode a permanent y axis offset, for diagonal walls
 	//0 - slant left, 1 - slant right, 2 - pillar
 	int effect = 0;
@@ -1249,16 +1313,11 @@ public:
 				SDL_SetTextureColorMod(alternative, -g_walldarkness, -g_walldarkness, -g_walldarkness);
 			}
 			if(name.find("SHADING") != string::npos) {
-				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
-				//SDL_SetTextureAlphaMod(texture, 150);
-				//diffuse = 0;
-				
+				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
+				SDL_SetTextureAlphaMod(texture, 150);
 			}
 			if(name.find("OCCLUSION") != string::npos) {
-				//cout << "blended " << name << endl;
 				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
-				//SDL_SetTextureAlphaMod(texture, 0);
-				//diffuse = 0;
 			}
 			SDL_QueryTexture(texture, NULL, NULL, &this->framewidth, &this->frameheight);
 		}
@@ -1458,31 +1517,42 @@ public:
 
 		//search worlditems for an item with the same texture
 		string lstr;
-		if(onionmode) {
+		if(genericmode) {
 			if(rand() % 2 == 1) {
-				lstr = "textures/sprites/onionmode/broccali.png";
+				lstr = "textures/sprites/genericmode/broccali.png";
 			} else {
-				lstr = "textures/sprites/onionmode/onion.png";
+				lstr = "textures/sprites/genericmode/onion.png";
 			}
 		} else {
 			//is there a special sprite for how it appears in the inv?
 			//if not, just use the standard one
-			if(fileExists("textures/sprites//items/" + fname + "-inv.png")) {
-				lstr = "textures/sprites//items/" + fname + "-inv.png";
+			if(fileExists("textures/sprites/items/" + fname + "-inv.png")) {
+				lstr = "textures/sprites/items/" + fname + "-inv.png";
 			} else {
-				if(fileExists("textures/sprites//items/" + fname + ".png")) {
-					lstr = "textures/sprites//items/" + fname + ".png";
+				if(fileExists("textures/sprites/items/" + fname + ".png")) {
+					lstr = "textures/sprites/items/" + fname + ".png";
+					
 				} else {
 					//failsafe - load an image we know we have
-					lstr = "textures/sprites/onionmode/onion.png";
+					lstr = "textures/sprites/genericmode/onion.png";
 				}
 			}
 			
 		}
-		SDL_Surface* temp = IMG_Load(lstr.c_str());
-		texture = SDL_CreateTextureFromSurface(renderer, temp);
-		SDL_FreeSurface(temp);
-		g_indexItems.push_back(this);
+		bool storeThis = true;
+		for(auto x : g_indexItems) {
+			M(x->name);
+			if(this->name == x->name) {
+				storeThis = false;
+				D("not storing this ii");
+			}
+		}
+		if(storeThis) {
+			SDL_Surface* temp = IMG_Load(lstr.c_str());
+			texture = SDL_CreateTextureFromSurface(renderer, temp);
+			SDL_FreeSurface(temp);
+			g_indexItems.push_back(this);
+		}
 	}
 
 	~indexItem() {
@@ -1540,15 +1610,17 @@ public:
 	float animlimit; // the extent to the animation. 0.5 means halfway
 	float curwidth;
 	float curheight;
+	bool turnToFacePlayer = true; //face player when talking
 	SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
 
 	int frame = 0; //current frame on SPRITESHEET
-	int msPerFrame = 0; //how long to wait between frames of animation, 0 being infinite time (no frame animation)
+	int msPerFrame = 100; //how long to wait between frames of animation, 0 being infinite time (no frame animation)
 	int msTilNextFrame = 0; //accumulater, when it reaches msPerFrame we advance frame
 	int frameInAnimation = 0; //current frame in ANIMATION
-	bool loopAnimation = 0; //start over after we finish
-	int animation = 0; //current animation, or the column of the spritesheet
-	int defaultAnimation = 0;
+	bool loopAnimation = 1; //start over after we finish
+	int animation = 4; //current animation, or the column of the spritesheet
+	int defaultAnimation = 4;
+	bool scriptedAnimation = 0; //0 means the character is animated based on movement. 1 means the character is animated based on a script.
 
 	int framewidth = 120; //width of single frame
 	int frameheight = 120; //height of frame
@@ -1570,7 +1642,7 @@ public:
 	float xoffset = 0;
 	float yoffset = 64;
 	bool wall; //to darken entwalls
-	float sortingOffset = 0; //to make entites float in the air, or sort as if they are higher or lower than they are first use was for building diagonal walls
+	//float sortingOffset = 0; //to make entites float in the air, or sort as if they are higher or lower than they are first use was for building diagonal walls
 	float extraYOffset = 0; //used to encode a permanent y axis offset, for diagonal walls
 	//0 - slant left, 1 - slant right, 2 - pillar
 	int effect = 0;
@@ -1580,27 +1652,32 @@ public:
 	int data[255] = {0};
 
 	//combat
-	//todo: make this a vector so enemies can have multiple weapons
-	//enemies can have a passive to use all of their weapons at once
-	//enemies can see which weapon has the highest dps against the player by experimenting, and then use that against the player
-	weapon* hisWeapon;
+	//todo: make this a vector so enemies can have multiple attacks
+	//enemies can have a passive to use all of their attacks at once
+	//enemies can see which attack has the highest dps against the player by experimenting, and then use that against the player
+	weapon* hisweapon;
 	bool canFight = 1;
 	bool invincible = 0;
 	float invincibleMS = 0; //ms before setting invincible to 0
 	bool agrod = 0; //are they fighting a target?
 	entity* target = nullptr; //who are they fighting?
-	int targetFaction = -1; //what faction are they fighting at the moment? If agrod and they lose their target, they will pick a random visible target having this faction
+	int targetFaction = -10; //what faction are they fighting at the moment? If agrod and they lose their target, they will pick a random visible target having this faction
 	coord dcoord; //place where they want to stand
 	int faction = 0; //0 is player, 1 is most enemies
+	bool essential = 0; //if this entity dies in your party, does the game end?
+
+	//stats/leveling
 	float level = 1; //affects damage
+	float damagemultiplier = 0.2; // how much damage do you gain per level
 	float maxhp = 2;
 	float hp = 2;
+
+
 	float dhpMS = 0; //how long to apply dhp (dot, healing)
 	float dhp = 0;
 	string weaponName = "";
 	int cost = 1000; //cost to spawn in map and then xp granted to killer
-	float cooldown = 0;  //anything about the usage of weapons needs to be moved here since the weapon object
-							//has become more of a static, shared object
+	float cooldown = 0;  //anything about the usage of attacks needs to be moved here since the attack object
 
 	Status status = none;
 	float statusMS = 0; //how long to apply status before it becomes "none"
@@ -1636,7 +1713,7 @@ public:
 
 	entity(SDL_Renderer * renderer, string filename, float sizeForDefaults = 1) {
 		M("entity()");
-		sortingOffset = 12;
+
 		ifstream file;
 		bool using_default = 0;
 		this->name = filename;
@@ -1645,7 +1722,6 @@ public:
 		//try to open from local map folder first
 		
 		loadstr = "maps/" + g_map + "/" + filename + ".ent";
-		//D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
@@ -1696,6 +1772,11 @@ public:
 		file >> comment;
 		file >> this->bounds.width;
 		file >> this->bounds.height;
+		file >> this->bounds.zeight;
+		bounds.width *= 64;
+		bounds.height *= 55;
+		bounds.zeight *= 32;
+		
 		
 		file >> comment;
 		file >> this->bounds.x;
@@ -1714,13 +1795,16 @@ public:
 		file >> shadow->xoffset;
 		file >> shadow->yoffset;		
 		
+		int tempshadowSoffset;
+		file >> comment;
+		file >> tempshadowSoffset;
+
 		file >> comment;
 		file >> this->animspeed;
 		file >> this->animlimit;
 
 		file >> comment;
-		file >> this->defaultAnimation;
-		animation = defaultAnimation;
+		file >> this->turnToFacePlayer;
 		
 		file >> comment;
 		file >> this->framewidth;
@@ -1729,10 +1813,8 @@ public:
 		this->shadow->height = framewidth * fsize * (1/p_ratio);
 
 		//bigger shadows have bigger sortingoffsets
-		shadow->sortingOffset = 40 * (shadow->height / 44.4);
-		D(shadow->height);
-
-		
+		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
+		sortingOffset = 8;
 		file >> comment;
 		bool setboxfromshadow;
 		file >> setboxfromshadow;
@@ -1773,29 +1855,14 @@ public:
 		file >> comment;
 		file >> cost;
 
+		file >> comment;
+		file >> essential;
+
 
 		if(canFight) {
-			//check if someone else already made the weapon
-			bool cached = 0;
-			
-			if(g_weapons.size() > 0) {
-				for (auto g : g_weapons) {
-					// D(g->name);
-					// D(weaponName);
-					if(g->name == weaponName) {
-						hisWeapon = g;
-						cached = 1;
-						break;
-					}
-				}
-			}
-			
-			if(!cached) {
-				hisWeapon = new weapon(weaponName);
-			}
-
-			//either way, make the faction set properly
-			hisWeapon->faction = this->faction;
+			//check if someone else already made the attack
+			bool cached = 0;	
+			hisweapon = new weapon(weaponName);
 		}
 
 		file.close();
@@ -1825,19 +1892,31 @@ public:
 			
 			
 		}
-		
-		SDL_Surface* image = IMG_Load(spritefile);
-		if(onionmode) {
-			image = IMG_Load("textures/sprites/onionmode/broccali.png");
+		//has another entity already loaded this texture
+		for (auto x : g_entities) {
+			if(x->name == this->name) {
+				texture = x->texture;
+				this->asset_sharer = 1;
+			}
 		}
+		if(!asset_sharer) {
+			SDL_Surface* image = IMG_Load(spritefile);
+			texture = SDL_CreateTextureFromSurface(renderer, image);
+			SDL_FreeSurface(image);
+		}
+		// if(genericmode) {
+		// 	SDL_FreeSurface(image);
+		// 	image = IMG_Load("textures/sprites/genericmode/generic.png");
+		// }
 		
-		texture = SDL_CreateTextureFromSurface(renderer, image);
+		
 		this->width = size * framewidth;
 		this->height = size * frameheight;
 
 		//move shadow to feet
 		shadow->xoffset += width/2 - shadow->width/2;
 		shadow->yoffset -= height - shadow->height;
+		
 		
 
 		if(setboxfromshadow) {
@@ -1847,10 +1926,18 @@ public:
 			this->bounds.y = this->shadow->yoffset;
 			
 		}
+
+		shadow->width += g_extraShadowSize;
+		shadow->height += g_extraShadowSize * XtoY;
 		
+		shadow->xoffset -= 0.5 * g_extraShadowSize;
+		shadow->yoffset -= 0.5 * g_extraShadowSize * XtoY;
+		
+		int w, h;
+		SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+
 		if(using_default) {
-			int w, h;
-			SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+			
 			this->width = w * sizeForDefaults;
 			this->height = h * sizeForDefaults;
 			this->shadow->width = 0;
@@ -1859,34 +1946,28 @@ public:
 		curwidth = width;
 		curheight = height;
 
-		if(onionmode) {
+		if(genericmode) {
 			//make one frame of the whole image;
-			xframes = 1;
-			yframes = 1;
-			framewidth = image->w;
-			frameheight = image->h;
-			coord* a = new coord();
-			a->x = 0;
-			a->y = 0;
-			framespots.push_back(a);
-		} else {
-			if(!using_default) {
-				xframes = image->w /framewidth;
-				yframes = image->h /frameheight;
-			
+			framewidth = 512;
+			frameheight = 395;
+		} 
+		if(!using_default) {
+			xframes = w / framewidth;
+			yframes = h / frameheight;
 		
+	
 
-				for (int j = 0; j < image->h; j+=frameheight) {
-					for (int i = 0; i < image->w; i+= framewidth) {
-						coord* a = new coord(); 
-						a->x = i;
-						a->y = j;
-						framespots.push_back(a);
-					}
+			for (int j = 0; j < h; j+=frameheight) {
+				for (int i = 0; i < w; i+= framewidth) {
+					coord* a = new coord(); 
+					a->x = i;
+					a->y = j;
+					framespots.push_back(a);
 				}
 			}
 		}
-		SDL_FreeSurface(image);
+		
+		
 		g_entities.push_back(this);
 	}
 
@@ -1961,7 +2042,7 @@ public:
 		file >> this->animlimit;
 
 		file >> comment;
-		file >> this->defaultAnimation;
+		file >> turnToFacePlayer;
 		animation = defaultAnimation;
 		
 		file >> comment;
@@ -1995,9 +2076,8 @@ public:
 		
 		
 		SDL_Surface* image = IMG_Load(spritefile);
-		D(spritefile);
-		if(onionmode) {
-			image = IMG_Load("textures/sprites/onionmode/broccali.png");
+		if(genericmode) {
+			image = IMG_Load("textures/sprites/genericmode/broccali.png");
 		}
 		
 		texture = SDL_CreateTextureFromSurface(renderer, image);
@@ -2020,7 +2100,7 @@ public:
 		curwidth = width;
 		curheight = height;
 
-		//if(onionmode) {
+		//if(genericmode) {
 			//make one frame of the whole image;
 			xframes = 1;
 			yframes = 1;
@@ -2051,11 +2131,8 @@ public:
 			delete p;
 		} 
 		framespots.clear();
-		if(canFight) {
-			//this can create crashes if an entity dies with bullets on screen
-			//delete hisWeapon;
-		}
 
+		//delete hisweapon;
 		//if this entity is talking or driving a script, a: the game is probably broken and b: we're about to crash
 		
 		if(this == g_talker) {
@@ -2091,188 +2168,85 @@ public:
 	void shoot();
 
 	void render(SDL_Renderer * renderer, camera fcamera) {
-
+		if(!tangible) {return;}
 		if(this == protag) { g_protagHasBeenDrawnThisFrame = 1; }
 		//if its a wallcap, tile the image just like a maptile
-		if(wallcap && effect == 0) {
 			
 			
 
 		SDL_FPoint nowt = {0, 0};
 
-		rect obj((x -fcamera.x)* fcamera.zoom, (y-fcamera.y - height - XtoZ * z) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom);		
+
+		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y-curheight - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
-			/*
-			//if its a wall, check if it is covering the player
-			if(this->wall && protagForGlimmer != nullptr) {
-				
-				//make obj one block higher for the wallcap
-				//obj.height -= 45;
-				//obj.y += 45;
-				if((protagForGlimmer->x - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
-					protagGlimmerA = 1;
-				}
-				if((protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y  - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
-					protagGlimmerB = 1;
-				}
-				if((protagForGlimmer->x - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
-					protagGlimmerC = 1;
-				}
-				if((protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom > obj.x && (protagForGlimmer->x + protagForGlimmer->width - fcamera.x) * fcamera.zoom < obj.x + obj.width && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom > obj.y && (protagForGlimmer->y - protagForGlimmer->height - fcamera.y) * fcamera.zoom < obj.y + obj.height) {
-					protagGlimmerD = 1;
-				}
-				
-			}
-			*/
-			
-			SDL_Rect srcrect;
-			SDL_FRect dstrect;
-			int ypos = 0;
-			int xpos = 0;
-			srcrect.x = xoffset;
-			srcrect.y = yoffset;
-			
-			while(1) {
-				if(srcrect.x == xoffset) {
-						srcrect.w = framewidth - xoffset;
-						dstrect.w = framewidth - xoffset;
+			//set frame from animation
+			// animation is y, frameInAnimation is x
+			if(hadInput) {
+				if(up) {
+					if(left) {
+						animation = 1;
+						flip = SDL_FLIP_NONE;
+					} else if (right) {
+						animation = 1;
+						flip = SDL_FLIP_HORIZONTAL;
 					} else {
-						srcrect.w = framewidth;
-						dstrect.w = framewidth;
+						animation = 0;
+						flip = SDL_FLIP_NONE;
 					}
-					if(srcrect.y == yoffset) {
-						
-						srcrect.h = frameheight - yoffset;
-						dstrect.h = frameheight - yoffset;
+				} else if (down) {
+					if(left) {
+						animation = 3;
+						flip = SDL_FLIP_NONE;
+					} else if (right) {
+						animation = 3;
+						flip = SDL_FLIP_HORIZONTAL;
 					} else {
-						dstrect.h = frameheight;
-						srcrect.h = frameheight;
-					}
-
-				dstrect.x = (x + xpos);
-				dstrect.y = (y+ ypos- z * XtoZ );
-				
-				
-				
-				
-				//are we still inbounds?
-				if(xpos + dstrect.w > this->width) {
-					dstrect.w = this->width - xpos;
-					if(dstrect.w + srcrect.x > framewidth) {
-						dstrect.w = framewidth - srcrect.x;
-					}
-					srcrect.w = dstrect.w;
-				}
-				if(ypos + dstrect.h > this->height ) {
-					
-					dstrect.h = this->height - ypos;
-					if(dstrect.h + srcrect.y > frameheight) {
-						dstrect.h = frameheight - srcrect.y;
-					}
-					srcrect.h = dstrect.h;
-					
-				}
-
-				
-				
-				
-				
-
-
-				//transform
-				dstrect.w = ceil(dstrect.w * fcamera.zoom);
-				dstrect.h = ceil(dstrect.h * fcamera.zoom);
-
-				dstrect.x = floor((dstrect.x - fcamera.x)* fcamera.zoom);
-				dstrect.y = floor((dstrect.y - fcamera.y - height)* fcamera.zoom);
-				
-
-				SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &nowt, SDL_FLIP_NONE );
-				xpos += srcrect.w;
-				srcrect.x = 0;
-				
-				if(xpos >= this->width) {
-					
-					xpos = 0;
-					srcrect.x = xoffset;
-					
-					ypos += srcrect.h;
-					srcrect.y = 0;	
-					if(ypos >= this->height)
-						break;
-				}	
-			}
-		}
-	
-	} else {
-
-			rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y-curheight - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
-			rect cam(0, 0, fcamera.width, fcamera.height);
-			
-			if(RectOverlap(obj, cam)) {
-				//set frame from animation
-				// animation is y, frameInAnimation is x
-				if(dynamic && hadInput) {
-					if(up) {
-						if(left) {
-							animation = 1;
-							flip = SDL_FLIP_NONE;
-						} else if (right) {
-							animation = 1;
-							flip = SDL_FLIP_HORIZONTAL;
-						} else {
-							animation = 0;
-							flip = SDL_FLIP_NONE;
-						}
-					} else if (down) {
-						if(left) {
-							animation = 3;
-							flip = SDL_FLIP_NONE;
-						} else if (right) {
-							animation = 3;
-							flip = SDL_FLIP_HORIZONTAL;
-						} else {
-							animation = 4;
-							flip = SDL_FLIP_NONE;
-						}
-					} else {
-						if(left) {
-							animation = 2;
-							flip = SDL_FLIP_NONE;
-						} else if (right) {
-							animation = 2;
-							flip = SDL_FLIP_HORIZONTAL;
-						} else {
-							//default
-							animation = 4;
-							flip = SDL_FLIP_NONE;
-						}
-					}
-				}
-				hadInput = 0;
-
-				frame = animation * xframes + frameInAnimation;
-				SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
-				//onionmode has just one frame
-				if(onionmode) {frame = 0;}
-				if(isWorlditem) {frame = 0;}
-				if(framespots.size() > 0) {
-					//SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
-
-					SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
-					const SDL_FPoint center = {0 ,0};
-					if(texture != NULL) {
-						SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
+						animation = 4;
+						flip = SDL_FLIP_NONE;
 					}
 				} else {
-					if(texture != NULL) {
-						SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+					if(left) {
+						animation = 2;
+						flip = SDL_FLIP_NONE;
+					} else if (right) {
+						animation = 2;
+						flip = SDL_FLIP_HORIZONTAL;
+					} else {
+						//default
+						animation = 4;
+						flip = SDL_FLIP_NONE;
 					}
 				}
 			}
+			hadInput = 0;
+
+			frame = animation * xframes + frameInAnimation;
+			SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
+			//genericmode has just one frame
+			if(isWorlditem) {frame = 0;}
+			if(framespots.size() > 0) {
+				//SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
+				D(name);
+				D(frame);
+				D(animation);
+				D(xframes);
+				D(frameInAnimation);
+				
+				D(framespots.size());
+				SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
+				const SDL_FPoint center = {0 ,0};
+				if(texture != NULL) {
+					SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
+				}
+			} else {
+				if(texture != NULL) {
+					SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+				}
+			}
 		}
+		
 	}
 
 	void move_up() {
@@ -2377,29 +2351,35 @@ public:
 			}
 		}
 		return ret;
-		
 	}
 
 
 
 	//returns a pointer to a door that the player used
 	virtual door* update(vector<box*> boxs, vector<door*> doors, float elapsed) {
+		if(!tangible) {return nullptr;}
 		if(msPerFrame != 0) {
 			msTilNextFrame += elapsed;
-			if(msTilNextFrame > msPerFrame) {
+			if(msTilNextFrame > msPerFrame && xframes > 1) {
 				msTilNextFrame = 0;
 				frameInAnimation++;
 				if(frameInAnimation == xframes) {
 					if(loopAnimation) {
-						frameInAnimation = 0;
+						if(scriptedAnimation) {
+							frameInAnimation = 0;
+						} else {
+							frameInAnimation = 1;
+						}
 					} else {
 						frameInAnimation = xframes - 1;
 						msPerFrame = 0;
+						//!!! slightly ambiguous. open to review later
+						scriptedAnimation = 0;
 					}
 				}
 			}
 		}
-		if(animate && !transition) {
+		if(animate && !transition && animlimit != 0) {
 			curwidth = width * ((sin(animtime*animspeed))   + (1/animlimit)) * (animlimit);
 			curheight = height * ((sin(animtime*animspeed + PI))+ (1/animlimit)) * (animlimit);
 			animtime += elapsed;
@@ -2424,12 +2404,19 @@ public:
 		}
 		
 		
-		if(!dynamic) { return nullptr; }
+		if(!dynamic && this != protag) { return nullptr; }
 		//should we animate?
 		if(xaccel != 0 || yaccel != 0 || !grounded ) {
 			animate = 1;
+			if(!scriptedAnimation) {
+				msPerFrame = 100;
+			}
 		} else {  
 			animate = 0;
+			if(!scriptedAnimation) {
+				msPerFrame = 0;
+				frameInAnimation = 0;
+			}
 		}
 		
 		
@@ -2482,6 +2469,7 @@ public:
 			}
 			for (auto n : g_solid_entities) {	
 				if(n == this) {continue;}
+				if(!n->tangible) {continue;}
 				//update bounds with new pos
 				rect thismovedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 				rect thatmovedbounds = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
@@ -2520,13 +2508,24 @@ public:
 					xvel = 0;
 					
 				}
+
+				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+				//uh oh, did we collide with something?
+				if(RectOverlap(movedbounds, boxs[i]->bounds)) {
+					//box detected
+					xcollide = true;
+					ycollide = true;
+					xvel = 0;
+					yvel = 0;
+					continue;
+				}
 			}
 			
 			//how much to push the player to not overlap with triangles.
 			float ypush = 0;
 			float xpush = 0;
-			float jerk = 2; //how much to push the player aside to slide along walls
-
+			float jerk = -abs( pow(pow(yvel,2) + pow(xvel, 2), 0.5))/2; //how much to push the player aside to slide along walls
+			//float jerk = -1;
 			//future me: try counting how many triangles the ent overlaps with per axis and disabling jerking
 			//if it is more than 1
 			
@@ -2538,46 +2537,54 @@ public:
 				rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 				if(TriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
 					//if we move the player one pixel up will we still overlap?
-					if((n->type == 3 || n->type == 2) && !TriRectOverlap(n, movedbounds.x - jerk, movedbounds.y, movedbounds.width, movedbounds.height)) {
-						xpush = -jerk;
-						continue;
+					if(n->type == 3 || n->type == 2)  {
+						xpush = jerk;
 					}
 
-					if((n->type == 0 || n->type == 1) && !TriRectOverlap(n, movedbounds.x + jerk, movedbounds.y, movedbounds.width, movedbounds.height)) {
-						xpush = jerk;
-						continue;
+					if(n->type == 0 || n->type == 1) {
+						xpush = -jerk;
 					}
-					xpush = 0;
+					
 					
 					ycollide = true;
 					yvel = 0;
+					
 				}
 
 				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
 				if(TriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
 					//if we move the player one pixel up will we still overlap?
-					if((n->type == 1 || n->type == 2) && !TriRectOverlap(n, movedbounds.x, movedbounds.y - jerk, movedbounds.width, movedbounds.height)) {	 
-						ypush = -jerk;
-						continue;
+					if(n->type == 1 || n->type == 2) {
+						ypush = jerk;
 					}
 
-					if((n->type == 0 || n->type == 3) && !TriRectOverlap(n, movedbounds.x, movedbounds.y + jerk, movedbounds.width, movedbounds.height)) {	 
-						ypush = jerk;
-						continue;
+					if(n->type == 0 || n->type == 3){
+						ypush = -jerk;
 					}
-					ypush = 0;
 					
 					xcollide = true;
 					xvel = 0;
+					
+				}
+
+				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+				if(TriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {					
+					xcollide = true;
+					ycollide = true;
+					xvel = 0;
+					yvel = 0;
+					continue;
+
+					
 				}
 				
 			}
-			if(!xcollide) {
-				y += ypush;
-			}
-			if(!ycollide) {		
-				x += xpush;
-			}
+			
+			yvel += ypush;
+			xvel += xpush;
+			// yaccel += 12 * ypush;
+			// xaccel += 12 * xpush;
+			
 		}
 		
 
@@ -2713,7 +2720,9 @@ public:
 		bool should_fall = 1;
 		float floor = 0;
 		if(layer > 0) {
-			rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+			//!!!
+			//rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+			rect thisMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
 			for (auto n : g_boxs[layer - 1]) {
 				if(RectOverlap(n->bounds, thisMovedBounds)) {
 					floor = 64 * (layer);
@@ -2723,6 +2732,7 @@ public:
 			for (auto n : g_triangles[layer - 1]) {
 				if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
 					floor = 64 * (layer);
+					M("standing on a tri");
 					break;
 				}
 				
@@ -2774,7 +2784,7 @@ public:
 		
 		
 		zvel += zaccel * ((double) elapsed / 256.0);
-		zvel *= pow(friction, ((double) elapsed / 256.0));
+		//zvel *= pow(friction, ((double) elapsed / 256.0));
 		z += zvel * ((double) elapsed / 256.0);
 		z = max(z, floor + 1);
 		
@@ -2788,6 +2798,8 @@ public:
 
 		//update combat
 		if(isWorlditem) {return nullptr;}
+
+		hisweapon->comboResetMS+=elapsed;
 		if(shooting) {
 			//spawn shot.
 			shoot();
@@ -2798,9 +2810,13 @@ public:
 			//check for projectile box
 			for(auto x : g_projectiles) {
 				rect thatMovedBounds = rect(x->x + x->bounds.x, x->y + x->bounds.y, x->bounds.width, x->bounds.height);
+				thatMovedBounds.z = x->layer * 32;
+				thatMovedBounds.zeight = thatMovedBounds.width * XtoZ;
 				rect thisMovedBounds = rect(this->x + bounds.x, y + bounds.y, bounds.width, bounds.height);
+				thisMovedBounds.z = this->z;
+				thisMovedBounds.zeight = this->bounds.zeight;
 				
-				if(x->gun->faction != this->faction && ElipseOverlap(thatMovedBounds, thisMovedBounds)) {
+				if(x->owner->faction != this->faction && RectOverlap3d(thatMovedBounds, thisMovedBounds)) {
 					//take damage
 					this->hp -= x->gun->damage;
 
@@ -2813,9 +2829,10 @@ public:
 						targetFaction = x->owner->faction;
 						agrod = 1;
 
+						D(faction);
 						//agro all of the boys on this's team who aren't already agrod, and set their target to a close entity from x's faction
 						for (auto y : g_entities) {
-							if(y->faction == this->faction && (y->agrod == 0 || y->target == nullptr)) {
+							if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr)) {
 								y->targetFaction = x->owner->faction;
 								y->agrod = 1;
 							}
@@ -2832,13 +2849,8 @@ public:
 		
 		//check if he has died
 		if(hp <= 0) {
-			if(this == protag) {
-				//handle death
-				// xagil = 0;
-				// yagil = 0;
-				// protag_can_move = 0;
-			} else {
-				delete this;
+			if(this != protag) {
+				tangible = 0;
 				return nullptr;
 			}
 		}
@@ -2853,17 +2865,21 @@ public:
 		//if we're even slightly stuck, don't bother
 		if(stuckTime < 20) {
 			for(auto x : g_entities) {
-				if(x->canFight && RectOverlap(x->getMovedBounds(), this->getMovedBounds()) && abs(x->z - this->z) < 64) {
+				if(x->tangible && CylinderOverlap(x->getMovedBounds(), this->getMovedBounds()) && abs(x->z - this->z) < 64) {
 					//push this one slightly away from x
-					float xdif = (this->getOriginX() - x->getOriginX()) * (elapsed / 16);
-					float ydif = (this->getOriginY() - x->getOriginY()) * (elapsed / 16);
-					if(xdif != 0) {
-						xvel += (4/xdif)* 20;
-					}
-					if(ydif != 0) {
-						yvel += (4/ydif) * 20;
-					}
+					float r = pow( Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()) , 2);
+					float mag =  10000/r;
+					float xdif = (this->getOriginX() - x->getOriginX());
+					float ydif = (this->getOriginY() - x->getOriginY());
+					float len = pow( pow(xdif, 2) + pow(ydif, 2), 0.5);
+					float normx = xdif/len;
+					float normy = ydif/len;
 					
+					if(!isnan(mag * normx) && !isnan(mag * normy)) {
+						xvel += normx * mag;
+						yvel += normy * mag;
+					}
+
 				}
 			}
 		}
@@ -2877,11 +2893,11 @@ public:
 			//do we have a target?
 			if(target != nullptr) {
 				//check if target is still valid
-				if(target->hp <= 0) {
+				if(target->hp <= 0 || !target->tangible) {
 					//can we get a new target from the same faction that we are agrod against?
 					bool setNewTarget = 0;
 					for(auto x : g_entities) {
-						if(x->faction == target->faction && LineTrace(this->getOriginX(), this->getOriginY(), x->getOriginX(), x->getOriginY(), false, 30, this->layer)) {
+						if(x->tangible && x->faction == target->faction && LineTrace(this->getOriginX(), this->getOriginY(), x->getOriginX(), x->getOriginY(), false, 30, this->layer)) {
 							target = x;
 							setNewTarget = 1;
 							break;
@@ -2958,7 +2974,7 @@ public:
 					//this constant is what factor of the range must be had to the player
 					//in these types of games, humans seem to shoot even when they are out 
 					// of range, so lets go with that
-					if(XYWorldDistance(target->getOriginX(), target->getOriginY(), getOriginX(), getOriginY()) < this->hisWeapon->range * 1.1) {
+					if(XYWorldDistance(target->getOriginX(), target->getOriginY(), getOriginX(), getOriginY()) < this->hisweapon->attacks[hisweapon->combo]->range * 1.1) {
 						//we have a target, we're in range, we're angry, so lets shoot
 						shoot();
 						left = 1;
@@ -2997,11 +3013,11 @@ public:
 			if(timeSinceLastDijkstra - elapsed < 0) {
 				//need to update our Destination member variable, dijkstra will
 				//be called this frame
-				if(target != nullptr) {
+				if(target != nullptr && target->tangible) {
 					//requirements for a valid place to navigate to
 					//must be
 					//1 - in range
-					//2 - have LOS to player (we can even check if the weapon pierces walls later)
+					//2 - have LOS to player (we can even check if the attack pierces walls later)
 					//3 - not be a wall
 					//hopefully thats enuff, because i dont really want to make an algorithm
 					//to check if a spot is easy to walk to, but its possible.
@@ -3076,8 +3092,12 @@ public:
 					// }
 					// SDL_RenderPresent(renderer);
 					// SDL_Delay(10);
-
-					vector<int> ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisWeapon->range * (0.8), index);
+					D(hisweapon->combo);
+					D(hisweapon->attacks.size());
+					//segfaults
+					D( this->hisweapon->attacks[hisweapon->combo]->range );
+					
+					vector<int> ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range * (0.8), index);
 					
 					if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY()) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
 						//M("There's a good position, keeping my distance");
@@ -3206,7 +3226,7 @@ public:
 				g_navNodes[i]->costFromSource = numeric_limits<float>::max();
 			}
 			current->costFromSource = 0;
-			int overflow = 5000;
+			int overflow = 500;
 			
 			while(bag.size() > 0) {
 				overflow --;
@@ -3235,7 +3255,7 @@ public:
 				}
 			}
 			path.clear();
-			int secondoverflow = 650;
+			int secondoverflow = 350;
 			while(targetNode != nullptr) {
 				secondoverflow--;
 				if(secondoverflow < 0) { M("prevented a PF crash."); break;} //preventing this crash results in pathfinding problems
@@ -3259,11 +3279,7 @@ public:
 	//add an item to an entities
 	int getItem(indexItem* a, int count) {
 		for(auto& x : inventory) {
-			D(x.first->name);
-			D(a->name);
 			if(x.first->name == a->name) {
-				M("got a second copy of an item");
-				
 				x.second += count;
 				return 0;
 			}
@@ -3279,8 +3295,6 @@ public:
 			if(x.first->name == a->name) {
 				M("found a match");
 				if(x.second >= count) {
-					M("subtracting some");
-					D(count);
 					x.second-=count;
 					if(x.second == 0) {
 						//remove from array
@@ -3321,18 +3335,184 @@ entity* searchEntities(string fname) {
 	return nullptr;
 }
 
-void entity::shoot() {
-	if(this->cooldown <= 0) {
-		for(float i = 0; i < this->hisWeapon->numshots; i++) {
 
-			//M("shoot()");
-			cooldown = hisWeapon->maxCooldown;
-			projectile* p = new projectile(hisWeapon);
-			
+int loadSave() {
+	g_save.clear();
+	ifstream file;
+	string line;
+	
+	string address = "user/saves/" + g_saveName + ".txt";
+	//D(address);
+	const char* plik = address.c_str();
+	file.open(plik);
+	
+	string field = "";
+	string value = "";
+
+	M("time to load a save");
+	//load fields
+	while(getline(file, line)) {
+		if(line == "&") { break;}
+		field = line.substr(0, line.find(' '));
+		value = line.substr(line.find(" "), line.length()-1);
+		
+		//D(value + "->" + field);
+		try {
+			g_save.insert( pair<string, int>(field, stoi(value)) );
+		} catch(...) {
+			M("Error writing");
+			return -1;
+		}
+		
+	}
+	M("time to load the map");
+	file >> g_mapOfLastSave >> g_waypointOfLastSave;
+	getline(file,line);
+	getline(file,line);
+	D(g_mapOfLastSave);
+	D(g_waypointOfLastSave);
+	D("line was " + line);
+	
+	//delete current party
+	int repetitions = party.size();
+	for(auto x : party) {
+		M("about to delete someone from the old party");
+		delete x;
+	}
+	party.clear();
+
+	M("Lets load the party");
+	
+	bool setMainProtag = 0;
+	//load party
+	while(getline(file, line)) {
+		if(line == "&") {M("Thats it!"); break;}
+		
+		auto tokens = splitString(line, ' ');
+		string name = tokens[0];
+		float level = stoi(tokens[1]);
+		float currentHP = stof(tokens[2]);
+		
+		entity* a = new entity(renderer, name);
+		a->level = level;
+		a->hp = currentHP;
+		party.push_back(a);
+		a->tangible = 0;
+		a->inParty = 1;
+		M("added an entity to the party " + name);
+		if(a->essential) {
+			mainProtag = a;
+			setMainProtag = 1;
+		}
+	}
+
+	party[0]->tangible = 1;
+	if(setMainProtag) {
+		protag = mainProtag;
+	} else {
+		//feck
+		E("No essential entity found in save");
+		protag = party[0];
+		mainProtag = protag;
+	}
+	
+	g_focus = protag;
+
+	//load inventory
+	while(getline(file, line)) {
+		if(line == "&") { break;}
+		field = line.substr(0, line.find(' '));
+		value = line.substr(line.find(" "), line.length()-1);
+		indexItem* a = new indexItem(field, 0);
+		protag->getItem(a, stoi(value));
+	}
+
+	file.close();
+
+
+	return 0;
+}
+
+int writeSave() {
+	ofstream file;
+	
+	string address = "user/saves/" + g_saveName + ".txt";
+	const char* plik = address.c_str();
+	file.open(plik);
+
+	auto it = g_save.begin();
+
+	while (it != g_save.end() ) {
+		file << it->first << " " << it->second << endl;
+		it++;
+	}
+	file << "&" << endl; //token to stop writing saveflags
+	file << g_map << " " << g_waypoint << endl;
+	file << "&" << endl;
+
+	//write party
+	for(auto x : party) {
+		file << x->name << " " << x->level << " " << x->hp << endl;
+	}
+	file << "&" << endl;
+	//write protag's inventory
+	extern entity* protag;
+	for(auto x : protag->inventory) {
+		file << x.first->name << " " << x.second << endl;
+	}
+	file << "&" << endl; //token to stop writing inventory
+	
+
+	file.close();
+	return 0;
+}
+
+int checkSaveField(string field) {
+	std::map<string, int>::iterator it = g_save.find(field);
+	if(it != g_save.end()) {
+		return it->second;
+	} else {
+		return 0;
+	}
+}
+
+void writeSaveField(string field, int value) {
+	auto it = g_save.find(field);
+
+	if (it == g_save.end()) {
+		g_save.insert(std::make_pair(field, value));
+	} else {
+		g_save[field] = value;
+	}
+}
+
+void entity::shoot() {
+	//M("shoot()");
+	if(!tangible) {return;}
+	if(this->cooldown <= 0) {
+		//M("pow pow");
+		if(hisweapon->comboResetMS > hisweapon->maxComboResetMS) {
+			//waited too long- restart the combo
+			hisweapon->combo = 0;
+		}
+		for(float i = 0; (i < this->hisweapon->attacks[hisweapon->combo]->numshots); i++) {
+			D(hisweapon->attacks[hisweapon->combo]->numshots);
+			D(i);
+			M("is this the infinite loop?");
+			if(i > 1000) {
+				M("Handled an infinite loop");
+				quit = 1;
+				return;
+				
+			}
+			cooldown = hisweapon->attacks[hisweapon->combo]->maxCooldown;
+			projectile* p = new projectile(hisweapon->attacks[hisweapon->combo]);
 			p->owner = this;
 			p->x = getOriginX() - p->width/2;
 			p->y = getOriginY() - p->height/2;
-			p->z = z + 32;
+			p->z = z + p->height;
+			p->animation = this->animation;
+			p->flip = this->flip;
 			
 			//inherit velo from parent
 			p->xvel = xvel/15;
@@ -3373,26 +3553,32 @@ void entity::shoot() {
 				}
 			}
 
-			//give it an angle based on weapon spread
-			if(hisWeapon->randomspread != 0) {
+			//give it an angle based on attack spread
+			if(hisweapon->attacks[hisweapon->combo]->randomspread != 0) {
 				float randnum = (((float) rand()/RAND_MAX) * 2) - 1;
-				p->angle += (randnum * hisWeapon->randomspread);
+				p->angle += (randnum * hisweapon->attacks[hisweapon->combo]->randomspread);
 			}
-			if(hisWeapon->spread != 0) {
-				p->angle += ( (i - ( hisWeapon->numshots/2) ) * hisWeapon->spread);
+			if(hisweapon->attacks[hisweapon->combo]->spread != 0) {
+				p->angle += ( (i - ( hisweapon->attacks[hisweapon->combo]->numshots/2) ) * hisweapon->attacks[hisweapon->combo]->spread);
 			}
 
 			//move it out of the shooter and infront
-			p->x += cos(p->angle) * width/2;
-			p->y += cos(p->angle + M_PI / 2) * height/2;
+			p->x += cos(p->angle) * p->bounds.width;
+			p->y += cos(p->angle + M_PI / 2) * p->bounds.height;
+
 
 			
 			
 		}
+	  	hisweapon->combo++;
+	
+		if(hisweapon->combo > hisweapon->attacks.size() - 1) {hisweapon->combo = 0;}
+		hisweapon->comboResetMS = 0;
 	}
 }
 
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
+	if(!owner->tangible) {return;}
 	SDL_FRect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (width * size), (height * size)* (637 /640) * 0.9};
 	//SDL_Rect dstrect = {500, 500, 200, 200 };
 	//dstrect.y += (owner->height -(height/2)) * fcamera.zoom;
@@ -3419,7 +3605,7 @@ class textbox {
 public:
 	SDL_Surface* textsurface = 0;
 	SDL_Texture* texttexture = 0;
-	SDL_Color textcolor = { 255, 255, 255 };
+	SDL_Color textcolor = { 245, 245, 245 };
 	SDL_FRect thisrect = {0, 0, 50, 50};
 	string content = "Default text.";
 	TTF_Font* font = 0;
@@ -3428,7 +3614,7 @@ public:
 	int width = 0;
 	int height = 0;
 	bool show = true;
-	bool rightalign = 0;
+	int align = 0;
 
 	int errorflag = 0;
 
@@ -3460,7 +3646,7 @@ public:
 		this->width = texW;
 		this->height = texH;
 		thisrect = { fx, fy, (float)texW, (float)texH };
-
+		
 		g_textboxes.push_back(this);
 	}
 	~textbox() {
@@ -3473,22 +3659,39 @@ public:
 	void render(SDL_Renderer* renderer, int winwidth, int winheight) {
 		if(show) {
 			if(worldspace) {
-				if(rightalign) {
+				if(align == 1) {
 					SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, width,  thisrect.h};
 					SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
 				} else {
-					SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, width,  thisrect.h};
-					SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+					if(align == 0) {
+						SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, width,  thisrect.h};
+						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+					} else {
+						//center text
+						SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, width,  thisrect.h};
+						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+					}
 				}
 				
 				
 			} else {
-				SDL_RenderCopyF(renderer, texttexture, NULL, &thisrect);
-
+				if(align == 1) {
+					SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, width,  thisrect.h};
+					SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+				} else {
+					if(align == 0) {
+						SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, width,  thisrect.h};
+						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+					} else {
+						//center text
+						SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, width,  thisrect.h};
+						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+					}
+				}
 			}
 		}
 	}
-	void updateText(string content, int size, float fwidth) {
+	void updateText(string content, float size, float fwidth) {
 		//why would i add this? now that we possess entities instead of pushing them upon selection, I'm removing it
 		//extern entity* nudge;
 		//if(nudge != nullptr) { return; }
@@ -4067,10 +4270,7 @@ void clear_map(camera& cameraToReset) {
 
 	g_actors.clear();
 
-	//delete all shadows of projectiles
-	for(auto x : g_projectiles) {
-		delete x;
-	}
+
 
 	//copy protag to a pointer, clear the array, and re-add protag
 	entity* hold_protag;
@@ -4143,14 +4343,44 @@ void clear_map(camera& cameraToReset) {
 		delete g_listeners[0];
 	}
 
+	// size = g_attacks.size();
+	// bool contflag = 0;
+	// for(int i = 0; i < size; i++) {
+	// 	for(auto x : protag->hisweapon->attacks) {
+	// 		if(x == g_attacks[0]) {
+	// 			swap(g_attacks[0], g_attacks[g_attacks.size()-1]);
+	// 			contflag = 1;
+	// 			break;
+
+				
+	// 		}
+			
+	// 	}
+	// 	if(!contflag) {
+	// 		delete g_attacks[0];
+	// 	}
+	// }
+
+	vector<weapon*> persistentweapons;
 	size = g_weapons.size();
 	for(int i = 0; i < size; i++) {
-		if(g_weapons[0] == protag->hisWeapon) {
-			//save the weapon this way
-			swap(g_weapons[0], g_weapons[g_weapons.size()-1]);
-			continue;
+		bool partyOwned = false;
+		//check if party members own the weapons
+		for(auto x: party) {
+			if(x->hisweapon->name == g_weapons[0]->name) {
+				partyOwned = true;
+			}
 		}
-		delete g_weapons[0];
+		if(partyOwned) {
+			persistentweapons.push_back(g_weapons[0]);
+			g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), g_weapons[0]), g_weapons.end());
+		} else {
+			delete g_weapons[0];
+		}
+	}
+
+	for(auto x : persistentweapons) {
+		g_weapons.push_back(x);
 	}
 
 	vector<ui*> persistentui;
@@ -4221,7 +4451,57 @@ public:
 	}
 };
 
+// class particle: public actor{};
 
+// //originally made for smoke
+// class effectIndex {
+// public:
+// 	SDL_Texture* texture;
+// 	int spawnNumber = 12;
+// 	int plifetime = 5;
+// 	int pwidth = 50;
+// 	int pheight = 50;
+// 	effectIndex(string filename) {
+// 		string fileaddress = "textures/sprites/" + filename + ".png";
+// 		SDL_Surface* image = IMG_Load(fileaddress.c_str());
+// 		texture = SDL_CreateTextureFromSurface(renderer, image);
+// 		SDL_FreeSurface(image);
+// 	}
+// 	//given coordinates, spawn particles in the level
+// 	void happen(int fx, int fy, int fz, int radius) {
+// 		for(int i = 0; i < spawnNumber; i++) {
+// 			particle* a = new particle(this);
+// 			a->x = fx + (radius/2 - (rand() % radius));
+// 			a->y = fy + (radius/2 - (rand() % radius));
+// 			a->z = fz + (radius/2 - (rand() % radius));
+// 			a->lifetime = plifetime;
+// 			a->width = pwidth;
+// 			a->height = pheight; 
+// 		}
+// 	}
+// 	~effectIndex() {
+// 		SDL_DestroyTexture(texture);
+// 	}
+// };
+
+// class particle : public actor {
+// public:
+// 	int lifetime = 0;
+// 	particle(effectIndex* type) {
+// 		g_particles.push_back(this);
+// 	}
+// 	~particle() {
+// 		g_particles.erase(remove(g_particles.begin(), g_particles.end(), this), g_particles.end());
+// 	}
+// 	void update(int elapsed, camera fcamera) {
+// 		lifetime -= elapsed;
+// 		if(lifetime <= 0) {
+// 			delete this;
+// 		}
+// 		SDL_FRect dstrect = { (x -fcamera.x)* fcamera.zoom, (y-fcamera.y) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};
+// 		SDL_RenderCopyF(renderer, texture, NULL, &dstrect);	
+// 	}
+// };
 
 
 #endif
