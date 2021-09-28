@@ -1369,7 +1369,10 @@ void getInput(float &elapsed) {
 			quit = 1;
 		} else {
 			if(inPauseMenu) {
-				quit = 1;
+				inPauseMenu = 0;
+				adventureUIManager->hideInventoryUI();
+				clear_map(g_camera);
+				load_map(renderer, "maps/sp-title/sp-title.map", "a");
 			}
 		}
 	}

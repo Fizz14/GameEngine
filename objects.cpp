@@ -854,7 +854,7 @@ public:
 	float shotLifetime = 500; //ms
 	int width = 20;
 	int height = 20;
-	int damage = 1;
+	float damage = 1;
 	float spread = 0;
 	float randomspread = 0;
 	int range = 512; // max range, entities will try to be 0.8% of this to hit safely. in worldpixels
@@ -1199,7 +1199,7 @@ public:
 	}
 
 	void render(SDL_Renderer * renderer, camera fcamera) {
-		SDL_FRect obj = {(x -fcamera.x)* fcamera.zoom, ((y- z * XtoZ) - fcamera.y) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};		
+		SDL_FRect obj = {(x -fcamera.x)* fcamera.zoom, ((y- (z + zeight) * XtoZ) - fcamera.y) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};		
 		SDL_FRect cam = {0, 0, fcamera.width, fcamera.height};
 		
 		if(RectOverlap(obj, cam)) {
@@ -1770,12 +1770,13 @@ public:
 		file >> comment;
 		file >> this->friction;
 		file >> comment;
-		file >> this->bounds.width;
-		file >> this->bounds.height;
-		file >> this->bounds.zeight;
-		bounds.width *= 64;
-		bounds.height *= 55;
-		bounds.zeight *= 32;
+		float twidth, theight, tzeight;
+		file >> twidth;
+		file >> theight;
+		file >> tzeight;
+		bounds.width = twidth * 64;
+		bounds.height = theight * 55;
+		bounds.zeight = tzeight * 32;
 		
 		
 		file >> comment;
@@ -1816,7 +1817,7 @@ public:
 		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
 		sortingOffset = 8;
 		file >> comment;
-		bool setboxfromshadow;
+		bool setboxfromshadow = 0;
 		file >> setboxfromshadow;
 		
 
@@ -1915,7 +1916,8 @@ public:
 
 		//move shadow to feet
 		shadow->xoffset += width/2 - shadow->width/2;
-		shadow->yoffset -= height - shadow->height;
+		shadow->yoffset += height - shadow->height/2;
+		
 		
 		
 
@@ -1925,6 +1927,9 @@ public:
 			this->bounds.x = this->shadow->xoffset;
 			this->bounds.y = this->shadow->yoffset;
 			
+		} else {
+			this->bounds.x += width/2 - bounds.width/2;
+			this->bounds.y += height - bounds.height/2;
 		}
 
 		shadow->width += g_extraShadowSize;
@@ -1932,7 +1937,9 @@ public:
 		
 		shadow->xoffset -= 0.5 * g_extraShadowSize;
 		shadow->yoffset -= 0.5 * g_extraShadowSize * XtoY;
+
 		
+
 		int w, h;
 		SDL_QueryTexture(texture, NULL, NULL, &w, &h);
 
@@ -2056,7 +2063,7 @@ public:
 
 		
 		file >> comment;
-		bool setboxfromshadow;
+		bool setboxfromshadow = 0;
 		file >> setboxfromshadow;
 		
 
@@ -2095,6 +2102,9 @@ public:
 			this->bounds.x = this->shadow->xoffset;
 			this->bounds.y = this->shadow->yoffset;
 			
+		} else {
+			this->bounds.x += width/2 - bounds.width/2;
+			this->bounds.y += height - bounds.height;
 		}
 		
 		curwidth = width;
@@ -2177,7 +2187,7 @@ public:
 		SDL_FPoint nowt = {0, 0};
 
 
-		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y-curheight - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
+		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y - (curheight + height)/2 - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
@@ -2227,14 +2237,6 @@ public:
 			//genericmode has just one frame
 			if(isWorlditem) {frame = 0;}
 			if(framespots.size() > 0) {
-				//SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
-				D(name);
-				D(frame);
-				D(animation);
-				D(xframes);
-				D(frameInAnimation);
-				
-				D(framespots.size());
 				SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
 				const SDL_FPoint center = {0 ,0};
 				if(texture != NULL) {
@@ -2406,10 +2408,12 @@ public:
 		
 		if(!dynamic && this != protag) { return nullptr; }
 		//should we animate?
-		if(xaccel != 0 || yaccel != 0 || !grounded ) {
+		if( (xaccel != 0 || yaccel != 0) || !grounded ) {
 			animate = 1;
-			if(!scriptedAnimation) {
+			if( (!scriptedAnimation) && grounded) {
 				msPerFrame = 100;
+			} else {
+				msPerFrame = 0;
 			}
 		} else {  
 			animate = 0;
@@ -2810,12 +2814,16 @@ public:
 			//check for projectile box
 			for(auto x : g_projectiles) {
 				rect thatMovedBounds = rect(x->x + x->bounds.x, x->y + x->bounds.y, x->bounds.width, x->bounds.height);
-				thatMovedBounds.z = x->layer * 32;
+				thatMovedBounds.z = x->z;
 				thatMovedBounds.zeight = thatMovedBounds.width * XtoZ;
 				rect thisMovedBounds = rect(this->x + bounds.x, y + bounds.y, bounds.width, bounds.height);
 				thisMovedBounds.z = this->z;
 				thisMovedBounds.zeight = this->bounds.zeight;
-				
+				if(this ==protag) {
+					D(thatMovedBounds.z);
+					D(thatMovedBounds.zeight);
+					
+				}
 				if(x->owner->faction != this->faction && RectOverlap3d(thatMovedBounds, thisMovedBounds)) {
 					//take damage
 					this->hp -= x->gun->damage;
@@ -3189,7 +3197,7 @@ public:
 		}
 		//spring to get over obstacles
 		if(dest->z > this->z + 32 && this->grounded) {
-			this->zaccel = 350;
+			this->zaccel = 200;
 		}
 
 		int prog = 0;
@@ -3510,7 +3518,8 @@ void entity::shoot() {
 			p->owner = this;
 			p->x = getOriginX() - p->width/2;
 			p->y = getOriginY() - p->height/2;
-			p->z = z + p->height;
+			p->z = z + 20;
+			p->zeight = p->width * XtoZ;
 			p->animation = this->animation;
 			p->flip = this->flip;
 			

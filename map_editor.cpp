@@ -70,7 +70,7 @@ tile* waypointIcon;
 tile* doorIcon; 
 tile* triggerIcon;
 textbox* nodeInfoText;
-string entstring = "lifter"; //last entity spawned;
+string entstring = "oilman"; //last entity spawned;
 
 string mapname = "";
 string backgroundstr = "black";
@@ -1092,7 +1092,7 @@ void write_map(entity* mapent) {
                 bool deleteflag = 1;
                 for(auto n : g_entities) {
                     if(n == protag) {continue;}
-                    if(RectOverlap(n->getMovedBounds(), marker->getMovedBounds())) {
+                    if(RectOverlap(n->getMovedBounds(), marker->getMovedBounds()) && !n->inParty && n->tangible && n != protag) {
                         delete n;
                         deleteflag = 0;
                         break;
@@ -2402,29 +2402,33 @@ void write_map(entity* mapent) {
                         //g_entities[g_entities.size() - 1]->bounds.x = (g_entities[g_entities.size() - 1]->width/2 - g_entities[g_entities.size() - 1]->shadow->width/2);
                         int number;
                         line >> number;
-                        g_entities[g_entities.size() - 1]->bounds.x = number;
+                        protag->bounds.x = number;
+                        protag->bounds.x += protag->width/2 - protag->bounds.width/2;
                         break;
                     }
                     if(word == "by") {
                         int number;
                         line >> number;
-                        g_entities[g_entities.size() - 1]->bounds.y = number;
+                        protag->bounds.y = number;
+			            protag->bounds.y += protag->height - protag->bounds.height/2;
                         break;
                     }
                     if(word == "bw") {
-                        line >> g_entities[g_entities.size() - 1]->bounds.width;
+                        line >> protag->bounds.width;
                         break;
                     }
                     if(word == "bh") {
-                        line >> g_entities[g_entities.size() - 1]->bounds.height;
+                        line >> protag->bounds.height;
                         break;
                     }
                     if(word == "shadowx") {
-                        line >> g_entities[g_entities.size() - 1]->shadow->x;
+                        line >> protag->shadow->x;
+                        protag->shadow->xoffset += protag->width/2 - protag->shadow->width/2;
                         break;
                     }
                     if(word == "shadowy") {
-                        line >> g_entities[g_entities.size() - 1]->shadow->y;
+                        line >> protag->shadow->yoffset;
+                        protag->shadow->yoffset += protag->height - protag->shadow->height/2;
                         break;
                     }
                     
@@ -3767,7 +3771,8 @@ public:
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 11);
             string name = s;
-            filesystem::copy("user/saves/newsave.txt", "user/saves/" + s + ".txt");
+            D("trying to clear save " + s);
+            filesystem::copy("user/saves/newsave.txt", "user/saves/" + s + ".txt", std::filesystem::copy_options::overwrite_existing);
             talker->dialogue_index++;
 			this->continueDialogue();
 			return;
