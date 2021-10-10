@@ -84,6 +84,47 @@ void sort_ui(vector<ui*> &g_ui) {
     stable_sort(g_ui.begin(), g_ui.end(), compare_ui);
 }
 
+void populateMapWithEntities() {
+    M("Populating...");
+    bool stillAdding = 1;
+    int currentBudget = g_budget; //we'll subtract from this current budget until we can't fit any more entities in the map
+    vector<string> possibleEntities; //a vector of entities that we could add to the map.
+    vector<int> associatedCosts; //a vector of costs for each entity
+    for (std::map<string,int>::iterator it=enemiesMap.begin(); it !=enemiesMap.end(); ++it) {
+        possibleEntities.push_back(it->first);
+        associatedCosts.push_back(it->second);
+    }
+    if(possibleEntities.size() > 0 && g_navNodes.size() > 0) {
+        while(stillAdding) {
+            //pick an entity from possible entities
+            int randomElement = rand() % possibleEntities.size();
+            if( associatedCosts[randomElement] <= currentBudget) {
+                //add this enemy
+                entity* a = new entity(renderer, possibleEntities[randomElement]);
+                int randomNavnode = rand() % g_navNodes.size();
+                a->x = g_navNodes[randomNavnode]->x - a->bounds.x - a->bounds.width/2;
+                a->y = g_navNodes[randomNavnode]->y - a->bounds.y - a->bounds.height/2;
+                a->z = g_navNodes[randomNavnode]->z + 1000;
+                currentBudget -= associatedCosts[randomElement];
+                //!!! - revist this
+                if(associatedCosts[randomElement] == 0) {
+                    //we are probably going to crash
+                    associatedCosts[randomElement] = 30;
+                }
+            } else {
+                //we can't afford this guy, take him out of the lists
+                possibleEntities.erase(possibleEntities.begin()+randomElement);
+                associatedCosts.erase(associatedCosts.begin()+randomElement);
+            }
+
+            if(possibleEntities.size() <= 0 || currentBudget <= 0) {
+                stillAdding = 0;
+            }
+            
+        }
+    }
+}
+
 void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) {
     debugClock = clock();
     mapname = filename;
@@ -183,6 +224,11 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             iss >> s0 >> p1 >> p2 >>p3 >> p4 >> p5 >> s1 >> s2 >> p6 >> p7;
             tri* t = new tri(p1, p2, p3, p4, p5, s1, s2, p6, p7);
         }
+        if(word == "ramp") {
+            //ofile << "ramp " << n->x << " " << n->y << " " << i << " " << n->type << " " << n->walltexture << " " << n->captexture << endl;
+            iss >> s0 >> p0 >> p1 >> p2 >> p3 >> s1 >> s2;
+            ramp* r = new ramp(p0, p1, p2, p3, s1, s2);
+        }
         if(word == "mapObject") {
             iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
             mapObject* e = new mapObject(renderer, s1, s2.c_str(), p1, p2, p3, p4, p5, p6, p7);
@@ -269,14 +315,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 
                     if(box->shineBot){
                         //shine
-                        child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.png",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 55/2,  box->layer * 64 + 64, box->bounds.width, 55);
+                        child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.png",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 54/2,  box->layer * 64 + 64, box->bounds.width, 54);
                         child->sortingOffset = -26;
                         
                         box->children.push_back(child);
                     }
                     if(box->shineTop){
                         //back
-                        child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.png",  "&", box->bounds.x, box->bounds.y + 55/2, box->layer * 64 + 64 + 1, box->bounds.width, 55/2);
+                        child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.png",  "&", box->bounds.x, box->bounds.y + 54/2, box->layer * 64 + 64, box->bounds.width, 54/2);
                         box->children.push_back(child);
                     }
                     
@@ -353,7 +399,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     step = g_TiltResolution;
                     int vstep = 64;
                     for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j+=vstep) {
-                        for (int i = 0; i < 64; i+=step) {
+                        for (float i = 0; i < 64; i+=step) {
                             child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - (i * XtoY) - 1, j, step,  32, 1, (i * XtoY));
                             triangle->children.push_back(child);
                         }
@@ -390,7 +436,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         step = g_TiltResolution;
                         int vstep = 64;
                         for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j+=vstep) {
-                            for (int i = 0; i < 64; i+=step) {
+                            for (float i = 0; i < 64; i+=step) {
                                 child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - i) * XtoY) - 1, j, step,  32, 1, ((64 - i) * XtoY));
                                 triangle->children.push_back(child);
                             }
@@ -441,47 +487,55 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                 }
             }
         }
-    }
-
-    //put enemies in map
-    bool stillAdding = !devMode; //don't spawn procedural enemies in devmode because then I'd save them into maps
-    int currentBudget = g_budget; //we'll subtract from this current budget until we can't fit any more entities in the map
-    vector<string> possibleEntities; //a vector of entities that we could add to the map.
-    vector<int> associatedCosts; //a vector of costs for each entity
-    for (std::map<string,int>::iterator it=enemiesMap.begin(); it !=enemiesMap.end(); ++it) {
-        possibleEntities.push_back(it->first);
-        associatedCosts.push_back(it->second);
-    }
-    if(possibleEntities.size() > 0 && g_navNodes.size() > 0) {
-        while(stillAdding) {
-            //pick an entity from possible entities
-            int randomElement = rand() % possibleEntities.size();
-            if( associatedCosts[randomElement] <= currentBudget) {
-                //add this enemy
-                entity* a = new entity(renderer, possibleEntities[randomElement]);
-                int randomNavnode = rand() % g_navNodes.size();
-                a->x = g_navNodes[randomNavnode]->x - a->bounds.x - a->bounds.width/2;
-                a->y = g_navNodes[randomNavnode]->y - a->bounds.y - a->bounds.height/2;
-                a->z = g_navNodes[randomNavnode]->z + 1000;
-                currentBudget -= associatedCosts[randomElement];
-                //!!! - revist this
-                if(associatedCosts[randomElement] == 0) {
-                    //we are probably going to crash
-                    associatedCosts[randomElement] = 30;
+        for(vector<ramp*> layer : g_ramps) {
+            int tiltstep = g_TiltResolution;
+            for(auto r : layer) {
+                if(r->type == 0) {
+                    for (int i = 0; i < 64; i+= tiltstep) {
+                        //make a strip of captex
+                        child = new mapObject(renderer, r->captexture, "&", r->x, r->y - ((float)i * 55.0/64.0) + 55, r->layer * 64 + i, 64, tiltstep + 2, 0, 0);
+                        r->children.push_back(child);
+                    }
+                    
+                } else {
+                    if(r->type == 1) {
+                        for (int i = 0; i < 64; i+= tiltstep) {
+                            //make a strip of captex
+                            child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y+ 55, r->layer * 64 + i, tiltstep, 55, 0, 0);
+                            r->children.push_back(child);
+                        }
+                        //wall
+                        child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+                        r->children.push_back(child);
+                    } else {
+                        if(r->type == 2) {
+                            for (int i = 0; i < 55; i+= tiltstep) {
+                                //make a strip of captex
+                                child = new mapObject(renderer, r->captexture, "&", r->x, r->y - i+ 55, r->layer * 64 + (64 -(i * (64/55))), 64, tiltstep, 0, 0);
+                                r->children.push_back(child);
+                            }
+                            //wall
+                            child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+                            r->children.push_back(child);
+                        } else {
+                            for (int i = 0; i < 64; i+= tiltstep) {
+                                //make a strip of captex
+                                child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y+ 55, r->layer * 64 + (64 - i), tiltstep, 55, 0, 0);
+                                r->children.push_back(child);
+                            }
+                            child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+                            r->children.push_back(child);
+                        }
+                    }
                 }
-            } else {
-                //we can't afford this guy, take him out of the lists
-                possibleEntities.erase(possibleEntities.begin()+randomElement);
-                associatedCosts.erase(associatedCosts.begin()+randomElement);
             }
-
-            if(possibleEntities.size() <= 0 || currentBudget <= 0) {
-                stillAdding = 0;
-            }
-            
         }
     }
 
+    //put enemies in map
+    if(!devMode) {    
+        populateMapWithEntities();
+    }
 
     Update_NavNode_Costs(g_navNodes);
     infile.close();
@@ -490,7 +544,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
     sort_ui(g_ui);
 
     double LoadingTook = ( std::clock() - debugClock ) / (double) CLOCKS_PER_SEC;
-    std::cout << "Loading took " << LoadingTook << "s" << endl;
+    M("Loading took " + to_string(LoadingTook) + "s");
 
     //map is loaded in, let's search for the proper waypoint
     for (int i = 0; i < g_waypoints.size(); i++) {
@@ -543,6 +597,11 @@ bool mapeditor_save_map(string word) {
     for(int i = 0; i < g_layers; i ++) {
         for (auto n : g_triangles[i]) {
             ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture <<  " " << n->capped << " " << n->shaded << endl;
+        }
+    }
+    for(int i = 0; i < g_layers; i ++) {
+        for (auto n : g_ramps[i]) {
+            ofile << "ramp " << n->x << " " << n->y << " " << i << " " << n->type << " " << n->walltexture << " " << n->captexture << endl;
         }
     }
     for (long long unsigned int i = 0; i < g_entities.size(); i++) {
@@ -872,11 +931,12 @@ void write_map(entity* mapent) {
         nudge = 0;
         for(auto n : g_entities) {
             if(n == protag) {continue;}
-            if(RectOverlap(n->getMovedBounds(), marker->getMovedBounds())) {
+            if(RectOverlap(n->getMovedBounds(), marker->getMovedBounds()) && n->tangible) {
                 protag = n;
                 nudge = n;
                 g_focus = n;
             }
+            
         }
         if(nudge == 0) {
             lx = px;
@@ -1101,6 +1161,7 @@ void write_map(entity* mapent) {
 
                 vector<tri*> deleteTris;
                 vector<box*> deleteRects;
+                vector<ramp*> deleteRamps;
                 rect markerrect = {marker->x, marker->y, marker->width, marker->height};
                 //delete block at position
                 for (int i = 0; i < g_boxs.size(); i++) {
@@ -1119,6 +1180,15 @@ void write_map(entity* mapent) {
                         }
                     }
                 }
+                for (int i = 0; i < g_ramps.size(); i++) {
+                    for(auto n : g_ramps[i]) {
+                        rect a = rect(n->x, n->y, 64, 55);
+                        if(RectOverlap(markerrect, a)) {
+                            deleteRamps.push_back(n);
+                            deleteflag = 0;
+                        }
+                    }
+                }
                 
                 //only delete tiles if we haven't already deleted something else
                 
@@ -1131,6 +1201,13 @@ void write_map(entity* mapent) {
                     deleteflag = 0;
                 }
                 for(auto n: deleteRects) {
+                    for(auto child:n->children) {
+                        delete child;
+                    }
+                    delete n;
+                    deleteflag = 0;
+                }
+                 for(auto n: deleteRamps) {
                     for(auto child:n->children) {
                         delete child;
                     }
@@ -1187,11 +1264,8 @@ void write_map(entity* mapent) {
 
    
     if(devinput[7] && !olddevinput[7]) {
-        //shrink grid
-        // if(grid/2 > 0) {
-        //     grid /= 2;
-        //     M("Grid lowered to " + (int)grid);
-        // }
+        //toggle hitboxes
+        drawhitboxes = !drawhitboxes;
     }
 
     if(devinput[8] && !olddevinput[8]) {
@@ -1255,9 +1329,7 @@ void write_map(entity* mapent) {
     }
 
     if(devinput[11] && !olddevinput[11]) { 
-        if(nudge != 0) {
-            nudge = 0;
-        } else {
+
             //set material
             //textbox(SDL_Renderer* renderer, const char* content, float size, int x, int y, int width) {
             textbox* consoleDisplay = new textbox(renderer, "console",  WIN_WIDTH * g_fontsize / 2, 0, 0, 4000);
@@ -1557,6 +1629,19 @@ void write_map(entity* mapent) {
                                 }
                                 
                             }
+                            //check if there is a ramp above
+                            if(i < g_layers) {
+                                for(auto n : g_ramps[i+1]) {
+                                    rect ramprect = rect(n->x, n->y, 64, 55);
+                                    if(RectOverlap(b->bounds, ramprect)) {
+                                        //there is a ramp above this block, so it needs no shine
+                                        b->shineTop = 0;
+                                        b->shineBot = 0;
+                                        b->capped = 0;
+                                    }
+                                }
+                            }
+                            
                             if(!b->capped) {b->shineTop = false; b->shineBot = false;}
 
                             
@@ -2161,9 +2246,16 @@ void write_map(entity* mapent) {
                     protag->x = 100000;
                     protag->y = 100000;
                 }
+                if(word == "populate") {
+                    populateMapWithEntities();
+                    break;
+                }
                 if(word == "set" || word == "s") {
                     line >> word;
                     D(word);
+
+
+
                     if(word == "budget") {
                         int a;
                         if(line >> a) {
@@ -2173,7 +2265,7 @@ void write_map(entity* mapent) {
                     }
                     
                     
-                    if(word == "navnodecorneringwidth" || word == "nncw" || word == "navcornering") {
+                    if(word == "navnodecorneringwidth" || word == "nncw" || word == "navcornering" || word == "nncr" || word == "cornering") {
                         //this is the width of a boxtrace used for testing if navnodes should be joined.
                         //if AI are getting caught on walls, increase this to about the width of their hitboxes
                         float inp;
@@ -2211,6 +2303,21 @@ void write_map(entity* mapent) {
                             textureDirectory = str + "/";
                         }
 
+
+                        //update bg
+                        
+                        backgroundstr = str;
+                        
+                        if(g_backgroundLoaded) {
+                            SDL_DestroyTexture(background);
+                        }
+                        SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".png").c_str());
+                        background = SDL_CreateTextureFromSurface(renderer, bs);
+                        g_backgroundLoaded = 1;
+                        SDL_FreeSurface(bs);
+                        
+                        //proceed
+
                         //re-populate the array of textures that we rotate thru for creating floors, walls, and caps
                         texstrs.clear();
                         string path = "textures/diffuse/" + textureDirectory;
@@ -2223,8 +2330,25 @@ void write_map(entity* mapent) {
                             texstrs.push_back(entry.path());
                         }
                         floortexIndex = 0;
-                        captexIndex = 0;
+                        captexIndex = -1;
                         walltexIndex = 0;
+
+                        //search for "floor" and "wall" textures
+                        for(int i = 0; i < texstrs.size(); i++) {
+                            int pos = texstrs[i].find_last_of( '/');
+                            string filename = texstrs[i].substr(pos + 1);
+                            if(filename == "floor.png") {
+                                floortexIndex = i;
+                            }
+                            if(filename == "wall.png") {
+                                walltexIndex = i;
+                            }
+                            if(filename == "cap.png") {
+                                captexIndex = i;
+                            }
+                        }
+
+                        if(captexIndex == -1) {captexIndex = walltexIndex;}
 
                         floortex = texstrs[floortexIndex];
                         delete floortexDisplay;
@@ -2328,9 +2452,29 @@ void write_map(entity* mapent) {
                             if(line >> speed) {
                                 mapent->xmaxspeed = speed;
                                 mapent->ymaxspeed = speed;
-                                    
-                                break;
-                            }        
+                            }  
+                            break;      
+                        }
+                        if(word == "faction") {
+                            int p0;
+                            if(line >> p0) {
+                                mapent->faction = p0;
+                            }
+                            break;
+                        }
+                        if(word == "hp") {
+                            float p0;
+                            if(line >> p0) {
+                                mapent->hp = p0;
+                            }
+                            break;
+                        }
+                        if(word == "tangible" || word == "tangibility") {
+                            bool b0;
+                            if(line >> b0) {
+                                mapent->tangible = b0;
+                            }
+                            break;
                         }
                         if(word == "z") {
                             float z;
@@ -2713,7 +2857,7 @@ void write_map(entity* mapent) {
                 
                 Update_NavNode_Costs(g_navNodes);
                 break;
-                }
+                
         
             }
 
@@ -2865,6 +3009,59 @@ void write_map(entity* mapent) {
         delete captexDisplay;
         captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, 0);
     }
+
+    if(devinput[22] && !olddevinput[22]) {
+        ramp* r = new ramp(marker->x, marker->y, wallstart/64, 0, walltex, captex);
+        mapObject* child;
+        int tiltstep = g_TiltResolution;
+        for (int i = 0; i < 64; i+= tiltstep) {
+            //make a strip of captex
+            child = new mapObject(renderer, r->captexture, "&", r->x, r->y - ((float)i * 55.0/64.0) + 55, r->layer * 64 + i, 64, tiltstep + 2, 0, 0);
+            r->children.push_back(child);
+        }
+        
+    }
+
+    if(devinput[23] && !olddevinput[23]) {
+        ramp* r = new ramp(marker->x, marker->y, wallstart/64, 1, walltex, captex);
+        mapObject* child;
+        int tiltstep = g_TiltResolution;
+        for (int i = 0; i < 64; i+= tiltstep) {
+            //make a strip of captex
+            child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y+ 55, r->layer * 64 + i, tiltstep, 55, 0, 0);
+            r->children.push_back(child);
+        }
+        //wall
+        child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+        r->children.push_back(child);
+    }
+
+    if(devinput[24] && !olddevinput[24]) {
+        ramp* r = new ramp(marker->x, marker->y, wallstart/64, 2, walltex, captex);
+        mapObject* child;
+        int tiltstep = g_TiltResolution;
+        for (int i = 0; i < 55; i+= tiltstep) {
+            //make a strip of captex
+            child = new mapObject(renderer, r->captexture, "&", r->x, r->y - i+ 55, r->layer * 64 + (64 -(i * (64/55))), 64, tiltstep, 0, 0);
+            r->children.push_back(child);
+        }
+        //wall
+        child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+        r->children.push_back(child);
+    }
+
+    if(devinput[25] && !olddevinput[25]) {
+        ramp* r = new ramp(marker->x, marker->y, wallstart/64, 3, walltex, captex);
+        mapObject* child;
+        int tiltstep = g_TiltResolution;
+        for (int i = 0; i < 64; i+= tiltstep) {
+            //make a strip of captex
+            child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y+ 55, r->layer * 64 + (64 - i), tiltstep, 55, 0, 0);
+            r->children.push_back(child);
+        }
+        child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+        r->children.push_back(child);
+    }
     
     //update position of markerz
     markerz->x = marker->x;
@@ -2909,6 +3106,7 @@ public:
     int response_index = 0; //number of response from array responses
     int sleepingMS = 0; //MS to sleep cutscene/script
     bool sleepflag = 0; //true for one frame after starting a sleep
+    bool mobilize = 0; //used to allow the player to move during /sleep calls
 
     ui* inventoryA = 0; //big box, which has all of the items that the player has
     ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
@@ -3085,18 +3283,21 @@ public:
             return;
         }
         M("B");
-
-        protag_is_talking = 1;
-
+        
         if(sleepingMS > 1) {
             sleepingMS -= elapsed;
+            protag_is_talking = !mobilize;
             return;
         } else {
             if(sleepflag){
+                mobilize = 0;
                 this->showTalkingUI();
                 sleepflag = 0;
             }
         }
+
+        protag_is_talking = 1;
+
 
         M("C");
 
@@ -3104,6 +3305,7 @@ public:
         D(talker->dialogue_index);
 		if(talker->sayings.at(talker->dialogue_index + 1) == "#") {
 			protag_is_talking = 2;
+            mobilize = 0;
 			adventureUIManager->hideTalkingUI();
 			talker->dialogue_index = 0;
 			talker->animate = 0;
@@ -3434,10 +3636,25 @@ public:
 			return;
 		}
 
-        //sleep
-        if(talker->sayings.at(talker->dialogue_index + 1).at(0) == ';') {
+        //refresh a trigger by ID
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/refresh") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 1);
+			s.erase(0, 9);
+			
+            int tID = stoi(s);
+            if(tID < g_triggers.size()) {
+                g_triggers[tID]->active = 1;
+            }
+            
+			talker->dialogue_index++;
+			this->continueDialogue();
+			return;
+		}
+
+        //sleep
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/sleep") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 7);
             string msstr = "0";
             msstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
             int ms = 0;
@@ -3445,6 +3662,27 @@ public:
             sleepingMS = ms;
             talker->dialogue_index++;
             sleepflag = 1;
+            this->continueDialogue();
+            return;
+        }
+
+
+        //mobile sleep, sleep but let the player walk
+        //I'm not really sure why you'd want this actually, and come to think of it
+        //since the scripting shtick can only run one script at once, this
+        //is vastly less helpful than I anticipated
+        //timer-object afterall?
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/msleep") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 8);
+            string msstr = "0";
+            msstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            int ms = 0;
+            ms = stoi(msstr);
+            sleepingMS = ms;
+            sleepflag = 1;
+            mobilize = 1;
+            talker->dialogue_index++;
             this->continueDialogue();
             return;
         }

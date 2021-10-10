@@ -104,7 +104,6 @@ public:
 		for (int i = 0; i < friends.size(); i++) {
 			costs[i] = Distance(x, y, friends[i]->x, friends[i]->y);
 		}
-		
 	}
 
 	void Render(int red, int green, int blue) {
@@ -268,6 +267,29 @@ public:
 	}
 };
 
+class ramp : public mapCollision {
+public:
+	int x, y;
+	// int width = 64;
+	// int height = 55;
+	int layer = 0;
+	int type; //0 means the higher end is north, 1 is east, and so on
+
+	ramp(int fx, int fy, int flayer, int ftype, string fwallt, string fcapt) {
+		x = fx;
+		y = fy;
+		layer = flayer;
+		type = ftype;
+		walltexture = fwallt;
+		captexture = fcapt;
+		g_ramps[layer].push_back(this);
+	}
+
+	~ramp() {
+		g_ramps[layer].erase(remove(g_ramps[layer].begin(), g_ramps[layer].end(), this), g_ramps[layer].end());
+	}
+};
+
 
 bool PointInsideRightTriangle(tri* t, int px, int py) {
 	switch(t->type) {
@@ -331,7 +353,7 @@ bool ElipseOverlap(rect a, rect b) {
 	//circle collision test using widths of rectangles as radiusen
 	return (Distance(midpointA.x, midpointA.y, midpointB.x, midpointB.y) < (a.width + b.width)/2);
 }
-bool CylinderOverlap(rect a, rect b) {
+bool CylinderOverlap(rect a, rect b, int skin = 0) {
 	//get midpoints
 	coord midpointA = {a.x + a.width/2, a.y + a.height/2};
 	coord midpointB = {b.x + b.width/2, b.y + b.height/2};
@@ -341,7 +363,7 @@ bool CylinderOverlap(rect a, rect b) {
 	midpointB.y *= 1/XtoY;
 
 	//circle collision test using widths of rectangles as radiusen
-	return (Distance(midpointA.x, midpointA.y, midpointB.x, midpointB.y) < (a.width + b.width)/2)&& a.z < b.z + b.zeight && a.z + a.zeight > b.z;
+	return (Distance(midpointA.x, midpointA.y, midpointB.x, midpointB.y) - skin < (a.width + b.width)/2)&& a.z < b.z + b.zeight && a.z + a.zeight > b.z;
 }
 
 bool RectOverlap(SDL_Rect a, SDL_Rect b) {
@@ -533,6 +555,8 @@ bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, 
 		
 		for (int j = 0; j < g_boxs[layer].size(); j++) {
 			if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
+				lineTraceX = a.x + a.width/2;
+				lineTraceY = a.y + a.height/2;
 				return false;
 			}
 		}
@@ -1121,7 +1145,7 @@ public:
 	cshadow * shadow = 0;
 
 	projectile(attack* fattack) {
-		M("projectile()");
+		//M("projectile()");
 		this->sortingOffset = 12;
 		this->width = fattack->width;
 		this->height = fattack->height;
@@ -1151,6 +1175,7 @@ public:
 
 	~projectile() {
 		//M("~projectile()");
+		
 		g_projectiles.erase(remove(g_projectiles.begin(), g_projectiles.end(), this), g_projectiles.end());
 		delete shadow;
 		//make recursive projectile
@@ -1163,6 +1188,7 @@ public:
 		layer = max(z /64, 0.0f);
 		for(auto n : g_boxs[layer]) {
 			if(RectOverlap(bounds, n->bounds)) {
+				playSound(0, g_bulletdestroySound, 0);
 				lifetime = 0;
 				return;
 			}
@@ -1241,7 +1267,7 @@ public:
 	string mask_fileaddress = "&"; //unset value
 	SDL_Texture* alternative = nullptr; //representing the texture tinted as if it were the opposite of the texture in terms of shading
 
-	mapObject(SDL_Renderer * renderer, string imageadress, const char* mask_filename, int fx, int fy, int fz, int fwidth, int fheight, bool fwall = 0, float extrayoffset = 0) {
+	mapObject(SDL_Renderer * renderer, string imageadress, const char* mask_filename, float fx, float fy, float fz, float fwidth, float fheight, bool fwall = 0, float extrayoffset = 0) {
 		//M("mapObject() fake");
 		
 		name = imageadress;
@@ -1314,10 +1340,10 @@ public:
 			}
 			if(name.find("SHADING") != string::npos) {
 				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
-				SDL_SetTextureAlphaMod(texture, 150);
+				//SDL_SetTextureAlphaMod(texture, 150);
 			}
 			if(name.find("OCCLUSION") != string::npos) {
-				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
+				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
 			}
 			SDL_QueryTexture(texture, NULL, NULL, &this->framewidth, &this->frameheight);
 		}
@@ -1541,10 +1567,9 @@ public:
 		}
 		bool storeThis = true;
 		for(auto x : g_indexItems) {
-			M(x->name);
+			//M(x->name);
 			if(this->name == x->name) {
 				storeThis = false;
-				D("not storing this ii");
 			}
 		}
 		if(storeThis) {
@@ -1560,6 +1585,7 @@ public:
 		SDL_DestroyTexture(texture);
 	}
 };
+
 
 class entity:public actor {
 public:
@@ -1626,7 +1652,7 @@ public:
 	int frameheight = 120; //height of frame
 	int xframes = 1; //number of frames ACROSS the spritesheet
 	int yframes = 1; //number of frames DOWN the spritesheet
-	vector<coord*> framespots;
+	vector<coord> framespots;
 	bool up, down, left, right; //for chusing one of 8 animations for facing
 	bool hadInput = 0; //had input this frame;
 	int shooting = 0; //1 if character is shooting
@@ -1665,6 +1691,7 @@ public:
 	coord dcoord; //place where they want to stand
 	int faction = 0; //0 is player, 1 is most enemies
 	bool essential = 0; //if this entity dies in your party, does the game end?
+	int flashingMS = 0; //ms to flash red after taking damage
 
 	//stats/leveling
 	float level = 1; //affects damage
@@ -1698,6 +1725,8 @@ public:
 	int maxStuckTime = 10; //time waited before resolving stuckness
 	float lastx = 0;
 	float lasty = 0;
+
+	int semisolid = 0; //push away close entities
 
 	//inventory
 	//std::map<indexItem*, int> inventory = {};
@@ -1832,6 +1861,9 @@ public:
 		if(solidifyHim) {
 			this->solidify();
 		}
+		
+		file >> comment;
+		file >> semisolid;
 
 		file >> comment;
 		file >> this->talks;
@@ -1966,9 +1998,9 @@ public:
 
 			for (int j = 0; j < h; j+=frameheight) {
 				for (int i = 0; i < w; i+= framewidth) {
-					coord* a = new coord(); 
-					a->x = i;
-					a->y = j;
+					coord a;
+					a.x = i;
+					a.y = j;
 					framespots.push_back(a);
 				}
 			}
@@ -2117,9 +2149,9 @@ public:
 			frame = 0;
 			framewidth = image->w;
 			frameheight = image->h;
-			coord* a = new coord();
-			a->x = 0;
-			a->y = 0;
+			coord a;
+			a.x = 0;
+			a.y = 0;
 			framespots.push_back(a);
 		//} else {
 			
@@ -2137,10 +2169,6 @@ public:
 		if(!asset_sharer) {
 			SDL_DestroyTexture(texture);
 		}
-		for (auto p : framespots) {
-			delete p;
-		} 
-		framespots.clear();
 
 		//delete hisweapon;
 		//if this entity is talking or driving a script, a: the game is probably broken and b: we're about to crash
@@ -2187,7 +2215,7 @@ public:
 		SDL_FPoint nowt = {0, 0};
 
 
-		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y - (curheight + height)/2 - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
+		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y - ((curheight * (XtoY) + height * (1-XtoY))) - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
@@ -2236,15 +2264,27 @@ public:
 			SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
 			//genericmode has just one frame
 			if(isWorlditem) {frame = 0;}
-			if(framespots.size() > 0) {
-				SDL_Rect srcrect = {framespots[frame]->x,framespots[frame]->y, framewidth, frameheight};
+			if(framespots.size() > 1) {
+				SDL_Rect srcrect = {framespots[frame].x,framespots[frame].y, framewidth, frameheight};
 				const SDL_FPoint center = {0 ,0};
+				if(flashingMS > 0) {
+					SDL_SetTextureColorMod(texture, 255, 255 * (1-((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
+				}
 				if(texture != NULL) {
 					SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
 				}
+				if(flashingMS > 0) {
+					SDL_SetTextureColorMod(texture, 255, 255, 255);
+				}
 			} else {
+				if(flashingMS > 0) {
+					SDL_SetTextureColorMod(texture, 255, 255 * (1 - ((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
+				}
 				if(texture != NULL) {
 					SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+				}
+				if(flashingMS > 0) {
+					SDL_SetTextureColorMod(texture, 255, 255, 255);
 				}
 			}
 		}
@@ -2736,7 +2776,6 @@ public:
 			for (auto n : g_triangles[layer - 1]) {
 				if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
 					floor = 64 * (layer);
-					M("standing on a tri");
 					break;
 				}
 				
@@ -2775,6 +2814,61 @@ public:
 			this->shadow->z = heightfloor;
 			floor = heightfloor;
 		}
+
+		//try ramps?
+		//!!! can crash if the player gets too high
+		if(layer < g_layers) { 
+			for(auto r : g_ramps[this->layer]) {
+				rect a = rect(r->x, r->y, 64, 55);
+				rect movedBounds = rect(bounds.x + x, bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+				if(RectOverlap(movedBounds, a)) {
+					if(r->type == 0) {
+						//contribute to protag z based on how far we are along
+						//the y axis
+						float push = (55 - abs((((float)movedBounds.y - (float)r->y ))))/55;
+						
+						M(push);
+						float possiblefloor = r->layer * 64 + 64 * push; 
+						if( abs(this->z - possiblefloor ) < 15) {
+							floor = possiblefloor; 
+							this->shadow->z = floor + 1;
+						}
+						
+					} else {
+						if(r->type == 1) {
+							float push = (64 - abs((( (float)(movedBounds.x + movedBounds.width) - (float)(r->x + 64) ))))/64;
+							
+							float possiblefloor = r->layer * 64 + 64 * push; 
+							if( abs(this->z - possiblefloor ) < 15) {
+								floor = possiblefloor; 
+								this->shadow->z = floor + 1;
+							}
+						} else {
+							if(r->type == 2) {
+								//contribute to protag z based on how far we are along
+								//the y axis
+								float push = (55 - abs((( (float)(movedBounds.y + movedBounds.height) - (float)(r->y + 55) ))))/55;
+								
+								float possiblefloor = r->layer * 64 + 64 * push; 
+								if( abs(this->z - possiblefloor ) < 15) {
+									floor = possiblefloor; 
+									this->shadow->z = floor + 1;
+								}
+								
+							} else {
+								float push = (64 - abs((( (float)(movedBounds.x) - (float)(r->x) ))))/64;
+								
+								float possiblefloor = r->layer * 64 + 64 * push; 
+								if( abs(this->z - possiblefloor ) < 15) {
+									floor = possiblefloor; 
+									this->shadow->z = floor + 1;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 		
 		if(z > floor + 1) {
 			zaccel -= g_gravity * ((double) elapsed / 256.0);
@@ -2812,6 +2906,7 @@ public:
 		if(!invincible) {
 			//M("I'm not invincible");
 			//check for projectile box
+			vector<projectile*> projectilesToDelete;
 			for(auto x : g_projectiles) {
 				rect thatMovedBounds = rect(x->x + x->bounds.x, x->y + x->bounds.y, x->bounds.width, x->bounds.height);
 				thatMovedBounds.z = x->z;
@@ -2819,17 +2914,21 @@ public:
 				rect thisMovedBounds = rect(this->x + bounds.x, y + bounds.y, bounds.width, bounds.height);
 				thisMovedBounds.z = this->z;
 				thisMovedBounds.zeight = this->bounds.zeight;
-				if(this ==protag) {
-					D(thatMovedBounds.z);
-					D(thatMovedBounds.zeight);
-					
-				}
 				if(x->owner->faction != this->faction && RectOverlap3d(thatMovedBounds, thisMovedBounds)) {
 					//take damage
 					this->hp -= x->gun->damage;
-
+					this->flashingMS = g_flashtime;
+					if(this->faction != 0) {
+						playSound(1, g_enemydamage, 0);
+					} else {
+						if(this == protag) {
+							playSound(2, g_playerdamage, 0);
+						} else {
+							playSound(3, g_npcdamage, 0);
+						}
+					}
 					//destroy projectile
-					delete x;			
+					projectilesToDelete.push_back(x);		
 
 					//under certain conditions, agro the entity hit and set his target to the shooter
 					if(target == nullptr) {
@@ -2837,7 +2936,6 @@ public:
 						targetFaction = x->owner->faction;
 						agrod = 1;
 
-						D(faction);
 						//agro all of the boys on this's team who aren't already agrod, and set their target to a close entity from x's faction
 						for (auto y : g_entities) {
 							if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr)) {
@@ -2848,6 +2946,9 @@ public:
 						
 					}
 				}
+			}
+			for(auto x:projectilesToDelete) {
+				delete x;
 			}
 		}
 		
@@ -2873,10 +2974,10 @@ public:
 		//if we're even slightly stuck, don't bother
 		if(stuckTime < 20) {
 			for(auto x : g_entities) {
-				if(x->tangible && CylinderOverlap(x->getMovedBounds(), this->getMovedBounds()) && abs(x->z - this->z) < 64) {
+				if(x->semisolid && x->tangible && (CylinderOverlap(x->getMovedBounds(), this->getMovedBounds(), x->bounds.width * 0.3))) {					
 					//push this one slightly away from x
-					float r = pow( Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()) , 2);
-					float mag =  10000/r;
+					float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
+					float mag =  30000/r;
 					float xdif = (this->getOriginX() - x->getOriginX());
 					float ydif = (this->getOriginY() - x->getOriginY());
 					float len = pow( pow(xdif, 2) + pow(ydif, 2), 0.5);
@@ -2891,7 +2992,7 @@ public:
 				}
 			}
 		}
-
+		flashingMS -= elapsed;
 		if(this == protag) {
 			return nullptr;
 		}
@@ -2911,82 +3012,103 @@ public:
 							break;
 						} 
 					}
+					if(!setNewTarget){
+						for(auto x : g_entities) {
+							if(x->tangible && x->faction == target->faction) {
+								target = x;
+								setNewTarget = 1;
+								break;
+							} 
+						}
+					}
 					if(!setNewTarget) {
 						target = nullptr;
-						agrod = 0;
+						//agrod = 0;
+						//I'd like to check if there are entities we can't see but we can path too but its so much work :(
+						
 						Destination = nullptr;
 					}
 				} else {
 					//re-evaluate target if someone else has delt high damage to us recently
 
-					//face towards the target
-					
-					int xdiff = (this->getOriginX()) - (target->getOriginX());
-					int ydiff = (this->getOriginY()) - (target->getOriginY());
-					ydiff *= 1/XtoY;
-					int axdiff = ( abs(xdiff) - abs(ydiff) );
-					
-					if(axdiff > 0) {
-						//xaxis is more important
-						this->animation = 2;
-						if(xdiff > 0) {
-							this->flip = SDL_FLIP_NONE;
-						} else {
-							this->flip = SDL_FLIP_HORIZONTAL;
-						}
-					} else {
-						//yaxis is more important
-						this->flip = SDL_FLIP_NONE;
-						if(ydiff > 0) {
-							this->animation = 0;
-						} else {
-							this->animation = 4;
-						}
-					}
-					if(abs(axdiff) < 0.4*XYWorldDistance(getOriginX(), getOriginY(), target->getOriginX(), target->getOriginY())) {
-						if(xdiff > 0) {
-							this->flip = SDL_FLIP_NONE;
-						} else {
-							this->flip = SDL_FLIP_HORIZONTAL;
-						}
-						if(ydiff > 0) {
-							this->animation = 1;
-						} else {
-							this->animation = 3;
-						}
-					}
-					up = 0; left = 0; right = 0; down = 0;
-					switch(animation) {
-						case 0:
-							up = 1;
-							break;
-						case 1:
-							up = 1;
-							left = !flip;
-							right = flip;
-							break;
-						case 2:
-							left = !flip;
-							right = flip;
-							break;
-						case 3:
-							down = 1;
-							left = !flip;
-							right = flip;
-							break;
-						case 4:
-							down = 1;
-							break;
-					}
-
 					//this constant is what factor of the range must be had to the player
 					//in these types of games, humans seem to shoot even when they are out 
 					// of range, so lets go with that
-					if(XYWorldDistance(target->getOriginX(), target->getOriginY(), getOriginX(), getOriginY()) < this->hisweapon->attacks[hisweapon->combo]->range * 1.1) {
-						//we have a target, we're in range, we're angry, so lets shoot
-						shoot();
-						left = 1;
+					shooting = 0;
+					float distanceToTarget = XYWorldDistance(target->getOriginX(), target->getOriginY(), getOriginX(), getOriginY());
+					if(distanceToTarget < this->hisweapon->attacks[hisweapon->combo]->range) {
+						shooting = 1;
 					}
+					
+					float xvector;
+					float yvector;
+					bool recalcAngle = 0; //should we change his angle in the first place?
+					//combatrange is higher than shooting range because sometimes that range is broken while a fight is still happening, so he shouldnt turn away
+					if(distanceToTarget < this->hisweapon->attacks[hisweapon->combo]->range * 1.7) {
+						//set vectors from target
+						xvector = (this->getOriginX()) - (target->getOriginX());
+						yvector = (this->getOriginY()) - (target->getOriginY());
+						recalcAngle = 1;
+					} else {
+						//set vectors from velocity
+						xvector = -xvel;
+						yvector = -yvel;
+						//if he's not traveling very fast it looks natural to not change angle
+						if(Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.9) {recalcAngle = 1;}
+					}
+					
+					if(recalcAngle) {
+						float angle = atan2(yvector, xvector);
+					
+						flip = SDL_FLIP_NONE;
+						up = 0; down = 0; left = 0; right = 0;
+						if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
+							animation = 2;
+							flip = SDL_FLIP_HORIZONTAL;
+							right = 1;
+							//M("A");
+						} else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
+							animation = 1;
+							flip = SDL_FLIP_HORIZONTAL;
+							right = 1;
+							up = 1;
+							//M("B");
+						} else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
+							animation = 0;
+							up = 1;
+							//M("C");
+						} else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
+							animation = 1;
+							up = 1;
+							left = 1;
+							//M("D");
+						} else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
+							animation = 2;
+							left = 1;
+							//M("E");
+						} else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
+							animation = 3;
+							left = 1;
+							down = 1;
+							//M("F");
+						} else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
+							animation = 4;
+							down = 1;
+							//M("G");
+						} else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
+							flip = SDL_FLIP_HORIZONTAL;
+							animation = 3;
+							right = 1;
+							down = 1;
+							//M("H");
+						}
+					}
+
+					//now that we have a direction, shoot
+					if(shooting) {
+						shoot();
+					}
+					
 				}
 			} else {
 				//another placeholder - target is protag
@@ -3007,8 +3129,60 @@ public:
 		} else {
 			//code for becoming agrod when seeing a hostile entity will go here
 			//face the direction we are moving
-			//this code sucks
+			bool recalcAngle = 0; //should we change his angle in the first place?
+			//combatrange is higher than shooting range because sometimes that range is broken while a fight is still happening, so he shouldnt turn away
 			
+			//set vectors from velocity
+			float xvector = -xvel;
+			float yvector = -yvel;
+			//if he's not traveling very fast it looks natural to not change angle
+			if(Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.9) {recalcAngle = 1;}
+			
+			if(recalcAngle) {
+				float angle = atan2(yvector, xvector);
+				flip = SDL_FLIP_NONE;
+				up = 0; down = 0; left = 0; right = 0;
+				if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
+					animation = 2;
+					flip = SDL_FLIP_HORIZONTAL;
+					right = 1;
+					//M("A");
+				} else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
+					animation = 1;
+					flip = SDL_FLIP_HORIZONTAL;
+					right = 1;
+					up = 1;
+					//M("B");
+				} else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
+					animation = 0;
+					up = 1;
+					//M("C");
+				} else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
+					animation = 1;
+					up = 1;
+					left = 1;
+					//M("D");
+				} else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
+					animation = 2;
+					left = 1;
+					//M("E");
+				} else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
+					animation = 3;
+					left = 1;
+					down = 1;
+					//M("F");
+				} else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
+					animation = 4;
+					down = 1;
+					//M("G");
+				} else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
+					flip = SDL_FLIP_HORIZONTAL;
+					animation = 3;
+					right = 1;
+					down = 1;
+					//M("H");
+				}
+			}
 		}
 	
 		//navigate
@@ -3100,12 +3274,35 @@ public:
 					// }
 					// SDL_RenderPresent(renderer);
 					// SDL_Delay(10);
-					D(hisweapon->combo);
-					D(hisweapon->attacks.size());
-					//segfaults
-					D( this->hisweapon->attacks[hisweapon->combo]->range );
+
+					//use this code for strafing
+					//rotate clockwise
+					if(this->hisweapon->attacks[hisweapon->combo]->name == "strafeleft") {
+						index ++;
+						if(index == 8) {index = 0;}
+					}
+
+					//rotate counterclockwise
+					if(this->hisweapon->attacks[hisweapon->combo]->name == "straferight") {
+						index --;
+						if(index == -1) {index = 7;}
+					}
+					if(this->hisweapon->attacks[hisweapon->combo]->name == "strafe") {
+						int flip = rand() % 2;
+						if(flip == 1) {
+							index --;
+							if(index == -1) {index = 7;}
+						} else {
+							index ++;
+							if(index == 8) {index = 0;}
+						}
+					}
+
+					if(this->hisweapon->attacks[hisweapon->combo]->name == "approach" && hisweapon->attacks.size() > hisweapon->combo) {
+						this->hisweapon->attacks[hisweapon->combo]->range = this->hisweapon->attacks[hisweapon->combo + 1]->range;
+					}
 					
-					vector<int> ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range * (0.8), index);
+					vector<int> ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
 					
 					if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY()) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
 						//M("There's a good position, keeping my distance");
@@ -3113,8 +3310,10 @@ public:
 						Destination = getNodeByPosition(g_navNodes, ret[0], ret[1]);
 					
 					} else {
-						//M("cant get a good shot, closing in on player");
-						Destination = getNodeByPosition(g_navNodes, target->getOriginX(), target->getOriginY());
+						//Can't get our full range, so use the values in LineTraceX and LineTraceY
+						extern int lineTraceX, lineTraceY;
+						//Destination = getNodeByPosition(g_navNodes, target->getOriginX(), target->getOriginY());
+						Destination = getNodeByPosition(g_navNodes, lineTraceX, lineTraceY);
 					
 					}
 				}
@@ -3129,8 +3328,6 @@ public:
 			lastx = x;
 			lasty = y;
 			if(stuckTime > maxStuckTime) {
-				M("got stuck");
-
 				//spring to get over obstacles
 				//this->zaccel = 350;
 
@@ -3377,9 +3574,6 @@ int loadSave() {
 	file >> g_mapOfLastSave >> g_waypointOfLastSave;
 	getline(file,line);
 	getline(file,line);
-	D(g_mapOfLastSave);
-	D(g_waypointOfLastSave);
-	D("line was " + line);
 	
 	//delete current party
 	int repetitions = party.size();
@@ -3504,11 +3698,8 @@ void entity::shoot() {
 			hisweapon->combo = 0;
 		}
 		for(float i = 0; (i < this->hisweapon->attacks[hisweapon->combo]->numshots); i++) {
-			D(hisweapon->attacks[hisweapon->combo]->numshots);
-			D(i);
-			M("is this the infinite loop?");
 			if(i > 1000) {
-				M("Handled an infinite loop");
+				//M("Handled an infinite loop");
 				quit = 1;
 				return;
 				
@@ -4431,6 +4622,9 @@ void clear_map(camera& cameraToReset) {
 	}
 	for(int i = 0; i < g_triangles.size(); i++) {
 		g_triangles[i].clear();
+	}
+	for(int i = 0; i < g_ramps.size(); i++) {
+		g_ramps[i].clear();
 	}
 	if(g_backgroundLoaded && background != 0) {
 		M("deleted background");

@@ -50,6 +50,19 @@ int main(int argc, char ** argv) {
 	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
+
+	// for( int i = 0; i < SDL_GetNumRenderDrivers(); ++i ) {
+	// 	SDL_RendererInfo rendererInfo = {};
+	// 	SDL_GetRenderDriverInfo( i, &rendererInfo );
+	// 	if( rendererInfo.name != std::string( "opengles2" ) ) {
+	// 		//provide info about improper renderer
+	// 		continue;
+	// 	}
+
+	// 	renderer = SDL_CreateRenderer( window, i, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
+	// 	break;
+	// }
+
 	Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048);
 	SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
 
@@ -170,6 +183,19 @@ int main(int argc, char ** argv) {
 		g_triangles.push_back(v);
 	}
 
+	for (int i = 0; i < g_layers; i++) {
+		vector<ramp*> v = {};
+		g_ramps.push_back(v);
+	}
+
+	//init static resources
+	g_bulletdestroySound = Mix_LoadWAV("audio/sounds/step.wav");
+	g_playerdamage = Mix_LoadWAV("audio/sounds/playerdamage.wav");
+	g_enemydamage = Mix_LoadWAV("audio/sounds/enemydamage.wav");
+	g_npcdamage = Mix_LoadWAV("audio/sounds/npcdamage.wav");
+	g_s_playerdeath = Mix_LoadWAV("audio/sounds/playerdeath.wav");
+
+
 	srand(time(NULL));
 	if(devMode) {
 		//!!!
@@ -280,7 +306,6 @@ int main(int argc, char ** argv) {
 		musicFadeTimer += elapsed;
 		musicUpdateTimer += elapsed;
 
-		
 		if(inPauseMenu) {
 			//if we're paused, freeze gametime
 			elapsed = 0;
@@ -299,7 +324,7 @@ int main(int argc, char ** argv) {
 			}
 		}
 		//if we die don't worry about not being able to switch because we can't shoot yet
-		if(protag->hp <= 0) {protag->cooldown = 0;}
+		if(protag->hp <= 0) {playSound(4, g_s_playerdeath, 0); protag->cooldown = 0;}
 		//cycle right if the current character dies
 		if( (input[9] && !oldinput[9]) || protag->hp <= 0) {
 			//keep switching if we switch to a dead partymember
@@ -310,6 +335,7 @@ int main(int argc, char ** argv) {
 					M("Cycle party right");
 					std::rotate(party.begin(),party.begin()+1,party.end());
 					protag->tangible = 0;
+					protag->flashingMS = 0;
 					party[0]->tangible = 1;
 					party[0]->x = protag->getOriginX() - party[0]->bounds.x - party[0]->bounds.width/2;
 					party[0]->y = protag->getOriginY() - party[0]->bounds.y - party[0]->bounds.height/2;
@@ -327,6 +353,7 @@ int main(int argc, char ** argv) {
 					protag->shadow->x = protag->x + protag->shadow->xoffset;
 					protag->shadow->y = protag->y + protag->shadow->yoffset;
 					g_focus = protag;
+					g_cameraShove = protag->hisweapon->attacks[0]->range/2;
 					//prevent infinite loop
 					i++;
 					if(i > 600) {M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)"); break; quit = 1;}
@@ -341,6 +368,7 @@ int main(int argc, char ** argv) {
 					M("Cycle party left");
 					std::rotate(party.begin(),party.begin()+party.size()-1,party.end());
 					protag->tangible = 0;
+					protag->flashingMS = 0;
 					party[0]->tangible = 1;
 					party[0]->x = protag->getOriginX() - party[0]->bounds.x - party[0]->bounds.width/2;
 					party[0]->y = protag->getOriginY() - party[0]->bounds.y - party[0]->bounds.height/2;
@@ -358,6 +386,7 @@ int main(int argc, char ** argv) {
 					protag->shadow->x = protag->x + protag->shadow->xoffset;
 					protag->shadow->y = protag->y + protag->shadow->yoffset;
 					g_focus = protag;
+					g_cameraShove = protag->hisweapon->attacks[0]->range/2;
 					i++;
 					if(i > 600) {M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)"); break; quit = 1;}
 				} while(protag->hp <= 0);
@@ -430,13 +459,13 @@ int main(int argc, char ** argv) {
 		//detect change in window
 		if(old_WIN_WIDTH != WIN_WIDTH) {
 			//user scaled window
-			scalex = ((float)WIN_WIDTH / old_WIN_WIDTH);
-			if(scalex < min_scale) {
-				scalex = min_scale;
-			}
-			if(scalex > max_scale) {
-				scalex = max_scale;
-			}
+			//scalex = ((float)WIN_WIDTH / (float)old_WIN_WIDTH);
+			// if(scalex < min_scale) {
+			// 	scalex = min_scale;
+			// }
+			// if(scalex > max_scale) {
+			// 	scalex = max_scale;
+			// }
 			scaley = scalex;
 			SDL_RenderSetScale(renderer, scalex, scaley);
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
@@ -456,7 +485,10 @@ int main(int argc, char ** argv) {
 		if(freecamera) {
 			g_camera.update_movement(elapsed, camx, camy);
 		} else {
-			g_camera.update_movement(elapsed, (g_focus->getOriginX() - (g_camera.width/(2 * g_camera.zoom))), ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom))) );
+			//lerp cameratargets
+			g_cameraAimingOffsetY = g_cameraAimingOffsetY*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetYTarget *(1-g_cameraAimingOffsetLerpScale);
+			g_cameraAimingOffsetX = g_cameraAimingOffsetX*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetXTarget *(1-g_cameraAimingOffsetLerpScale);
+			g_camera.update_movement(elapsed, (g_focus->getOriginX() - (g_camera.width/(2 * g_camera.zoom))) + (g_cameraAimingOffsetX * g_cameraShove), ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom) + (g_cameraAimingOffsetY * g_cameraShove))) );
 		}
 		//update ui
 		curTextWait += elapsed * text_speed_up;
@@ -478,12 +510,6 @@ int main(int argc, char ** argv) {
 				g_tiles[i]->render(renderer, g_camera);
 			}
 		}
-
-		//reset player glimmer (shadow thrue walls when covered) for this frame
-		protagGlimmerA = 0;
-		protagGlimmerB = 0;
-		protagGlimmerC = 0;
-		protagGlimmerD = 0;
 
 		//sort		
 		sort_by_y(g_actors);
@@ -681,7 +707,9 @@ int main(int argc, char ** argv) {
 		//dont update movement while transitioning
 		for(long long unsigned int i=0; i < g_entities.size(); i++){
 			door* taken = g_entities[i]->update(g_boxs[g_entities[i]->layer], g_doors, elapsed);
-			if(taken != nullptr) {
+			//added the !transition because if a player went into a map with a door located in the same place
+			//as they are in the old map (before going to the waypoint) they would instantly take that door
+			if(taken != nullptr && !transition) {
 				//player took this door
 				//clear level
 				
@@ -1063,21 +1091,35 @@ void getInput(float &elapsed) {
 		protag->right = 0;
 		protag->up = 0;
 		protag->down = 0;
+		g_cameraAimingOffsetXTarget = 0;
+		g_cameraAimingOffsetYTarget = 0;
+		
 
 		if(keystate[bindings[4]]) {
 			protag->shoot_up();
+			g_cameraAimingOffsetYTarget = 1;
 		}
 
 		if(keystate[bindings[5]]) {
 			protag->shoot_down();
+			g_cameraAimingOffsetYTarget = -1;
 		}
 
 		if(keystate[bindings[6]]) {
 			protag->shoot_left();
+			g_cameraAimingOffsetXTarget = -1;
 		}
 
 		if(keystate[bindings[7]]) {
 			protag->shoot_right();
+			g_cameraAimingOffsetXTarget = 1;
+		}
+
+		//normalize g_cameraAimingOffsetTargetVector
+		float len = pow(pow(g_cameraAimingOffsetXTarget,2) + pow(g_cameraAimingOffsetYTarget,2),0.5);
+		if(!isnan(len) && len != 0) {
+			g_cameraAimingOffsetXTarget/= len;
+			g_cameraAimingOffsetYTarget/= len;
 		}
 
 		if(keystate[bindings[9]]) {
@@ -1215,6 +1257,11 @@ void getInput(float &elapsed) {
 		}
 		
 	} else {
+		//reset shooting offsets
+		g_cameraAimingOffsetXTarget = 0;
+		g_cameraAimingOffsetYTarget = 0;
+		
+
 		if(keystate[bindings[2]] && !left_ui_refresh) {
 			if(adventureUIManager->askingQuestion) {
 				adventureUIManager->response_index--;
@@ -1338,9 +1385,25 @@ void getInput(float &elapsed) {
 		//enable/disable collisions
 		devinput[9] = 1;
 	}
-	if(keystate[SDL_SCANCODE_KP_2] && devMode) {
-		//visualize boxs
+	if(keystate[SDL_SCANCODE_KP_5] && devMode) {
+		//triangles
 		devinput[10] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_3] && devMode) {
+		//debug hitboxes
+		devinput[7] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_8] && devMode) {
+		devinput[22] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_6] && devMode) {
+		devinput[23] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_2] && devMode) {
+		devinput[24] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_4] && devMode) {
+		devinput[25] = 1;
 	}
 
 	if(keystate[SDL_SCANCODE_RETURN] && devMode) {
@@ -1368,12 +1431,13 @@ void getInput(float &elapsed) {
 		if(devMode) {
 			quit = 1;
 		} else {
-			if(inPauseMenu) {
-				inPauseMenu = 0;
-				adventureUIManager->hideInventoryUI();
-				clear_map(g_camera);
-				load_map(renderer, "maps/sp-title/sp-title.map", "a");
-			}
+			quit = 1;
+			// if(inPauseMenu) {
+			// 	inPauseMenu = 0;
+			// 	adventureUIManager->hideInventoryUI();
+			// 	clear_map(g_camera);
+			// 	load_map(renderer, "maps/sp-title/sp-title.map", "a");
+			// }
 		}
 	}
 	if(keystate[SDL_SCANCODE_Q] && devMode && g_holdingCTRL) {

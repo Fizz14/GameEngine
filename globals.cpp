@@ -44,6 +44,8 @@ class box;
 
 class tri;
 
+class ramp;
+
 class textbox;
 
 class ui;
@@ -103,6 +105,8 @@ vector<ui*> g_ui;
 vector<mapCollision*> g_mapCollisions;
 
 vector<vector<tri*>> g_triangles;
+
+vector<vector<ramp*>> g_ramps;
 
 vector<heightmap*> g_heightmaps;
 
@@ -171,24 +175,21 @@ int g_walldarkness = 55; //65, 75. could be controlled by the map unless you get
 int g_platformResolution = 5; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 
-int g_TiltResolution = 1; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
+float g_TiltResolution = 1.5; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
 bool g_protagHasBeenDrawnThisFrame = 0;
 SDL_Texture* g_shadowTexture;
+int g_flashtime = 300; //ms to flash red after taking damage
+float g_cameraShove = 150; //factor of the screen to move the camera when shooting.
+float g_cameraAimingOffsetX = 0;
+float g_cameraAimingOffsetY = 0;
+float g_cameraAimingOffsetXTarget = 0;
+float g_cameraAimingOffsetYTarget = 0;
+float g_cameraAimingOffsetLerpScale = 0.85;
 
-//generic
-string g_font; //= (genericmode) ? "fonts/OpenSans-Regular.ttf" : "fonts/ShortStack-Regular.ttf";
-//string g_font = "fonts/OpenSans-Regular.ttf";
-
-//english
-//string g_font = "fonts/ShortStack-Regular.ttf";
-//polish
-//string g_font = "fonts/Itim-Regular.ttf";
-//japanese
-//string g_font = "fonts/GamjaFlower-Regular.ttf";
-//chinese
-//string g_font = "fonts/ZhiMangXing-Regular.ttf";
+//text
+string g_font;
 float g_fontsize = 0.031;
-float g_transitionSpeed = 9; //3
+float g_transitionSpeed = 9; //3, 9
 
 //inventory
 float use_cooldown = 0; //misleading, its not for attacks at all
@@ -211,18 +212,10 @@ int SoldUIDown = 1;
 int SoldUILeft = 1;
 int SoldUIRight = 1;
 
-
-//draw player thrue wall if he is covered
-bool drawProtagGlimmer = 0;
-//for each corner of protag image
-bool protagGlimmerA = 0;
-bool protagGlimmerB = 0;
-bool protagGlimmerC = 0;
-bool protagGlimmerD = 0;
-
 //physics
 float g_gravity = 220;
-
+//These two variables contain the position of the hit of the last lineTrace()
+int lineTraceX, lineTraceY;
  
 
 class camera {
@@ -300,7 +293,7 @@ entity* protag;
 entity* mainProtag; //for letting other entities use this ones inventory; game ends when this one dies
 
 //for camera/window zoom
-float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH) * 0.8;
+float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH) * 0.80;
 float scaley = scalex;
 float min_scale = 0.1;
 float max_scale = 2;
@@ -334,13 +327,18 @@ bool g_holdingCTRL = 0;
 //sounds and music
 float g_volume = 0;
 bool g_mute = 0;
-Mix_Chunk* g_ui_voice = Mix_LoadWAV("sounds/voice-normal.wav");
+Mix_Chunk* g_ui_voice = Mix_LoadWAV("audio/sounds/voice-normal.wav");
 Mix_Chunk* g_deathsound;
 musicNode* closestMusicNode;
 musicNode* newClosest;
 int musicFadeTimer = 0;
 bool fadeFlag = 0;
 int musicUpdateTimer = 0;
+Mix_Chunk* g_bulletdestroySound;
+Mix_Chunk* g_playerdamage;
+Mix_Chunk* g_enemydamage;
+Mix_Chunk* g_npcdamage;
+Mix_Chunk* g_s_playerdeath;
 
 //ui
 bool protag_can_move = true;
@@ -389,6 +387,7 @@ bool fileExists (const std::string& name) {
 enum Status { none, stunned, slowed, buffed, marked };
 
 void playSound(int channel, Mix_Chunk* sound, int loops) {
+	//M("play sound");
 	if(!g_mute && sound != NULL) {
 		Mix_PlayChannel(channel, sound, loops);
 	}
