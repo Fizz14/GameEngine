@@ -145,6 +145,8 @@ bool onionmode = 0; //hide custom graphics
 bool genericmode = 0;
 bool freecamera = 0;
 bool devMode = 0;
+bool canSwitchOffDevMode = 0;
+bool inputRefreshCanSwitchOffDevMode = 0;
 bool showDevMessages = 1;
 bool showErrorMessages = 1;
 
@@ -189,7 +191,7 @@ float g_cameraAimingOffsetLerpScale = 0.85;
 //text
 string g_font;
 float g_fontsize = 0.031;
-float g_transitionSpeed = 9; //3, 9
+float g_transitionSpeed = 3; //3, 9
 
 //inventory
 float use_cooldown = 0; //misleading, its not for attacks at all
@@ -293,7 +295,8 @@ entity* protag;
 entity* mainProtag; //for letting other entities use this ones inventory; game ends when this one dies
 
 //for camera/window zoom
-float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH) * 0.80;
+float g_defaultZoom = 0.9;
+float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH) * g_defaultZoom;
 float scaley = scalex;
 float min_scale = 0.1;
 float max_scale = 2;
@@ -307,7 +310,11 @@ float ticks, lastticks, elapsed = 0, halfsecondtimer;
 float camx = 0;
 float camy = 0;
 SDL_Renderer * renderer;
+
+// g_map specifies the name of the map, g_mapdir specifies the folder with in maps the map is in.
+// so its maps/{g_mapdir}/{g_map}.map
 string g_map = "sp-title";
+string g_mapdir = "sp-title";
 string g_waypoint;
 string g_mapOfLastSave = "sp-title";
 string g_waypointOfLastSave = "a";
@@ -323,6 +330,11 @@ bool right_ui_refresh = false;
 bool quit = false;
 string config = "default";
 bool g_holdingCTRL = 0;
+//this is most noticable with a rifle, but sometimes when you try to shoot
+//diagonally, you press one button (e.g. up) a frame or so early then the other (e.g. left)
+//as a result, the game instantly shoots up and its unnacceptable.
+//this is variable is the amount of frames to wait between getting input and shooting
+int g_diagonalHelpFrames = 4;
 
 //sounds and music
 float g_volume = 0;
@@ -349,24 +361,27 @@ float text_speed_up = 1; //speed up text if player holds button. set to 1 if the
 float curTextWait = 0;
 bool old_z_value = 1; //the last value of the z key. used for advancing dialogue, i.e. z key was down and is now up or was up and is now down if old_z_value != SDL[SDL_SCANCODE_Z]
 
+bool g_showHUD = 0;
+
+//scripts
 float dialogue_cooldown = 0; //seconds until he can have dialogue again.
 entity* g_talker = 0; //drives scripts, must be referenced before deleting an entity to avoid crashes
 bool g_forceEndDialogue = 0; //used to end dialogue when the talking entity has been destroyed.
-bool g_showHUD = 0;
 
 //debuging
 SDL_Texture* nodeDebug;
 clock_t debugClock;
-string g_lifecycle = "Pre-Alpha";
+string g_lifecycle = "Alpha";
 
 //world
 int g_layers = 12; //max blocks in world
 float g_bhoppingBoost = 1; //the factor applied to friction whilst bhopping, not good, basically just airspeed modifier rn
 
-//map editing
+//map editing, mapeditor, map-editor
 bool g_mousemode = 1;
 entity* nudge = 0; //for nudging entities while map-editing
 bool adjusting = 0; //wether to move selected entity or change its hitbox/shadow position
+bool g_autoSetThemesFromMapDirectory = 0; //if 1, loading a map will also set the texturedirectory/theme to the mapdir
 
 //userdata - will be set on some file-select-screen
 string g_saveName = "a";

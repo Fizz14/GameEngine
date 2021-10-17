@@ -22,6 +22,32 @@
 
 using namespace std;
 
+void parseScriptForLabels(vector<string> &sayings) {
+	//parse sayings for lables
+	vector<pair<string, int>> symboltable;
+	for(int i = 0; i < sayings.size(); i++) {
+		if(sayings[i][0] == '<') {
+			symboltable.push_back(pair(sayings[i].substr(1,sayings[i].length()-2), i));
+		}
+	}
+
+	for(int i = 0; i < sayings.size(); i++) {
+		int pos = sayings[i].find(":");
+		if(pos != string::npos) {
+			for(auto y: symboltable) {
+				D(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)));
+				if(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)) == y.first) {
+					
+					D(sayings[i]);
+					//sayings[i].erase(pos, sayings[i].length() - pos - 1);
+					sayings[i].replace(pos, y.first.length() + 1, ":" + to_string(y.second + 3) );
+					D(sayings[i]);
+				}
+			}
+		}
+	}
+}
+
 class heightmap {
 public:
 	SDL_Surface* image = 0;
@@ -1279,6 +1305,10 @@ public:
 		//this could further be improved by going thru g_boxs and g_triangles
 		//as there are always less of those than mapobjects
 		//heres an idea: could we copy textures if the wall field arent equal instead of loading them again
+		//techincally, this could be a big problem, so there could be a finit number of mapObjects we check
+		//in a huge map, loading a map object with a texture that hasnt been loaded yet could take forever
+		//!!!
+		//if you're having problems with huge maps, revisit this
 		if(g_mapObjects.size()  > 1) {
 			for(unsigned int i=g_mapObjects.size() - 1; i > 0; i--){
 				if(g_mapObjects[i]->mask_fileaddress == mask_filename && g_mapObjects[i]->name == this->name) {
@@ -1539,6 +1569,7 @@ public:
 	SDL_Texture* texture = 0; 
 	string name = "Error"; 
 	bool isKeyItem = 0; //key item, can it be sold
+	vector<string> script;
 	indexItem(string fname, bool fisKeyItem) : name(fname), isKeyItem(fisKeyItem) {
 
 		//search worlditems for an item with the same texture
@@ -1578,6 +1609,18 @@ public:
 			SDL_FreeSurface(temp);
 			g_indexItems.push_back(this);
 		}
+
+		//script
+		ifstream stream;
+		string loadstr = "scripts/items/" + fname + ".txt";
+		const char* plik = loadstr.c_str();
+		stream.open(plik);
+		string line;
+		while (getline(stream, line)) {
+			script.push_back(line);
+		}
+		
+		parseScriptForLabels(script);
 	}
 
 	~indexItem() {
@@ -1585,7 +1628,6 @@ public:
 		SDL_DestroyTexture(texture);
 	}
 };
-
 
 class entity:public actor {
 public:
@@ -1921,10 +1963,11 @@ public:
 
 			while(getline(file, line)) {
 				sayings.push_back(line);
-			}
-			
-			
+			}	
 		}
+
+		parseScriptForLabels(sayings);
+
 		//has another entity already loaded this texture
 		for (auto x : g_entities) {
 			if(x->name == this->name) {
@@ -1982,8 +2025,9 @@ public:
 			this->shadow->width = 0;
 		}
 
-		curwidth = width;
-		curheight = height;
+		//make entities pop in
+		curwidth = 0;
+		curheight = 0;
 
 		if(genericmode) {
 			//make one frame of the whole image;
@@ -2034,14 +2078,15 @@ public:
 		string spritefilevar;
 		
 
-		spritefilevar = "textures/sprites//items/" + texturename + ".png";
+		spritefilevar = "textures/sprites/items/" + texturename + ".png";
+		SDL_Surface* image = IMG_Load(spritefilevar.c_str());
+		texture = SDL_CreateTextureFromSurface(renderer, image);
 		M(spritefilevar );
 
 		
-		const char* spritefile = spritefilevar.c_str();
-		float size;
 		string comment;
 		file >> comment;
+		float size;
 		file >> size;
 
 		file >> comment;
@@ -2056,8 +2101,14 @@ public:
 		file >> comment;
 		file >> this->friction;
 		file >> comment;
-		file >> this->bounds.width;
-		file >> this->bounds.height;
+		float twidth, theight, tzeight;
+		file >> twidth;
+		file >> theight;
+		file >> tzeight;
+		bounds.width = twidth * 64;
+		bounds.height = theight * 55;
+		bounds.zeight = tzeight * 32;
+		
 		
 		file >> comment;
 		file >> this->bounds.x;
@@ -2076,13 +2127,16 @@ public:
 		file >> shadow->xoffset;
 		file >> shadow->yoffset;		
 		
+		int tempshadowSoffset;
+		file >> comment;
+		file >> tempshadowSoffset;
+
 		file >> comment;
 		file >> this->animspeed;
 		file >> this->animlimit;
 
 		file >> comment;
-		file >> turnToFacePlayer;
-		animation = defaultAnimation;
+		file >> this->turnToFacePlayer;
 		
 		file >> comment;
 		file >> this->framewidth;
@@ -2091,9 +2145,8 @@ public:
 		this->shadow->height = framewidth * fsize * (1/p_ratio);
 
 		//bigger shadows have bigger sortingoffsets
-		shadow->sortingOffset = 0;
-
-		
+		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
+		sortingOffset = 8;
 		file >> comment;
 		bool setboxfromshadow = 0;
 		file >> setboxfromshadow;
@@ -2110,22 +2163,44 @@ public:
 		if(solidifyHim) {
 			this->solidify();
 		}
-		this->talks = 0;
-		file.close();
 		
-		
-		SDL_Surface* image = IMG_Load(spritefile);
-		if(genericmode) {
-			image = IMG_Load("textures/sprites/genericmode/broccali.png");
+		file >> comment;
+		file >> semisolid;
+
+		file >> comment;
+		file >> this->talks;
+
+		file >> comment;
+		file >> this->faction;
+		if(faction != 0) {
+			canFight = 1;
 		}
 		
-		texture = SDL_CreateTextureFromSurface(renderer, image);
-		this->width = 50;
-		this->height = 50;
+
+		file >> comment;
+		file >> this->weaponName;
+
+		file >> comment;
+		file >> this->agrod;
+
+		file >> comment;
+		file >> maxhp;
+		hp = maxhp;
+
+		file >> comment;
+		file >> cost;
+
+		file >> comment;
+		file >> essential;
+
+		this->width = size * framewidth;
+		this->height = size * frameheight;
 
 		//move shadow to feet
 		shadow->xoffset += width/2 - shadow->width/2;
-		shadow->yoffset -= height - shadow->height;
+		shadow->yoffset += height - shadow->height/2;
+		
+		
 		
 
 		if(setboxfromshadow) {
@@ -2136,19 +2211,27 @@ public:
 			
 		} else {
 			this->bounds.x += width/2 - bounds.width/2;
-			this->bounds.y += height - bounds.height;
+			this->bounds.y += height - bounds.height/2;
 		}
+
+		shadow->width += g_extraShadowSize;
+		shadow->height += g_extraShadowSize * XtoY;
 		
-		curwidth = width;
-		curheight = height;
+		shadow->xoffset -= 0.5 * g_extraShadowSize;
+		shadow->yoffset -= 0.5 * g_extraShadowSize * XtoY;
+
+		
+
+		int w, h;
+		SDL_QueryTexture(texture, NULL, NULL, &w, &h);
 
 		//if(genericmode) {
 			//make one frame of the whole image;
 			xframes = 1;
 			yframes = 1;
 			frame = 0;
-			framewidth = image->w;
-			frameheight = image->h;
+			framewidth = w;
+			frameheight = h;
 			coord a;
 			a.x = 0;
 			a.y = 0;
@@ -2156,6 +2239,8 @@ public:
 		//} else {
 			
 	    //}
+		D(this->shadow->yoffset);
+		D(this->shadow->size);
 		SDL_FreeSurface(image);
 		g_entities.push_back(this);
 	}
@@ -2215,7 +2300,7 @@ public:
 		SDL_FPoint nowt = {0, 0};
 
 
-		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y - ((curheight * (XtoY) + height * (1-XtoY))) - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
+		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y - ((curheight * (XtoY) + (height * (1-XtoY)))) - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
@@ -2422,8 +2507,8 @@ public:
 			}
 		}
 		if(animate && !transition && animlimit != 0) {
-			curwidth = width * ((sin(animtime*animspeed))   + (1/animlimit)) * (animlimit);
-			curheight = height * ((sin(animtime*animspeed + PI))+ (1/animlimit)) * (animlimit);
+			curwidth = (curwidth * 0.8 + width * 0.2) * ((sin(animtime*animspeed))   + (1/animlimit)) * (animlimit);
+			curheight = (curheight * 0.8 + height* 0.2) * ((sin(animtime*animspeed + PI))+ (1/animlimit)) * (animlimit);
 			animtime += elapsed;
 			if(this == protag && (abs(xvel) > 50 || abs(yvel) > 50) && (1 - sin(animtime * animspeed) < 0.01 || 1 - sin(animtime * animspeed + PI) < 0.01)) {
 				if(footstep_reset) {
@@ -3499,13 +3584,20 @@ public:
 		for(auto& x : inventory) {
 			if(x.first->name == a->name) {
 				M("found a match");
-				if(x.second >= count) {
-					x.second-=count;
-					if(x.second == 0) {
-						//remove from array
-						inventory.erase(remove(inventory.begin(), inventory.end(), x), inventory.end());
-						delete x.first;
+				if(x.second > count) {
+					x.second-=count;	
+					return 0;
+				} else {
+
+					for(auto y : inventory) {
+						D(y.first->name);
 					}
+					delete x.first;
+					x.second = 0;
+					
+					D(inventory.size());
+					inventory.erase(remove(inventory.begin(), inventory.end(), x), inventory.end());
+					D(inventory.size());
 					return 0;
 				}
 			}
@@ -3649,7 +3741,7 @@ int writeSave() {
 		it++;
 	}
 	file << "&" << endl; //token to stop writing saveflags
-	file << g_map << " " << g_waypoint << endl;
+	file << g_mapdir + "/" + g_map << " " << g_waypoint << endl;
 	file << "&" << endl;
 
 	//write party
@@ -3935,6 +4027,10 @@ public:
 	bool show = true;
 	SDL_Surface* image;
 	SDL_Texture* texture;
+
+	string filename = "";
+
+	bool mapSpecific = 0;
 	
 	//for 9patch
 	bool is9patch = 0;
@@ -3944,9 +4040,11 @@ public:
 	bool persistent = 0;
 	int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
 
-	ui(SDL_Renderer * renderer, const char* filename, float fx, float fy, float fwidth, float fheight, int fpriority) {
+	ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float fwidth, float fheight, int fpriority) {
 		M("ui()" );
-		image = IMG_Load(filename);
+		filename = ffilename;
+		image = IMG_Load(filename.c_str());
+		
 		width = fwidth;
 		height = fheight;
 		x = fx;
@@ -4290,8 +4388,9 @@ public:
 			script.push_back(line);
 		}
 		
-		for(string x: script) {
-			M(x);
+		parseScriptForLabels(script);
+		for(auto x : script) {
+			D(x);
 		}
 	
 	}
@@ -4339,6 +4438,11 @@ public:
 		
 		while (getline(stream, line)) {
 			script.push_back(line);
+		}
+		parseScriptForLabels(script);
+		M("Check item script");
+		for(auto x : script) {
+			D(x);
 		}
 		
 		//build listenList from current entities
@@ -4605,6 +4709,7 @@ void clear_map(camera& cameraToReset) {
 	g_mapObjects.clear();
 
 	//new, delete all mc, which will automatycznie delete the others
+	//here's where we could save some textures if we're going to a map in the same level, might be worth it
 	size = g_mapCollisions.size();
 	for (int i = 0; i < size; i++) {
 		//M("Lets delete a mapCol");

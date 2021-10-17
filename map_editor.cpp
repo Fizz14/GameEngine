@@ -130,12 +130,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
     mapname = filename;
 
     //parse name from fileaddress
-    unsigned first = mapname.find("/");
-    unsigned last = mapname.find_last_of("/");
-
+    int posOfFirstSlash = mapname.find("/");
+    
+    unsigned first = mapname.find("/", posOfFirstSlash + 1);
+    unsigned last = mapname.find_last_of(".");
+    
     g_map = mapname.substr(first + 1,last-first - 1);
     g_waypoint = destWaypointName;
-
+    D(g_map);
     //hide HUD if this is a special map, show it otherwise
     g_showHUD = !(g_map.substr(0,3) == "sp-");
 
@@ -268,6 +270,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3 >> p4;
             const char* plik = s1.c_str();
             ui* u = new ui(renderer, plik, p0, p1, p2, p3, p4);
+            u->mapSpecific = 1;
         }
 
         if(word == "heightmap") {
@@ -562,18 +565,76 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 	g_camera.oldy = g_camera.y;
 } 
 
+void changeTheme(string str) { 
+    textureDirectory = str + "/";
+    //update bg          
+    backgroundstr = str;
+    
+    if(g_backgroundLoaded) {
+        SDL_DestroyTexture(background);
+    }
+    SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".png").c_str());
+    background = SDL_CreateTextureFromSurface(renderer, bs);
+    g_backgroundLoaded = 1;
+    SDL_FreeSurface(bs);
+    
+    //proceed
+
+    //re-populate the array of textures that we rotate thru for creating floors, walls, and caps
+    texstrs.clear();
+    string path = "textures/diffuse/" + textureDirectory;
+    D(path);
+    if(!filesystem::exists(path)) {
+        M("Theme " + path + "not found");
+        return;
+    }
+    for (const auto & entry : filesystem::directory_iterator(path)) {
+        texstrs.push_back(entry.path());
+    }
+    floortexIndex = 0;
+    captexIndex = -1;
+    walltexIndex = 0;
+
+    //search for "floor" and "wall" textures
+    for(int i = 0; i < texstrs.size(); i++) {
+        int pos = texstrs[i].find_last_of( '/');
+        string filename = texstrs[i].substr(pos + 1);
+        if(filename == "floor.png") {
+            floortexIndex = i;
+        }
+        if(filename == "wall.png") {
+            walltexIndex = i;
+        }
+        if(filename == "cap.png") {
+            captexIndex = i;
+        }
+    }
+
+    if(captexIndex == -1) {captexIndex = walltexIndex;}
+
+    floortex = texstrs[floortexIndex];
+    delete floortexDisplay;
+    floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, -100);
+    walltex = texstrs[walltexIndex];
+    delete walltexDisplay;
+    walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, -100);
+    captex = texstrs[captexIndex];
+    delete captexDisplay;
+    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, -100);
+}
 
 bool mapeditor_save_map(string word) {
     //add warning for file overright
-    if(word != g_map &&fileExists("maps/" + word + "/" + word + ".map")) {
+    if((word != g_map) && fileExists("maps/" + g_mapdir + "/" + word + ".map")) {
         if(yesNoPrompt("Map \"" + word + "\" already exists, would you like to overwrite?") == 1) { 
             M("Canceled overwrite");
             return 1;
         }
     }
     
-    std::filesystem::create_directories("maps/" + word);
-    word = "maps/" + word  + "/" + word + ".map";
+    std::filesystem::create_directories("maps/" + g_mapdir);
+    word = "maps/" + g_mapdir  + "/" + word + ".map";
+    D(word);
     
     ofile.open(word);
 
@@ -593,6 +654,12 @@ bool mapeditor_save_map(string word) {
     }
     if(g_backgroundLoaded && backgroundstr != "") {
         ofile << "bg " << backgroundstr << endl;
+    }
+
+    for(auto  x : g_ui) {
+        if(x->mapSpecific) {
+            ofile << "ui " << x->filename << " " << x->x << " " << x->y << " " << x->width << " " << x->height << " " << x->priority << endl;
+        }
     }
     for(int i = 0; i < g_layers; i ++) {
         for (auto n : g_triangles[i]) {
@@ -706,9 +773,9 @@ void init_map_writing(SDL_Renderer* renderer) {
     doorIcon->software = 1;
     triggerIcon->software = 1;
     
-    floortexDisplay = new ui(renderer, floortex.c_str(), 0.0, 0.9, 0.1, 0.1, 0);
-    walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, 0);
-    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, 0);
+    floortexDisplay = new ui(renderer, floortex.c_str(), 0.0, 0.9, 0.1, 0.1, -100);
+    walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, -100);
+    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, -100);
 
     texstrs.clear();
     string path = "textures/diffuse/" + textureDirectory;
@@ -1861,8 +1928,8 @@ void write_map(entity* mapent) {
                     if(g_map != "") {
                         mapeditor_save_map(g_map);
                     }
-                    ofile.close();
-                    word = "maps/" + g_map + "/" + g_map + ".map";
+                    //ofile.close();
+                    word = "maps/" + g_mapdir + "/" + g_map + ".map";
                     clear_map(g_camera);
                     int savex = mapent->x;
                     int savey = mapent->y;
@@ -1871,7 +1938,6 @@ void write_map(entity* mapent) {
                     mapent->x = savex;
                     mapent->y = savey;
                     break;
-
                 }
 
                 if(word == "split") {
@@ -2179,7 +2245,7 @@ void write_map(entity* mapent) {
                         mapeditor_save_map(g_map);
                     }
                     ofile.close();
-                    word = "maps/" + g_map + "/" + g_map + ".map";
+                    word = "maps/" + g_mapdir + "/" + g_map + ".map";
                     clear_map(g_camera);
                     int savex = mapent->x;
                     int savey = mapent->y;
@@ -2190,24 +2256,37 @@ void write_map(entity* mapent) {
                     break;
                 }
                 if(word == "save") {
-                    if(line >> word) { 
+                    if(line >> word) {
                         mapeditor_save_map(word);
                         break;
                     }
                 }
                 if(word == "delete") {
-                    if(line >> word) {
-                        std::filesystem::remove_all("maps/" + word);
+                    word = "";
+                    line >> word;
+                    //e.g. delete " " to delete your mapdir, delete /a.map to delete a map from the mapdir
+                    if(word == "") {
+                        if(yesNoPrompt("Woa, you wanna delete an entire map-directory? Are you sure?") == 0) {
+                            std::filesystem::remove_all("maps/" + g_mapdir + word);
+                        }
+                    } else {
+                        std::filesystem::remove_all("maps/" + g_mapdir + "/" + word + ".map");
                     }
+                    
                 }
                 if(word == "load") {
                     if(line >> word) {
                         //must close file before renaming it
                         ofile.close();
-                        word = "maps/" + word + "/" + word + ".map";
+                        string theme = word;
+                        word = "maps/" + g_mapdir + "/" + word + ".map";
                         clear_map(g_camera);
                         load_map(renderer, word.c_str(), "a");
                         init_map_writing(renderer);
+                        if(g_autoSetThemesFromMapDirectory) {
+                            changeTheme(g_mapdir);
+                        }
+
                         break;
                     }
                 }
@@ -2254,7 +2333,14 @@ void write_map(entity* mapent) {
                     line >> word;
                     D(word);
 
+                    if(word == "mapdir" || word == "md") {
+                        string a;
+                        if(line >> a) {
+                            g_mapdir = a;
+                        }
 
+                        break;
+                    }
 
                     if(word == "budget") {
                         int a;
@@ -2300,65 +2386,10 @@ void write_map(entity* mapent) {
                     if(word == "texturedirectory" || word == "td" || word == "theme") {
                         string str;
                         if(line >> str) {
-                            textureDirectory = str + "/";
+                            
+                            changeTheme(str);
                         }
 
-
-                        //update bg
-                        
-                        backgroundstr = str;
-                        
-                        if(g_backgroundLoaded) {
-                            SDL_DestroyTexture(background);
-                        }
-                        SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".png").c_str());
-                        background = SDL_CreateTextureFromSurface(renderer, bs);
-                        g_backgroundLoaded = 1;
-                        SDL_FreeSurface(bs);
-                        
-                        //proceed
-
-                        //re-populate the array of textures that we rotate thru for creating floors, walls, and caps
-                        texstrs.clear();
-                        string path = "textures/diffuse/" + textureDirectory;
-                        D(path);
-                        if(!filesystem::exists(path)) {
-                            M("Theme " + path + "not found");
-                            break;
-                        }
-                        for (const auto & entry : filesystem::directory_iterator(path)) {
-                            texstrs.push_back(entry.path());
-                        }
-                        floortexIndex = 0;
-                        captexIndex = -1;
-                        walltexIndex = 0;
-
-                        //search for "floor" and "wall" textures
-                        for(int i = 0; i < texstrs.size(); i++) {
-                            int pos = texstrs[i].find_last_of( '/');
-                            string filename = texstrs[i].substr(pos + 1);
-                            if(filename == "floor.png") {
-                                floortexIndex = i;
-                            }
-                            if(filename == "wall.png") {
-                                walltexIndex = i;
-                            }
-                            if(filename == "cap.png") {
-                                captexIndex = i;
-                            }
-                        }
-
-                        if(captexIndex == -1) {captexIndex = walltexIndex;}
-
-                        floortex = texstrs[floortexIndex];
-                        delete floortexDisplay;
-                        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, 0);
-                        walltex = texstrs[walltexIndex];
-                        delete walltexDisplay;
-                        walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, 0);
-                        captex = texstrs[captexIndex];
-                        delete captexDisplay;
-                        captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, 0);
                         
 
                         break;
@@ -2607,13 +2638,13 @@ void write_map(entity* mapent) {
 
                         floortex = texstrs[floortexIndex];
                         delete floortexDisplay;
-                        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, 0);
+                        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, -100);
                         walltex = texstrs[walltexIndex];
                         delete walltexDisplay;
-                        walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, 0);
+                        walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, -100);
                         captex = texstrs[captexIndex];
                         delete captexDisplay;
-                        captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, 0);
+                        captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, -100);
                         
                         captex = "textures/diffuse/mapeditor/a.png"; 
                         walltex = "textures/diffuse/mapeditor/c.png"; 
@@ -2972,7 +3003,7 @@ void write_map(entity* mapent) {
         
         floortex = texstrs[floortexIndex];
         delete floortexDisplay;
-        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, 0);
+        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, -100);
     }
     
     
@@ -3093,6 +3124,7 @@ public:
 	ui* talkingBox = 0;
 	textbox* talkingText = 0;
     textbox* responseText = 0;
+    textbox* escText = 0;
 	string pushedText; //holds what will be the total contents of the messagebox. 
 	string curText; //holds what the user currently sees; e.g. half of the message because it hasnt been typed out yet
 	bool typing = false; //true if text is currently being typed out to the window.
@@ -3110,7 +3142,6 @@ public:
 
     ui* inventoryA = 0; //big box, which has all of the items that the player has
     ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
-    //save only at base ;)
 
     ui* healthbox = 0;
     textbox* healthText = 0;
@@ -3135,11 +3166,13 @@ public:
     void showInventoryUI() {
         inventoryA->show = 1;
         inventoryB->show = 1;
+        escText->show = 1;
     }
 
     void hideInventoryUI() {
         inventoryA->show = 0;
         inventoryB->show = 0;
+        escText->show = 0;
     }
 
 	adventureUI(SDL_Renderer* renderer) {
@@ -3177,6 +3210,7 @@ public:
         inventoryB->patchwidth = 213;
 		inventoryB->patchscale = 0.4;
         inventoryB->persistent = true;
+        inventoryB->priority = -4;
 
         healthbox = new ui(renderer, "textures/ui/menu9patchblack.png", -0.1, -0.1, 0.35, 0.3, 1);
         healthbox->is9patch = true;
@@ -3195,6 +3229,16 @@ public:
 		healthText->worldspace = 0;
         healthText->show = 1;
         healthText->align = 2;
+
+        escText = new textbox(renderer, "Press escape to quit without saving", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
+
+		escText->boxX = 0.5;
+		escText->boxY = 0.8;
+        escText->boxWidth = 0.98;
+        escText->boxHeight = 0.25 - 0.02;
+		escText->worldspace = 0;
+        escText->show = 1;
+        escText->align = 2;
 
 
         hideInventoryUI();
@@ -3215,6 +3259,8 @@ public:
 
 
 	void pushText(entity* ftalker) {
+        inPauseMenu = 0;
+        adventureUIManager->hideInventoryUI();
 		talker = ftalker;
         g_talker = ftalker;
         if(sayings->at(talker->dialogue_index).at(0) == '%') {
@@ -3510,16 +3556,13 @@ public:
 		}
 
 		//change map
-        D(talker->sayings.at(talker->dialogue_index + 1).at(0));
-		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '@') {
+		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,4) == "/map") {
             M("changing map");
 			string s = talker->sayings.at(talker->dialogue_index + 1);
 			//erase '@'
-			s.erase(0, 1);
-
+			s.erase(0, 5);
 			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
             string dest_waypoint = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            
             //if the script just has "@" and that's all, send the player to the last saved map
             if(name.length() == 0) {
                 name = g_mapOfLastSave;
@@ -3529,20 +3572,20 @@ public:
 			
 
 			//close dialogue
-			
 			adventureUIManager->hideTalkingUI();
-			//reset character's dialogue_index
 			talker->dialogue_index = 0;
-			//stop talker from bouncing
 			talker->animate = 0;
             
             clear_map(g_camera);
-			load_map(renderer, "maps/" + name  + "/" + name + ".map", dest_waypoint);
+            const string toMap = "maps/" + name + ".map";
+			load_map(renderer, toMap, dest_waypoint);
 
-            //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
+            // //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
             if(devMode) { init_map_writing(renderer);}
             protag_is_talking = 0;
-            protag_can_move = 1;
+            protag_can_move = 1;    
+            //clear talker so that g_forceEndDialogue will not be set to 1
+            //g_talker = nullptr;
 			return;
 		}
 
@@ -3734,7 +3777,7 @@ public:
             talker->animate = 0;
             
             clear_map(g_camera);
-            load_map(renderer, "maps/" + g_mapOfLastSave  + "/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+            load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
 
             //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
             if(devMode) { init_map_writing(renderer);}
@@ -3744,7 +3787,7 @@ public:
         }
 
         //write savefile
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/write") {
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/save") {
             writeSave();
 
             talker->dialogue_index++;
@@ -3821,6 +3864,7 @@ public:
             string DIstr = "0";
             DIstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
             int DI = 0;
+            D(DIstr);
             DI = stoi(DIstr);
             talker->dialogue_index = DI - 3;
             this->continueDialogue();
@@ -3947,6 +3991,34 @@ public:
             entity* hopeful = searchEntities(name);
 			if(hopeful != nullptr) {
                 hopeful->tangible = tangiblestate;
+            }
+
+
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
+        }
+
+        //heal entity
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/heal") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 6);
+            D(s);
+			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            D(s);
+            string tangiblestatestr = "0";
+            tangiblestatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            D(name);
+            D(tangiblestatestr);
+            int tangiblestate = stof(tangiblestatestr);
+            
+            
+            entity* hopeful = searchEntities(name);
+			if(hopeful != nullptr) {
+                hopeful->hp += tangiblestate;
+                if(hopeful->hp > hopeful->maxhp) {
+                    hopeful->hp = hopeful->maxhp;
+                }
             }
 
 

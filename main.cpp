@@ -37,6 +37,7 @@ int main(int argc, char ** argv) {
 	//load first arg into variable devmode
 	if(argc > 1) {
 		devMode = (argv[1][0] == '1');
+		canSwitchOffDevMode = devMode;
 	}
 	if(argc > 2) {
 		genericmode = (argv[2][0] == '1');
@@ -93,6 +94,7 @@ int main(int argc, char ** argv) {
 	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
 	fomm->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
 	protag = fomm;
+	g_cameraShove = protag->hisweapon->attacks[0]->range/2;
 	g_focus = protag;
 	
 	g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
@@ -353,6 +355,8 @@ int main(int argc, char ** argv) {
 					protag->shadow->x = protag->x + protag->shadow->xoffset;
 					protag->shadow->y = protag->y + protag->shadow->yoffset;
 					g_focus = protag;
+					protag->curheight = 0;
+					protag->curwidth = 0;
 					g_cameraShove = protag->hisweapon->attacks[0]->range/2;
 					//prevent infinite loop
 					i++;
@@ -386,6 +390,8 @@ int main(int argc, char ** argv) {
 					protag->shadow->x = protag->x + protag->shadow->xoffset;
 					protag->shadow->y = protag->y + protag->shadow->yoffset;
 					g_focus = protag;
+					protag->curheight = 0;
+					protag->curwidth = 0;
 					g_cameraShove = protag->hisweapon->attacks[0]->range/2;
 					i++;
 					if(i > 600) {M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)"); break; quit = 1;}
@@ -419,24 +425,7 @@ int main(int argc, char ** argv) {
 		}
 
 
-		//triggers
-		for (int i = 0; i < g_triggers.size(); i++) {
-			if(!g_triggers[i]->active) {continue;}
-			rect trigger = {g_triggers[i]->x, g_triggers[i]->y, g_triggers[i]->width, g_triggers[i]->height};
-			entity* checkHim = searchEntities(g_triggers[i]->targetEntity);
-			if(checkHim == nullptr) {continue;}
-			rect movedbounds = rect(checkHim->x, checkHim->y - checkHim->bounds.height, checkHim->bounds.width, checkHim->bounds.height);
-			if(RectOverlap(movedbounds, trigger) && (checkHim->z >= g_triggers[i]->z && checkHim->z <= g_triggers[i]->z + g_triggers[i]->zeight)  ) {
-				adventureUIManager->blip = g_ui_voice; 
-				adventureUIManager->sayings = &g_triggers[i]->script;
-				adventureUIManager->talker = checkHim;
-				checkHim->dialogue_index = -1;
-				checkHim->sayings = g_triggers[i]->script;
-				adventureUIManager->continueDialogue();
-				
-				g_triggers[i]->active = 0;
-			}	
-		}
+
 
 		//listeners
 		for (int i = 0; i < g_listeners.size(); i++) {
@@ -521,19 +510,7 @@ int main(int argc, char ** argv) {
 			if(g_tiles[i]->z == 2) {
 				g_tiles[i]->render(renderer, g_camera);
 			}
-		} 
-		//if drawProtagGlimmer was set to 1, lets draw the glimmer on top of everything
-		// if(protagGlimmerA && protagGlimmerB && protagGlimmerC && protagGlimmerD && 0) {
-		// 	SDL_SetTextureColorMod(protag->texture, 0,0,0);
-		// 	SDL_SetTextureAlphaMod(protag->texture, 50);
-		// 	//redraw player ontop of everything
-		// 	//protag->sortingOffset = 1000000;
-		// 	protag->render(renderer, g_camera);
-		// } else {
-		// 	//protag->sortingOffset = 0;
-		// 	SDL_SetTextureColorMod(protag->texture, 255, 255, 255);
-		// 	SDL_SetTextureAlphaMod(protag->texture, 255);
-		// }
+		}
 
 		
 		//map editing
@@ -653,6 +630,8 @@ int main(int argc, char ** argv) {
 
 	
 			int i = 0;
+			M("check size before going into array");
+			D(mainProtag->inventory.size());
 			for(auto it =  mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it) {
 
 				if(i < itemsPerRow * inventoryScroll) {
@@ -664,16 +643,20 @@ int main(int argc, char ** argv) {
 				
 				
 				SDL_Rect drect = {x, y, itemWidth, itemWidth};
-				SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
-
+				D(mainProtag->inventory.size());
+				if(it->second > 0) {
+					SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
+				}
 				//draw number
-				if(it->second != 1) {
+				if(it->second > 1) {
 					inventoryText->show = 1;
 					inventoryText->updateText( to_string(it->second), 35, 100);
 					inventoryText->boxX = (x + itemWidth ) / WIN_WIDTH;
 					inventoryText->boxY = (y + itemWidth - inventoryText->boxHeight/2 ) / WIN_HEIGHT;
 					inventoryText->worldspace = 1;
 					inventoryText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+				} else {
+					inventoryText->show = 0;
 				}
 
 				if(i == inventorySelection) {
@@ -714,7 +697,7 @@ int main(int argc, char ** argv) {
 				//clear level
 				
 				//we will now clear the map, so we will save the door's destination map as a string
-				const string savemap = "maps/" + taken->to_map + "/" + taken->to_map + ".map";
+				const string savemap = "maps/" + taken->to_map + ".map";
 				const string dest_waypoint = taken->to_point;
 
 				//render this frame
@@ -742,6 +725,33 @@ int main(int argc, char ** argv) {
 			if(devMode) { init_map_writing(renderer);}
 		}
 
+		//triggers
+		for (int i = 0; i < g_triggers.size(); i++) {
+			if(!g_triggers[i]->active) {continue;}
+			rect trigger = {g_triggers[i]->x, g_triggers[i]->y, g_triggers[i]->width, g_triggers[i]->height};
+			entity* checkHim = searchEntities(g_triggers[i]->targetEntity);
+			if(checkHim == nullptr) {continue;}
+			rect movedbounds = rect(checkHim->bounds.x + checkHim->x, checkHim->bounds.y + checkHim->y, checkHim->bounds.width, checkHim->bounds.height);
+			if(RectOverlap(movedbounds, trigger) && (checkHim->z > g_triggers[i]->z && checkHim->z < g_triggers[i]->z + g_triggers[i]->zeight)  ) {
+				adventureUIManager->blip = g_ui_voice; 
+				adventureUIManager->sayings = &g_triggers[i]->script;
+				adventureUIManager->talker = checkHim;
+				checkHim->dialogue_index = -1;
+				checkHim->sayings = g_triggers[i]->script;
+				adventureUIManager->continueDialogue();
+				//we need to break here if we loaded a new map
+				//definately definately revisit this if you are having problems
+				//with loading maps and memorycorruption
+				//!!!
+				if(transition) {
+					break;		
+				}
+				
+				g_triggers[i]->active = 0;
+				
+			}	
+		}
+
 		//worldsounds
 		for (int i = 0; i < g_worldsounds.size(); i++) {
 			g_worldsounds[i]->update(elapsed);
@@ -750,7 +760,7 @@ int main(int argc, char ** argv) {
 		//transition
 		{
 			if (transition) {
-				
+				g_forceEndDialogue = 0;
 				//onframe things
 				SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
 				
@@ -991,7 +1001,7 @@ int interact(float elapsed, entity* protag) {
 						a = new indexItem(g_entities[i]->name, 0);
 					}
 					
-					protag->getItem(a, 1);
+					mainProtag->getItem(a, 1);
 					delete g_entities[i];
 					break;
 				}
@@ -1083,9 +1093,32 @@ void getInput(float &elapsed) {
 	if(keystate[SDL_SCANCODE_D]) {
 		camx+=4;
 	}
+	if(keystate[SDL_SCANCODE_G] && !inputRefreshCanSwitchOffDevMode) {
+		if(canSwitchOffDevMode) {
+			devMode = !devMode;
+		}
+		if(devMode) {
+			floortexDisplay->show = 1;
+			captexDisplay->show = 1;
+			walltexDisplay->show = 1;
+		} else {
+			floortexDisplay->show = 0;
+			captexDisplay->show = 0;
+			walltexDisplay->show = 0;
+			scalex = g_defaultZoom;
+			scaley = g_defaultZoom;
+			SDL_RenderSetScale(renderer, scalex, scaley);
+		}
+		
+	} 
+	if(keystate[SDL_SCANCODE_G]){
+		inputRefreshCanSwitchOffDevMode = 1;
+	} else {
+		inputRefreshCanSwitchOffDevMode = 0;
+	}
 	
 	protag_can_move = !protag_is_talking;
-	if(protag_can_move) {
+	if(protag_can_move ) {
 		protag->shooting = 0;
 		protag->left = 0;
 		protag->right = 0;
@@ -1095,22 +1128,22 @@ void getInput(float &elapsed) {
 		g_cameraAimingOffsetYTarget = 0;
 		
 
-		if(keystate[bindings[4]]) {
+		if(keystate[bindings[4]]&& !inPauseMenu) {
 			protag->shoot_up();
 			g_cameraAimingOffsetYTarget = 1;
 		}
 
-		if(keystate[bindings[5]]) {
+		if(keystate[bindings[5]]&& !inPauseMenu) {
 			protag->shoot_down();
 			g_cameraAimingOffsetYTarget = -1;
 		}
 
-		if(keystate[bindings[6]]) {
+		if(keystate[bindings[6]]&& !inPauseMenu) {
 			protag->shoot_left();
 			g_cameraAimingOffsetXTarget = -1;
 		}
 
-		if(keystate[bindings[7]]) {
+		if(keystate[bindings[7]]&& !inPauseMenu) {
 			protag->shoot_right();
 			g_cameraAimingOffsetXTarget = 1;
 		}
@@ -1191,15 +1224,7 @@ void getInput(float &elapsed) {
 		SoldUILeft--;
 		
 		
-		//constrain inventorySelection based on itemsInInventory
-		if(inventorySelection > g_itemsInInventory - 1) {
-			//M(g_itemsInInventory - 1);
-			inventorySelection = g_itemsInInventory - 1;
-		}
-
-		if(inventorySelection < 0) {
-			inventorySelection = 0;
-		}
+		
 		
 		
 
@@ -1235,6 +1260,16 @@ void getInput(float &elapsed) {
 			if(inventorySelection < (inventoryScroll * itemsPerRow) ) {
 				inventoryScroll--;
 			}
+		}
+
+		//constrain inventorySelection based on itemsInInventory
+		if(inventorySelection > g_itemsInInventory - 1) {
+			//M(g_itemsInInventory - 1);
+			inventorySelection = g_itemsInInventory - 1;
+		}
+
+		if(inventorySelection < 0) {
+			inventorySelection = 0;
 		}
 
 		if(keystate[bindings[12]] && !old_pause_value && protag_can_move) {
@@ -1302,7 +1337,27 @@ void getInput(float &elapsed) {
 				adventureUIManager->continueDialogue();
 			}
 		}	
+	} else if (keystate[bindings[11]] && !old_z_value && inPauseMenu){
+		//select item in pausemenu
+		//only if we arent running a script
+		if(protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->script.size() > 0 && mainProtag->inventory.size()  > 0) {
+			//call the item's script
+			D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);
+			adventureUIManager->blip = g_ui_voice; 
+			adventureUIManager->sayings = &mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->script;
+			adventureUIManager->talker = protag;
+			protag->dialogue_index = -1;
+			protag->sayings = mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->script;
+			adventureUIManager->continueDialogue();
+			//if we changed maps/died/whatever, close the inventory
+			if(transition) {
+				inPauseMenu = 0;
+				adventureUIManager->hideInventoryUI();
+			}
+			old_z_value = 1;
+		}
 	}
+	//D(mainProtag->inventory[mainProtag->inventory.size() - 1 -inventorySelection].first->name);
 	dialogue_cooldown -= elapsed;
 	if(keystate[bindings[11]] && !inPauseMenu) {
 		
@@ -1321,6 +1376,11 @@ void getInput(float &elapsed) {
 		
 		//reset text_speed_up
 		text_speed_up = 1;
+		old_z_value = 0;
+	}
+	if(keystate[bindings[11]] && inPauseMenu) {
+		old_z_value = 1;
+	} else if (inPauseMenu){
 		old_z_value = 0;
 	}
 
