@@ -82,6 +82,8 @@ class effectIndex;
 
 class particle;
 
+class collisionZone;
+
 vector<cshadow*> g_shadows;
 
 vector<actor*> g_actors;
@@ -136,6 +138,8 @@ vector<indexItem*> g_indexItems;
 
 vector<particle*> g_particles;
 
+vector<collisionZone*> g_collisionZones;
+
 map<string, int> enemiesMap; //stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0; //how many points this map can spend on enemies;
 
@@ -165,6 +169,7 @@ void E(T msg, bool disableNewline = 0) { if(!devMode || !showErrorMessages) {ret
 //for visuals
 float p_ratio = 1.151;
 bool g_vsync = true;
+float g_background_darkness = 0; //0 - show bg, 1 - show black
 SDL_Texture* background = 0;
 bool g_backgroundLoaded = 0;
 bool g_useBackgrounds = 1; //a user setting, if the user wishes to see black screens instead of colorful backgrounds
@@ -186,11 +191,12 @@ float g_cameraAimingOffsetX = 0;
 float g_cameraAimingOffsetY = 0;
 float g_cameraAimingOffsetXTarget = 0;
 float g_cameraAimingOffsetYTarget = 0;
-float g_cameraAimingOffsetLerpScale = 0.85;
+float g_cameraAimingOffsetLerpScale = 0.91;
 
 //text
 string g_font;
 float g_fontsize = 0.031;
+float g_minifontsize = 0.01;
 float g_transitionSpeed = 3; //3, 9
 
 //inventory
@@ -232,7 +238,7 @@ public:
 	const float DEFAULTLAGACCEL = 0.01;
 	float lagaccel = 0.01; //how much faster the camera gets while lagging
 	float zoom = 1;
-	float zoommod=1;
+	float zoommod = 1;
 	int lowerLimitX = 0;
 	int lowerLimitY = 0;
 	int upperLimitX = 3000;
@@ -283,10 +289,15 @@ public:
 	}
 };
 
-//int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
-int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
+//zoom is really g_defaultZoom when screenwidth is STANDARD_SCREENWIDTH
+int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
+//theres some warping if STANDARD_SCREENWIDTH < WIN_WIDTH but that shouldn't ever happen
+//if in the future kids have screens with 10 million pixels feel free to mod the game :>
+const int STANDARD_SCREENWIDTH = 1080;
+//int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
-int old_WIN_WIDTH = WIN_WIDTH; //used for detecting change in window width to recalculate scalex and y
+int old_WIN_WIDTH = 0; //used for detecting change in window width to recalculate scalex and y
+int saved_WIN_WIDTH = WIN_WIDTH; int saved_WIN_HEIGHT = WIN_HEIGHT;
 SDL_Window * window;
 SDL_DisplayMode DM;
 bool g_fullscreen = false;
@@ -294,9 +305,11 @@ camera g_camera(0,0);
 entity* protag;
 entity* mainProtag; //for letting other entities use this ones inventory; game ends when this one dies
 
-//for camera/window zoom
-float g_defaultZoom = 0.9;
-float scalex = ((float)WIN_WIDTH / old_WIN_WIDTH) * g_defaultZoom;
+//zoom is planned to be 1.0 for a resolution of 1920 pixels across
+float g_defaultZoom = 1;
+float g_zoom_mod = 1; //for devmode
+
+float scalex = 1;
 float scaley = scalex;
 float min_scale = 0.1;
 float max_scale = 2;
@@ -327,6 +340,7 @@ bool oldinput[16] = {false};
 SDL_Scancode bindings[16];
 bool left_ui_refresh = false; //used to detect when arrows is pressed and then released
 bool right_ui_refresh = false;
+bool fullscreen_refresh = true;
 bool quit = false;
 string config = "default";
 bool g_holdingCTRL = 0;
@@ -334,12 +348,26 @@ bool g_holdingCTRL = 0;
 //diagonally, you press one button (e.g. up) a frame or so early then the other (e.g. left)
 //as a result, the game instantly shoots up and its unnacceptable.
 //this is variable is the amount of frames to wait between getting input and shooting
-int g_diagonalHelpFrames = 4;
+const int g_diagonalHelpFrames = 4;
+int g_cur_diagonalHelpFrames = 0;
 
 //sounds and music
 float g_volume = 0;
+float g_music_volume = 0.8;
+float g_sfx_volume = 1;
 bool g_mute = 0;
-Mix_Chunk* g_ui_voice = Mix_LoadWAV("audio/sounds/voice-normal.wav");
+Mix_Chunk* g_ui_voice;
+Mix_Chunk* g_menu_open_sound;
+Mix_Chunk* g_menu_close_sound;
+Mix_Chunk* g_menu_manip_sound;
+
+
+Mix_Chunk* g_land;
+Mix_Chunk* g_footstep_a;
+Mix_Chunk* g_footstep_b;
+Mix_Chunk* g_spin_sound;
+
+
 Mix_Chunk* g_deathsound;
 musicNode* closestMusicNode;
 musicNode* newClosest;
@@ -360,7 +388,7 @@ float textWait = 50; //seconds to wait between typing characters of text
 float text_speed_up = 1; //speed up text if player holds button. set to 1 if the player isn't pressing it, or 1.5 if she is
 float curTextWait = 0;
 bool old_z_value = 1; //the last value of the z key. used for advancing dialogue, i.e. z key was down and is now up or was up and is now down if old_z_value != SDL[SDL_SCANCODE_Z]
-
+float g_healthbarBorderSize = 0;
 bool g_showHUD = 0;
 
 //scripts
@@ -388,6 +416,10 @@ string g_saveName = "a";
 
 std::map<string, int> g_save = {};
 
+//movement
+float g_dash_cooldown = 1000;
+float g_max_dash_cooldown = 1000;
+
 
 bool fileExists (const std::string& name) {
     if (FILE *file = fopen(name.c_str(), "r")) {
@@ -400,10 +432,12 @@ bool fileExists (const std::string& name) {
 
 //combat
 enum Status { none, stunned, slowed, buffed, marked };
+float g_earshot = 1000; //how close do entities need to be to join their friends in battle
 
 void playSound(int channel, Mix_Chunk* sound, int loops) {
 	//M("play sound");
 	if(!g_mute && sound != NULL) {
+		Mix_Volume(channel, g_sfx_volume * 128);
 		Mix_PlayChannel(channel, sound, loops);
 	}
 }
@@ -486,6 +520,25 @@ vector<int> getCardinalPoint(int x, int y, float range, int index) {
 	ret.push_back( x +( range * cos(angle)));
 	ret.push_back(y + (range * sin(angle) * XtoY));
 	return ret;
+}
+
+//convert frame of sprite to angle
+float convertFrameToAngle(int frame, bool flipped) {
+	if(flipped){
+		if(frame == 0) {return M_PI/2;}
+		if(frame == 1) {return (M_PI * 3)/4;}
+		if(frame == 2) {return M_PI;}
+		if(frame == 3) {return (M_PI * 5)/4;}
+		if(frame == 4) {return (M_PI * 6)/4;}
+	} else {
+		if(frame == 0) {return M_PI/2;}
+		if(frame == 1) {return (M_PI * 1)/4;}
+		if(frame == 2) {return 0;}
+		if(frame == 3) {return (M_PI * 7)/4;}
+		if(frame == 4) {return (M_PI * 6)/4;}
+	}
+
+	return 0;
 }
 
 //measures distance in the world, not by the screen.

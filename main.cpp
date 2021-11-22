@@ -51,6 +51,7 @@ int main(int argc, char ** argv) {
 	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
+	SDL_SetWindowMinimumSize(window, 100, 100);
 
 	// for( int i = 0; i < SDL_GetNumRenderDrivers(); ++i ) {
 	// 	SDL_RendererInfo rendererInfo = {};
@@ -70,7 +71,7 @@ int main(int argc, char ** argv) {
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3"); 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	
-	SDL_RenderSetScale(renderer, scalex, scaley);
+	SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
 	//set global shadow-texture
@@ -84,6 +85,7 @@ int main(int argc, char ** argv) {
 	if(devMode) {
 		//fomm = new entity(renderer, "fommconstruction"); 
 		fomm = new entity(renderer, "fomm"); 
+		g_defaultZoom = 0.85;
 	} else {
 		fomm = new entity(renderer, "fomm"); 
 	}
@@ -99,6 +101,16 @@ int main(int argc, char ** argv) {
 	
 	g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
 	
+	//protag healthbar
+	ui* protagHealthbarA = new ui(renderer, "textures/ui/healthbarA.png", 0,0, 0.05, 0.02, -3);
+	protagHealthbarA->persistent = 1;
+	ui* protagHealthbarB = new ui(renderer, "textures/ui/healthbarB.png", 0,0, 0.05, 0.02, -2);
+	protagHealthbarB->persistent = 1;
+	protagHealthbarB->shrinkPixels = 1;
+	
+	ui* protagHealthbarC = new ui(renderer, "textures/ui/healthbarC.png", 0,0, 0.05, 0.02, -1);
+	protagHealthbarC->persistent = 1;
+	protagHealthbarC->shrinkPixels = 1;
 
 	//for transition
 	SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.png");
@@ -125,7 +137,7 @@ int main(int argc, char ** argv) {
 	//setup UI
 	adventureUIManager = new adventureUI(renderer);
 	
-	if(devMode) {
+	if(canSwitchOffDevMode) {
 		init_map_writing(renderer);
 		//done once, because textboxes aren't cleared during clear_map()
 		nodeInfoText = new textbox(renderer, "", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
@@ -143,13 +155,15 @@ int main(int argc, char ** argv) {
 		//D(bindings[i]);
 	}
 	//set vsync and g_fullscreen from config
-	string valuestr; int value;
+	string valuestr; float value;
 	
 	//get vsync
-	getline(bindfile, line);
-	valuestr = line.substr(line.find(' '), line.length());
-	value = stoi(valuestr);
-	g_vsync = value;
+	// getline(bindfile, line);
+	// valuestr = line.substr(line.find(' '), line.length());
+	// value = stoi(valuestr);
+	// D(value);
+	// g_vsync = value;
+	// D(g_vsync);
 	
 	//get g_fullscreen
 	getline(bindfile, line);
@@ -157,12 +171,32 @@ int main(int argc, char ** argv) {
 	value = stoi(valuestr);
 	g_fullscreen = value;
 
+	//get bg darkness
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '),  line.length());
+	value = stof(valuestr);
+	g_background_darkness = value;
+
+	//get music volume
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '),  line.length());
+	value = stof(valuestr);
+	g_music_volume = value;
+
+	//get sfx volume
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '),  line.length());
+	value = stof(valuestr);
+	g_sfx_volume = value;
 
 
 	bindfile.close();
 	
 	//apply vsync
-	//SDL_GL_SetSwapInterval(g_vsync);
+	SDL_GL_SetSwapInterval(1);
+
+	//hide mouse
+	//
 
 	//apply fullscreen
 	if(g_fullscreen) {
@@ -171,8 +205,7 @@ int main(int argc, char ** argv) {
 		SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 	} else {
 		SDL_SetWindowFullscreen(window, 0);
-		
-	}
+	}	
 
 	//initialize box matrix z
 	for (int i = 0; i < g_layers; i++) {
@@ -196,6 +229,16 @@ int main(int argc, char ** argv) {
 	g_enemydamage = Mix_LoadWAV("audio/sounds/enemydamage.wav");
 	g_npcdamage = Mix_LoadWAV("audio/sounds/npcdamage.wav");
 	g_s_playerdeath = Mix_LoadWAV("audio/sounds/playerdeath.wav");
+	g_land = Mix_LoadWAV("audio/sounds/step2.wav");
+	g_footstep_a = Mix_LoadWAV("audio/sounds/protag-step-1.wav");
+	g_footstep_b = Mix_LoadWAV("audio/sounds/protag-step-1.wav");
+	g_menu_open_sound = Mix_LoadWAV("audio/sounds/open-menu.wav");
+	g_menu_close_sound = Mix_LoadWAV("audio/sounds/close-menu.wav");
+	g_ui_voice = Mix_LoadWAV("audio/sounds/voice-normal.wav");
+	g_menu_manip_sound = Mix_LoadWAV("audio/sounds/manip-menu.wav");
+	g_spin_sound = Mix_LoadWAV("audio/sounds/push.wav");
+
+
 
 
 	srand(time(NULL));
@@ -307,6 +350,7 @@ int main(int argc, char ** argv) {
 		use_cooldown -= elapsed / 1000;
 		musicFadeTimer += elapsed;
 		musicUpdateTimer += elapsed;
+		g_dash_cooldown -= elapsed;
 
 		if(inPauseMenu) {
 			//if we're paused, freeze gametime
@@ -351,6 +395,9 @@ int main(int argc, char ** argv) {
 					protag->zvel = 0;
 					protag->xvel = 0;
 					protag->yvel = 0;
+					protag->zaccel = 0;
+					protag->xaccel = 0;
+					protag->yaccel = 0;
 					protag=party[0];
 					protag->shadow->x = protag->x + protag->shadow->xoffset;
 					protag->shadow->y = protag->y + protag->shadow->yoffset;
@@ -386,6 +433,9 @@ int main(int argc, char ** argv) {
 					protag->zvel = 0;
 					protag->xvel = 0;
 					protag->yvel = 0;
+					protag->zaccel = 0;
+					protag->xaccel = 0;
+					protag->yaccel = 0;
 					protag=party[0];
 					protag->shadow->x = protag->x + protag->shadow->xoffset;
 					protag->shadow->y = protag->y + protag->shadow->yoffset;
@@ -445,20 +495,22 @@ int main(int argc, char ** argv) {
 		//update camera
 		SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 
-		//detect change in window
+		// !!! it might be better to not run this every frame
 		if(old_WIN_WIDTH != WIN_WIDTH) {
 			//user scaled window
-			//scalex = ((float)WIN_WIDTH / (float)old_WIN_WIDTH);
-			// if(scalex < min_scale) {
-			// 	scalex = min_scale;
-			// }
-			// if(scalex > max_scale) {
-			// 	scalex = max_scale;
-			// }
+			scalex = ((float)WIN_WIDTH / STANDARD_SCREENWIDTH) * g_defaultZoom;
 			scaley = scalex;
-			SDL_RenderSetScale(renderer, scalex, scaley);
+			if(scalex < min_scale) {
+				scalex = min_scale;
+			}
+			if(scalex > max_scale) {
+				scalex = max_scale;
+			}
+			
+			SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 		}
+		old_WIN_WIDTH = WIN_WIDTH;
 		
 		//moved this line to the start of the program, since the zoom could get screwed up
 		//old_WIN_WIDTH = WIN_WIDTH;
@@ -475,10 +527,16 @@ int main(int argc, char ** argv) {
 			g_camera.update_movement(elapsed, camx, camy);
 		} else {
 			//lerp cameratargets
-			g_cameraAimingOffsetY = g_cameraAimingOffsetY*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetYTarget *(1-g_cameraAimingOffsetLerpScale);
-			g_cameraAimingOffsetX = g_cameraAimingOffsetX*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetXTarget *(1-g_cameraAimingOffsetLerpScale);
-			g_camera.update_movement(elapsed, (g_focus->getOriginX() - (g_camera.width/(2 * g_camera.zoom))) + (g_cameraAimingOffsetX * g_cameraShove), ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom) + (g_cameraAimingOffsetY * g_cameraShove))) );
+			g_cameraAimingOffsetY = g_cameraAimingOffsetY*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetYTarget *(1-(g_cameraAimingOffsetLerpScale));
+			g_cameraAimingOffsetX = g_cameraAimingOffsetX*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetXTarget *(1-(g_cameraAimingOffsetLerpScale));
+			float zoomoffsetx = (WIN_WIDTH /2) / g_zoom_mod;
+			float zoomoffsety = (WIN_HEIGHT /2) / g_zoom_mod;
+			//g_camera.zoom = 0.9;
+			
+			g_camera.update_movement(elapsed, g_focus->getOriginX() - zoomoffsetx + (g_cameraAimingOffsetX * g_cameraShove), ((g_focus->getOriginY() - XtoZ * g_focus->z) - zoomoffsety - (g_cameraAimingOffsetY * g_cameraShove)));
 		}
+		// g_camera.zoom = scalex;
+
 		//update ui
 		curTextWait += elapsed * text_speed_up;
 		if(curTextWait >= textWait) {
@@ -600,14 +658,32 @@ int main(int argc, char ** argv) {
 		
 		//ui
 		if(!inPauseMenu && g_showHUD) {
-			adventureUIManager->healthText->updateText( to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), WIN_WIDTH * g_fontsize, 0.9 ); 
+			adventureUIManager->healthText->updateText( to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), WIN_WIDTH * g_minifontsize, 0.9); 
 			adventureUIManager->healthText->show = 1;
 			
 		} else {
 			adventureUIManager->healthText->show = 0;
 			
 		}
-		adventureUIManager->healthbox->show = g_showHUD;
+
+		//move the healthbar properly to the protagonist
+		rect obj; // = {( , (((protag->y - ((protag->height))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom, (protag->width * g_camera.zoom), (protag->height * g_camera.zoom))};		
+		obj.x = ((protag->x -g_camera.x) * g_camera.zoom);
+		obj.y = (((protag->y - ((floor(protag->height)))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom;
+		obj.width = (protag->width * g_camera.zoom);
+		obj.height = (floor(protag->height) * g_camera.zoom);
+
+		protagHealthbarA->x = (((float)obj.x + obj.width/2) / (float)WIN_WIDTH) - protagHealthbarA->width/2.0;
+		protagHealthbarA->y = ((float)obj.y) / (float)WIN_HEIGHT;
+		protagHealthbarB->x = protagHealthbarA->x;
+		protagHealthbarB->y = protagHealthbarA->y;
+		
+		protagHealthbarC->x = protagHealthbarA->x;
+		protagHealthbarC->y = protagHealthbarA->y;
+		protagHealthbarC->width = (protag->hp / protag->maxhp) * 0.05;
+		adventureUIManager->healthText->boxX = protagHealthbarA->x + protagHealthbarA->width/2;
+		adventureUIManager->healthText->boxY = protagHealthbarA->y - 0.005;
+		
 		for(long long unsigned int i=0; i < g_ui.size(); i++){
 			g_ui[i]->render(renderer, g_camera);
 		}	
@@ -630,8 +706,6 @@ int main(int argc, char ** argv) {
 
 	
 			int i = 0;
-			M("check size before going into array");
-			D(mainProtag->inventory.size());
 			for(auto it =  mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it) {
 
 				if(i < itemsPerRow * inventoryScroll) {
@@ -688,30 +762,32 @@ int main(int argc, char ** argv) {
 
 		// ENTITY MOVEMENT
 		//dont update movement while transitioning
-		for(long long unsigned int i=0; i < g_entities.size(); i++){
-			door* taken = g_entities[i]->update(g_boxs[g_entities[i]->layer], g_doors, elapsed);
-			//added the !transition because if a player went into a map with a door located in the same place
-			//as they are in the old map (before going to the waypoint) they would instantly take that door
-			if(taken != nullptr && !transition) {
-				//player took this door
-				//clear level
-				
-				//we will now clear the map, so we will save the door's destination map as a string
-				const string savemap = "maps/" + taken->to_map + ".map";
-				const string dest_waypoint = taken->to_point;
+		if(!transition) {
+			for(long long unsigned int i=0; i < g_entities.size(); i++){
+				door* taken = g_entities[i]->update(g_boxs[g_entities[i]->layer], g_doors, elapsed);
+				//added the !transition because if a player went into a map with a door located in the same place
+				//as they are in the old map (before going to the waypoint) they would instantly take that door
+				if(taken != nullptr && !transition) {
+					//player took this door
+					//clear level
+					
+					//we will now clear the map, so we will save the door's destination map as a string
+					const string savemap = "maps/" + taken->to_map + ".map";
+					const string dest_waypoint = taken->to_point;
 
-				//render this frame
+					//render this frame
 
-				clear_map(g_camera);
-				load_map(renderer, savemap, dest_waypoint);
-				
+					clear_map(g_camera);
+					load_map(renderer, savemap, dest_waypoint);
+					
 
-				//clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
-				if(devMode) { init_map_writing(renderer);}
-				
+					//clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
+					if(canSwitchOffDevMode) { init_map_writing(renderer);}
+					
 
 
-				break;
+					break;
+				}
 			}
 		}
 
@@ -722,7 +798,7 @@ int main(int argc, char ** argv) {
 			SDL_Delay(5000);
 			load_map(renderer, "maps/sp-death/sp-death.map","a");
 			protag->hp = 0.1;
-			if(devMode) { init_map_writing(renderer);}
+			if(canSwitchOffDevMode) { init_map_writing(renderer);}
 		}
 
 		//triggers
@@ -815,6 +891,7 @@ int main(int argc, char ** argv) {
 				newClosest = protag->Get_Closest_Node(g_musicNodes);
 				if(closestMusicNode == nullptr && !g_mute) { 
 					Mix_PlayMusic(newClosest->blip, -1); 
+					Mix_VolumeMusic(g_music_volume * 128);
 					closestMusicNode = newClosest; 
 				} else { 
 
@@ -873,7 +950,7 @@ int main(int argc, char ** argv) {
 }
 
 int interact(float elapsed, entity* protag) {
-	M("interact()");
+	//M("interact()");
 	SDL_Rect srect;
 		switch(protag->animation) {
 			
@@ -953,12 +1030,12 @@ int interact(float elapsed, entity* protag) {
 			}
 
 			srect = transformRect(srect);
-			if(drawhitboxes) {
-				SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
-				SDL_RenderFillRect(renderer, &srect);
-				SDL_RenderPresent(renderer);	
-				SDL_Delay(500);
-			}
+			// if(drawhitboxes) {
+			// 	SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+			// 	SDL_RenderFillRect(renderer, &srect);
+			// 	SDL_RenderPresent(renderer);	
+			// 	SDL_Delay(500);
+			// }
 			break;
 		case 4:
 			srect.h = protag->bounds.height;
@@ -1003,7 +1080,7 @@ int interact(float elapsed, entity* protag) {
 					
 					mainProtag->getItem(a, 1);
 					delete g_entities[i];
-					break;
+					return 0;
 				}
 				if(g_entities[i]->talks && g_entities[i]->tangible) {
 					if(g_entities[i]->animlimit != 0) {
@@ -1055,7 +1132,7 @@ int interact(float elapsed, entity* protag) {
 					//removing this in early july to fix problem moving after a script changes map
 					//may cause unexpected problems
 					//protag_is_talking = 1;
-					break;
+					return 0;
 				}
 			}
 			//no one to talk to, lets do x instead (heres where it goes)
@@ -1071,6 +1148,18 @@ int interact(float elapsed, entity* protag) {
 			}
 
 		}
+
+	//we didnt have anything to interact with- lets do a dash
+	// if(g_dash_cooldown < 0 && protag_can_move) {
+	// 	M("dash");
+	// 	//convert frame to angle
+	// 	float angle = convertFrameToAngle(protag->frame, protag->flip);
+	// 	protag->xvel += 500 * (1 - (protag->friction * 3)) * cos(angle);
+	// 	protag->yvel += 500 * (1 - (protag->friction * 3)) * sin(angle);
+	// 	protag->spinningMS = 700;
+	// 	playSound(-1, g_spin_sound, 0);
+	// 	g_dash_cooldown = g_max_dash_cooldown;
+	// }
 	return 0;
 }
 
@@ -1093,7 +1182,7 @@ void getInput(float &elapsed) {
 	if(keystate[SDL_SCANCODE_D]) {
 		camx+=4;
 	}
-	if(keystate[SDL_SCANCODE_G] && !inputRefreshCanSwitchOffDevMode) {
+	if(keystate[SDL_SCANCODE_G] && !inputRefreshCanSwitchOffDevMode && canSwitchOffDevMode) {
 		if(canSwitchOffDevMode) {
 			devMode = !devMode;
 		}
@@ -1105,9 +1194,9 @@ void getInput(float &elapsed) {
 			floortexDisplay->show = 0;
 			captexDisplay->show = 0;
 			walltexDisplay->show = 0;
-			scalex = g_defaultZoom;
-			scaley = g_defaultZoom;
-			SDL_RenderSetScale(renderer, scalex, scaley);
+			// float scalex = ((float)WIN_WIDTH / 1920) * g_defaultZoom;
+			// float scaley = scalex;
+			SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 		}
 		
 	} 
@@ -1128,24 +1217,31 @@ void getInput(float &elapsed) {
 		g_cameraAimingOffsetYTarget = 0;
 		
 
-		if(keystate[bindings[4]]&& !inPauseMenu) {
+		if(keystate[bindings[4]]&& !inPauseMenu && g_cur_diagonalHelpFrames > g_diagonalHelpFrames) {
 			protag->shoot_up();
 			g_cameraAimingOffsetYTarget = 1;
 		}
 
-		if(keystate[bindings[5]]&& !inPauseMenu) {
+		if(keystate[bindings[5]]&& !inPauseMenu && g_cur_diagonalHelpFrames > g_diagonalHelpFrames) {
 			protag->shoot_down();
 			g_cameraAimingOffsetYTarget = -1;
 		}
 
-		if(keystate[bindings[6]]&& !inPauseMenu) {
+		if(keystate[bindings[6]]&& !inPauseMenu && g_cur_diagonalHelpFrames > g_diagonalHelpFrames) {
 			protag->shoot_left();
 			g_cameraAimingOffsetXTarget = -1;
 		}
 
-		if(keystate[bindings[7]]&& !inPauseMenu) {
+		if(keystate[bindings[7]]&& !inPauseMenu && g_cur_diagonalHelpFrames > g_diagonalHelpFrames) {
 			protag->shoot_right();
 			g_cameraAimingOffsetXTarget = 1;
+		}
+
+		//if we aren't pressing any shooting keys, reset g_cur_diagonalhelpframes
+		if( ! (keystate[bindings[4]] || keystate[bindings[5]] || keystate[bindings[6]] || keystate[bindings[7]]) ) {
+			g_cur_diagonalHelpFrames = 0;
+		} else {
+			g_cur_diagonalHelpFrames++;
 		}
 
 		//normalize g_cameraAimingOffsetTargetVector
@@ -1169,6 +1265,7 @@ void getInput(float &elapsed) {
 		
 		if(keystate[bindings[0]]) {
 			if(inPauseMenu && SoldUIUp <= 0) {
+				playSound(-1, g_menu_manip_sound, 0);
 				//if(inventorySelection - itemsPerRow >= 0) {
 					inventorySelection-= itemsPerRow;
 					
@@ -1187,6 +1284,7 @@ void getInput(float &elapsed) {
 		
 		if(keystate[bindings[1]]) {
 			if(inPauseMenu && SoldUIDown <= 0) {
+				playSound(-1, g_menu_manip_sound, 0);
 				//if(inventorySelection + itemsPerRow < g_itemsInInventory) {
 					
 
@@ -1207,6 +1305,7 @@ void getInput(float &elapsed) {
 		
 		if(keystate[bindings[2]]) {
 			if(inPauseMenu && SoldUILeft <= 0) {
+				playSound(-1, g_menu_manip_sound, 0);
 				if(inventorySelection > 0) {
 					if(inventorySelection % itemsPerRow != 0) {
 						inventorySelection--;
@@ -1230,6 +1329,7 @@ void getInput(float &elapsed) {
 
 		if(keystate[bindings[3]]) {
 			if(inPauseMenu && SoldUIRight <= 0) {
+				playSound(-1, g_menu_manip_sound, 0);
 				if(inventorySelection <= g_itemsInInventory) {
 					//dont want this to wrap around
 					if(inventorySelection % itemsPerRow != itemsPerRow -1 ) { 
@@ -1275,10 +1375,12 @@ void getInput(float &elapsed) {
 		if(keystate[bindings[12]] && !old_pause_value && protag_can_move) {
 			//pause menu
 			if(inPauseMenu) {
+				playSound(-1, g_menu_close_sound, 0);
 				inPauseMenu = 0;
 				adventureUIManager->hideInventoryUI();
 			
 			} else {
+				playSound(-1, g_menu_open_sound, 0);
 				inPauseMenu = 1;
 				inventorySelection = 0;
 				adventureUIManager->showInventoryUI();
@@ -1331,6 +1433,8 @@ void getInput(float &elapsed) {
 		input[9] = 0;
 	}
 
+
+
 	if(keystate[bindings[11]] && !old_z_value && !inPauseMenu) {
 		if(protag_is_talking == 1) {
 			if(!adventureUIManager->typing) {
@@ -1342,7 +1446,7 @@ void getInput(float &elapsed) {
 		//only if we arent running a script
 		if(protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->script.size() > 0 && mainProtag->inventory.size()  > 0) {
 			//call the item's script
-			D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);
+			//D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);
 			adventureUIManager->blip = g_ui_voice; 
 			adventureUIManager->sayings = &mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->script;
 			adventureUIManager->talker = protag;
@@ -1502,29 +1606,25 @@ void getInput(float &elapsed) {
 	}
 	if(keystate[SDL_SCANCODE_Q] && devMode && g_holdingCTRL) {
 		
-		scalex-= 0.001 * elapsed;
+		// g_zoom_mod-= 0.001 * elapsed;
 		
-		if(scalex < min_scale) {
-			scalex = min_scale;
-		}
-		if(scalex > max_scale) {
-			scalex = max_scale;
-		}
-		scaley = scalex;
-		SDL_RenderSetScale(renderer, scalex, scaley);
+		// if(g_zoom_mod < min_scale) {
+		// 	g_zoom_mod = min_scale;
+		// }
+		// if(g_zoom_mod > max_scale) {
+		// 	g_zoom_mod = max_scale;
+		// }
 	}
 	
 	if(keystate[SDL_SCANCODE_E] && devMode && g_holdingCTRL) {
-		scalex+= 0.001 * elapsed;
+		// g_zoom_mod+= 0.001 * elapsed;
 		
-		if(scalex < min_scale) {
-			scalex = min_scale;
-		}
-		if(scalex > max_scale) {
-			scalex = max_scale;
-		}
-		scaley = scalex;
-		SDL_RenderSetScale(renderer, scalex, scaley);
+		// if(g_zoom_mod < min_scale) {
+		// 	g_zoom_mod = min_scale;
+		// }
+		// if(g_zoom_mod > max_scale) {
+		// 	g_zoom_mod = max_scale;
+		// }
 		
 	}
 	if(keystate[SDL_SCANCODE_BACKSPACE]) {
@@ -1538,17 +1638,38 @@ void getInput(float &elapsed) {
 	if(keystate[bindings[2]] == keystate[bindings[3]]) {
 		protag->stop_hori();
 	}
+	
 
-	if(keystate[SDL_SCANCODE_F] && !devMode) {
+	if(keystate[SDL_SCANCODE_F] && fullscreen_refresh) {
 		g_fullscreen = !g_fullscreen;
 		if(g_fullscreen) {
-			SDL_SetWindowFullscreen(window, 0);
-			
-		} else {
 			SDL_GetCurrentDisplayMode(0, &DM);
+
+			SDL_GetWindowSize(window, &saved_WIN_WIDTH, &saved_WIN_HEIGHT);	
+
 			SDL_SetWindowSize(window, DM.w, DM.h);
+			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);	
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+
+			SDL_ShowCursor(0);
+
+		} else {
+			
+			SDL_SetWindowFullscreen(window, 0);
+
+			//restore saved width/height
+			SDL_SetWindowSize(window, saved_WIN_WIDTH, saved_WIN_HEIGHT);
+			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
+			SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+			
+			SDL_ShowCursor(1);
 		}
+	}
+
+	if(keystate[SDL_SCANCODE_F]) {
+		fullscreen_refresh = 0;
+	} else {
+		fullscreen_refresh = 1;
 	}
 
 	if(keystate[SDL_SCANCODE_1] && devMode) {

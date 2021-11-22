@@ -128,7 +128,7 @@ public:
 
 	void Update_Costs() {
 		for (int i = 0; i < friends.size(); i++) {
-			costs[i] = Distance(x, y, friends[i]->x, friends[i]->y);
+			costs[i] = XYWorldDistance(x, y, friends[i]->x, friends[i]->y);
 		}
 	}
 
@@ -1100,6 +1100,7 @@ public:
 	//add entities and mapObjects to g_actors with dc
 	actor() {
 		//M("actor()");
+		bounds.x = 0; bounds.y = 0; bounds.width = 10; bounds.height = 10;
 		g_actors.push_back(this);
 	}
 	
@@ -1209,7 +1210,7 @@ public:
 
 	void update(float elapsed) {
 		
-
+		
 		rect bounds = {x, y, width, height};
 		layer = max(z /64, 0.0f);
 		for(auto n : g_boxs[layer]) {
@@ -1734,6 +1735,8 @@ public:
 	int faction = 0; //0 is player, 1 is most enemies
 	bool essential = 0; //if this entity dies in your party, does the game end?
 	int flashingMS = 0; //ms to flash red after taking damage
+	int spinningMS = 0; //have they initiated a dodge backwards recently
+	int lastSpinFrame = 0; //used for animating characters whilst dodging
 
 	//stats/leveling
 	float level = 1; //affects damage
@@ -1855,6 +1858,9 @@ public:
 		file >> this->bounds.y;
 
 		file >> comment;
+		file >> this->sortingOffset;
+
+		file >> comment;
 		float fsize;
 		file >> fsize;
 		shadow = new cshadow(renderer, fsize);
@@ -1886,7 +1892,7 @@ public:
 
 		//bigger shadows have bigger sortingoffsets
 		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
-		sortingOffset = 8;
+		sortingOffset += 8;
 		file >> comment;
 		bool setboxfromshadow = 0;
 		file >> setboxfromshadow;
@@ -1946,8 +1952,9 @@ public:
 		if(talks) {
 			string txtfilename = "";
 			//open from local folder first
-			if (fileExists("maps/" + g_map + "/" + filename + ".txt")) {
-				txtfilename = "maps/" + g_map + "/" + filename + ".txt";
+			D("maps/" + g_mapdir + "/" + filename + ".txt");
+			if (fileExists("maps/" + g_mapdir + "/" + filename + ".txt")) {
+				txtfilename = "maps/" + g_mapdir + "/" + filename + ".txt";
 				M("Using local script");
 			} else {
 				M("Using global script");
@@ -2300,7 +2307,7 @@ public:
 		SDL_FPoint nowt = {0, 0};
 
 
-		rect obj(floor((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , floor(((y - ((curheight * (XtoY) + (height * (1-XtoY)))) - z * XtoZ) - fcamera.y) * fcamera.zoom), ceil(curwidth * fcamera.zoom), ceil(curheight * fcamera.zoom));		
+		rect obj(((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , (((y - ((curheight * (XtoY) + (height * (1-XtoY)))) - z * XtoZ) - fcamera.y) * fcamera.zoom), (curwidth * fcamera.zoom), (curheight * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
@@ -2350,11 +2357,22 @@ public:
 			//genericmode has just one frame
 			if(isWorlditem) {frame = 0;}
 			if(framespots.size() > 1) {
-				SDL_Rect srcrect = {framespots[frame].x,framespots[frame].y, framewidth, frameheight};
+				int spinOffset = 0;
+				int framePlusSpinOffset = frame;
+				if(spinningMS > 0) {
+					//change player frames to make a spin effect
+				}
+				
+				
+				
+				SDL_Rect srcrect = {framespots[framePlusSpinOffset].x,framespots[framePlusSpinOffset].y, framewidth, frameheight};
 				const SDL_FPoint center = {0 ,0};
 				if(flashingMS > 0) {
 					SDL_SetTextureColorMod(texture, 255, 255 * (1-((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
 				}
+
+				
+
 				if(texture != NULL) {
 					SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
 				}
@@ -2485,6 +2503,7 @@ public:
 	//returns a pointer to a door that the player used
 	virtual door* update(vector<box*> boxs, vector<door*> doors, float elapsed) {
 		if(!tangible) {return nullptr;}
+
 		if(msPerFrame != 0) {
 			msTilNextFrame += elapsed;
 			if(msTilNextFrame > msPerFrame && xframes > 1) {
@@ -2510,13 +2529,13 @@ public:
 			curwidth = (curwidth * 0.8 + width * 0.2) * ((sin(animtime*animspeed))   + (1/animlimit)) * (animlimit);
 			curheight = (curheight * 0.8 + height* 0.2) * ((sin(animtime*animspeed + PI))+ (1/animlimit)) * (animlimit);
 			animtime += elapsed;
-			if(this == protag && (abs(xvel) > 50 || abs(yvel) > 50) && (1 - sin(animtime * animspeed) < 0.01 || 1 - sin(animtime * animspeed + PI) < 0.01)) {
-				if(footstep_reset) {
+			if(this == protag && ( pow( pow(xvel,2) + pow(yvel, 2), 0.5) > 40 ) && (1 - sin(animtime * animspeed) < 0.01 || 1 - sin(animtime * animspeed + PI) < 0.01)) {
+				if(footstep_reset && grounded) {
 					footstep_reset = 0;
-					if(1 - sin(animtime * animspeed) < 0.01) {
-						//playSound(-1, footstep, 0);
+					if(1 - sin(animtime * animspeed) < 0.04) {
+						playSound(-1, g_footstep_a, 0);
 					} else {
-						//playSound(-1, footstep2, 0);
+						playSound(-1, g_footstep_b, 0);
 					}
 					
 					
@@ -2617,8 +2636,14 @@ public:
 			}
 
 			for (int i = 0; i < boxs.size(); i++) {	
+				
 				//update bounds with new pos
 				rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+				
+				//don't worry about boxes if we're not even close
+				rect sleepbox = rect(boxs[i]->bounds.x - 150, boxs[i]->bounds.y-150, boxs[i]->bounds.width+300, boxs[i]->bounds.height+300);
+				if(!RectOverlap(sleepbox, movedbounds)) {continue;} 
+
 				//uh oh, did we collide with something?
 				if(RectOverlap(movedbounds, boxs[i]->bounds)) {
 					ycollide = true;
@@ -2655,7 +2680,7 @@ public:
 			float xpush = 0;
 			float jerk = -abs( pow(pow(yvel,2) + pow(xvel, 2), 0.5))/2; //how much to push the player aside to slide along walls
 			//float jerk = -1;
-			//future me: try counting how many triangles the ent overlaps with per axis and disabling jerking
+			//!!! try counting how many triangles the ent overlaps with per axis and disabling jerking
 			//if it is more than 1
 			
 			//and try setting jerk to a comp of the ent velocity to make the movement faster and better-scaling
@@ -2738,42 +2763,44 @@ public:
 
 		float heightfloor = 0; //filled with floor z from heightmap
 		if(g_heightmaps.size() > 0 /*&& update_z_time < 1*/) {
-		bool using_heightmap = 0;
-		bool heightmap_is_tiled = 0;
-		tile* heighttile = nullptr;
-		int heightmap_index = 0;
-		
-		rect tilerect;
-		rect movedbounds;
-		//movedbounds = rect(this->x + xvel * ((double) elapsed / 256.0), this->y + yvel * ((double) elapsed / 256.0) - this->bounds.height, this->bounds.width, this->bounds.height);
-		movedbounds = rect(this->getOriginX(), this->getOriginY(), 0, 0);
-		//get what tile entity is on
-		//this is poorly set up. It would be better if heightmaps were assigned to tiles, obviously, with a pointer
-		bool breakflag = 0;
-		for (int i = g_tiles.size() - 1; i >= 0; i--) {
-			if(g_tiles[i]->fileaddress == "textures/marker.png") {continue; }
-			tilerect = rect(g_tiles[i]->x, g_tiles[i]->y, g_tiles[i]->width, g_tiles[i]->height);
+			bool using_heightmap = 0;
+			bool heightmap_is_tiled = 0;
+			tile* heighttile = nullptr;
+			int heightmap_index = 0;
 			
-			if(RectOverlap(tilerect, movedbounds)) {
-				for (int j = 0; j < g_heightmaps.size(); j++) {
-					//M("looking for a heightmap");
-					//D(g_heightmaps[j]->name);
-					//D(g_tiles[i]->fileaddress);
-					if(g_heightmaps[j]->name == g_tiles[i]->fileaddress) {
-						//M("found it");
-						heightmap_index = j;
-						using_heightmap = 1;
-						breakflag = 1;
-						heightmap_is_tiled = g_tiles[i]->wraptexture;
-						heighttile = g_tiles[i];
-						break;
-					}
-				}
-				if(breakflag) {break;} //we found it, leave
+			rect tilerect;
+			rect movedbounds;
+			//movedbounds = rect(this->x + xvel * ((double) elapsed / 256.0), this->y + yvel * ((double) elapsed / 256.0) - this->bounds.height, this->bounds.width, this->bounds.height);
+			movedbounds = rect(this->getOriginX(), this->getOriginY(), 0, 0);
+			//get what tile entity is on
+			//this is poorly set up. It would be better if heightmaps were assigned to tiles, obviously, with a pointer
+			bool breakflag = 0;
 
-				//current texture has no mask, keep looking
+			for (int i = g_tiles.size() - 1; i >= 0; i--) {
+				if(g_tiles[i]->fileaddress == "textures/marker.png") {continue; }
+				tilerect = rect(g_tiles[i]->x, g_tiles[i]->y, g_tiles[i]->width, g_tiles[i]->height);
+				
+				if(RectOverlap(tilerect, movedbounds)) {
+					for (int j = 0; j < g_heightmaps.size(); j++) {
+						//M("looking for a heightmap");
+						//D(g_heightmaps[j]->name);
+						//D(g_tiles[i]->fileaddress);
+						if(g_heightmaps[j]->name == g_tiles[i]->fileaddress) {
+							//M("found it");
+							heightmap_index = j;
+							using_heightmap = 1;
+							breakflag = 1;
+							heightmap_is_tiled = g_tiles[i]->wraptexture;
+							heighttile = g_tiles[i];
+							break;
+						}
+					}
+					if(breakflag) {break;} //we found it, leave
+
+					//current texture has no mask, keep looking
+				}
 			}
-		}
+		
 
 			
 			update_z_time = max_update_z_time;
@@ -2838,7 +2865,7 @@ public:
 			}
 			
 		} else {
-			update_z_time--;
+			//update_z_time--;
 			//this->z = ((oldz) + this->z) / 2 ;
 			
 		}
@@ -2850,8 +2877,8 @@ public:
 		float floor = 0;
 		if(layer > 0) {
 			//!!!
-			//rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
-			rect thisMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
+			rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+			//rect thisMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
 			for (auto n : g_boxs[layer - 1]) {
 				if(RectOverlap(n->bounds, thisMovedBounds)) {
 					floor = 64 * (layer);
@@ -2902,6 +2929,7 @@ public:
 
 		//try ramps?
 		//!!! can crash if the player gets too high
+		/*
 		if(layer < g_layers) { 
 			for(auto r : g_ramps[this->layer]) {
 				rect a = rect(r->x, r->y, 64, 55);
@@ -2954,11 +2982,15 @@ public:
 				}
 			}
 		}
-		
+		*/
 		if(z > floor + 1) {
 			zaccel -= g_gravity * ((double) elapsed / 256.0);
 			grounded = 0;
 		} else {
+			if(grounded == 0) {
+				//play landing sound
+				playSound(-1, g_land, 0);
+			}
 			grounded = 1;
 			zvel = max(zvel, 0.0f);
 			zaccel = max(zaccel, 0.0f);
@@ -3022,8 +3054,10 @@ public:
 						agrod = 1;
 
 						//agro all of the boys on this's team who aren't already agrod, and set their target to a close entity from x's faction
+						//WITHIN A RADIUS, because it doesnt make sense to agro everyone on the map.
+						
 						for (auto y : g_entities) {
-							if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr)) {
+							if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr) && XYWorldDistance(y->x, y->y, this->x, this->y) < g_earshot) {
 								y->targetFaction = x->owner->faction;
 								y->agrod = 1;
 							}
@@ -3037,6 +3071,42 @@ public:
 			}
 		}
 		
+
+		//alert nearby friends who arent fighting IF we are agrod
+		if(agrod) {
+			for (auto y : g_entities) {
+				if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr) && XYWorldDistance(y->x, y->y, this->x, this->y) < g_earshot) {
+					y->agrod = 1;
+
+					if(this->target != nullptr) {
+						y->targetFaction = this->targetFaction;
+						if(y->target == nullptr) {
+							y->target = this->target;
+						}
+					}
+				}
+			}
+		}
+
+		//re-evaluate target
+		if(agrod && target == nullptr && targetFaction != faction) {
+			//find a nearby target
+			//!!! inefficient
+			for(auto x : g_entities) {
+				if(x->faction == this->targetFaction && XYWorldDistance(this->x, this->y, x->x, x->y) < g_earshot) {
+					this->target = x;
+				}
+			}
+
+		} 
+
+
+		//de-agro
+		if(agrod && target != nullptr) {
+			if(XYWorldDistance(this->x, this->y, target->x, target->y) > g_earshot * 1.5) {
+				this->target = nullptr;
+			}
+		}
 
 		//apply statuseffect
 
@@ -3059,6 +3129,7 @@ public:
 		//if we're even slightly stuck, don't bother
 		if(stuckTime < 20) {
 			for(auto x : g_entities) {
+				if(this == x) {continue;} 
 				if(x->semisolid && x->tangible && (CylinderOverlap(x->getMovedBounds(), this->getMovedBounds(), x->bounds.width * 0.3))) {					
 					//push this one slightly away from x
 					float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
@@ -3671,7 +3742,8 @@ int loadSave() {
 	int repetitions = party.size();
 	for(auto x : party) {
 		M("about to delete someone from the old party");
-		delete x;
+		//possibly unsafe
+		//delete x;
 	}
 	party.clear();
 
@@ -3984,9 +4056,6 @@ public:
 		}
 	}
 	void updateText(string content, float size, float fwidth) {
-		//why would i add this? now that we possess entities instead of pushing them upon selection, I'm removing it
-		//extern entity* nudge;
-		//if(nudge != nullptr) { return; }
 		TTF_CloseFont(font); 
 		SDL_DestroyTexture(texttexture);
 		SDL_FreeSurface(textsurface);
@@ -4039,6 +4108,8 @@ public:
 
 	bool persistent = 0;
 	int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
+
+	int shrinkPixels = 0; //used for shrinking a ui element by an amount of pixels, usually in combination with some other element intended as a border
 
 	ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float fwidth, float fheight, int fpriority) {
 		M("ui()" );
@@ -4132,7 +4203,7 @@ public:
 				}
 				
 			} else {
-				SDL_FRect dstrect = {x * WIN_WIDTH, y * WIN_HEIGHT, width * WIN_WIDTH, height * WIN_HEIGHT};
+				SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex), y * WIN_HEIGHT + (shrinkPixels / scalex), width * WIN_WIDTH - (shrinkPixels / scalex) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2};
 				SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
 			}
 		}
@@ -4477,8 +4548,8 @@ void clear_map(camera& cameraToReset) {
 	enemiesMap.clear();
 	Mix_FadeOutMusic(1000);
 	{
-		//turn off VSYNC because otherwise we jitter between this frame and the last throughout the animation
-		SDL_GL_SetSwapInterval(0);
+		
+		//SDL_GL_SetSwapInterval(0);
 		bool cont = false;
 		float ticks = 0;
 		float lastticks = 0;
@@ -4564,7 +4635,7 @@ void clear_map(camera& cameraToReset) {
 		SDL_FreeSurface(transitionSurface);
 		SDL_DestroyTexture(transitionTexture);
 		transition = 1;
-		SDL_GL_SetSwapInterval(1);
+		//SDL_GL_SetSwapInterval(1);
 	}
 
 
@@ -4811,5 +4882,38 @@ public:
 // 	}
 // };
 
+// The idea of a collisionZone is to reduce overhead for large maps
+// by having entities check if they are overlapping a collisionZone and only test for 
+// collision with other walls/projectiles/entities also overlapping that collisionZone
+// They will be able to be placed manually or procedurally
+class collisionZone {
+public:
+	rect bounds = {0,0,10,10};
+	vector<mapCollision*> guests;
+
+	collisionZone(int x, int y, int width, int height) {
+		bounds = {x, y, width, height};
+		g_collisionZones.push_back(this);
+	}
+
+	//ATM we will be doing this on mapload
+	void inviteAllGuests() {
+		for(auto x : g_boxs) {
+			for(auto y : x){
+				if(RectOverlap(this->bounds, y->bounds)) {
+					guests.push_back(y);
+				}
+			}
+		}
+	}
+
+	void debugRender(SDL_Renderer* renderer) {
+		SDL_FRect rend = {bounds.x, bounds.y, bounds.width, bounds.height};
+		rend = transformRect(rend);
+		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+		SDL_RenderDrawRectF(renderer, &rend);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	}
+};
 
 #endif

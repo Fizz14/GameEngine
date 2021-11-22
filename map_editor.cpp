@@ -183,6 +183,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".png").c_str());
 	        background = SDL_CreateTextureFromSurface(renderer, bs);
             g_backgroundLoaded = 1;
+            SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
             SDL_FreeSurface(bs);
         }
         if(word == "box") {
@@ -576,6 +577,7 @@ void changeTheme(string str) {
     SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".png").c_str());
     background = SDL_CreateTextureFromSurface(renderer, bs);
     g_backgroundLoaded = 1;
+    SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
     SDL_FreeSurface(bs);
     
     //proceed
@@ -1109,6 +1111,59 @@ void write_map(entity* mapent) {
             }
         }
     }
+    
+    //make seethru wall
+    if(devinput[6] && !olddevinput[6] && makingbox == 0) {
+      
+        lx = px;
+        ly = py;
+        makingbox = 1;
+        selection->image = IMG_Load("textures/engine/wall.png");
+        selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
+        SDL_FreeSurface(selection->image);
+        
+    } else {
+        if(devinput[6] && !olddevinput[6] && makingbox == 1) {
+            if(makingbox) {
+                
+                makingbox = 0;
+                box* c;
+
+                
+                string sthwall = "textures/engine/seethru.png";
+                if(makeboxs) {
+                    for (int i = wallstart/64; i < wallheight / 64; i++) {
+                        bool fcap = (!(i + 1 < wallheight/64));//&& autoMakeWallcaps;
+                        //bool fcap = 1;
+                        
+                        c = new box(selection->x, selection->y, selection->width, selection->height, i, sthwall, sthwall, fcap, 0, 0, "0000");
+                    }
+                }
+                const char* plik = walltex.c_str();
+                if(autoMakeWallcaps) {
+                    int step = g_platformResolution;
+                    for (int i = 0; i < selection->height; i+=step) {
+                        mapObject* e = new mapObject(renderer, sthwall, "&", selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
+                        c->children.push_back(e);
+                    }
+                    
+                }
+
+                if(autoMakeWalls) {
+                    int step = 64;
+                    for (int i = wallstart; i < wallheight; i+=step) {
+                        mapObject* e = new mapObject(renderer, sthwall, "&", selection->x, selection->y + selection->height, i, selection->width, 55, 1);
+                        c->children.push_back(e);
+                    }
+                    ////entity* e = new entity(renderer, selection->x, selection->y + selection->height, selection->width, wallheight, walltex, 1);
+                    //entity* e = new entity(renderer, walltex, selection->x, selection->y + selection->height, 0, selection->width, (wallheight) * XtoZ + 2, 1);
+                }
+
+              
+                }                
+            }
+        }
+    
 
     if(devinput[20] && !olddevinput[20] && makingbox == 0) {
         lx = px;
@@ -1407,7 +1462,7 @@ void write_map(entity* mapent) {
             //const Uint8* keystate = SDL_GetKeyboardState(NULL);
             
             //turn off VSYNC because otherwise we jitter between this frame and the last while typing
-            SDL_GL_SetSwapInterval(0);
+            //SDL_GL_SetSwapInterval(0);
             while(polling) {
                 SDL_Delay(10);
                 while( SDL_PollEvent( &console_event ) ){
@@ -1489,7 +1544,7 @@ void write_map(entity* mapent) {
                 consolehistory.erase(consolehistory.begin() + 9);
             }
             consolehistoryindex = 0;
-            SDL_GL_SetSwapInterval(1);
+            //SDL_GL_SetSwapInterval(1);
             delete consoleDisplay;
             
             locale loc;
@@ -1645,6 +1700,8 @@ void write_map(entity* mapent) {
                             //set capped for each box
                             if(i == g_layers) { continue; }
                             for(auto n : g_boxs[i+1]) {
+                                //don't calculate lighting by invisible walls
+                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
                                 if(RectOverlap(inneighbor, n->bounds)) {
                                     b->capped = false;
                                 }
@@ -1657,6 +1714,8 @@ void write_map(entity* mapent) {
                             if(i == g_layers) { continue; }
                             rect a = {((b->x1 + b->x2) /2) - 4, ((b->y1 + b->y2) / 2) - 4, 8, 8};
                             for(auto n : g_triangles[i+1]) {
+                                //don't calculate lighting by invisible walls
+                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
                                 if(TriRectOverlap(n, a)) {
                                     b->capped = false;
                                 }
@@ -1673,10 +1732,21 @@ void write_map(entity* mapent) {
                             b->shadeLeft = false;
                             b->shadeRight = false;
                             rect uneighbor = {b->bounds.x + 2, b->bounds.y - 55 + 2, b->bounds.width - 4, 55 - 4};
-                            rect dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};b->shineTop = true;
+                            rect dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};
+                            b->shineTop = true;
                             b->shineBot = true;
+
+                            //don't calculate lighting for invisible walls
+                            if(b->walltexture == "textures/engine/seethru.png") {
+                                b->shineTop = 0;
+                                b->shineBot = 0;
+                                continue;
+                            }
+
                             //check for overlap with all other boxes
                             for(auto n : g_boxs[i]) {
+                                //don't calculate lighting by invisible walls
+                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
                                 if(n == b) {continue;}
                                 
                                 if(RectOverlap(n->bounds, uneighbor)) {
@@ -1736,6 +1806,8 @@ void write_map(entity* mapent) {
                                 //because that would be a random shadow under a block with visible corners
                                 for(auto n: g_boxs[0]) {
                                     if(n == b) {continue;}
+                                    //don't calculate lighting by invisible walls
+                                    if(n->walltexture == "textures/engine/seethru.png") {continue;}
                                     if(RectOverlap(n->bounds, uneighbor)) {
                                         b->shadeTop = false;
                                     }
@@ -1768,7 +1840,10 @@ void write_map(entity* mapent) {
                             }
                             if(i > 0){
                                 for(auto n: g_boxs[i-1]) {
+                                    //don't calculate lighting by invisible walls
+                                    if(n->walltexture == "textures/engine/seethru.png") {continue;}
                                     if(!n->capped) {continue;}
+                                    
                                     if(RectOverlap(n->bounds, uneighbor)) {
                                         b->shadeTop = true;
                                     }
@@ -1800,6 +1875,13 @@ void write_map(entity* mapent) {
                                 
                                 
                             }
+                            if(b->walltexture == "textures/engine/seethru.png") {
+                                b->shineTop = 0;
+                                b->shineBot = 0;
+                                //continue;
+                            }
+                            
+                            
                         }
                     }
 
@@ -1815,6 +1897,8 @@ void write_map(entity* mapent) {
                                 }
                             } else {
                                 for(auto b : g_boxs[i-1]) {
+                                    //don't calculate lighting by invisible walls
+                                    if(b->walltexture == "textures/engine/seethru.png") {continue;}
                                     if(TriRectOverlap(tri, b->bounds.x + 2, b->bounds.y + 2,b->bounds.width - 4, b->bounds.height - 4)) {
                                         tri->shaded = 1;
                                     }
@@ -1877,6 +1961,8 @@ void write_map(entity* mapent) {
                             }
                         }
                     }
+        
+
                     //vertical pass
                     refresh = true;
                     while(refresh) {
@@ -2075,6 +2161,8 @@ void write_map(entity* mapent) {
                             //set capped for each box
                             if(i == g_layers) { continue; }
                             for(auto n : g_boxs[i+1]) {
+                                //don't calculate lighting by invisible walls
+                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
                                 if(RectOverlap(inneighbor, n->bounds)) {
                                     b->capped = false;
                                 }
@@ -3143,7 +3231,6 @@ public:
     ui* inventoryA = 0; //big box, which has all of the items that the player has
     ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
 
-    ui* healthbox = 0;
     textbox* healthText = 0;
 
 	void showTalkingUI() {
@@ -3160,6 +3247,7 @@ public:
 		talkingText->show = 0;
         responseText->show = 0;
         responseText->updateText("",34, 34);
+        
 	}
     
 
@@ -3212,15 +3300,7 @@ public:
         inventoryB->persistent = true;
         inventoryB->priority = -4;
 
-        healthbox = new ui(renderer, "textures/ui/menu9patchblack.png", -0.1, -0.1, 0.35, 0.3, 1);
-        healthbox->is9patch = true;
-        healthbox->patchwidth = 213;
-		healthbox->patchscale = 0.4;
-        healthbox->persistent = true;
-        healthbox->priority = -4;
-
-
-		healthText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
+		healthText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
 		healthText->boxWidth = 0.95;
 		healthText->width = 0.95;
 		healthText->boxHeight = 0.25;
@@ -3254,7 +3334,6 @@ public:
 		delete talkingText;
         delete inventoryA;
         delete inventoryB;
-        delete healthbox;
 	}
 
 
@@ -3383,6 +3462,7 @@ public:
 		}
 
         //item prompt
+        //$
 		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '$') {
             int j = 1;
             //parse which block of memory we are interested in
@@ -3461,6 +3541,50 @@ public:
             this->continueDialogue();
             return;
         }
+
+        //check number of living entities by name
+        // /count
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/count") {
+            int j = 1;
+            //parse which block of memory we are interested in
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+            s.erase(0, 7);
+            D(s);
+            string name = s;
+
+            int numberOfEntity = 0;
+
+            for(auto x : g_entities) {
+                if(x->name == name && x->tangible) {
+                    numberOfEntity++;
+                }
+            }
+            
+            
+            string res = talker->sayings.at(talker->dialogue_index + 1 + j);
+            while (res.find('*') != std::string::npos) {
+                //parse option
+                // *15 29 -> if data is 15, go to line 29
+                string s = talker->sayings.at(talker->dialogue_index + 1 + j);
+                s.erase(0, 1);
+                M(s.substr(0, s.find(':')));
+                int condition = stoi( s.substr(0, s.find(':')));
+                s.erase(0, s.find(':') + 1);
+                M(s);
+                int jump = stoi(s);
+                if(numberOfEntity >= condition) {
+                    talker->dialogue_index = jump - 3;
+                    this->continueDialogue();
+                    return;
+                }
+                j++;
+                res = talker->sayings.at(talker->dialogue_index + 1 + j);
+
+            }
+            talker->dialogue_index++;
+            this->continueDialogue();
+			return;
+		}
 
         //write selfdata 5->[4]
         if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
@@ -3555,6 +3679,18 @@ public:
 			return;
 		}
 
+        //change mapdir
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/mapdir") {
+            M("setting mapdir");
+			string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 8);
+			g_mapdir = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
+		}
+
 		//change map
 		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,4) == "/map") {
             M("changing map");
@@ -3577,11 +3713,12 @@ public:
 			talker->animate = 0;
             
             clear_map(g_camera);
-            const string toMap = "maps/" + name + ".map";
+            g_map = name;
+            const string toMap = "maps/" + g_mapdir + "/" + g_map + ".map";;
 			load_map(renderer, toMap, dest_waypoint);
 
             // //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
-            if(devMode) { init_map_writing(renderer);}
+            if(canSwitchOffDevMode) { init_map_writing(renderer);}
             protag_is_talking = 0;
             protag_can_move = 1;    
             //clear talker so that g_forceEndDialogue will not be set to 1
@@ -3590,11 +3727,11 @@ public:
 		}
 
 		//spawn entity
-		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '&') {
+		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/spawn") {
 			string s = talker->sayings.at(talker->dialogue_index + 1);
 			//erase '&'
             M("spawned entity");
-			s.erase(0, 1);
+			s.erase(0, 7);
 			int xpos, ypos;
 			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
 			xpos = stoi(s.substr(0, s.find(' '))); s.erase(0, s.find(' ') + 1);
@@ -3609,10 +3746,10 @@ public:
 		}
 
 		//destroy entity
-		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '^') {
+		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/kill") {
 			string s = talker->sayings.at(talker->dialogue_index + 1);
 			//erase '&'
-			s.erase(0, 1);
+			s.erase(0, 6);
 			//s is the name of the entity to destroy
 			
 			for (long long unsigned int i = 0; i < g_entities.size(); i++) {
@@ -3632,7 +3769,6 @@ public:
 		}
 
         //move entity
-        //change cameratarget
         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/move") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 6);
@@ -3651,12 +3787,34 @@ public:
 			this->continueDialogue();
 			return;
 		}
+
+        //teleport entity
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/teleport") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 10);
+			vector<string> x = splitString(s, ' ');
+            string name = x[0];
+            int p0 = stoi(x[1]);
+            int p1 = stoi(x[2]);
+            entity* hopeful = searchEntities(name);
+			if(hopeful != nullptr) {
+               
+                hopeful->x = p0;
+                hopeful->y = p1;
+                hopeful->xvel = 0;
+                hopeful->yvel = 0;
+            }
+            
+			talker->dialogue_index++;
+			this->continueDialogue();
+			return;
+		}
        
 
         //change cameratarget
-        if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '`') {
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/lookat") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 1);
+			s.erase(0, 8);
 			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
             string transtr = "0";
             transtr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
@@ -3666,13 +3824,41 @@ public:
 			if(hopeful != nullptr) {
                 g_focus = hopeful;
                 if(transitionspeed != 0) {
-                    g_camera.lag = transitionspeed;
-                    g_camera.lagaccel = transitionspeed;
+                    //This check means that if the camera is already moving, don't reset
+                    //it's velocity, because that would be jarring
+                    if(g_camera.lag == 0) {
+                        g_camera.lag = transitionspeed;
+                        g_camera.lagaccel = transitionspeed;
+                    } else {
+                        g_camera.lagaccel = transitionspeed;
+                    }
                 } else {
                     g_camera.lag = 0;
                     g_camera.lagaccel = g_camera.DEFAULTLAGACCEL;
                 }
             }
+            
+			talker->dialogue_index++;
+			this->continueDialogue();
+			return;
+		}
+
+        //spawn item in world
+         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/item") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 6);
+			vector<string> x = splitString(s, ' ');
+            string name = x[0];
+            int p0 = stoi(x[1]);
+            int p1 = stoi(x[2]);
+            D(x[0]);
+            D(x[1]);
+            D(x[2]);
+            worldItem* a = new worldItem(name, 0);
+            a->x = p0;
+            a->y = p1;
+            M(a->x);
+            M(a->y);
             
 			talker->dialogue_index++;
 			this->continueDialogue();
@@ -3777,10 +3963,15 @@ public:
             talker->animate = 0;
             
             clear_map(g_camera);
+            auto x = splitString(g_mapOfLastSave, '/');
+            g_mapdir = x[0];
+            g_map = x[1];
+            cout << "mapdir : " << g_mapdir << endl;
+            cout << "map : " << g_map << endl;
             load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
-
+            
             //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
-            if(devMode) { init_map_writing(renderer);}
+            if(canSwitchOffDevMode) { init_map_writing(renderer);}
             protag_is_talking = 0;
             protag_can_move = 1;
             return;
@@ -3937,8 +4128,10 @@ public:
 
         //hide textbox
         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/hideui") {
-            //this->hideTalkingUI();
-            
+            this->hideTalkingUI();
+            this->curText = "";
+            this->pushedText = "";
+            this->
             talker->dialogue_index++;
             this->continueDialogue();
             return;
