@@ -293,6 +293,10 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             iss >> s0 >> s1 >> p1 >> p2 >> s2 >> p3 >> p4;
             listener* l = new listener(s1, p1, p2, s2, p3, p4);
         }
+        if(word == "collisionZone") {
+            iss >> p1 >> p2 >> p3 >> p4;
+            collisionZone* c = new collisionZone(p1, p2, p3, p4);
+        }
     }
     
     {   
@@ -536,6 +540,12 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
     }
 
+    //now that map geometry is done, add guests for collisionZones
+    for(auto x : g_collisionZones) {
+        x->inviteAllGuests();
+    }
+    
+
     //put enemies in map
     if(!devMode) {    
         populateMapWithEntities();
@@ -742,6 +752,9 @@ bool mapeditor_save_map(string word) {
     }
     for (int i = 0; i < g_listeners.size(); i++) {
         ofile << "listener " << g_listeners[i]->entityName << " " << g_listeners[i]->block << " " << g_listeners[i]->condition << " " << g_listeners[i]->binding << " " << g_listeners[i]->x << " " << g_listeners[i]->y << endl;
+    }
+    for (auto x : g_collisionZones) {
+        ofile << "collisionZone " << x->bounds.x << " " << x->bounds.y << " " << x->bounds.width << " " << x->bounds.height << endl;
     }
     
     
@@ -1113,8 +1126,9 @@ void write_map(entity* mapent) {
     }
     
     //make seethru wall
+
     if(devinput[6] && !olddevinput[6] && makingbox == 0) {
-      
+        cout << "got here" << endl;
         lx = px;
         ly = py;
         makingbox = 1;
@@ -1124,6 +1138,7 @@ void write_map(entity* mapent) {
         
     } else {
         if(devinput[6] && !olddevinput[6] && makingbox == 1) {
+            cout << "even got here" << endl;
             if(makingbox) {
                 
                 makingbox = 0;
@@ -3128,6 +3143,27 @@ void write_map(entity* mapent) {
         delete captexDisplay;
         captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, 0);
     }
+
+    //make collision-zone
+    if(devinput[19] && !olddevinput[19] && makingbox == 0) {
+      
+        lx = px;
+        ly = py;
+        makingbox = 1;
+        selection->image = IMG_Load("textures/engine/wall.png");
+        selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
+        SDL_FreeSurface(selection->image);
+        
+    } else {
+        if(devinput[19] && !olddevinput[19] && makingbox == 1) {
+            if(makingbox) {
+                makingbox = 0;
+                collisionZone* a = new collisionZone(selection->x, selection->y, selection->width, selection->height);
+                a->inviteAllGuests();
+            }                
+        }
+    }
+
 
     if(devinput[22] && !olddevinput[22]) {
         ramp* r = new ramp(marker->x, marker->y, wallstart/64, 0, walltex, captex);

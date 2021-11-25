@@ -560,6 +560,44 @@ public:
 	}
 };
 
+// The idea of a collisionZone is to reduce overhead for large maps
+// by having entities check if they are overlapping a collisionZone and only test for 
+// collision with other walls/projectiles/entities also overlapping that collisionZone
+// They will be able to be placed manually or procedurally
+class collisionZone {
+public:
+	rect bounds = {0,0,10,10};
+	vector<vector<box*>> guests;
+
+	collisionZone(int x, int y, int width, int height) {
+		bounds = {x, y, width, height};
+		g_collisionZones.push_back(this);
+		for (int i = 0; i < 14; i++) {
+			vector<box*> v = {};
+			guests.push_back(v);
+		}
+	}
+
+	//ATM we will be doing this on mapload
+	void inviteAllGuests() {
+		for(int i = 0; i < g_layers; i++) {
+			for(int j = 0; j < g_boxs[i].size(); j++){
+				if(RectOverlap(this->bounds, g_boxs[i][j]->bounds)) {
+					guests[i].push_back(g_boxs[i][j]);
+				}
+			}
+		}
+	}
+
+	void debugRender(SDL_Renderer* renderer) {
+		SDL_FRect rend = {bounds.x, bounds.y, bounds.width, bounds.height};
+		rend = transformRect(rend);
+		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+		SDL_RenderDrawRectF(renderer, &rend);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	}
+};
+
 //returns true if there was no hit
 bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0) {
 	float resolution = 10;
@@ -2501,7 +2539,7 @@ public:
 
 
 	//returns a pointer to a door that the player used
-	virtual door* update(vector<box*> boxs, vector<door*> doors, float elapsed) {
+	virtual door* update(vector<door*> doors, float elapsed) {
 		if(!tangible) {return nullptr;}
 
 		if(msPerFrame != 0) {
@@ -2635,17 +2673,36 @@ public:
 				}
 			}
 
-			for (int i = 0; i < boxs.size(); i++) {	
+			vector<box*> boxesToUse = {};
+			
+			int usedCZ = 0;
+			rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+			//see if we overlap any collisionzones
+			for(auto x : g_collisionZones) {
+				if(RectOverlap(movedbounds, x->bounds)) {
+					usedCZ++;
+					boxesToUse.insert(boxesToUse.end(), x->guests[layer].begin(), x->guests[layer].end());
+				}
+			}
+			if(this==protag) {D(usedCZ);}
+
+			if(usedCZ == 0) {
+				boxesToUse = g_boxs[layer];
+			}
+
+			//if we didnt use a cz, use all boxes
+			
+			for (int i = 0; i < boxesToUse.size(); i++) {	
 				
 				//update bounds with new pos
 				rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 				
 				//don't worry about boxes if we're not even close
-				rect sleepbox = rect(boxs[i]->bounds.x - 150, boxs[i]->bounds.y-150, boxs[i]->bounds.width+300, boxs[i]->bounds.height+300);
+				rect sleepbox = rect(boxesToUse.at(i)->bounds.x - 150, boxesToUse.at(i)->bounds.y-150, boxesToUse.at(i)->bounds.width+300, boxesToUse.at(i)->bounds.height+300);
 				if(!RectOverlap(sleepbox, movedbounds)) {continue;} 
 
 				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, boxs[i]->bounds)) {
+				if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
 					ycollide = true;
 					yvel = 0;
 							
@@ -2656,7 +2713,7 @@ public:
 				//update bounds with new pos
 				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
 				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, boxs[i]->bounds)) {
+				if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
 					//box detected
 					xcollide = true;
 					xvel = 0;
@@ -2665,7 +2722,7 @@ public:
 
 				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, boxs[i]->bounds)) {
+				if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
 					//box detected
 					xcollide = true;
 					ycollide = true;
@@ -4882,38 +4939,6 @@ public:
 // 	}
 // };
 
-// The idea of a collisionZone is to reduce overhead for large maps
-// by having entities check if they are overlapping a collisionZone and only test for 
-// collision with other walls/projectiles/entities also overlapping that collisionZone
-// They will be able to be placed manually or procedurally
-class collisionZone {
-public:
-	rect bounds = {0,0,10,10};
-	vector<mapCollision*> guests;
 
-	collisionZone(int x, int y, int width, int height) {
-		bounds = {x, y, width, height};
-		g_collisionZones.push_back(this);
-	}
-
-	//ATM we will be doing this on mapload
-	void inviteAllGuests() {
-		for(auto x : g_boxs) {
-			for(auto y : x){
-				if(RectOverlap(this->bounds, y->bounds)) {
-					guests.push_back(y);
-				}
-			}
-		}
-	}
-
-	void debugRender(SDL_Renderer* renderer) {
-		SDL_FRect rend = {bounds.x, bounds.y, bounds.width, bounds.height};
-		rend = transformRect(rend);
-		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-		SDL_RenderDrawRectF(renderer, &rend);
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	}
-};
 
 #endif

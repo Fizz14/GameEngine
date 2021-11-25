@@ -764,7 +764,8 @@ int main(int argc, char ** argv) {
 		//dont update movement while transitioning
 		if(!transition) {
 			for(long long unsigned int i=0; i < g_entities.size(); i++){
-				door* taken = g_entities[i]->update(g_boxs[g_entities[i]->layer], g_doors, elapsed);
+				
+				door* taken = g_entities[i]->update(g_doors, elapsed);
 				//added the !transition because if a player went into a map with a door located in the same place
 				//as they are in the old map (before going to the waypoint) they would instantly take that door
 				if(taken != nullptr && !transition) {
@@ -1682,5 +1683,11 @@ void getInput(float &elapsed) {
 
 	if(keystate[SDL_SCANCODE_3] && devMode) {
 		devinput[18] = 1;
+	}
+	if(keystate[SDL_SCANCODE_3] && devMode) {
+		devinput[18] = 1;
+	}
+	if(keystate[SDL_SCANCODE_L] && devMode) {
+		devinput[19] = 1;
 	}
 }
