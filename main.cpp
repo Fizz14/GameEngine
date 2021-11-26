@@ -80,6 +80,11 @@ int main(int argc, char ** argv) {
 	g_shadowTexture = SDL_CreateTextureFromSurface(renderer, image);
 	SDL_FreeSurface(image);
 
+	//narrarator holds scripts caused by things like triggers
+	entity* narrarator;
+	narrarator = new entity(renderer, "fomm");
+	narrarator->tangible =0;
+	narrarator->name = "sp-narrarator";
 
 	entity* fomm;
 	if(devMode) {
@@ -271,6 +276,10 @@ int main(int argc, char ** argv) {
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
 	while (!quit) {
+		if(adventureUIManager->talker != nullptr) {
+			D(adventureUIManager->talker->name);
+		}
+		D(narrarator->name);
 		//some event handling
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -462,17 +471,8 @@ int main(int argc, char ** argv) {
 			n->cooldown -= elapsed;
 		}
 
-		//update projectiles
-		for(auto n : g_projectiles) {
-			n->update(elapsed);
-		}
-		//delete projectiles with expired lifetimes
-		for(int i = 0; i < g_projectiles.size(); i ++) {
-			if(g_projectiles[i]->lifetime <= 0) {
-				delete g_projectiles[i];
-				i--;
-			}
-		}
+		
+		
 
 
 
@@ -482,9 +482,9 @@ int main(int argc, char ** argv) {
 			if(g_listeners[i]->update()) {
 				adventureUIManager->blip = NULL;
 				adventureUIManager->sayings = &g_listeners[i]->script;
-				adventureUIManager->talker = protag;
-				protag->dialogue_index = -1;
-				protag->sayings = g_listeners[i]->script;
+				adventureUIManager->talker = narrarator;
+				narrarator->dialogue_index = -1;
+				narrarator->sayings = g_listeners[i]->script;
 				adventureUIManager->continueDialogue();
 				g_listeners[i]->active = 0;
 			}	
@@ -793,6 +793,8 @@ int main(int argc, char ** argv) {
 			}
 		}
 
+		
+
 		//did the protag die?
 		if(protag->hp <= 0 && protag->essential) {
 			playSound(-1, g_deathsound, 0);
@@ -801,6 +803,22 @@ int main(int argc, char ** argv) {
 			load_map(renderer, "maps/sp-death/sp-death.map","a");
 			protag->hp = 0.1;
 			if(canSwitchOffDevMode) { init_map_writing(renderer);}
+		}
+
+		//late november 2021 - projectiles are now updated after entities are - that way
+		//if a behemoth has trapped the player in a tight corridor, their hitbox will hit the player before being
+		//destroyed in the wall
+		//update projectiles
+		for(auto n : g_projectiles) {
+			n->update(elapsed);
+		}
+
+		//delete projectiles with expired lifetimes
+		for(int i = 0; i < g_projectiles.size(); i ++) {
+			if(g_projectiles[i]->lifetime <= 0) {
+				delete g_projectiles[i];
+				i--;
+			}
 		}
 
 		//triggers
@@ -813,9 +831,9 @@ int main(int argc, char ** argv) {
 			if(RectOverlap(movedbounds, trigger) && (checkHim->z > g_triggers[i]->z && checkHim->z < g_triggers[i]->z + g_triggers[i]->zeight)  ) {
 				adventureUIManager->blip = g_ui_voice; 
 				adventureUIManager->sayings = &g_triggers[i]->script;
-				adventureUIManager->talker = checkHim;
-				checkHim->dialogue_index = -1;
-				checkHim->sayings = g_triggers[i]->script;
+				adventureUIManager->talker = narrarator;
+				narrarator->dialogue_index = -1;
+				narrarator->sayings = g_triggers[i]->script;				
 				adventureUIManager->continueDialogue();
 				//we need to break here if we loaded a new map
 				//definately definately revisit this if you are having problems
@@ -1189,6 +1207,8 @@ void getInput(float &elapsed) {
 			devMode = !devMode;
 			g_zoom_mod = 1;
 			g_update_zoom = 1;
+			marker->x = -1000;
+			markerz-> x = -1000;
 		}
 		if(devMode) {
 			floortexDisplay->show = 1;

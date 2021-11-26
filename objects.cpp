@@ -1216,7 +1216,6 @@ public:
 	cshadow * shadow = 0;
 
 	projectile(attack* fattack) {
-		//M("projectile()");
 		this->sortingOffset = 12;
 		this->width = fattack->width;
 		this->height = fattack->height;
@@ -1244,9 +1243,7 @@ public:
 		g_projectiles.push_back(this);
 	}
 
-	~projectile() {
-		//M("~projectile()");
-		
+	~projectile() {	
 		g_projectiles.erase(remove(g_projectiles.begin(), g_projectiles.end(), this), g_projectiles.end());
 		delete shadow;
 		//make recursive projectile
@@ -1698,6 +1695,8 @@ public:
 	float xvel = 0;
 	float yvel = 0;
 	float zvel = 0;
+
+	
 	int layer = 0; //related to z, used for boxs
 	bool grounded = 1; //is standing on ground
 	float xmaxspeed = 0;
@@ -1839,7 +1838,7 @@ public:
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_map + "/" + filename + ".ent";
+		loadstr = "maps/" + g_mapdir + "/" + filename + ".ent";
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
@@ -2519,7 +2518,7 @@ public:
 		hadInput = 1;
 	}
 
-	//horrible implementation, if you have problems with pathfinding efficiency try making this not O(n) (lol)
+	// !!! horrible implementation, if you have problems with pathfinding efficiency try making this not O(n) (lol)
 	template <class T>
 	T* Get_Closest_Node(vector<T*> array) {
 		float min_dist = 0;
@@ -2861,7 +2860,7 @@ public:
 		if(!xcollide && !transition) { 
 			x+= xvel * ((double) elapsed / 256.0);
 		}
-		
+
 		if(grounded) {
 			yvel *= pow(friction, ((double) elapsed / 256.0));
 			xvel *= pow(friction, ((double) elapsed / 256.0));
@@ -3130,7 +3129,6 @@ public:
 		}
 
 		if(!invincible) {
-			//M("I'm not invincible");
 			//check for projectile box
 			vector<projectile*> projectilesToDelete;
 			for(auto x : g_projectiles) {
@@ -3258,7 +3256,7 @@ public:
 			}
 		}
 		flashingMS -= elapsed;
-		if(this == protag) {
+		if(this->inParty) {
 			return nullptr;
 		}
 
@@ -3401,8 +3399,7 @@ public:
 			float xvector = -xvel;
 			float yvector = -yvel;
 			//if he's not traveling very fast it looks natural to not change angle
-			if(Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.9) {recalcAngle = 1;}
-			
+			if(/*Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.5*/1) {recalcAngle = 1;}
 			if(recalcAngle) {
 				float angle = atan2(yvector, xvector);
 				flip = SDL_FLIP_NONE;
@@ -3572,6 +3569,7 @@ public:
 					if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY()) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
 						//M("There's a good position, keeping my distance");
 						//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
+						
 						Destination = getNodeByPosition(g_navNodes, ret[0], ret[1]);
 					
 					} else {
@@ -3626,6 +3624,7 @@ public:
 			current = Get_Closest_Node(g_navNodes);
 			dest = current;
 		}
+		
 		// current->Render(255,0,0);
 		// dest->Render(0,255,0);
 		// Destination->Render(0,0,255);
@@ -4551,7 +4550,7 @@ public:
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_map + "/" + fbinding + ".txt";
+		loadstr = "maps/" + g_mapdir + "/" + fbinding + ".txt";
 		//D(loadstr);
 		const char* plik = loadstr.c_str();
 		
@@ -4569,10 +4568,9 @@ public:
 		}
 		
 		parseScriptForLabels(script);
-		for(auto x : script) {
-			D(x);
-		}
-	
+		// for(auto x : script) {
+		// 	//D(x);
+		// }
 	}
 
 	~trigger() {
@@ -4758,12 +4756,17 @@ void clear_map(camera& cameraToReset) {
 
 	//copy protag to a pointer, clear the array, and re-add protag
 	entity* hold_protag;
+	entity* hold_narra;
 	//D(protag->inParty);
 	for(int i=0; i< size; i++) {
 		if(g_entities[0]->inParty) {
 			//remove from array without deleting
 			g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
+		} else if (g_entities[0]->name == "sp-narrarator") {
+			hold_narra = g_entities[0];
+			g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
 		} else {
+			
 			delete g_entities[0];
 		}
 	}
@@ -4776,7 +4779,11 @@ void clear_map(camera& cameraToReset) {
 	for(auto n : g_shadows) {
 		g_actors.push_back(n);
 	}
-	
+		
+	//push the narrarator back on
+	g_entities.push_back(hold_narra);
+	g_actors.push_back(hold_narra);
+
 	size = g_tiles.size();
 	for(int i = 0; i < size; i++) {
 		delete g_tiles[0];

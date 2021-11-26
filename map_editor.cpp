@@ -1131,7 +1131,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/wall.png");
+        selection->image = IMG_Load("textures/engine/invisiblewall.png");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
         
@@ -1187,6 +1187,10 @@ void write_map(entity* mapent) {
                     for (int j = selection->y; j < selection->height + selection->y; j+= (64*XtoY) * navMeshDensity) {
                         //lets do a raycast
                         int zres = verticalRayCast(i + marker->width/2, j + marker->height/2);
+
+                        //if this node would be higher than desired, don't make it
+                        if(zres > markerz->z) {continue;}
+
                         //D(zres);
                         navNode* n = new navNode(i + marker->width/2, j + marker->height/2, zres);
                     }
@@ -1199,11 +1203,11 @@ void write_map(entity* mapent) {
                     noderect.z = g_navNodes[i]->z + 30;
                     noderect.zeight = 1;
                    for(int j = 0; j < g_boxs[layer].size(); j++) {
-                       M(g_boxs[layer][j]->bounds.x);
-                       M(noderect.x);
-                       M( (layer ) * 64);
-                       M(g_navNodes[i]->x);
-                       M(g_navNodes[i]->z);
+                    //    M(g_boxs[layer][j]->bounds.x);
+                    //    M(noderect.x);
+                    //    M( (layer ) * 64);
+                    //    M(g_navNodes[i]->x);
+                    //    M(g_navNodes[i]->z);
                         if( RectOverlap3d(g_boxs[layer][j]->bounds, noderect)) {
                             delete g_navNodes[i];
                             i--;
@@ -1219,7 +1223,7 @@ void write_map(entity* mapent) {
                         float gwt = max(g_navNodes[i]->z, g_navNodes[j]->z);
                         gwt /= 64;
 
-                        if(Distance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 300 && ( LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt) )) {
+                        if(Distance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 300 && ( LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt) ) && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40)) {
                             
                             //dont add a friend we already have
                             bool flag = 1;
@@ -1470,7 +1474,7 @@ void write_map(entity* mapent) {
             //const Uint8* keystate = SDL_GetKeyboardState(NULL);
             
             //turn off VSYNC because otherwise we jitter between this frame and the last while typing
-            //SDL_GL_SetSwapInterval(0);
+            SDL_GL_SetSwapInterval(0);
             while(polling) {
                 SDL_Delay(10);
                 while( SDL_PollEvent( &console_event ) ){
@@ -1552,7 +1556,7 @@ void write_map(entity* mapent) {
                 consolehistory.erase(consolehistory.begin() + 9);
             }
             consolehistoryindex = 0;
-            //SDL_GL_SetSwapInterval(1);
+            SDL_GL_SetSwapInterval(1);
             delete consoleDisplay;
             
             locale loc;
@@ -2368,8 +2372,22 @@ void write_map(entity* mapent) {
                     } else {
                         std::filesystem::remove_all("maps/" + g_mapdir + "/" + word + ".map");
                     }
-                    
+                    break;
                 }
+
+                //delete collisionZones overlapping the marker
+                if(word == "deletecz") {
+                    for(auto x : g_collisionZones) {
+                        if(RectOverlap(x->bounds, marker->getMovedBounds())) {
+                            M("Deleted collisionzone");
+                            g_collisionZones.erase(remove(g_collisionZones.begin(), g_collisionZones.end(), x), g_collisionZones.end());
+                            delete x;
+                        }
+                        
+                    }
+                    break;
+                }
+
                 if(word == "load") {
                     if(line >> word) {
                         //must close file before renaming it
@@ -3143,7 +3161,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/wall.png");
+        selection->image = IMG_Load("textures/engine/collisionzone.png");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
         
@@ -3457,6 +3475,8 @@ public:
 
         //showTalkingUI();
         D(talker->dialogue_index);
+        D(talker->sayings.size());
+        D(talker->name);
 		if(talker->sayings.at(talker->dialogue_index + 1) == "#") {
 			protag_is_talking = 2;
             mobilize = 0;
