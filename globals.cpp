@@ -179,10 +179,15 @@ float XtoY = 0.866;
 float g_ratio = 1.618;
 bool transition = 0;
 int g_walldarkness = 55; //65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
-int g_platformResolution = 5; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
+
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 
-float g_TiltResolution = 1.5; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
+
+// !!! a recent performancecheckup has lead me to believe
+// these are not trivial. for bigger maps, 11, 4 are good values
+// but triangular walls look rather rough
+int g_platformResolution = 11; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
+float g_TiltResolution = 4; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
 bool g_protagHasBeenDrawnThisFrame = 0;
 SDL_Texture* g_shadowTexture;
 int g_flashtime = 300; //ms to flash red after taking damage
@@ -292,7 +297,7 @@ public:
 //zoom is really g_defaultZoom when screenwidth is STANDARD_SCREENWIDTH
 int WIN_WIDTH = 640; int WIN_HEIGHT = 480;
 //theres some warping if STANDARD_SCREENWIDTH < WIN_WIDTH but that shouldn't ever happen
-//if in the future kids have screens with 10 million pixels feel free to mod the game :>
+//if in the future kids have screens with 10 million pixels across feel free to mod the game
 const int STANDARD_SCREENWIDTH = 1080;
 //int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 //int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
@@ -306,8 +311,9 @@ entity* protag;
 entity* mainProtag; //for letting other entities use this ones inventory; game ends when this one dies
 
 //zoom is planned to be 1.0 for a resolution of 1920 pixels across
-float g_defaultZoom = 1;
+float g_defaultZoom = 0.85;
 float g_zoom_mod = 1; //for devmode
+bool g_update_zoom = 0; //update the zoom this frame
 
 float scalex = 1;
 float scaley = scalex;

@@ -294,7 +294,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             listener* l = new listener(s1, p1, p2, s2, p3, p4);
         }
         if(word == "collisionZone") {
-            iss >> p1 >> p2 >> p3 >> p4;
+            iss >> s0 >> p1 >> p2 >> p3 >> p4;
             collisionZone* c = new collisionZone(p1, p2, p3, p4);
         }
     }
@@ -626,13 +626,13 @@ void changeTheme(string str) {
 
     floortex = texstrs[floortexIndex];
     delete floortexDisplay;
-    floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, -100);
+    floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0, 0.1, 0.1, -100);
     walltex = texstrs[walltexIndex];
     delete walltexDisplay;
-    walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, -100);
+    walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, -100);
     captex = texstrs[captexIndex];
     delete captexDisplay;
-    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, -100);
+    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
 }
 
 bool mapeditor_save_map(string word) {
@@ -788,9 +788,9 @@ void init_map_writing(SDL_Renderer* renderer) {
     doorIcon->software = 1;
     triggerIcon->software = 1;
     
-    floortexDisplay = new ui(renderer, floortex.c_str(), 0.0, 0.9, 0.1, 0.1, -100);
-    walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, -100);
-    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, -100);
+    floortexDisplay = new ui(renderer, floortex.c_str(), 0.0, 0, 0.1, 0.1, -100);
+    walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, -100);
+    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
 
     texstrs.clear();
     string path = "textures/diffuse/" + textureDirectory;
@@ -809,9 +809,9 @@ void write_map(entity* mapent) {
         SDL_GetMouseState(&mxint, &myint);
         float percentx = (float)mxint/(float)WIN_WIDTH;
         float percenty =  (float)myint/(float)WIN_HEIGHT;
-        temp =  percentx/scalex * g_camera.width + (g_camera.x - 32);
+        temp =  percentx/scalex * (g_camera.width* (scalex * g_zoom_mod * 0.2)) + (g_camera.x - 32);
         px = round(temp/grid)*grid;
-        temp = percenty/scalex * g_camera.height + (g_camera.y - 26);
+        temp = percenty/scalex * (g_camera.height* (scalex * g_zoom_mod * 0.2)) + (g_camera.y - 26);
         py =  round(temp/(float)round(grid* XtoY))*(float)round(grid* XtoY);
     } else {
         temp = mapent->x - 64;
@@ -1128,7 +1128,6 @@ void write_map(entity* mapent) {
     //make seethru wall
 
     if(devinput[6] && !olddevinput[6] && makingbox == 0) {
-        cout << "got here" << endl;
         lx = px;
         ly = py;
         makingbox = 1;
@@ -1138,7 +1137,6 @@ void write_map(entity* mapent) {
         
     } else {
         if(devinput[6] && !olddevinput[6] && makingbox == 1) {
-            cout << "even got here" << endl;
             if(makingbox) {
                 
                 makingbox = 0;
@@ -1161,7 +1159,6 @@ void write_map(entity* mapent) {
                         mapObject* e = new mapObject(renderer, sthwall, "&", selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
                         c->children.push_back(e);
                     }
-                    
                 }
 
                 if(autoMakeWalls) {
@@ -1170,14 +1167,10 @@ void write_map(entity* mapent) {
                         mapObject* e = new mapObject(renderer, sthwall, "&", selection->x, selection->y + selection->height, i, selection->width, 55, 1);
                         c->children.push_back(e);
                     }
-                    ////entity* e = new entity(renderer, selection->x, selection->y + selection->height, selection->width, wallheight, walltex, 1);
-                    //entity* e = new entity(renderer, walltex, selection->x, selection->y + selection->height, 0, selection->width, (wallheight) * XtoZ + 2, 1);
                 }
-
-              
-                }                
-            }
+            }                
         }
+    }
     
 
     if(devinput[20] && !olddevinput[20] && makingbox == 0) {
@@ -2741,13 +2734,13 @@ void write_map(entity* mapent) {
 
                         floortex = texstrs[floortexIndex];
                         delete floortexDisplay;
-                        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, -100);
+                        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0, 0.1, 0.1, -100);
                         walltex = texstrs[walltexIndex];
                         delete walltexDisplay;
-                        walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, -100);
+                        walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, -100);
                         captex = texstrs[captexIndex];
                         delete captexDisplay;
-                        captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, -100);
+                        captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
                         
                         captex = "textures/diffuse/mapeditor/a.png"; 
                         walltex = "textures/diffuse/mapeditor/c.png"; 
@@ -3106,7 +3099,7 @@ void write_map(entity* mapent) {
         
         floortex = texstrs[floortexIndex];
         delete floortexDisplay;
-        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0.9, 0.1, 0.1, -100);
+        floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0, 0.1, 0.1, -100);
     }
     
     

@@ -572,9 +572,15 @@ public:
 	collisionZone(int x, int y, int width, int height) {
 		bounds = {x, y, width, height};
 		g_collisionZones.push_back(this);
-		for (int i = 0; i < 14; i++) {
+		for (int i = 0; i < g_layers; i++) {
 			vector<box*> v = {};
 			guests.push_back(v);
+		}
+	}
+
+	~collisionZone() {
+		for (int i = 0; i < g_layers; i++) {
+			guests[i].clear();
 		}
 	}
 
@@ -2684,53 +2690,99 @@ public:
 					boxesToUse.insert(boxesToUse.end(), x->guests[layer].begin(), x->guests[layer].end());
 				}
 			}
-			if(this==protag) {D(usedCZ);}
+			
 
 			if(usedCZ == 0) {
-				boxesToUse = g_boxs[layer];
+				for (int i = 0; i < g_boxs[layer].size(); i++) {	
+					
+					//update bounds with new pos
+					rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+					
+					//don't worry about boxes if we're not even close
+					rect sleepbox = rect(g_boxs[layer].at(i)->bounds.x - 150, g_boxs[layer].at(i)->bounds.y-150, g_boxs[layer].at(i)->bounds.width+300, g_boxs[layer].at(i)->bounds.height+300);
+					if(!RectOverlap(sleepbox, movedbounds)) {continue;} 
+
+					//uh oh, did we collide with something?
+					if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
+						ycollide = true;
+						yvel = 0;
+								
+
+
+						
+					}
+					//update bounds with new pos
+					movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+					//uh oh, did we collide with something?
+					if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
+						//box detected
+						xcollide = true;
+						xvel = 0;
+						
+					}
+
+					
+				}
+				for (int i = 0; i < g_boxs[layer].size(); i++) {
+					movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+					//uh oh, did we collide with something?
+					if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
+						//box detected
+						xcollide = true;
+						ycollide = true;
+						xvel = 0;
+						yvel = 0;
+						continue;
+					}
+				}
+			} else {
+				for (int i = 0; i < boxesToUse.size(); i++) {	
+					
+					//update bounds with new pos
+					rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+					
+					//don't worry about boxes if we're not even close
+					rect sleepbox = rect(boxesToUse.at(i)->bounds.x - 150, boxesToUse.at(i)->bounds.y-150, boxesToUse.at(i)->bounds.width+300, boxesToUse.at(i)->bounds.height+300);
+					if(!RectOverlap(sleepbox, movedbounds)) {continue;} 
+
+					//uh oh, did we collide with something?
+					if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
+						ycollide = true;
+						yvel = 0;
+								
+
+
+						
+					}
+					//update bounds with new pos
+					movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+					//uh oh, did we collide with something?
+					if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
+						//box detected
+						xcollide = true;
+						xvel = 0;
+						
+					}
+
+					
+				}
+				for (int i = 0; i < boxesToUse.size(); i++) {
+					movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+					//uh oh, did we collide with something?
+					if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
+						//box detected
+						xcollide = true;
+						ycollide = true;
+						xvel = 0;
+						yvel = 0;
+						continue;
+					}
+				}
 			}
 
 			//if we didnt use a cz, use all boxes
 			
-			for (int i = 0; i < boxesToUse.size(); i++) {	
-				
-				//update bounds with new pos
-				rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-				
-				//don't worry about boxes if we're not even close
-				rect sleepbox = rect(boxesToUse.at(i)->bounds.x - 150, boxesToUse.at(i)->bounds.y-150, boxesToUse.at(i)->bounds.width+300, boxesToUse.at(i)->bounds.height+300);
-				if(!RectOverlap(sleepbox, movedbounds)) {continue;} 
-
-				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
-					ycollide = true;
-					yvel = 0;
-							
-
-
-					
-				}
-				//update bounds with new pos
-				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
-				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
-					//box detected
-					xcollide = true;
-					xvel = 0;
-					
-				}
-
-				movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-				//uh oh, did we collide with something?
-				if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
-					//box detected
-					xcollide = true;
-					ycollide = true;
-					xvel = 0;
-					yvel = 0;
-					continue;
-				}
-			}
+			
 			
 			//how much to push the player to not overlap with triangles.
 			float ypush = 0;
@@ -4606,7 +4658,7 @@ void clear_map(camera& cameraToReset) {
 	Mix_FadeOutMusic(1000);
 	{
 		
-		//SDL_GL_SetSwapInterval(0);
+		SDL_GL_SetSwapInterval(0);
 		bool cont = false;
 		float ticks = 0;
 		float lastticks = 0;
@@ -4692,7 +4744,7 @@ void clear_map(camera& cameraToReset) {
 		SDL_FreeSurface(transitionSurface);
 		SDL_DestroyTexture(transitionTexture);
 		transition = 1;
-		//SDL_GL_SetSwapInterval(1);
+		SDL_GL_SetSwapInterval(1);
 	}
 
 
@@ -4848,6 +4900,11 @@ void clear_map(camera& cameraToReset) {
 		}
 		delete g_mapCollisions[0];
 	}
+
+	for(auto x : g_collisionZones) {
+		delete x;
+	}
+	g_collisionZones.clear();
 
 	//clear layers of boxes and triangles
 	for(int i = 0; i < g_boxs.size(); i++) {

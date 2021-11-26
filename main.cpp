@@ -85,7 +85,7 @@ int main(int argc, char ** argv) {
 	if(devMode) {
 		//fomm = new entity(renderer, "fommconstruction"); 
 		fomm = new entity(renderer, "fomm"); 
-		g_defaultZoom = 0.85;
+		//g_defaultZoom = 0.85;
 	} else {
 		fomm = new entity(renderer, "fomm"); 
 	}
@@ -496,9 +496,9 @@ int main(int argc, char ** argv) {
 		SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 
 		// !!! it might be better to not run this every frame
-		if(old_WIN_WIDTH != WIN_WIDTH) {
+		if(old_WIN_WIDTH != WIN_WIDTH || g_update_zoom) {
 			//user scaled window
-			scalex = ((float)WIN_WIDTH / STANDARD_SCREENWIDTH) * g_defaultZoom;
+			scalex = ((float)WIN_WIDTH / STANDARD_SCREENWIDTH) * g_defaultZoom * g_zoom_mod;
 			scaley = scalex;
 			if(scalex < min_scale) {
 				scalex = min_scale;
@@ -506,20 +506,21 @@ int main(int argc, char ** argv) {
 			if(scalex > max_scale) {
 				scalex = max_scale;
 			}
-			
 			SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 		}
 		old_WIN_WIDTH = WIN_WIDTH;
-		
-		//moved this line to the start of the program, since the zoom could get screwed up
-		//old_WIN_WIDTH = WIN_WIDTH;
 
 		WIN_WIDTH /= scalex;
 		WIN_HEIGHT /= scaley;
+		if(devMode) {
+			g_camera.width = WIN_WIDTH / (scalex * g_zoom_mod * 0.2); //the 0.2 is arbitrary. it just makes sure we don't end the camera before the screen
+			g_camera.height = WIN_HEIGHT / (scalex * g_zoom_mod * 0.2); 
+		} else {
+			g_camera.width = WIN_WIDTH;
+			g_camera.height = WIN_HEIGHT;
+		}
 		
-		g_camera.width = WIN_WIDTH;
-		g_camera.height = WIN_HEIGHT;
 		
 		
 
@@ -1186,6 +1187,8 @@ void getInput(float &elapsed) {
 	if(keystate[SDL_SCANCODE_G] && !inputRefreshCanSwitchOffDevMode && canSwitchOffDevMode) {
 		if(canSwitchOffDevMode) {
 			devMode = !devMode;
+			g_zoom_mod = 1;
+			g_update_zoom = 1;
 		}
 		if(devMode) {
 			floortexDisplay->show = 1;
@@ -1605,28 +1608,32 @@ void getInput(float &elapsed) {
 			// }
 		}
 	}
-	if(keystate[SDL_SCANCODE_Q] && devMode && g_holdingCTRL) {
+	if(devMode) {
+		g_update_zoom = 0;
+		if(keystate[SDL_SCANCODE_Q] && devMode && g_holdingCTRL) {
+			g_update_zoom = 1;
+			g_zoom_mod-= 0.001 * elapsed;
+			
+			if(g_zoom_mod < min_scale) {
+				g_zoom_mod = min_scale;
+			}
+			if(g_zoom_mod > max_scale) {
+				g_zoom_mod = max_scale;
+			}
+		}
 		
-		// g_zoom_mod-= 0.001 * elapsed;
-		
-		// if(g_zoom_mod < min_scale) {
-		// 	g_zoom_mod = min_scale;
-		// }
-		// if(g_zoom_mod > max_scale) {
-		// 	g_zoom_mod = max_scale;
-		// }
-	}
-	
-	if(keystate[SDL_SCANCODE_E] && devMode && g_holdingCTRL) {
-		// g_zoom_mod+= 0.001 * elapsed;
-		
-		// if(g_zoom_mod < min_scale) {
-		// 	g_zoom_mod = min_scale;
-		// }
-		// if(g_zoom_mod > max_scale) {
-		// 	g_zoom_mod = max_scale;
-		// }
-		
+		if(keystate[SDL_SCANCODE_E] && devMode && g_holdingCTRL) {
+			g_update_zoom = 1;
+			g_zoom_mod+= 0.001 * elapsed;
+			
+			if(g_zoom_mod < min_scale) {
+				g_zoom_mod = min_scale;
+			}
+			if(g_zoom_mod > max_scale) {
+				g_zoom_mod = max_scale;
+			}
+			
+		}
 	}
 	if(keystate[SDL_SCANCODE_BACKSPACE]) {
 		devinput[16] = 1;
