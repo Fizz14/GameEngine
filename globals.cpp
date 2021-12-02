@@ -1,3 +1,7 @@
+#ifndef globals_h
+#define globals_h
+
+
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -14,9 +18,6 @@
 #include <ctime>//debug clock
 #include <string>
 #include <map> //saves
-
-#ifndef GLOBALS
-#define GLOBALS
 
 # define M_PI 3.14159265358979323846
 
@@ -413,6 +414,9 @@ float g_bhoppingBoost = 1; //the factor applied to friction whilst bhopping, not
 
 //map editing, mapeditor, map-editor
 bool g_mousemode = 1;
+bool keyboard_marker_vertical_modifier_refresh = 0;
+bool keyboard_marker_vertical_modifier_refresh_b = 0;
+
 entity* nudge = 0; //for nudging entities while map-editing
 bool adjusting = 0; //wether to move selected entity or change its hitbox/shadow position
 bool g_autoSetThemesFromMapDirectory = 0; //if 1, loading a map will also set the texturedirectory/theme to the mapdir

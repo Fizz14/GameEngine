@@ -276,10 +276,6 @@ int main(int argc, char ** argv) {
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
 	while (!quit) {
-		if(adventureUIManager->talker != nullptr) {
-			D(adventureUIManager->talker->name);
-		}
-		D(narrarator->name);
 		//some event handling
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -1102,7 +1098,7 @@ int interact(float elapsed, entity* protag) {
 					delete g_entities[i];
 					return 0;
 				}
-				if(g_entities[i]->talks && g_entities[i]->tangible) {
+				if(g_entities[i]->talks && g_entities[i]->tangible &&g_entities[i]->sayings.size() > 0) {
 					if(g_entities[i]->animlimit != 0) {
 						g_entities[i]->animate = 1;
 					}
@@ -1457,6 +1453,68 @@ void getInput(float &elapsed) {
 		input[9] = 0;
 	}
 
+	//mapeditor cancel button
+	if(keystate[SDL_SCANCODE_X]) {
+		devinput[4] = 1;
+	}
+
+	int markeryvel = 0;
+	//mapeditor cursor vertical movement for keyboards
+	if(keystate[SDL_SCANCODE_KP_PLUS]) {
+		markeryvel = 1;
+	} else {
+		keyboard_marker_vertical_modifier_refresh = 1;
+	}
+
+	if(keystate[SDL_SCANCODE_KP_MINUS]){
+		markeryvel = -1;
+	} else {
+		keyboard_marker_vertical_modifier_refresh_b = 1;
+	}
+
+	if(markeryvel != 0) {
+		if(g_holdingCTRL) {
+			if(markeryvel > 0 && keyboard_marker_vertical_modifier_refresh) {
+				wallstart -= 64;
+			}
+			else if(markeryvel < 0 && keyboard_marker_vertical_modifier_refresh_b) {
+				wallstart += 64;
+			}
+			if(wallstart < 0) {
+				wallstart = 0;
+			} else {
+				if(wallstart > 64 * g_layers) {
+					wallstart = 64 * g_layers;
+				}
+				if(wallstart > wallheight - 64) {
+					wallstart = wallheight - 64;
+				}
+			}
+		} else {
+			if(markeryvel > 0 && keyboard_marker_vertical_modifier_refresh) {
+				wallheight -= 64;
+			}
+			else if(markeryvel < 0 && keyboard_marker_vertical_modifier_refresh_b) {
+				wallheight += 64;
+			}
+			if(wallheight < wallstart + 64) {
+				wallheight = wallstart + 64;
+			} else {
+				if(wallheight > 64 * g_layers) {
+					wallheight = 64 * g_layers;
+				}
+			}
+			
+		}
+	}
+	if(keystate[SDL_SCANCODE_KP_PLUS]){
+		keyboard_marker_vertical_modifier_refresh = 0;
+	}
+	
+	if(keystate[SDL_SCANCODE_KP_MINUS]){
+		keyboard_marker_vertical_modifier_refresh_b = 0;
+	}
+	
 
 
 	if(keystate[bindings[11]] && !old_z_value && !inPauseMenu) {
@@ -1488,11 +1546,8 @@ void getInput(float &elapsed) {
 	//D(mainProtag->inventory[mainProtag->inventory.size() - 1 -inventorySelection].first->name);
 	dialogue_cooldown -= elapsed;
 	if(keystate[bindings[11]] && !inPauseMenu) {
-		
-		if(protag_is_talking == 1) {
-			//advance or speedup diaglogue
+		if(protag_is_talking == 1) { //advance or speedup diaglogue 
 			text_speed_up = 50;
-			
 		}	
 		if(protag_is_talking == 0) {
 			if(dialogue_cooldown < 0) {
@@ -1517,13 +1572,6 @@ void getInput(float &elapsed) {
 		dialogue_cooldown = 500;
 	}
 	
-	//map editing keys
-	//z = set protag spawn
-	//x = spawn entity
-	//c = set tile left corner
-	//v = set tile right corner
-	//b = set box left corner
-	//n = set box right corner
 	if(keystate[SDL_SCANCODE_LSHIFT] && devMode) {
 		protag->xmaxspeed = 145;
 		protag->ymaxspeed = 145;
@@ -1540,7 +1588,8 @@ void getInput(float &elapsed) {
 	if(keystate[SDL_SCANCODE_SLASH] && devMode) {
 		
 	}
-	if(keystate[SDL_SCANCODE_X] && devMode) {
+	//make another entity of the same type as the last spawned
+	if(keystate[SDL_SCANCODE_K] && devMode) {
 		devinput[1] = 1;
 	}
 	if(keystate[SDL_SCANCODE_C] && devMode) {
@@ -1679,7 +1728,9 @@ void getInput(float &elapsed) {
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);	
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 
-			SDL_ShowCursor(0);
+			if(devMode) {
+				SDL_ShowCursor(0);
+			}
 
 		} else {
 			
@@ -1690,7 +1741,9 @@ void getInput(float &elapsed) {
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 			SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 			
-			SDL_ShowCursor(1);
+			if(devMode) { 
+				SDL_ShowCursor(1);
+			}
 		}
 	}
 

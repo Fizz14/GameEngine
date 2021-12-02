@@ -1,3 +1,6 @@
+// #ifndef mapeditor_h
+// #define mapeditor_h
+
 #include <iostream>
 #include <vector>
 #include <fstream> //loading
@@ -9,6 +12,8 @@
 #include <fstream>
 #include <filesystem> //making directories
 #include <regex> //for readings scripts
+
+using namespace std;
 
 ofstream ofile;
 bool olddevinput[50];
@@ -193,7 +198,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "entity") {
             //M("loading entity" << endl;
-            iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3;
+            iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3 >> p4;
             const char* plik = s1.c_str();
             entity* e = new entity(renderer, plik);
             e->x = p0;
@@ -203,6 +208,10 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             e->shadow->y = e->y + e->shadow->yoffset;
             e->defaultAnimation = p3;
             e->animation = p3;
+            if(p4 == 1) {
+                e->flip = SDL_FLIP_HORIZONTAL;
+                
+            }
         }
         if(word == "item") {
             //M("loading entity" << endl;
@@ -688,7 +697,7 @@ bool mapeditor_save_map(string word) {
             if(g_entities[i]->isWorlditem) {
                 ofile << "item " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) << endl;
             } else {
-                ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) <<  " " << g_entities[i]->animation << endl;
+                ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) <<  " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
             }
         }
     }
@@ -809,17 +818,18 @@ void write_map(entity* mapent) {
         SDL_GetMouseState(&mxint, &myint);
         float percentx = (float)mxint/(float)WIN_WIDTH;
         float percenty =  (float)myint/(float)WIN_HEIGHT;
-        temp =  percentx/scalex * (g_camera.width* (scalex * g_zoom_mod * 0.2)) + (g_camera.x - 32);
+        temp =  percentx/(scalex) * (g_camera.width* ((scalex) * 0.2)) + (g_camera.x - 32);
         px = round(temp/grid)*grid;
-        temp = percenty/scalex * (g_camera.height* (scalex * g_zoom_mod * 0.2)) + (g_camera.y - 26);
+        temp = percenty/(scalex) * (g_camera.height* ((scalex) * 0.2)) + (g_camera.y - 26);
         py =  round(temp/(float)round(grid* XtoY))*(float)round(grid* XtoY);
     } else {
-        temp = mapent->x - 64;
+        temp = mapent->x+32;
         px = round(temp/grid)*grid;
         temp = mapent->y -mapent->height - 38;
         py = round(temp/(float)round(grid* XtoY))*(float)round(grid* XtoY);
 
         // needed for proper grid in negative x or y
+        // it doesnt work anyway lol
         if(mapent->x < 0)
             px-=grid;
 
@@ -889,8 +899,11 @@ void write_map(entity* mapent) {
                 float y2 = (g_navNodes[i]->friends[j]->y-g_camera.y - XtoZ * (g_navNodes[i]->friends[j]->z+ 32))* g_camera.zoom;
                 int colo = 0;
                 if(g_navNodes[i]->z + g_navNodes[i]->friends[j]->z > 0) {colo =255;}
-                SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
-                SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
+                //dont draw disabled nodes. pretty janky
+                if(g_navNodes[i]->enabled) {
+                    SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
+                    SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
+                }
                 
             }
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -1296,6 +1309,8 @@ void write_map(entity* mapent) {
                 vector<tri*> deleteTris;
                 vector<box*> deleteRects;
                 vector<ramp*> deleteRamps;
+                vector<trigger*> deleteTriggers;
+                vector<door*> deleteDoors;
                 rect markerrect = {marker->x, marker->y, marker->width, marker->height};
                 //delete block at position
                 for (int i = 0; i < g_boxs.size(); i++) {
@@ -1361,7 +1376,31 @@ void write_map(entity* mapent) {
                     }
                 }
                 D(markerz->z);
+                for(auto x: g_triggers) {
+                    rect markerrect = {marker->x, marker->y, marker->width, marker->height};
+                    rect b = {x->x, x->y, x->width, x->height};
+                    if(RectOverlap(markerrect, b)) {
+                        deleteTriggers.push_back(x);
+                    }
+                }
+
+                for(auto x: g_doors) {
+                    rect markerrect = {marker->x, marker->y, marker->width, marker->height};
+                    rect b = {x->x, x->y, x->width, x->height};
+                    if(RectOverlap(markerrect, b)) {
+                        deleteDoors.push_back(x);
+                    }
+                }
                 
+                //delete stuff in deleteTriggers and deleteDoors
+                for(auto x : deleteTriggers) {
+                    delete x;
+                }
+
+                for(auto x : deleteDoors) {
+                    delete x;
+                }
+
                 if(wallheight == 64 && deleteflag){
                     //rect markerrect = {marker->x, marker->y, marker->width, marker->height};
                     for(int i = 0; i < g_tiles.size(); i++) {
@@ -2726,6 +2765,18 @@ void write_map(entity* mapent) {
                     M(px);
                     M(py);
                 }
+                if(word == "possess") {
+                    line >> word;
+                    if(word != "") {
+                        entity* hopeful = searchEntities(word);
+                        if(hopeful != 0) {
+                            protag = hopeful;
+                            g_focus = hopeful;
+                            
+                        }
+                    }
+                    break;
+                }
                 if(word == "reset"  || word == "rs") {
                     line >> word;
 
@@ -2785,10 +2836,27 @@ void write_map(entity* mapent) {
                             mapent->ymaxspeed = 110;
                             break;
                         }
+                        if(word == "agility") {
+                            mapent->xagil = 100;
+                            mapent->yagil = 100;
+                            break;
+                        }
                         if(word == "spot" || word == "position") {
                             mapent->x = 0;
                             mapent->y = 0;    
                             break;
+                        }
+                        if(word == "friction") {
+                            mapent->friction = 0.3;
+                            break;
+                        }
+                        if(word == "movement"){
+                            mapent->xmaxspeed = 110;
+                            mapent->ymaxspeed = 110;
+                            mapent->xagil = 100;
+                            mapent->yagil = 100;
+                            mapent->friction = 0.3;
+                            mapent->dynamic = 1;
                         }
                     }
                     if(word == "bounds") {
@@ -3447,14 +3515,14 @@ public:
 	}
 	void continueDialogue() {
         //has our entity died?
-        M("A");
+        //M("A");
         if(g_forceEndDialogue) {
             g_forceEndDialogue = 0;
             protag_is_talking = 2;
 			adventureUIManager->hideTalkingUI();
             return;
         }
-        M("B");
+        //M("B");
         
         if(sleepingMS > 1) {
             sleepingMS -= elapsed;
@@ -3471,12 +3539,12 @@ public:
         protag_is_talking = 1;
 
 
-        M("C");
+        //M("C");
 
         //showTalkingUI();
-        D(talker->dialogue_index);
-        D(talker->sayings.size());
-        D(talker->name);
+        //D(talker->dialogue_index);
+        //D(talker->sayings.size());
+        //D(talker->name);
 		if(talker->sayings.at(talker->dialogue_index + 1) == "#") {
 			protag_is_talking = 2;
             mobilize = 0;
@@ -3484,7 +3552,9 @@ public:
 			talker->dialogue_index = 0;
 			talker->animate = 0;
             if(talker->turnToFacePlayer) {
-                talker->flip = SDL_FLIP_NONE;
+                if(talker->defaultAnimation == 0 || talker->defaultAnimation == 4) {
+                    talker->flip = SDL_FLIP_NONE;
+                }
                 talker->animation = talker->defaultAnimation;
             }
             return;
@@ -3858,6 +3928,29 @@ public:
 			this->continueDialogue();
 			return;
 		}
+
+        //teleport entity to another entity
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,12) == "/entteleport") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 13);
+			vector<string> x = splitString(s, ' ');
+            string teleportMeSTR = x[0];
+            string teleportToMeSTR = x[1];
+            D(teleportMeSTR);
+            D(teleportToMeSTR);
+            entity* teleportMe = searchEntities(teleportMeSTR);
+            entity* teleportToMe = searchEntities(teleportToMeSTR);
+			if(teleportMe != nullptr && teleportToMe != nullptr) {
+                teleportMe->setOriginX(teleportToMe->getOriginX());
+                teleportMe->setOriginY(teleportToMe->getOriginY());
+                teleportMe->xvel = 0;
+                teleportMe->yvel = 0;
+            }
+            
+			talker->dialogue_index++;
+			this->continueDialogue();
+			return;
+		}
        
 
         //change cameratarget
@@ -4015,8 +4108,9 @@ public:
             auto x = splitString(g_mapOfLastSave, '/');
             g_mapdir = x[0];
             g_map = x[1];
-            cout << "mapdir : " << g_mapdir << endl;
-            cout << "map : " << g_map << endl;
+            //cout << "mapdir : " << g_mapdir << endl;
+            //cout << "map : " << g_map << endl;
+            //SDL_Delay(5000);
             load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
             
             //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
@@ -4112,14 +4206,24 @@ public:
         }
 
         //solidify entity
+        // /solidify door 1
+        // /solidify wall 0
         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/solidify") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 10);
             
             entity* solidifyMe = 0;
-            solidifyMe = searchEntities(s);
+            auto parts = splitString(s, ' ');
+
+            solidifyMe = searchEntities(parts[0]);
+            bool solidifystate = (parts[1] == "1");
             if(solidifyMe != 0) {
-                solidifyMe->solidify();
+                if(solidifystate) {
+                    solidifyMe->solidify();
+                } else {
+                    solidifyMe->unsolidify();
+                }
+                
             }
 
             talker->dialogue_index++;
@@ -4127,14 +4231,39 @@ public:
             return;
         }
 
-        //unsolidify entity
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,11) == "/unsolidify") {
+        //make entity disapear by floating up
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/banish") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 12);
-            entity* unsolidifyMe = 0;
-            unsolidifyMe = searchEntities(s);
-            if(unsolidifyMe != 0) {
-                unsolidifyMe->unsolidify();
+			s.erase(0, 8);
+            
+            entity* banishMe = 0;
+            auto parts = splitString(s, ' ');
+
+            banishMe = searchEntities(parts[0]);
+            bool banished = 1;
+            if(parts.size() > 1) {
+                banished = (parts[1] != "0");
+            }
+            int zaccel = 220;
+            if(parts.size() > 2) {
+                zaccel = stoi(parts[2]);
+            }
+            if(banishMe != 0) {
+                if(banished) {
+                    banishMe->zaccel = zaccel;
+                    banishMe->banished = 1;
+                    
+                    
+                } else {
+                    banishMe->banished = 0;
+                    banishMe->dynamic = 1;
+                    SDL_SetTextureAlphaMod(banishMe->texture, 255);
+                    // this means that there will be problems if doors overlap- at the moment, that seems absurd
+                    for(auto x : banishMe->overlappedNodes) {
+                        M("Node enabled!");
+                        x->enabled = 1;
+                    }
+                }
             }
 
             talker->dialogue_index++;
@@ -4142,16 +4271,28 @@ public:
             return;
         }
 
+        
         //change animation data
+        //anim entity direction msPerFrame frameInAnimation LoopAnimation
+        //set direction to -1 to not set the direction
+        //set msperframe to 0 to not animate
         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/anim") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 6);
             vector<string> split = splitString(s, ' ');
             
             entity* ent = 0;
-            ent = searchEntities(split[0]);
+            //if the entity we are talking to is the same as the one we want to animate, just animate talker
+            if(talker->name == split[0]) {
+                ent = talker;
+            } else {
+                ent = searchEntities(split[0]);
+            }
             if(ent != 0) {
-                ent->animation = stoi(split[1]);
+                int animationset = stoi(split[1]);
+                if(animationset != -1) {
+                    ent->animation = stoi(split[1]);
+                }
                 ent->msPerFrame = stoi(split[2]);
                 ent->frameInAnimation = stoi(split[3]);
                 ent->loopAnimation = stoi(split[4]);
@@ -4342,3 +4483,4 @@ public:
 	}
 };
 
+// #endif

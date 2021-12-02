@@ -1,3 +1,6 @@
+#ifndef objects_h
+#define objects_h
+
 #include <SDL2/SDL.h>        
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
@@ -16,9 +19,6 @@
 #include "globals.cpp"
 
 #define PI 3.14159265
-
-#ifndef CLASSES
-#define CLASSES
 
 using namespace std;
 
@@ -111,6 +111,7 @@ public:
 	float costFromSource = 0; //updated with dijkstras algorithm
 	navNode* prev = nullptr; //updated with dijkstras algorithm
 	string name = "";
+	bool enabled = 1; //closing doors can disable navNodes, so that entities will try to find another way
 
 	navNode(int fx, int fy, int fz) {
 		M("navNode()" );
@@ -185,7 +186,7 @@ class rect {
 public:
 	int x;
 	int y;
-	int z; //rarely used
+	int z=0; //rarely used
 	int width;
 	int height;
 	int zeight = 32;
@@ -203,6 +204,15 @@ public:
 		y=b;
 		width=c;
 		height=d;
+	}
+
+	rect(int fx, int fy, int fz, int fh, int fw, int fzh) {
+		x=fx;
+		y=fy;
+		width=fw;
+		height=fh;
+		z = fz;
+		zeight = fzh;
 	}
 
 	void render(SDL_Renderer * renderer) {
@@ -380,16 +390,9 @@ bool ElipseOverlap(rect a, rect b) {
 	return (Distance(midpointA.x, midpointA.y, midpointB.x, midpointB.y) < (a.width + b.width)/2);
 }
 bool CylinderOverlap(rect a, rect b, int skin = 0) {
-	//get midpoints
-	coord midpointA = {a.x + a.width/2, a.y + a.height/2};
-	coord midpointB = {b.x + b.width/2, b.y + b.height/2};
-	
-	//"unfold" crumpled y axis by multiplying by 1/XtoY
-	midpointA.y *= 1/XtoY;
-	midpointB.y *= 1/XtoY;
 
-	//circle collision test using widths of rectangles as radiusen
-	return (Distance(midpointA.x, midpointA.y, midpointB.x, midpointB.y) - skin < (a.width + b.width)/2)&& a.z < b.z + b.zeight && a.z + a.zeight > b.z;
+	//do an elipsecheck - then make sure the heights match up
+	return (ElipseOverlap(a, b)) && ( (a.z >= b.z && a.z <= b.z + b.zeight) || (b.z >= a.z && b.z <= a.z + a.zeight));
 }
 
 bool RectOverlap(SDL_Rect a, SDL_Rect b) {
@@ -1165,6 +1168,16 @@ public:
 	int getOriginY() {
 		return y + bounds.y + bounds.height/2;
 	}
+
+	//for moving the object by its origin
+	//this won't move the origin relative to the sprite or anything like that
+	void setOriginX(int fx) {
+		x = fx - bounds.x - bounds.width/2;
+	}
+
+	void setOriginY(int fy) {
+		y = fy - bounds.y - bounds.height/2;
+	}
 };
 
 	class cshadow:public actor {
@@ -1726,7 +1739,7 @@ public:
 	SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
 
 	int frame = 0; //current frame on SPRITESHEET
-	int msPerFrame = 100; //how long to wait between frames of animation, 0 being infinite time (no frame animation)
+	int msPerFrame = 0; //how long to wait between frames of animation, 0 being infinite time (no frame animation)
 	int msTilNextFrame = 0; //accumulater, when it reaches msPerFrame we advance frame
 	int frameInAnimation = 0; //current frame in ANIMATION
 	bool loopAnimation = 1; //start over after we finish
@@ -1822,6 +1835,13 @@ public:
 	
 	//worlditem
 	bool isWorlditem = 0;
+
+	//misc scripting stuff
+	bool banished = 0;
+	bool solid = 0;
+	bool canBeSolid = 0; //if the entity starts out as solid
+	vector<navNode*> overlappedNodes; //a collection of navnodes that the entity overlaps. doors can disable the ones they overlap
+	//when an entity is banished by a script, it will jump into the air and become intangible when its z velocity hits 0
 
 	//default constructor is called automatically for children
 	entity() {
@@ -1951,6 +1971,7 @@ public:
 		file >> solidifyHim;
 		if(solidifyHim) {
 			this->solidify();
+			this->canBeSolid = 1;
 		}
 		
 		file >> comment;
@@ -2063,7 +2084,8 @@ public:
 		shadow->xoffset -= 0.5 * g_extraShadowSize;
 		shadow->yoffset -= 0.5 * g_extraShadowSize * XtoY;
 
-		
+		shadow->x = x + shadow->xoffset;
+		shadow->y = y + shadow->yoffset;
 
 		int w, h;
 		SDL_QueryTexture(texture, NULL, NULL, &w, &h);
@@ -2075,9 +2097,14 @@ public:
 			this->shadow->width = 0;
 		}
 
-		//make entities pop in
-		curwidth = 0;
-		curheight = 0;
+		//make entities pop in unless this is a mapload
+		if(!transition) {
+			curwidth = 0;
+			curheight = 0;
+		} else {
+			curwidth = width;
+			curheight = height;
+		}
 
 		if(genericmode) {
 			//make one frame of the whole image;
@@ -2325,16 +2352,18 @@ public:
 	}
 
 	rect getMovedBounds() {
-		return rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
+		return rect(bounds.x + x, bounds.y + y, z, bounds.width, bounds.height, bounds.zeight);
 	}
 
 	void solidify() {
 		//consider checking member field for solidness, and updating
+		this->solid = 1;
 		//shouldnt cause a crash anyway
 		g_solid_entities.push_back(this);
 	}
 
 	void unsolidify() {
+		this->solid = 0;
 		g_solid_entities.erase(remove(g_solid_entities.begin(), g_solid_entities.end(), this), g_solid_entities.end());
 	}
 
@@ -3107,6 +3136,36 @@ public:
 		
 		
 		zvel += zaccel * ((double) elapsed / 256.0);
+
+		//for banish animation from scripts
+		if(this->banished && zvel <= 0) {
+			this->dynamic = 0; 
+			SDL_SetTextureAlphaMod(this->texture, 127); 
+			//if we are solid, disable nodes beneath
+			if(this->canBeSolid) {
+				M("Lets see if we should disable any nodes");
+				// !!! renovate this when we have done something smarter with how nodes are searchen
+				for(auto x : g_navNodes) {
+					// !!! this also isn't 3d-safe
+					D(this->getMovedBounds().x);
+					D(this->getMovedBounds().y);
+					D(this->getMovedBounds().width);
+					D(this->getMovedBounds().height);
+					rect nodespot = {x->x - 10, x->y -10, 20, 20};
+					D(nodespot.x);
+					D(nodespot.y);
+					D(nodespot.width);
+					D(nodespot.height);
+					if(RectOverlap(this->getMovedBounds(), nodespot)) {
+						overlappedNodes.push_back(x);
+						M("node disabled!");
+						x->enabled = 0;
+					}
+				}
+			}
+			return nullptr;
+		}
+		
 		//zvel *= pow(friction, ((double) elapsed / 256.0));
 		z += zvel * ((double) elapsed / 256.0);
 		z = max(z, floor + 1);
@@ -3234,10 +3293,14 @@ public:
 
 		//push him away from close entities
 		//if we're even slightly stuck, don't bother
-		if(stuckTime < 20) {
+		if(stuckTime < 20 && this->dynamic) {
+			
 			for(auto x : g_entities) {
 				if(this == x) {continue;} 
-				if(x->semisolid && x->tangible && (CylinderOverlap(x->getMovedBounds(), this->getMovedBounds(), x->bounds.width * 0.3))) {					
+				bool m = CylinderOverlap(this->getMovedBounds(), x->getMovedBounds());
+				
+				
+				if(x->semisolid && x->tangible && m) {					
 					//push this one slightly away from x
 					float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
 					float mag =  30000/r;
@@ -3399,7 +3462,7 @@ public:
 			float xvector = -xvel;
 			float yvector = -yvel;
 			//if he's not traveling very fast it looks natural to not change angle
-			if(/*Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.5*/1) {recalcAngle = 1;}
+			if(Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.5) {recalcAngle = 1;}
 			if(recalcAngle) {
 				float angle = atan2(yvector, xvector);
 				flip = SDL_FLIP_NONE;
@@ -3717,7 +3780,7 @@ public:
 				for (int i = 0; i < u->friends.size(); i++) {
 						
 					float alt = u->costFromSource + u->costs[i];
-					if(alt < u->friends[i]->costFromSource && u->friends[i]->z  + 64 >= u->z) {
+					if(alt < u->friends[i]->costFromSource && (u->friends[i]->z + 64 >= u->z) && u->friends[i]->enabled) {
 						u->friends[i]->costFromSource = alt;
 						u->friends[i]->prev = u;
 					}
