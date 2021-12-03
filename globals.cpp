@@ -115,6 +115,14 @@ vector<heightmap*> g_heightmaps;
 
 vector<navNode*> g_navNodes;
 
+struct cmpCoord {
+    bool operator()(const pair<int, int> a, const pair<int, int> b) const {
+		return a.first + a.second < b.first + b.second;
+	}
+};
+
+map<pair<int, int>, navNode*, cmpCoord> navNodeMap;
+
 vector<worldsound*> g_worldsounds;
 
 vector<musicNode*> g_musicNodes;
@@ -476,25 +484,29 @@ float Distance(int x1, int y1, int x2, int y2) {
 	return pow(pow((x1 -x2), 2) + pow((y1 - y2), 2), 0.5);
 }
 
-template<class T>
-navNode* getNodeByPosition(vector<T*> array, int fx, int fy) {
-	//this is a placeholder solution for testing AI
-	//this requires a binary search and sorted nodes to work reasonably for larger maps
-	float min_dist = 0;
-		navNode* ret;
-		bool flag = 1;
 
-		//just pitifully slow
-		for (int i = 0; i < array.size(); i++) {
-			float dist = Distance(fx, fy, array[i]->x, array[i]->y);
-			if(dist < min_dist || flag) {
-				min_dist = dist;
-				ret = array[i];
-				flag = 0;
-			}
-		}
-		return ret;
-}
+//old crappy code
+// template<class T>
+// navNode* getNodeByPosition(vector<T*> array, int fx, int fy) {
+// 	//this is a placeholder solution for testing AI
+// 	//this requires a binary search and sorted nodes to work reasonably for larger maps
+// 	float min_dist = 0;
+// 		navNode* ret;
+// 		bool flag = 1;
+
+// 		//just pitifully slow
+// 		for (int i = 0; i < array.size(); i++) {
+// 			float dist = Distance(fx, fy, array[i]->x, array[i]->y);
+// 			if(dist < min_dist || flag) {
+// 				min_dist = dist;
+// 				ret = array[i];
+// 				flag = 0;
+// 			}
+// 		}
+// 		return ret;
+// }
+
+
 
 //get cardinal points about a position
 // 0 is 12oclock, and 2 is 3oclock and so on

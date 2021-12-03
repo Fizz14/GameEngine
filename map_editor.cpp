@@ -3899,7 +3899,7 @@ public:
 			if(hopeful != nullptr) {
                
                 hopeful->agrod = 0;
-                hopeful->Destination = getNodeByPosition(g_navNodes, p0, p1);
+                hopeful->Destination = getNodeByPosition(p0, p1);
             }
             
 			talker->dialogue_index++;

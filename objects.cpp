@@ -119,6 +119,9 @@ public:
 		y = fy;
 		z = fz;
 		g_navNodes.push_back(this);
+		pair<int, int> pos;
+		pos.first = fx; pos.second = fy;
+		navNodeMap[pos] = this; 
 	}
 
 	void Add_Friend(navNode* newFriend) {
@@ -151,6 +154,35 @@ public:
 		}
 	}
 };
+
+navNode* getNodeByPosition(int fx, int fy) {
+	//narrow down our search signifigantly
+
+	//auto p = navNodeMap.equal_range(make_pair(fx, fy));
+	//think of the below numbers as the maximum distance, in worldpixels
+	//that the player, or any target-entity can be from the proper node
+	//that they really are closest to.
+	//it has to be "caught" in this "search" for a lower bound
+	//otherwise, the entity will go somewhere diagonal that was caught
+	int MaxDistanceFromNode = 3;
+	auto lowerbound = navNodeMap.lower_bound(make_pair(fx - (64 * MaxDistanceFromNode), fy-(45 * MaxDistanceFromNode)));
+	auto upperbound = navNodeMap.upper_bound(make_pair(fx+(64 * MaxDistanceFromNode), fy+(45 * MaxDistanceFromNode)));
+	//return lowerbound->second;
+	float min_dist = 0;
+	navNode* ret = lowerbound->second;
+	bool flag = 1;
+
+	for(auto q = lowerbound; q != upperbound; q++) {
+		float dist = Distance(fx, fy, q->second->x, q->second->y);
+		if(dist < min_dist || flag) {
+			min_dist = dist;
+			ret = q->second;
+			flag = 0;
+		}
+	}
+
+	return ret;
+}
 
 void RecursiveNavNodeDelete(navNode* a) {
 	//copy friends array to new vector
@@ -1817,6 +1849,7 @@ public:
 	navNode* dest = nullptr;
 	navNode* current = nullptr;
 	vector<navNode*> path;
+	// !!! was 800 try to turn this down some hehe
 	float dijkstraSpeed = 800; //how many updates to wait between calling dijkstra's algorithm
 	float timeSinceLastDijkstra = -1;
 	bool pathfinding = 0;
@@ -1913,7 +1946,7 @@ public:
 		file >> tzeight;
 		bounds.width = twidth * 64;
 		bounds.height = theight * 55;
-		bounds.zeight = tzeight * 32;
+		bounds.zeight = tzeight * 64;
 		
 		
 		file >> comment;
@@ -3633,13 +3666,13 @@ public:
 						//M("There's a good position, keeping my distance");
 						//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
 						
-						Destination = getNodeByPosition(g_navNodes, ret[0], ret[1]);
+						Destination = getNodeByPosition(ret[0], ret[1]);
 					
 					} else {
 						//Can't get our full range, so use the values in LineTraceX and LineTraceY
 						extern int lineTraceX, lineTraceY;
-						//Destination = getNodeByPosition(g_navNodes, target->getOriginX(), target->getOriginY());
-						Destination = getNodeByPosition(g_navNodes, lineTraceX, lineTraceY);
+						//Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
+						Destination = getNodeByPosition(lineTraceX, lineTraceY);
 					
 					}
 				}
