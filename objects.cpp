@@ -174,10 +174,22 @@ navNode* getNodeByPosition(int fx, int fy) {
 
 	for(auto q = lowerbound; q != upperbound; q++) {
 		float dist = Distance(fx, fy, q->second->x, q->second->y);
-		if(dist < min_dist || flag) {
+		if( (dist < min_dist || flag) && q->second->enabled) {
 			min_dist = dist;
 			ret = q->second;
 			flag = 0;
+		}
+	}
+
+	//if every close node was disabled, I guess just take one of the disabled one :S
+	if(flag) {
+		for(auto q = lowerbound; q != upperbound; q++) {
+			float dist = Distance(fx, fy, q->second->x, q->second->y);
+			if( (dist < min_dist || flag) /*&& q->second->enabled*/) {
+				min_dist = dist;
+				ret = q->second;
+				flag = 0;
+			}
 		}
 	}
 
@@ -238,7 +250,7 @@ public:
 		height=d;
 	}
 
-	rect(int fx, int fy, int fz, int fh, int fw, int fzh) {
+	rect(int fx, int fy, int fz, int fw, int fh, int fzh) {
 		x=fx;
 		y=fy;
 		width=fw;
@@ -3206,11 +3218,11 @@ public:
 			if(this->canBeSolid) {
 
 				for(auto x : overlappedNodes) {
-					M("cached node enabled!");
+					
 					x->enabled = 1;
-					for(auto y : x->friends) {
-						y->enabled = 1;
-					}
+					// for(auto y : x->friends) {
+					// 	y->enabled = 1;
+					// }
 				}
 				
 			}
@@ -3782,10 +3794,10 @@ public:
 		}
 
 		int prog = 0;
-		if(abs(dest->y - getOriginY() ) < 150) {
+		if(abs(dest->y - getOriginY() ) < 64) {
 			prog ++;
 		}
-		if(abs(dest->x - getOriginX()) < 150) {
+		if(abs(dest->x - getOriginX()) < 55) {
 			prog ++;
 		}
 
@@ -3817,6 +3829,7 @@ public:
 				
 				g_navNodes[i]->costFromSource = numeric_limits<float>::max();
 			}
+			
 			current->costFromSource = 0;
 			int overflow = 500;
 			
@@ -3827,29 +3840,71 @@ public:
 						
 				navNode* u;
 				float min_dist = numeric_limits<float>::max();
+				bool setU = false;
+
+				
+				
 				for (int i = 0; i < bag.size(); i++) { 	
 					
 					// !!! the second condition was added early december 2021
 					// it it could cause problems
-					if(bag[i]->costFromSource < min_dist){
+					if(bag[i]->costFromSource < min_dist && bag[i]->enabled){
 						u = bag[i];
 						min_dist = u->costFromSource;
+						setU = true;
 					}
 				}
+
+				// if(!setU) {
+				// 	for(auto x : current->friends) {
+				// 		if(x->enabled && LineTrace(this->getOriginX(), this->getOriginY(), x->x, x->y)) {
+				// 			u = x;
+				// 			setU = 1;
+				// 			break;
+				// 		}
+						
+				// 	}
+				// 	if(!setU){
+				// 		for(auto x : current->friends){
+				// 			for(auto y : x->friends) {
+				// 				if(y->enabled && LineTrace(this->getOriginX(), this->getOriginY(), y->x, y->y)){
+				// 					u = y;
+				// 					setU = 1;
+				// 					break;
+				// 				}
+				// 			}
+				// 		}
+				// 	}
+				// }
+
+				if(!setU){
+					//could issue an error msg
+					break;
+				}
+
 				//u is closest node in bag
 				bag.erase(remove(bag.begin(), bag.end(), u), bag.end());
 				for (int i = 0; i < u->friends.size(); i++) {
+					if(u->enabled) {
 						
-					float alt = u->costFromSource + u->costs[i];
-					if(alt < u->friends[i]->costFromSource && (u->friends[i]->z + 64 >= u->z)) {
-						u->friends[i]->costFromSource = alt;
-						u->friends[i]->prev = u;
+						float alt = u->costFromSource + u->costs[i];
+						if(alt < u->friends[i]->costFromSource && (u->friends[i]->z + 64 >= u->z)) {
+							if(u->friends[i]->enabled) {
+								u->friends[i]->costFromSource = alt;
+								u->friends[i]->prev = u;
+							} else {
+								u->friends[i]->prev = nullptr;
+							}
+						}
+					} else {
+						u->prev = nullptr;
 					}
 				}
 				
 			}
 			path.clear();
 			int secondoverflow = 350;
+			
 			while(targetNode != nullptr) {
 				secondoverflow--;
 				if(secondoverflow < 0) { M("prevented a PF crash."); break;} //preventing this crash results in pathfinding problems
@@ -3861,6 +3916,15 @@ public:
 				}
 				targetNode = targetNode->prev;
 			}
+
+			for(auto x : path) {
+				if(!x->enabled){
+					M("TRYING TO USE DISABLED NODE");
+					current = getNodeByPosition(getOriginX(), getOriginY());
+					dest = current;
+				}
+			}
+
 			
 			dest = path.at(path.size() - 1);
 			//M("Finished Dikjstra");

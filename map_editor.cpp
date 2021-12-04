@@ -899,7 +899,7 @@ void write_map(entity* mapent) {
                 int colo = 0;
                 if(g_navNodes[i]->z + g_navNodes[i]->friends[j]->z > 0) {colo =255;}
                 //dont draw disabled nodes. pretty janky
-                if(g_navNodes[i]->enabled || g_navNodes[i]->friends[j]->enabled) {
+                if(g_navNodes[i]->enabled && g_navNodes[i]->friends[j]->enabled) {
                     SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
                     SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
                 }
@@ -1235,7 +1235,7 @@ void write_map(entity* mapent) {
                         float gwt = max(g_navNodes[i]->z, g_navNodes[j]->z);
                         gwt /= 64;
 
-                        if(Distance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 280 && ( LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt) ) && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40)) {
+                        if(XYDistance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 280 && ( LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt) ) && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40)) {
                             
                             //dont add a friend we already have
                             bool flag = 1;
@@ -2995,9 +2995,21 @@ void write_map(entity* mapent) {
                 if(word == "navnode") {
                     navNode* n = new navNode(px + marker->width/2, py + marker->height/2, 0);
                 }
+
+                //remove a single navnode
+                if(word == "peck"){
+                    rect mrect = {marker->x, marker->y, marker->width, marker->height};
+                    for(auto x : g_navNodes){
+                        rect nzrect = {x->x - 10, x->y - 10, 20,20};
+                        if(RectOverlap(mrect, nzrect)) {
+                            delete x;
+                            break;
+                        }
+                    }
+                }
                 
                 if(word == "navlink") {
-                    //delete nodes too close to walls
+                //delete nodes too close to walls
                 int checkinglayer = 0;
                 float cullingdiameter = mapeditorNavNodeTraceRadius;
                 for (int i = 0; i < g_navNodes.size(); i++) {
@@ -4252,10 +4264,20 @@ public:
                     banishMe->zaccel = zaccel;
                     banishMe->banished = 1;
                     if(banishMe->overlappedNodes.empty()) {
+                        auto r = banishMe->getMovedBounds();
+                        D(r.x);
+                        D(r.y);
+                        D(r.width);
+                        D(r.height);
+                        D(banishMe->name);
+                        D(banishMe->bounds.width);
+                        D(banishMe->bounds.height);
                         for(auto x : g_navNodes) {
                             // !!! this also isn't 3d-safe
-                            rect nodespot = {x->x - 100, x->y -100, 200, 200};
-                            if(RectOverlap(banishMe->getMovedBounds(), nodespot)) {
+                            rect nodespot = {x->x - 32, x->y -22, 64, 45};
+                            D(nodespot.x);
+                            D(nodespot.y);
+                            if(RectOverlap(r, nodespot)) {
                                 banishMe->overlappedNodes.push_back(x);
                                 //M("node enabled!");
                                 //x->enabled = 1;
@@ -4271,9 +4293,11 @@ public:
                     for(auto x : banishMe->overlappedNodes) {
                         M("Node disabled!");
                         x->enabled = 0;
-                        for(auto y : x->friends) {
-                            y->enabled = 0;
-                        }
+                        x->prev = nullptr;
+                        // for(auto y : x->friends) {
+                        //     y->enabled = 0;
+                        //     y->prev = nullptr;
+                        // }
                     }
                 }
             }
