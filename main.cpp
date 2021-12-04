@@ -374,8 +374,10 @@ int main(int argc, char ** argv) {
 				storedJump = 1;
 			}
 		}
+		
 		//if we die don't worry about not being able to switch because we can't shoot yet
 		if(protag->hp <= 0) {playSound(4, g_s_playerdeath, 0); protag->cooldown = 0;}
+
 		//cycle right if the current character dies
 		if( (input[9] && !oldinput[9]) || protag->hp <= 0) {
 			//keep switching if we switch to a dead partymember
@@ -794,11 +796,14 @@ int main(int argc, char ** argv) {
 		//did the protag die?
 		if(protag->hp <= 0 && protag->essential) {
 			playSound(-1, g_deathsound, 0);
-			clear_map(g_camera);
-			SDL_Delay(5000);
-			load_map(renderer, "maps/sp-death/sp-death.map","a");
+			
+			if(!canSwitchOffDevMode) {
+				clear_map(g_camera);
+				SDL_Delay(5000);
+				load_map(renderer, "maps/sp-death/sp-death.map","a");
+			}
 			protag->hp = 0.1;
-			if(canSwitchOffDevMode) { init_map_writing(renderer);}
+			//if(canSwitchOffDevMode) { init_map_writing(renderer);}
 		}
 
 		//late november 2021 - projectiles are now updated after entities are - that way
@@ -1002,12 +1007,12 @@ int interact(float elapsed, entity* protag) {
 			}
 
 			srect = transformRect(srect);
-			if(drawhitboxes) {
-				SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
-				SDL_RenderFillRect(renderer, &srect);
-				SDL_RenderPresent(renderer);	
-				SDL_Delay(500);
-			}
+			// if(drawhitboxes) {
+			// 	SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+			// 	SDL_RenderFillRect(renderer, &srect);
+			// 	SDL_RenderPresent(renderer);	
+			// 	SDL_Delay(500);
+			// }
 			break;
 		case 2:
 			srect.h = protag->bounds.height;
@@ -1024,12 +1029,12 @@ int interact(float elapsed, entity* protag) {
 			}
 
 			srect = transformRect(srect);
-			if(drawhitboxes) {
-				SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
-				SDL_RenderFillRect(renderer, &srect);
-				SDL_RenderPresent(renderer);	
-				SDL_Delay(500);
-			}
+			// if(drawhitboxes) {
+			// 	SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+			// 	SDL_RenderFillRect(renderer, &srect);
+			// 	SDL_RenderPresent(renderer);	
+			// 	SDL_Delay(500);
+			// }
 			break;
 		case 3:
 			srect.h = protag->bounds.height;
@@ -1063,12 +1068,12 @@ int interact(float elapsed, entity* protag) {
 			srect.y += 55;
 
 			srect = transformRect(srect);
-			if(drawhitboxes) {
-				SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
-				SDL_RenderFillRect(renderer, &srect);
-				SDL_RenderPresent(renderer);	
-				SDL_Delay(500);
-			}
+			// if(drawhitboxes) {
+			// 	SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+			// 	SDL_RenderFillRect(renderer, &srect);
+			// 	SDL_RenderPresent(renderer);	
+			// 	SDL_Delay(500);
+			// }
 			break;
 		}
 

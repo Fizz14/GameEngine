@@ -992,6 +992,13 @@ public:
 	int numshots = 1;
 	SDL_Texture* texture;
 
+	bool melee = 0; //melee attacks are special in that the entity will try to go directly to their target, but might attack
+					//before they reach them, depending on their range
+					//if this distinction didn't exist, melee enemies would stutter while chasing their targets, because
+					//as soon as they get in range they will stop.
+
+	bool snake = 0; //can bullets travel through walls
+
 	float xoffset = 5;
 
 	bool assetsharer = 0;
@@ -1018,7 +1025,11 @@ public:
 		return 0;
 	}
 
-	attack(string filename) {
+	//new param to attack()
+	//entities that are deleted on map closure
+	//can try to share attack graphics
+	//but not entities that could possibly join the party
+	attack(string filename, bool tryToShareTextures) {
 		M("attack()");
 		this->name = filename;
 		ifstream file;
@@ -1050,13 +1061,18 @@ public:
 		file >> spritename;
 		string temp = "textures/sprites/" + spritename + ".png";
 
-		for(auto x : g_attacks){
-			if(x->spritename == this->spritename || genericmode) {
-				this->texture = x->texture;
-				assetsharer = 1;
-				
+		//only try to share textures if this isnt an entity
+		//that can ever be part of the party
+		if(tryToShareTextures) {
+			for(auto x : g_attacks){
+				if(x->spritename == this->spritename) {
+					this->texture = x->texture;
+					assetsharer = 1;
+					
+				}
 			}
 		}
+
 		file >> framewidth;
 		file >> frameheight;
 		if(!assetsharer) {
@@ -1105,7 +1121,9 @@ public:
 		randomspread *= M_PI;
 		file >> this->numshots;
 		file >> this->range;
-		
+		this->melee = 0;
+		file >> this->melee; //should we just barrel towards the target no matter what
+		file >> this->snake;
 
 		g_attacks.push_back(this);
 	}
@@ -1130,7 +1148,9 @@ public:
 	weapon() {}
 
 	//add constructor and field on entity object
-	weapon(string fname) {
+	//second param should be 0 for entities
+	//that could join the party and 1 otherwise
+	weapon(string fname, bool tryToShareGraphics) {
 		name = fname;
 
 		ifstream file;
@@ -1143,7 +1163,7 @@ public:
 		while(getline(file, line)) {
 			if(line == "&") { break; }
 			field = line.substr(0, line.find(' '));
-			attack* a = new attack(line);
+			attack* a = new attack(line, tryToShareGraphics);
 			//a->faction = faction;
 			attacks.push_back(a);
 		}
@@ -1299,11 +1319,13 @@ public:
 		
 		rect bounds = {x, y, width, height};
 		layer = max(z /64, 0.0f);
-		for(auto n : g_boxs[layer]) {
-			if(RectOverlap(bounds, n->bounds)) {
-				playSound(0, g_bulletdestroySound, 0);
-				lifetime = 0;
-				return;
+		if(!gun->snake) {
+			for(auto n : g_boxs[layer]) {
+				if(RectOverlap(bounds, n->bounds)) {
+					playSound(0, g_bulletdestroySound, 0);
+					lifetime = 0;
+					return;
+				}
 			}
 		}
 
@@ -1815,7 +1837,7 @@ public:
 	weapon* hisweapon;
 	bool canFight = 1;
 	bool invincible = 0;
-	float invincibleMS = 0; //ms before setting invincible to 0
+	//float invincibleMS = 0; //ms before setting invincible to 0
 	bool agrod = 0; //are they fighting a target?
 	entity* target = nullptr; //who are they fighting?
 	int targetFaction = -10; //what faction are they fighting at the moment? If agrod and they lose their target, they will pick a random visible target having this faction
@@ -1850,7 +1872,7 @@ public:
 	navNode* current = nullptr;
 	vector<navNode*> path;
 	// !!! was 800 try to turn this down some hehe
-	float dijkstraSpeed = 800; //how many updates to wait between calling dijkstra's algorithm
+	float dijkstraSpeed = 300; //how many updates to wait between calling dijkstra's algorithm
 	float timeSinceLastDijkstra = -1;
 	bool pathfinding = 0;
 	float maxDistanceFromHome = 1400;
@@ -2031,6 +2053,9 @@ public:
 		hp = maxhp;
 
 		file >> comment;
+		file >> invincible;
+
+		file >> comment;
 		file >> cost;
 
 		file >> comment;
@@ -2039,8 +2064,8 @@ public:
 
 		if(canFight) {
 			//check if someone else already made the attack
-			bool cached = 0;	
-			hisweapon = new weapon(weaponName);
+			bool cached = 0;
+			hisweapon = new weapon(weaponName, this->faction != 0);
 		}
 
 		file.close();
@@ -2296,6 +2321,9 @@ public:
 		file >> comment;
 		file >> maxhp;
 		hp = maxhp;
+
+		file >> comment;
+		file >> invincible;
 
 		file >> comment;
 		file >> cost;
@@ -3176,25 +3204,15 @@ public:
 			SDL_SetTextureAlphaMod(this->texture, 127); 
 			//if we are solid, disable nodes beneath
 			if(this->canBeSolid) {
-				M("Lets see if we should disable any nodes");
-				// !!! renovate this when we have done something smarter with how nodes are searchen
-				for(auto x : g_navNodes) {
-					// !!! this also isn't 3d-safe
-					D(this->getMovedBounds().x);
-					D(this->getMovedBounds().y);
-					D(this->getMovedBounds().width);
-					D(this->getMovedBounds().height);
-					rect nodespot = {x->x - 10, x->y -10, 20, 20};
-					D(nodespot.x);
-					D(nodespot.y);
-					D(nodespot.width);
-					D(nodespot.height);
-					if(RectOverlap(this->getMovedBounds(), nodespot)) {
-						overlappedNodes.push_back(x);
-						M("node disabled!");
-						x->enabled = 0;
+
+				for(auto x : overlappedNodes) {
+					M("cached node enabled!");
+					x->enabled = 1;
+					for(auto y : x->friends) {
+						y->enabled = 1;
 					}
 				}
+				
 			}
 			return nullptr;
 		}
@@ -3413,7 +3431,7 @@ public:
 						xvector = -xvel;
 						yvector = -yvel;
 						//if he's not traveling very fast it looks natural to not change angle
-						if(Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.9) {recalcAngle = 1;}
+						if(Distance(0,0,xvel, yvel) > 10) {recalcAngle = 1;}
 					}
 					
 					if(recalcAngle) {
@@ -3659,9 +3677,15 @@ public:
 					if(this->hisweapon->attacks[hisweapon->combo]->name == "approach" && hisweapon->attacks.size() > hisweapon->combo) {
 						this->hisweapon->attacks[hisweapon->combo]->range = this->hisweapon->attacks[hisweapon->combo + 1]->range;
 					}
-					
-					vector<int> ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
-					
+
+					//!!! some easy optimization can be done here
+					vector<int> ret;
+					if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
+						ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
+					} else {
+						ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
+					}
+
 					if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY()) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
 						//M("There's a good position, keeping my distance");
 						//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
@@ -3787,7 +3811,10 @@ public:
 			navNode* targetNode = ultimateTargetNode;
 			vector<navNode*> bag;
 			for (int i = 0; i < g_navNodes.size(); i++) {
+				
 				bag.push_back(g_navNodes[i]);
+				
+				
 				g_navNodes[i]->costFromSource = numeric_limits<float>::max();
 			}
 			current->costFromSource = 0;
@@ -3802,7 +3829,8 @@ public:
 				float min_dist = numeric_limits<float>::max();
 				for (int i = 0; i < bag.size(); i++) { 	
 					
-					
+					// !!! the second condition was added early december 2021
+					// it it could cause problems
 					if(bag[i]->costFromSource < min_dist){
 						u = bag[i];
 						min_dist = u->costFromSource;
@@ -3813,19 +3841,21 @@ public:
 				for (int i = 0; i < u->friends.size(); i++) {
 						
 					float alt = u->costFromSource + u->costs[i];
-					if(alt < u->friends[i]->costFromSource && (u->friends[i]->z + 64 >= u->z) && u->friends[i]->enabled) {
+					if(alt < u->friends[i]->costFromSource && (u->friends[i]->z + 64 >= u->z)) {
 						u->friends[i]->costFromSource = alt;
 						u->friends[i]->prev = u;
 					}
 				}
+				
 			}
 			path.clear();
 			int secondoverflow = 350;
 			while(targetNode != nullptr) {
 				secondoverflow--;
 				if(secondoverflow < 0) { M("prevented a PF crash."); break;} //preventing this crash results in pathfinding problems
-						
+				
 				path.push_back(targetNode);
+				
 				if(targetNode == current) {
 					break;
 				}

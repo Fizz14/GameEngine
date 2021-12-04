@@ -379,7 +379,6 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         box->children.push_back(child);
                     }
                     //corner c
-                    D(box->shadeBot);
                     if(box->shadeLeft && box->shadeBot){
                         child = new mapObject(renderer, "textures/lighting/x-OCCLUSION.png", "&", box->bounds.x - (38 - 19), box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
                         box->children.push_back(child);
@@ -900,7 +899,7 @@ void write_map(entity* mapent) {
                 int colo = 0;
                 if(g_navNodes[i]->z + g_navNodes[i]->friends[j]->z > 0) {colo =255;}
                 //dont draw disabled nodes. pretty janky
-                if(g_navNodes[i]->enabled) {
+                if(g_navNodes[i]->enabled || g_navNodes[i]->friends[j]->enabled) {
                     SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
                     SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
                 }
@@ -1236,7 +1235,7 @@ void write_map(entity* mapent) {
                         float gwt = max(g_navNodes[i]->z, g_navNodes[j]->z);
                         gwt /= 64;
 
-                        if(Distance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 300 && ( LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt) ) && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40)) {
+                        if(Distance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 280 && ( LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt) ) && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40)) {
                             
                             //dont add a friend we already have
                             bool flag = 1;
@@ -4252,7 +4251,17 @@ public:
                 if(banished) {
                     banishMe->zaccel = zaccel;
                     banishMe->banished = 1;
-                    
+                    if(banishMe->overlappedNodes.empty()) {
+                        for(auto x : g_navNodes) {
+                            // !!! this also isn't 3d-safe
+                            rect nodespot = {x->x - 100, x->y -100, 200, 200};
+                            if(RectOverlap(banishMe->getMovedBounds(), nodespot)) {
+                                banishMe->overlappedNodes.push_back(x);
+                                //M("node enabled!");
+                                //x->enabled = 1;
+                            }
+                        }
+                    }
                     
                 } else {
                     banishMe->banished = 0;
@@ -4260,8 +4269,11 @@ public:
                     SDL_SetTextureAlphaMod(banishMe->texture, 255);
                     // this means that there will be problems if doors overlap- at the moment, that seems absurd
                     for(auto x : banishMe->overlappedNodes) {
-                        M("Node enabled!");
-                        x->enabled = 1;
+                        M("Node disabled!");
+                        x->enabled = 0;
+                        for(auto y : x->friends) {
+                            y->enabled = 0;
+                        }
                     }
                 }
             }
