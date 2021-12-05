@@ -4340,11 +4340,36 @@ public:
             return;
         }
         
-        //play sound
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/sound") {
+        //play sound at an entity
+        // /sound heavy-door-open doora
+        // /sound croak protag
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entclang") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 10);
+            vector<string> split = splitString(s, ' ');
+            string soundName = split[0];
+            string entName = split[1];
+            entity* hopeful = 0;
+            hopeful = searchEntities(entName);
+            D(entName);
+            D(soundName);
+            if(hopeful != nullptr){
+                M("ready to play a sound");
+                //play a sound at the entity
+                playSoundByName(soundName, hopeful->getOriginX(), hopeful->getOriginY());
+            } else {
+                //entity was not found, so lets not play a sound
+            }
+            
+
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
+        }
+
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/clang") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 7);
-            
             playSoundByName(s);
 
             talker->dialogue_index++;

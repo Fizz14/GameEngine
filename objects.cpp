@@ -3197,7 +3197,8 @@ public:
 			zaccel -= g_gravity * ((double) elapsed / 256.0);
 			grounded = 0;
 		} else {
-			if(grounded == 0) {
+			// !!! maybe revisit this to let "character" entities have fallsounds
+			if(grounded == 0 && this == protag) {
 				//play landing sound
 				playSound(-1, g_land, 0);
 			}
@@ -4682,6 +4683,32 @@ public:
 	}
 };
 
+//play a sound by name at a position
+void playSoundByName(string fname, float xpos, float ypos) {
+	Mix_Chunk* sound = 0;
+	for (auto s : g_cueSounds) {
+		if (s->name == fname) {
+			sound = s->blip;
+			break;
+		}
+	}
+	if(sound == NULL) {
+		E("Soundcue " + fname + " not found in level." + " Not critical.");
+	}
+
+	//!!! this could be better if it used the camera's position
+	float dist = XYWorldDistance(g_focus->getOriginX(), g_focus->getOriginY(), xpos, ypos);
+	const float maxDistance = 1200; //a few screens away
+	float cur_volume = (maxDistance - dist)/maxDistance * 128;
+	if(cur_volume < 0) {cur_volume = 0;}
+	M(cur_volume);
+	Mix_VolumeChunk(sound, cur_volume);
+	if(!g_mute && sound != NULL) {
+		Mix_PlayChannel(0, sound,0);
+	}
+}
+
+//play a sound given a string of its name. just make sure there's a cue with the same name
 void playSoundByName(string fname) {
 	Mix_Chunk* sound = 0;
 	for (auto s : g_cueSounds) {
@@ -4693,6 +4720,7 @@ void playSoundByName(string fname) {
 	if(sound == NULL) {
 		E("Soundcue " + fname + " not found in level." + " Not critical.");
 	}
+
 	if(!g_mute && sound != NULL) {
 		Mix_PlayChannel(0, sound,0);
 	}
