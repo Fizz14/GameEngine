@@ -657,6 +657,7 @@ int main(int argc, char ** argv) {
 		
 		//ui
 		if(!inPauseMenu && g_showHUD) {
+			// !!! segfaults on mapload sometimes
 			adventureUIManager->healthText->updateText( to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), WIN_WIDTH * g_minifontsize, 0.9); 
 			adventureUIManager->healthText->show = 1;
 			
