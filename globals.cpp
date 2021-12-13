@@ -160,8 +160,9 @@ bool freecamera = 0;
 bool devMode = 0;
 bool canSwitchOffDevMode = 0;
 bool inputRefreshCanSwitchOffDevMode = 0;
-bool showDevMessages = 1;
-bool showErrorMessages = 1;
+bool showDevMessages = 0;
+bool showErrorMessages = 0;
+bool showImportantMessages = 1;
 
 //quick debug info
 #define D(a) if(devMode && showDevMessages) {std::cout << #a << ": " << (a) << endl;}
@@ -173,6 +174,9 @@ void M(T msg, bool disableNewline = 0) { if(!devMode || !showDevMessages) {retur
 template<typename T>
 void E(T msg, bool disableNewline = 0) { if(!devMode || !showErrorMessages) {return;} cout << "ERROR: " << msg; if(!disableNewline) { cout << endl; } }
 
+//Particularly important stuff, like loadtimes
+template<typename T>
+void I(T msg, bool disableNewline = 0) { if(!showImportantMessages) {return;} cout << "I: " << msg; if(!disableNewline) { cout << endl; } }
 
 
 //for visuals
@@ -188,17 +192,29 @@ float XtoY = 0.866;
 float g_ratio = 1.618;
 bool transition = 0;
 int g_walldarkness = 55; //65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
-
+bool g_unlit = 0; //set to 1 if the user has the lowest graphical setting, to disable lighting in maps for performance. Don't eh, don't dev like this
+int g_graphicsquality = 3; // 0 is least, 4 is max
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 
+//for having items bounce
+float g_itemsinea = 0;
+float g_itemsineb = 0;
+float g_itemsinec = 0;
 
-// !!! a recent performancecheckup has lead me to believe
-// these are not trivial. for bigger maps, 11, 4 are good values
-// but triangular walls look rather rough
-int g_platformResolution = 11; // 5, 11 //what size step to use for the tops of platforms. must be a factor of 55 I need this to be 11 for most players
+float g_elapsed_accumulator = 0;
+
+// I've always bounced around thinking these matter and turning them down
+// or deciding that they don't matter and pumping them up
+// Here's what I know atm: the first value should be left at 11 prettymuch always
+// 2 is okay - g_TiltResolution actually doesn't affect loading
+// but it will effect CPU usage, particularly when the triangles are onscreen
+// 2 or 4 for large maps, seems okay 1 is more detail than I think anyone needs.
+int g_platformResolution = 11; // a factor of 55. 11 is fine.
 float g_TiltResolution = 4; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
 bool g_protagHasBeenDrawnThisFrame = 0;
+bool g_loadingATM = 0; //are we loading a new map atm?
 SDL_Texture* g_shadowTexture;
+SDL_Texture* g_shadowTextureAlternate;
 int g_flashtime = 300; //ms to flash red after taking damage
 float g_cameraShove = 150; //factor of the screen to move the camera when shooting.
 float g_cameraAimingOffsetX = 0;
@@ -209,7 +225,7 @@ float g_cameraAimingOffsetLerpScale = 0.91;
 
 //text
 string g_font;
-float g_fontsize = 0.031;
+float g_fontsize = 0.031; // 0.021 - 0.04
 float g_minifontsize = 0.01;
 float g_transitionSpeed = 3; //3, 9
 
@@ -380,8 +396,6 @@ Mix_Chunk* g_menu_manip_sound;
 Mix_Chunk* g_land;
 Mix_Chunk* g_footstep_a;
 Mix_Chunk* g_footstep_b;
-Mix_Chunk* g_spin_sound;
-
 
 Mix_Chunk* g_deathsound;
 musicNode* closestMusicNode;
@@ -394,6 +408,9 @@ Mix_Chunk* g_playerdamage;
 Mix_Chunk* g_enemydamage;
 Mix_Chunk* g_npcdamage;
 Mix_Chunk* g_s_playerdeath;
+
+std::map<string, Mix_Chunk> g_static_sounds = {};
+
 
 //ui
 bool protag_can_move = true;

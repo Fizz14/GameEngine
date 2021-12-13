@@ -149,7 +149,9 @@ public:
 			x->friends.erase(remove(x->friends.begin(), x->friends.end(), this), x->friends.end());
 		}
 		//M("got here");
-		if(count(g_navNodes.begin(), g_navNodes.end(), this)) {
+		//changed if to while to try and solve a bug
+		// !!! it's a crutch, find a way to remove it later
+		while(count(g_navNodes.begin(), g_navNodes.end(), this)) {
 			g_navNodes.erase(remove(g_navNodes.begin(), g_navNodes.end(), this), g_navNodes.end());
 		}
 	}
@@ -264,6 +266,8 @@ public:
 		SDL_RenderFillRect(renderer, &rect);
 	}
 };
+
+bool LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer);
 
 class mapCollision {
 public:
@@ -651,40 +655,7 @@ public:
 	}
 };
 
-//returns true if there was no hit
-bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0) {
-	float resolution = 10;
-	
-	if(display) {
-		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-	}
-	for (float i = 1; i < resolution; i++) {
-		int xsize = size * p_ratio;
-		int xpos = (i/resolution) * x1 + (1 - i/resolution) * x2;
-		int ypos = (i/resolution) * y1 + (1 - i/resolution) * y2;
-		rect a = rect(xpos - xsize/2, ypos - size/2, xsize, size);
-		SDL_Rect b = {((xpos- xsize/2) - g_camera.x) * g_camera.zoom, ((ypos- size/2) - g_camera.y) * g_camera.zoom, xsize, size};
 
-		if(display) {
-			SDL_RenderDrawRect(renderer, &b);
-		}	
-		
-		
-		for (int j = 0; j < g_boxs[layer].size(); j++) {
-			if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
-				lineTraceX = a.x + a.width/2;
-				lineTraceY = a.y + a.height/2;
-				return false;
-			}
-		}
-	}
-	if(display) {
-		SDL_RenderPresent(renderer);
-		SDL_RenderClear(renderer);
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	}
-	return true;
-}
 
 //cast a ray from the sky at a xy position and returns a z position of an intersection with a block
 //have fun adding ramps *now* ;)
@@ -1071,7 +1042,7 @@ public:
 		}
 
 		file >> spritename;
-		string temp = "textures/sprites/" + spritename + ".png";
+		string temp = "textures/sprites/" + spritename + ".bmp";
 
 		//only try to share textures if this isnt an entity
 		//that can ever be part of the party
@@ -1090,11 +1061,8 @@ public:
 		if(!assetsharer) {
 
 			SDL_Surface* image;
-			if(genericmode) {
-				image = IMG_Load("textures/sprites/genericmode/shot.png");
-			} else {
-				image = IMG_Load(temp.c_str());
-			}
+			image = IMG_Load(temp.c_str());
+			
 			texture = SDL_CreateTextureFromSurface(renderer, image);
 			SDL_FreeSurface(image);
 		}
@@ -1183,6 +1151,7 @@ public:
 		file.close();
 		g_weapons.push_back(this);
 	}
+
 	~weapon() {
 		for(auto x: attacks) {
 			delete x;
@@ -1203,8 +1172,8 @@ public:
 	float zeight = 0;
 	float sortingOffset = 0;
 	SDL_Texture* texture;
-	rect bounds;
-	string name;
+	rect bounds = {0, 0, 10, 10};
+	string name = "unnamed";
 
 	bool tangible = 1;
 
@@ -1252,6 +1221,8 @@ public:
 	SDL_Texture* texture = g_shadowTexture;
 	int xoffset = 0;
 	int yoffset = 0;
+	int alphamod = 255;
+	bool enabled = 1;
 
 	cshadow(SDL_Renderer * renderer, float fsize) {
 		size = fsize;
@@ -1525,12 +1496,6 @@ public:
 			//why is the texture height multiplied by 4? It just has to be a positive number, so multiples of the frameheight
 			//are added in because of the two negative terms
 			this->yoffset = (int)(4 * this->frameheight - this->height - (z * XtoZ)) % this->frameheight;
-			
-			//this->yoffset = this->frameheight - this->height;
-			//this->yoffset = fmod(((this->y + this->height - (z * XtoZ)) + extrayoffset) , (this->frameheight));
-			// if(imageadress == "textures/diffuse/mapeditor/c.png") {
-			// 	this->yoffset = 40;
-			// }
 		}
 		
 		g_mapObjects.push_back(this);
@@ -1695,28 +1660,22 @@ public:
 
 		//search worlditems for an item with the same texture
 		string lstr;
-		if(genericmode) {
-			if(rand() % 2 == 1) {
-				lstr = "textures/sprites/genericmode/broccali.png";
-			} else {
-				lstr = "textures/sprites/genericmode/onion.png";
-			}
+
+		//is there a special sprite for how it appears in the inv?
+		//if not, just use the standard one
+		if(fileExists("textures/sprites/items/" + fname + "-inv.bmp")) {
+			lstr = "textures/sprites/items/" + fname + "-inv.bmp";
 		} else {
-			//is there a special sprite for how it appears in the inv?
-			//if not, just use the standard one
-			if(fileExists("textures/sprites/items/" + fname + "-inv.png")) {
-				lstr = "textures/sprites/items/" + fname + "-inv.png";
+			if(fileExists("textures/sprites/items/" + fname + ".bmp")) {
+				lstr = "textures/sprites/items/" + fname + ".bmp";
+				
 			} else {
-				if(fileExists("textures/sprites/items/" + fname + ".png")) {
-					lstr = "textures/sprites/items/" + fname + ".png";
-					
-				} else {
-					//failsafe - load an image we know we have
-					lstr = "textures/sprites/genericmode/onion.png";
-				}
+				//failsafe - load an image we know we have
+				lstr = "textures/sprites/fomm.bmp";
 			}
-			
 		}
+		
+		
 		bool storeThis = true;
 		for(auto x : g_indexItems) {
 			//M(x->name);
@@ -1797,12 +1756,15 @@ public:
 	//animation
 	bool animate = false; //does the squash/stretch animation for walking, talking... everything really
 	float animtime = 0; //time since having started animating
-	float animspeed;
-	float animlimit; // the extent to the animation. 0.5 means halfway
-	float curwidth;
-	float curheight;
+	float animspeed = 0;
+	float animlimit = 0.5; // the extent to the animation. 0.5 means halfway
+	float curwidth = 0;
+	float curheight = 0;
 	bool turnToFacePlayer = true; //face player when talking
 	SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
+	
+	float floatheight = 0; //how far up to float, worlditems use this to bounce
+	int bounceindex = 0;
 
 	int frame = 0; //current frame on SPRITESHEET
 	int msPerFrame = 0; //how long to wait between frames of animation, 0 being infinite time (no frame animation)
@@ -1818,7 +1780,7 @@ public:
 	int xframes = 1; //number of frames ACROSS the spritesheet
 	int yframes = 1; //number of frames DOWN the spritesheet
 	vector<coord> framespots;
-	bool up, down, left, right; //for chusing one of 8 animations for facing
+	bool up = 0;bool down = 0; bool left = 0; bool right = 0; //for chusing one of 8 animations for facing
 	bool hadInput = 0; //had input this frame;
 	int shooting = 0; //1 if character is shooting
 
@@ -1828,11 +1790,12 @@ public:
 	bool talks = false;
 	bool wallcap = false; //used for wallcaps
 	cshadow * shadow = 0;
+	bool rectangularshadow = 0;
 	
 	//for textured entities (e.g. wallcap)
 	float xoffset = 0;
 	float yoffset = 64;
-	bool wall; //to darken entwalls
+	bool wall = 0; //to darken entwalls
 	//float sortingOffset = 0; //to make entites float in the air, or sort as if they are higher or lower than they are first use was for building diagonal walls
 	float extraYOffset = 0; //used to encode a permanent y axis offset, for diagonal walls
 	//0 - slant left, 1 - slant right, 2 - pillar
@@ -1846,7 +1809,7 @@ public:
 	//todo: make this a vector so enemies can have multiple attacks
 	//enemies can have a passive to use all of their attacks at once
 	//enemies can see which attack has the highest dps against the player by experimenting, and then use that against the player
-	weapon* hisweapon;
+	weapon* hisweapon = 0;
 	bool canFight = 1;
 	bool invincible = 0;
 	//float invincibleMS = 0; //ms before setting invincible to 0
@@ -1884,17 +1847,18 @@ public:
 	navNode* current = nullptr;
 	vector<navNode*> path;
 	// !!! was 800 try to turn this down some hehe
-	float dijkstraSpeed = 300; //how many updates to wait between calling dijkstra's algorithm
+	float dijkstraSpeed = 100; //how many updates to wait between calling dijkstra's algorithm
 	float timeSinceLastDijkstra = -1;
 	bool pathfinding = 0;
 	float maxDistanceFromHome = 1400;
 	float range = 3;
 	int stuckTime = 0; //time since ai is trying to go somewhere but isn't moving
-	int maxStuckTime = 10; //time waited before resolving stuckness
+	int maxStuckTime = 8; //time waited before resolving stuckness
 	float lastx = 0;
 	float lasty = 0;
 
 	int semisolid = 0; //push away close entities
+	int storedSemisolidValue = 0; //semisolid has to be stored for ents that start as not solid but can later have values of 1 or 2
 
 	//inventory
 	//std::map<indexItem*, int> inventory = {};
@@ -1903,10 +1867,17 @@ public:
 	//worlditem
 	bool isWorlditem = 0;
 
+	//used for setting the nararator
+	bool persistentHidden = 0;
+
 	//misc scripting stuff
 	bool banished = 0;
 	bool solid = 0;
-	bool canBeSolid = 0; //if the entity starts out as solid
+	bool canBeSolid = 0; //if the entity starts out as solid, which may be toggled
+	bool semisolidwaittoenable = 0; //ignore collision with entities spawned at the player at first if not spawned during map loading
+									// e.g. wards
+	bool createdAfterMapLoad = 0; //stalker-enemies shouldn't be blocked by semisolid items created by the player
+	bool navblock = 0; //disable overlapping navnodes when loaded into the level
 	vector<navNode*> overlappedNodes; //a collection of navnodes that the entity overlaps. doors can disable the ones they overlap
 	//when an entity is banished by a script, it will jump into the air and become intangible when its z velocity hits 0
 
@@ -1949,12 +1920,9 @@ public:
 		file >> temp;
 		string spritefilevar;
 		
-		if(!using_default) {
-			spritefilevar = temp; 
-		} else {
-			spritefilevar = "textures/sprites/" + filename + ".png";
-			M(spritefilevar );
-		}
+		
+		spritefilevar = "textures/sprites/" + temp + ".bmp";
+		
 		
 		const char* spritefile = spritefilevar.c_str();
 		float size;
@@ -2017,18 +1985,13 @@ public:
 		file >> comment;
 		file >> this->framewidth;
 		file >> this->frameheight;
-		this->shadow->width = framewidth * fsize;
-		this->shadow->height = framewidth * fsize * (1/p_ratio);
+		this->shadow->width = this->bounds.width * fsize;
+		this->shadow->height = this->bounds.height * fsize;
+		
 
 		//bigger shadows have bigger sortingoffsets
 		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
 		sortingOffset += 8;
-		file >> comment;
-		bool setboxfromshadow = 0;
-		file >> setboxfromshadow;
-		
-
-		
 
 		file >> comment;
 		file >> this->dynamic;
@@ -2036,16 +1999,29 @@ public:
 		
 		file >> comment;
 		file >> solidifyHim;
-		if(solidifyHim) {
-			this->solidify();
-			this->canBeSolid = 1;
-		}
-		
-		file >> comment;
-		file >> semisolid;
 
 		file >> comment;
-		file >> this->talks;
+		file >> semisolid;
+		if(!g_loadingATM) {
+			if(semisolid) {
+				storedSemisolidValue = semisolid;
+				semisolidwaittoenable = 1; //disabled semi
+				semisolid = 0;
+			}
+		}
+
+		file >> comment;
+		file >> navblock;
+		if(solidifyHim) {
+			this->solidify();
+			this->canBeSolid = 1;        
+		}
+		
+
+
+		file >> comment;
+		file >> this->rectangularshadow;
+		if(rectangularshadow) {shadow->texture = g_shadowTextureAlternate;} 
 
 		file >> comment;
 		file >> this->faction;
@@ -2083,7 +2059,7 @@ public:
 		file.close();
 		
 		//load dialogue file
-		if(talks) {
+		if(1) {
 			string txtfilename = "";
 			//open from local folder first
 			D("maps/" + g_mapdir + "/" + filename + ".txt");
@@ -2111,7 +2087,7 @@ public:
 
 		//has another entity already loaded this texture
 		for (auto x : g_entities) {
-			if(x->name == this->name) {
+			if(x->name == this->name && !x->isWorlditem) {
 				texture = x->texture;
 				this->asset_sharer = 1;
 			}
@@ -2121,10 +2097,6 @@ public:
 			texture = SDL_CreateTextureFromSurface(renderer, image);
 			SDL_FreeSurface(image);
 		}
-		// if(genericmode) {
-		// 	SDL_FreeSurface(image);
-		// 	image = IMG_Load("textures/sprites/genericmode/generic.png");
-		// }
 		
 		
 		this->width = size * framewidth;
@@ -2135,18 +2107,10 @@ public:
 		shadow->yoffset += height - shadow->height/2;
 		
 		
-		
 
-		if(setboxfromshadow) {
-			this->bounds.width = this->shadow->width;
-			this->bounds.height = this->shadow->height;
-			this->bounds.x = this->shadow->xoffset;
-			this->bounds.y = this->shadow->yoffset;
-			
-		} else {
-			this->bounds.x += width/2 - bounds.width/2;
-			this->bounds.y += height - bounds.height/2;
-		}
+		this->bounds.x += width/2 - bounds.width/2;
+		this->bounds.y += height - bounds.height/2;
+		
 
 		shadow->width += g_extraShadowSize;
 		shadow->height += g_extraShadowSize * XtoY;
@@ -2160,13 +2124,6 @@ public:
 		int w, h;
 		SDL_QueryTexture(texture, NULL, NULL, &w, &h);
 
-		if(using_default) {
-			
-			this->width = w * sizeForDefaults;
-			this->height = h * sizeForDefaults;
-			this->shadow->width = 0;
-		}
-
 		//make entities pop in unless this is a mapload
 		if(!transition) {
 			curwidth = 0;
@@ -2176,12 +2133,7 @@ public:
 			curheight = height;
 		}
 
-		if(genericmode) {
-			//make one frame of the whole image;
-			framewidth = 512;
-			frameheight = 395;
-		} 
-		if(!using_default) {
+		if(1) {
 			xframes = w / framewidth;
 			yframes = h / frameheight;
 		
@@ -2196,6 +2148,10 @@ public:
 				}
 			}
 		}
+
+		//disabled nodes underneath if we are set to (e.g. doors)
+
+		
 		
 		
 		g_entities.push_back(this);
@@ -2225,7 +2181,7 @@ public:
 		string spritefilevar;
 		
 
-		spritefilevar = "textures/sprites/items/" + texturename + ".png";
+		spritefilevar = "textures/sprites/items/" + texturename + ".bmp";
 		SDL_Surface* image = IMG_Load(spritefilevar.c_str());
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		M(spritefilevar );
@@ -2247,6 +2203,7 @@ public:
 		
 		file >> comment;
 		file >> this->friction;
+
 		file >> comment;
 		float twidth, theight, tzeight;
 		file >> twidth;
@@ -2262,10 +2219,14 @@ public:
 		file >> this->bounds.y;
 
 		file >> comment;
+		file >> this->sortingOffset;
+
+		file >> comment;
 		float fsize;
 		file >> fsize;
+
 		shadow = new cshadow(renderer, fsize);
-		
+		if(rectangularshadow) {shadow->texture = g_shadowTextureAlternate;} 
 		
 		this->shadow->owner = this;
 
@@ -2294,11 +2255,6 @@ public:
 		//bigger shadows have bigger sortingoffsets
 		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
 		sortingOffset = 8;
-		file >> comment;
-		bool setboxfromshadow = 0;
-		file >> setboxfromshadow;
-		
-
 		
 
 		file >> comment;
@@ -2315,10 +2271,14 @@ public:
 		file >> semisolid;
 
 		file >> comment;
-		file >> this->talks;
+		file >> navblock;
+
+		file >> comment;
+		file >> this->rectangularshadow;
 
 		file >> comment;
 		file >> this->faction;
+
 		if(faction != 0) {
 			canFight = 1;
 		}
@@ -2332,6 +2292,7 @@ public:
 
 		file >> comment;
 		file >> maxhp;
+
 		hp = maxhp;
 
 		file >> comment;
@@ -2351,18 +2312,9 @@ public:
 		shadow->yoffset += height - shadow->height/2;
 		
 		
-		
+		this->bounds.x += width/2 - bounds.width/2;
+		this->bounds.y += height - bounds.height/2;
 
-		if(setboxfromshadow) {
-			this->bounds.width = this->shadow->width;
-			this->bounds.height = this->shadow->height;
-			this->bounds.x = this->shadow->xoffset;
-			this->bounds.y = this->shadow->yoffset;
-			
-		} else {
-			this->bounds.x += width/2 - bounds.width/2;
-			this->bounds.y += height - bounds.height/2;
-		}
 
 		shadow->width += g_extraShadowSize;
 		shadow->height += g_extraShadowSize * XtoY;
@@ -2375,22 +2327,16 @@ public:
 		int w, h;
 		SDL_QueryTexture(texture, NULL, NULL, &w, &h);
 
-		//if(genericmode) {
-			//make one frame of the whole image;
-			xframes = 1;
-			yframes = 1;
-			frame = 0;
-			framewidth = w;
-			frameheight = h;
-			coord a;
-			a.x = 0;
-			a.y = 0;
-			framespots.push_back(a);
-		//} else {
-			
-	    //}
-		D(this->shadow->yoffset);
-		D(this->shadow->size);
+		xframes = 1;
+		yframes = 1;
+		frame = 0;
+		framewidth = w;
+		frameheight = h;
+		coord a;
+		a.x = 0;
+		a.y = 0;
+		framespots.push_back(a);
+	
 		SDL_FreeSurface(image);
 		g_entities.push_back(this);
 	}
@@ -2410,6 +2356,10 @@ public:
 		
 		if(this == g_talker) {
 			g_forceEndDialogue = 1;
+		}
+
+		if(solid) {
+			g_solid_entities.erase(remove(g_solid_entities.begin(), g_solid_entities.end(), this), g_solid_entities.end());
 		}
 
 		g_entities.erase(remove(g_entities.begin(), g_entities.end(), this), g_entities.end());
@@ -2450,9 +2400,8 @@ public:
 			
 
 		SDL_FPoint nowt = {0, 0};
-
-
-		rect obj(((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , (((y - ((curheight * (XtoY) + (height * (1-XtoY)))) - z * XtoZ) - fcamera.y) * fcamera.zoom), (curwidth * fcamera.zoom), (curheight * fcamera.zoom));		
+		
+		rect obj(((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , (((y - ((curheight * (XtoY) + (height * (1-XtoY)))) - (z + floatheight) * XtoZ) - fcamera.y) * fcamera.zoom), (curwidth * fcamera.zoom), (curheight * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
@@ -2695,7 +2644,6 @@ public:
 		}
 		
 		
-		if(!dynamic && this != protag) { return nullptr; }
 		//should we animate?
 		if( (xaccel != 0 || yaccel != 0) || !grounded ) {
 			animate = 1;
@@ -2711,8 +2659,17 @@ public:
 				frameInAnimation = 0;
 			}
 		}
+
+		//should we enabled semisolidness? (for entities spawned after map-load far from protag)
+		if(semisolidwaittoenable) {
+			if(!CylinderOverlap(this->getMovedBounds(), protag->getMovedBounds())) {
+				this->semisolid = storedSemisolidValue;
+				this->semisolidwaittoenable = 0;
+			}
+		}
 		
-		
+		if(!dynamic) { return nullptr; }
+
 
 		//normalize accel vector
 		float vectorlen = pow( pow(xaccel, 2) + pow(yaccel, 2), 0.5) / (xmaxspeed);
@@ -2987,7 +2944,7 @@ public:
 			bool breakflag = 0;
 
 			for (int i = g_tiles.size() - 1; i >= 0; i--) {
-				if(g_tiles[i]->fileaddress == "textures/marker.png") {continue; }
+				if(g_tiles[i]->fileaddress == "textures/marker.bmp") {continue; }
 				tilerect = rect(g_tiles[i]->x, g_tiles[i]->y, g_tiles[i]->width, g_tiles[i]->height);
 				
 				if(RectOverlap(tilerect, movedbounds)) {
@@ -3245,13 +3202,16 @@ public:
 		//update combat
 		if(isWorlditem) {return nullptr;}
 
+		
 		hisweapon->comboResetMS+=elapsed;
+
 		if(shooting) {
 			//spawn shot.
 			shoot();
 		}
 
-		if(!invincible) {
+		//check for everyone, even if they are invincible
+		if(1) {
 			//check for projectile box
 			vector<projectile*> projectilesToDelete;
 			for(auto x : g_projectiles) {
@@ -3262,20 +3222,26 @@ public:
 				thisMovedBounds.z = this->z;
 				thisMovedBounds.zeight = this->bounds.zeight;
 				if(x->owner->faction != this->faction && RectOverlap3d(thatMovedBounds, thisMovedBounds)) {
-					//take damage
-					this->hp -= x->gun->damage;
-					this->flashingMS = g_flashtime;
-					if(this->faction != 0) {
-						playSound(1, g_enemydamage, 0);
-					} else {
-						if(this == protag) {
-							playSound(2, g_playerdamage, 0);
+
+					//destroy projectile
+					projectilesToDelete.push_back(x);
+
+					if(!invincible) {
+						//take damage
+						this->hp -= x->gun->damage;
+						this->flashingMS = g_flashtime;
+						if(this->faction != 0) {
+							playSound(1, g_enemydamage, 0);
 						} else {
-							playSound(3, g_npcdamage, 0);
+							if(this == protag) {
+								playSound(2, g_playerdamage, 0);
+							} else {
+								playSound(3, g_npcdamage, 0);
+							}
 						}
 					}
-					//destroy projectile
-					projectilesToDelete.push_back(x);		
+
+					if(this->weaponName == "unarmed") {break;}	
 
 					//under certain conditions, agro the entity hit and set his target to the shooter
 					if(target == nullptr) {
@@ -3355,16 +3321,24 @@ public:
 			return nullptr;
 		}
 
+
+
 		//push him away from close entities
 		//if we're even slightly stuck, don't bother
-		if(stuckTime < 20 && this->dynamic) {
+		if(stuckTime < 2 && this->dynamic) {
 			
 			for(auto x : g_entities) {
 				if(this == x) {continue;} 
 				bool m = CylinderOverlap(this->getMovedBounds(), x->getMovedBounds());
 				
-				
-				if(x->semisolid && x->tangible && m) {					
+				//entities with a semisolid value of 2 are only solid to the player
+				bool solidfits = 0;
+				if(this == protag) {
+					solidfits = x->semisolid;
+				} else {
+					solidfits = (x->semisolid == 1);
+				}
+				if(solidfits && x->tangible && m) {		
 					//push this one slightly away from x
 					float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
 					float mag =  30000/r;
@@ -3516,7 +3490,8 @@ public:
 					}
 				}
 			}
-		} else {
+		} else if(dynamic) {
+			
 			//code for becoming agrod when seeing a hostile entity will go here
 			//face the direction we are moving
 			bool recalcAngle = 0; //should we change his angle in the first place?
@@ -3695,28 +3670,30 @@ public:
 					vector<int> ret;
 					if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
 						ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
+						Destination = getNodeByPosition(ret[0], ret[1]);
 					} else {
 						ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
-					}
-
-					if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY()) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
-						//M("There's a good position, keeping my distance");
-						//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
 						
-						Destination = getNodeByPosition(ret[0], ret[1]);
-					
-					} else {
-						//Can't get our full range, so use the values in LineTraceX and LineTraceY
-						extern int lineTraceX, lineTraceY;
-						//Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
-						Destination = getNodeByPosition(lineTraceX, lineTraceY);
-					
+
+						if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
+							//M("There's a good position, keeping my distance");
+							//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
+							
+							Destination = getNodeByPosition(ret[0], ret[1]);
+						
+						} else {
+							//Can't get our full range, so use the values in LineTraceX and LineTraceY
+							extern int lineTraceX, lineTraceY;
+							//Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
+							Destination = getNodeByPosition(lineTraceX, lineTraceY);
+						
+						}
 					}
 				}
 			}
 			
 			//detect stuckness- if we're stuck, try heading to a random nearby node for a moment
-			if(abs(lastx - x) < 0.1 && abs(lasty - y) < 0.1) {
+			if(abs(lastx - x) < 0.2 && abs(lasty - y) < 0.2) {
 				stuckTime++;
 			} else {
 				stuckTime = 0;
@@ -3995,11 +3972,22 @@ entity* searchEntities(string fname) {
 		return protag;
 	}
 	for(auto n : g_entities) {
-		if(n->name == fname) {
+		if(n->name == fname && n->tangible) {
 			return n;
 		}
 	}
 	return nullptr;
+}
+
+//return list of tangible entities with the name
+vector<entity*> gatherEntities(string fname) {
+	vector<entity*> ret = {};
+	for(auto n : g_entities) {
+		if(n->name == fname && n->tangible) {
+			ret.push_back(n);
+		}
+	}
+	return ret;
 }
 
 
@@ -4242,6 +4230,32 @@ void entity::shoot() {
 
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 	if(!owner->tangible) {return;}
+
+	//update alpha
+	if(enabled && alphamod != 255) {
+		alphamod+=elapsed;
+		if(alphamod > 255) {
+			alphamod = 255;
+		}
+	} else {
+		if(!enabled && alphamod != 0) {
+			alphamod -=elapsed;
+			if(alphamod < 0) {
+				alphamod = 0;
+			}
+		}
+	}
+	//dont clog up other textures forever
+	if(alphamod == 0) {return;}
+
+	Uint8 whydoihavetodothis = 255;
+	SDL_GetTextureAlphaMod(this->texture, &whydoihavetodothis);
+	
+	if(whydoihavetodothis != alphamod) {
+		//update texture with proper alphamod
+		SDL_SetTextureAlphaMod(this->texture, alphamod);
+	}
+
 	SDL_FRect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (width * size), (height * size)* (637 /640) * 0.9};
 	//SDL_Rect dstrect = {500, 500, 200, 200 };
 	//dstrect.y += (owner->height -(height/2)) * fcamera.zoom;
@@ -4260,8 +4274,48 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 	if(RectOverlap(obj, cam)) {
 		SDL_RenderCopyF(renderer, texture, NULL, &dstrect);	
 	}
+}
 
+//returns true if there was no hit
+bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0) {
+	float resolution = 10;
+	
+	if(display) {
+		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+	}
+	for (float i = 1; i < resolution; i++) {
+		int xsize = size * p_ratio;
+		int xpos = (i/resolution) * x1 + (1 - i/resolution) * x2;
+		int ypos = (i/resolution) * y1 + (1 - i/resolution) * y2;
+		rect a = rect(xpos - xsize/2, ypos - size/2, xsize, size);
+		SDL_Rect b = {((xpos- xsize/2) - g_camera.x) * g_camera.zoom, ((ypos- size/2) - g_camera.y) * g_camera.zoom, xsize, size};
 
+		if(display) {
+			SDL_RenderDrawRect(renderer, &b);
+		}	
+		
+		
+		for (int j = 0; j < g_boxs[layer].size(); j++) {
+			if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
+				lineTraceX = a.x + a.width/2;
+				lineTraceY = a.y + a.height/2;
+				return false;
+			}
+		}
+		for(auto x : g_solid_entities) {
+			if(RectOverlap(a, x->getMovedBounds())) {
+				lineTraceX = a.x + a.width/2;
+				lineTraceY = a.y + a.height/2;
+				return false;
+			}
+		}
+	}
+	if(display) {
+		SDL_RenderPresent(renderer);
+		SDL_RenderClear(renderer);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	}
+	return true;
 }
 
 class textbox {
@@ -4648,7 +4702,7 @@ public:
 
 	musicNode(string fileaddress, int fx, int fy) {
 		name = fileaddress;
-		fileaddress = "audio/music/" + fileaddress + ".wav";
+		fileaddress = "audio/music/" + fileaddress + ".ogg";
 		blip = Mix_LoadMUS(fileaddress.c_str());
 		x = fx;
 		y = fy;
@@ -4694,6 +4748,7 @@ void playSoundByName(string fname, float xpos, float ypos) {
 	}
 	if(sound == NULL) {
 		E("Soundcue " + fname + " not found in level." + " Not critical.");
+		return;
 	}
 
 	//!!! this could be better if it used the camera's position
@@ -4884,7 +4939,7 @@ void clear_map(camera& cameraToReset) {
 		transitionMinFrametime = 1/mframes * 1000;
 		
 		
-		SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.png");
+		SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.bmp");
 
 		int imageWidth = transitionSurface->w;
 		int imageHeight = transitionSurface->h;
@@ -4973,16 +5028,22 @@ void clear_map(camera& cameraToReset) {
 
 
 	//copy protag to a pointer, clear the array, and re-add protag
-	entity* hold_protag;
-	entity* hold_narra;
+	entity* hold_narra = nullptr;
 	//D(protag->inParty);
 	for(int i=0; i< size; i++) {
 		if(g_entities[0]->inParty) {
 			//remove from array without deleting
 			g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
-		} else if (g_entities[0]->name == "sp-narrarator") {
-			hold_narra = g_entities[0];
-			g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
+		} else if (g_entities[0]->persistentHidden) {
+			//do nothing because nar is handled differently now
+			if(hold_narra == nullptr) {
+				hold_narra = g_entities[0];
+				g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
+				g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
+
+			} else {
+				throw("critical error");
+			}
 		} else {
 			
 			delete g_entities[0];
@@ -5154,12 +5215,18 @@ void clear_map(camera& cameraToReset) {
 //an item in the world, bouncing around to be picked up
 class worldItem : public entity {
 public:
+	
+	//to make items bounce, store an int from 0 to 2
+	//sine will be done every frame three times
+	//and every item's z will be modified based on the 
+	// height of the sine corresponding to their index
+	
 
 	//make an entity from the file worlditem.ent
 	worldItem(string fname, bool fisKeyItem) : entity(renderer, 5, fname) {
 		isWorlditem = 1;
-		name = fname;
-
+		name = "ITEM-" + fname;
+		bounceindex = rand() % 3;
 		g_worldItems.push_back(this);
 		
 	}

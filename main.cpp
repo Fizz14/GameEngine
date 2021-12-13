@@ -74,17 +74,27 @@ int main(int argc, char ** argv) {
 	SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
+	//entities will be made here so have them set as created during loadingtime and not arbitrarily during play
+	g_loadingATM = 1;
+
 	//set global shadow-texture
 
-	SDL_Surface* image = IMG_Load("textures/sprites/shadow.png");
+	//!!! move these to the engine folder
+	SDL_Surface* image = IMG_Load("textures/engine/shadow.bmp");
 	g_shadowTexture = SDL_CreateTextureFromSurface(renderer, image);
+	SDL_FreeSurface(image);
+	image = IMG_Load("textures/engine/shadow-square.bmp");
+	g_shadowTextureAlternate = SDL_CreateTextureFromSurface(renderer, image);
 	SDL_FreeSurface(image);
 
 	//narrarator holds scripts caused by things like triggers
 	entity* narrarator;
+	// !!! reduce first launch overhead by 
+	// making the narrarator use a sprite with 1 pixel
 	narrarator = new entity(renderer, "fomm");
 	narrarator->tangible =0;
-	narrarator->name = "sp-narrarator";
+	narrarator->persistentHidden = 1;
+	//narrarator->name = "sp-narrarator";
 
 	entity* fomm;
 	if(devMode) {
@@ -118,7 +128,7 @@ int main(int argc, char ** argv) {
 	protagHealthbarC->shrinkPixels = 1;
 
 	//for transition
-	SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.png");
+	SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.bmp");
 
 	int transitionImageWidth = transitionSurface->w;
 	int transitionImageHeight = transitionSurface->h;
@@ -132,11 +142,6 @@ int main(int argc, char ** argv) {
 	float transitionDelta = transitionImageHeight;
 
 	//font
-	//g_font = (genericmode) ? "fonts/OpenSans-Regular.ttf" : "fonts/ShortStack-Regular.ttf";
-	//g_font = "fonts/SecularOne-Regular.ttf";
-	//g_font = "fonts/Itim-Regular.ttf";
-	//g_font = "fonts/SawarabiMincho-Regular.ttf";
-	//g_font = "fonts/Recursive_Monospace-SemiBold.ttf";
 	g_font = "fonts/Monda-Bold.ttf";
 
 	//setup UI
@@ -147,7 +152,7 @@ int main(int argc, char ** argv) {
 		//done once, because textboxes aren't cleared during clear_map()
 		nodeInfoText = new textbox(renderer, "", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
 		config = "edit";
-		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("textures/engine/walker.png"));
+		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("textures/engine/walker.bmp"));
 		
 	}
 	//set bindings from file
@@ -194,6 +199,54 @@ int main(int argc, char ** argv) {
 	value = stof(valuestr);
 	g_sfx_volume = value;
 
+	//get standard textsize
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '),  line.length());
+	value = stof(valuestr);
+	g_fontsize = value;
+
+	//get mini textsize
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '),  line.length());
+	value = stof(valuestr);
+	g_minifontsize = value;
+
+	//transitionspeed
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '),  line.length());
+	value = stof(valuestr);
+	g_transitionSpeed = value;
+
+	//mapdetail
+	// 0 -   - ultra low - no lighting, crappy settings for g_tilt_resolution
+	// 1 -   - 
+	// 2 -
+	getline(bindfile, line);
+	valuestr = line.substr(line.find(' '),  line.length());
+	value = stof(valuestr);
+	g_graphicsquality = value;
+
+	switch (g_graphicsquality) {
+	case 0:
+		g_TiltResolution = 16;
+		g_platformResolution = 55;
+		g_unlit = 1;
+		break;
+	
+	case 1:
+		g_TiltResolution = 4;
+		g_platformResolution = 11;
+		break;
+	case 2:
+		g_TiltResolution = 2;
+		g_platformResolution = 11;
+		break;
+	case 3:
+		g_TiltResolution = 1;
+		g_platformResolution = 11;
+		break;
+
+	}
 
 	bindfile.close();
 	
@@ -241,20 +294,32 @@ int main(int argc, char ** argv) {
 	g_menu_close_sound = Mix_LoadWAV("audio/sounds/close-menu.wav");
 	g_ui_voice = Mix_LoadWAV("audio/sounds/voice-normal.wav");
 	g_menu_manip_sound = Mix_LoadWAV("audio/sounds/manip-menu.wav");
-	g_spin_sound = Mix_LoadWAV("audio/sounds/push.wav");
+
+	
+	//scripts can play sounds completely randomly - e.g. crate gives a random item 
+	//this might not be the best way to do it, but it seems fine now
+	// std::ifstream infile("staticresources.txt");
+	// string soundname = "";
+	// while(infile >> soundname) {
+	// 	string loadme = "audio/sounds/" + soundname;
+	// 	Mix_Chunk* a = Mix_LoadWAV(loadme.c_str());
+	// 	static
+
+	// }
 
 
 
 
 	srand(time(NULL));
 	if(devMode) {
+		g_transitionSpeed = 10000;
 		//!!!
 		loadSave();
 		//empty map or default map for map editing, perhaps a tutorial even
-		load_map(renderer, "maps/editordefault/editordefault.map","a");
+		load_map(renderer, "maps/sp-title/editordefault.map","a");
 		g_map = "g";
-		// protag->x = 100000;
-		// protag->y = 100000;
+		protag->x = 100000;
+		protag->y = 100000;
 		
 		
 	} else {
@@ -512,6 +577,7 @@ int main(int argc, char ** argv) {
 		WIN_WIDTH /= scalex;
 		WIN_HEIGHT /= scaley;
 		if(devMode) {
+			
 			g_camera.width = WIN_WIDTH / (scalex * g_zoom_mod * 0.2); //the 0.2 is arbitrary. it just makes sure we don't end the camera before the screen
 			g_camera.height = WIN_HEIGHT / (scalex * g_zoom_mod * 0.2); 
 		} else {
@@ -725,13 +791,14 @@ int main(int argc, char ** argv) {
 				if(it->second > 1) {
 					inventoryText->show = 1;
 					inventoryText->updateText( to_string(it->second), 35, 100);
-					inventoryText->boxX = (x + itemWidth ) / WIN_WIDTH;
-					inventoryText->boxY = (y + itemWidth - inventoryText->boxHeight/2 ) / WIN_HEIGHT;
+					inventoryText->boxX = (x + (itemWidth * 0.8) ) / WIN_WIDTH;
+					inventoryText->boxY = (y + (itemWidth - inventoryText->boxHeight/2) * 0.6 ) / WIN_HEIGHT;
 					inventoryText->worldspace = 1;
 					inventoryText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
 				} else {
 					inventoryText->show = 0;
 				}
+
 
 				if(i == inventorySelection) {
 					//this item should have the marker
@@ -739,8 +806,12 @@ int main(int argc, char ** argv) {
 					inventoryMarker->x = x / WIN_WIDTH;
 					inventoryMarker->y = y / WIN_HEIGHT;
 					inventoryMarker->width = itemWidth / WIN_WIDTH;
+					
+					float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+					inventoryMarker->x -= biggen;
+					inventoryMarker->y -= biggen * ((float)WIN_WIDTH/(float)WIN_HEIGHT);
+					inventoryMarker->width += biggen * 2;
 					inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH/(float)WIN_HEIGHT);
-					inventoryMarker->render(renderer, g_camera);
 				}
 
 				x += itemWidth + padding;
@@ -755,16 +826,48 @@ int main(int argc, char ** argv) {
 				i++;
 			}
 			g_itemsInInventory = mainProtag->inventory.size();
+
+			if(mainProtag->inventory.size() > 0 && mainProtag->inventory.size()- 1 -inventorySelection < mainProtag->inventory.size()) {
+			    string description = mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->script[0];
+				//first line is a comment so take off the //
+				description = description.substr(2);
+			    adventureUIManager->escText->updateText( description, WIN_WIDTH *g_fontsize, 0.9);
+            } else {
+				adventureUIManager->escText->updateText("", WIN_WIDTH * g_fontsize, 0.9);
+			}
+			
 		} else {
 			inventoryMarker->show = 0;
 			inventoryText->show = 0;
 		}
 
+		//sines for item bouncing
+		g_elapsed_accumulator += elapsed;
+		g_itemsinea = sin(g_elapsed_accumulator / 300) * 10 + 30;
+		g_itemsineb = sin((g_elapsed_accumulator - 1400) / 300) * 10 + 30;
+		g_itemsinec = sin((g_elapsed_accumulator + 925) / 300) * 10 + 30;
+
+		if(g_elapsed_accumulator > 1800) {
+			g_elapsed_accumulator -= 1800;
+		}
+		
+
 		// ENTITY MOVEMENT
 		//dont update movement while transitioning
 		if(!transition) {
 			for(long long unsigned int i=0; i < g_entities.size(); i++){
-				
+				if(g_entities[i]->isWorlditem) {
+					//make it bounce
+					int index = g_entities[i]->bounceindex;
+					if(index == 0) {
+						g_entities[i]->floatheight = g_itemsinea;
+					} else if (index == 1) {
+						g_entities[i]->floatheight = g_itemsineb;
+					} else {
+						g_entities[i]->floatheight = g_itemsinec;
+					} 
+					
+				}
 				door* taken = g_entities[i]->update(g_doors, elapsed);
 				//added the !transition because if a player went into a map with a door located in the same place
 				//as they are in the old map (before going to the waypoint) they would instantly take that door
@@ -964,6 +1067,7 @@ int main(int argc, char ** argv) {
 	SDL_DestroyTexture(transitionTexture);
 	SDL_DestroyTexture(background);
 	SDL_DestroyTexture(g_shadowTexture);
+	SDL_DestroyTexture(g_shadowTextureAlternate);
 	IMG_Quit();
 	Mix_CloseAudio();
 	TTF_Quit();
@@ -1091,20 +1195,21 @@ int interact(float elapsed, entity* protag) {
 					//if the item exists, dont make a new one
 					indexItem* a = nullptr;
 					for(auto x : g_indexItems) {
-						if(g_entities[i]->name == x->name) {
+						//substr because worlditems have the name "ITEM-" + whatever their file is called
+						if(g_entities[i]->name.substr(5) == x->name) {
 							a = x;
 						}
 					}
 					//no resource found, so lets just make one
 					if(a == nullptr) {
-						a = new indexItem(g_entities[i]->name, 0);
+						a = new indexItem(g_entities[i]->name.substr(5), 0);
 					}
 					
 					mainProtag->getItem(a, 1);
 					delete g_entities[i];
 					return 0;
 				}
-				if(g_entities[i]->talks && g_entities[i]->tangible &&g_entities[i]->sayings.size() > 0) {
+				if(g_entities[i]->tangible &&g_entities[i]->sayings.size() > 0) {
 					if(g_entities[i]->animlimit != 0) {
 						g_entities[i]->animate = 1;
 					}
@@ -1403,6 +1508,7 @@ void getInput(float &elapsed) {
 			if(inPauseMenu) {
 				playSound(-1, g_menu_close_sound, 0);
 				inPauseMenu = 0;
+				elapsed = 16;
 				adventureUIManager->hideInventoryUI();
 			
 			} else {

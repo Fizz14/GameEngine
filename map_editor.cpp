@@ -42,9 +42,9 @@ float mapeditorNavNodeTraceRadius = 100;  //for choosing the radius of the trace
 vector<string> consolehistory;
 int consolehistoryindex = 0;
 
-string captex = "textures/diffuse/mapeditor/a.png"; 
-string walltex = "textures/diffuse/mapeditor/c.png"; 
-string floortex = "textures/diffuse/mapeditor/b.png"; 
+string captex = "textures/diffuse/mapeditor/cap.bmp"; 
+string walltex = "textures/diffuse/mapeditor/wall.bmp"; 
+string floortex = "textures/diffuse/mapeditor/floor.bmp"; 
 string masktex = "&";
 //vector of strings to be filled with each texture in the user's texture directory, for easier selection 
 vector<string> texstrs;
@@ -133,6 +133,7 @@ void populateMapWithEntities() {
 void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) {
     debugClock = clock();
     mapname = filename;
+    g_loadingATM = 1;
 
     //parse name from fileaddress
     int posOfFirstSlash = mapname.find("/");
@@ -185,7 +186,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "bg" && g_useBackgrounds) {
             iss >> s0 >> backgroundstr;
-            SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".png").c_str());
+            SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".bmp").c_str());
 	        background = SDL_CreateTextureFromSurface(renderer, bs);
             g_backgroundLoaded = 1;
             SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
@@ -211,6 +212,19 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             if(p4 == 1) {
                 e->flip = SDL_FLIP_HORIZONTAL;
                 
+            }
+
+            //if an entity has been set to navblock, disable overlapping nodes now that the position has been set
+            if(e->navblock) {
+                auto r = e->getMovedBounds();
+                for(auto x : g_navNodes) {
+                    // !!! this also isn't 3d-safe
+                    rect nodespot = {x->x - 32, x->y -22, 64, 45};
+                    if(RectOverlap(r, nodespot)) {
+                        e->overlappedNodes.push_back(x);
+                        x->enabled = 0;
+                    }
+                }
             }
         }
         if(word == "item") {
@@ -379,12 +393,12 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         box->children.push_back(child);
                     }
                     //corner c
-                    if(box->shadeLeft && box->shadeBot){
+                    if(box->shadeLeft && (box->shadeBot == 1)){
                         child = new mapObject(renderer, "textures/lighting/x-OCCLUSION.png", "&", box->bounds.x - (38 - 19), box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
                         box->children.push_back(child);
                     }
                     //corner d
-                    if(box->shadeRight && box->shadeBot) {
+                    if(box->shadeRight && (box->shadeBot == 1)) {
                         child = new mapObject(renderer, "textures/lighting/x-OCCLUSION.png", "&", box->bounds.x + box->bounds.width, box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
                         box->children.push_back(child);
                     }
@@ -399,7 +413,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     int step = g_platformResolution;
                     if(triangle->capped) {
                         for (int i = 0; i < 55; i+=step) {
-                            child = new mapObject(renderer, triangle->captexture, "textures/engine/a.png", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                            child = new mapObject(renderer, triangle->captexture, "textures/engine/a.bmp", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                             triangle->children.push_back(child);
                         }
                         //diagonal shine
@@ -437,7 +451,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         int step = g_platformResolution;
                         if(triangle->capped) {
                             for (int i = 0; i < 55; i+=step) {
-                                child = new mapObject(renderer, triangle->captexture, "textures/engine/b.png", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                child = new mapObject(renderer, triangle->captexture, "textures/engine/b.bmp", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                 triangle->children.push_back(child);
                             }
                             step = g_TiltResolution;
@@ -473,7 +487,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                             if(triangle->capped) {
                                 int step = g_platformResolution;
                                 for (int i = 0; i < 55; i+=step) {
-                                    child = new mapObject(renderer, triangle->captexture, "textures/engine/c.png", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                    child = new mapObject(renderer, triangle->captexture, "textures/engine/c.bmp", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                     triangle->children.push_back(child);
                                 }
                                  step = g_TiltResolution;
@@ -482,14 +496,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                                     triangle->children.push_back(child);
                                 }
                             }
-                            //child = new mapObject(renderer, triangle->captexture, "textures/engine/c.png", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
+                            //child = new mapObject(renderer, triangle->captexture, "textures/engine/c.bmp", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
                             //triangle->children.push_back(child);
                         } else {
                             
                             if(triangle->capped) {
                                 int step = g_platformResolution;
                                 for (int i = 0; i < 55; i+=step) {
-                                    child = new mapObject(renderer, triangle->captexture, "textures/engine/d.png", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                    child = new mapObject(renderer, triangle->captexture, "textures/engine/d.bmp", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                     triangle->children.push_back(child);
                                 }
                                 step = g_TiltResolution;
@@ -566,7 +580,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
     sort_ui(g_ui);
 
     double LoadingTook = ( std::clock() - debugClock ) / (double) CLOCKS_PER_SEC;
-    M("Loading took " + to_string(LoadingTook) + "s");
+    I("Loading took " + to_string(LoadingTook) + "s");
 
     //map is loaded in, let's search for the proper waypoint
     for (int i = 0; i < g_waypoints.size(); i++) {
@@ -582,6 +596,8 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 	g_camera.y = ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom)));
 	g_camera.oldx = g_camera.x;
 	g_camera.oldy = g_camera.y;
+
+    g_loadingATM = 0;
 } 
 
 void changeTheme(string str) { 
@@ -592,7 +608,7 @@ void changeTheme(string str) {
     if(g_backgroundLoaded) {
         SDL_DestroyTexture(background);
     }
-    SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".png").c_str());
+    SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".bmp").c_str());
     background = SDL_CreateTextureFromSurface(renderer, bs);
     g_backgroundLoaded = 1;
     SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
@@ -619,13 +635,13 @@ void changeTheme(string str) {
     for(int i = 0; i < texstrs.size(); i++) {
         int pos = texstrs[i].find_last_of( '/');
         string filename = texstrs[i].substr(pos + 1);
-        if(filename == "floor.png") {
+        if(filename == "floor.bmp") {
             floortexIndex = i;
         }
-        if(filename == "wall.png") {
+        if(filename == "wall.bmp") {
             walltexIndex = i;
         }
-        if(filename == "cap.png") {
+        if(filename == "cap.bmp") {
             captexIndex = i;
         }
     }
@@ -654,7 +670,6 @@ bool mapeditor_save_map(string word) {
     
     std::filesystem::create_directories("maps/" + g_mapdir);
     word = "maps/" + g_mapdir  + "/" + word + ".map";
-    D(word);
     
     ofile.open(word);
 
@@ -691,20 +706,6 @@ bool mapeditor_save_map(string word) {
             ofile << "ramp " << n->x << " " << n->y << " " << i << " " << n->type << " " << n->walltexture << " " << n->captexture << endl;
         }
     }
-    for (long long unsigned int i = 0; i < g_entities.size(); i++) {
-        if(!g_entities[i]->inParty) {
-            if(g_entities[i]->isWorlditem) {
-                ofile << "item " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) << endl;
-            } else {
-                ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) <<  " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
-            }
-        }
-    }
-    
-    for (long long unsigned int i = 0; i < g_mapObjects.size(); i++) {    
-        //ofile << "mapObject " << g_mapObjects[i]->name << " " << g_mapObjects[i]->mask_fileaddress << " " << to_string(g_mapObjects[i]->x) << " " << to_string(g_mapObjects[i]->y) << " " << to_string(g_mapObjects[i]->z) << " " << to_string(g_mapObjects[i]->width) << " " << to_string(g_mapObjects[i]->height) <<  " " << g_mapObjects[i]->wall << " " << g_mapObjects[i]->extraYOffset << " "  << g_mapObjects[i]->sortingOffset << endl;
-    }
-
     for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
         //dont save map graphics
         if(g_tiles[i]->fileaddress.find("engine") != string::npos ) { continue; }
@@ -758,6 +759,19 @@ bool mapeditor_save_map(string word) {
         }
         ofile << endl;
     }
+
+    for (long long unsigned int i = 0; i < g_entities.size(); i++) {
+        if(!g_entities[i]->inParty && !g_entities[i]->persistentHidden) {
+            if(g_entities[i]->isWorlditem) {
+                ofile << "item " << g_entities[i]->name.substr(5) << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) << endl;
+            } else {
+                ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) <<  " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
+            }
+        }
+    }
+
+
+
     for (int i = 0; i < g_listeners.size(); i++) {
         ofile << "listener " << g_listeners[i]->entityName << " " << g_listeners[i]->block << " " << g_listeners[i]->condition << " " << g_listeners[i]->binding << " " << g_listeners[i]->x << " " << g_listeners[i]->y << endl;
     }
@@ -772,17 +786,17 @@ bool mapeditor_save_map(string word) {
 
 //called on init if map_editing is true
 void init_map_writing(SDL_Renderer* renderer) {
-    selection = new tile(renderer, "textures/engine/marker.png", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
-    marker = new tile(renderer, "textures/engine/marker.png", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
-    markerz = new tile(renderer, "textures/engine/marker.png", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
-    worldsoundIcon = new tile(renderer, "textures/engine/speaker.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    listenerIcon = new tile(renderer, "textures/engine/listener.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    navNodeIcon = new tile(renderer, "textures/engine/walker.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    musicIcon = new tile(renderer, "textures/engine/music.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    cueIcon = new tile(renderer, "textures/engine/cue.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    waypointIcon = new tile(renderer, "textures/engine/waypoint.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    doorIcon = new tile(renderer, "textures/engine/door.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    triggerIcon = new tile(renderer, "textures/engine/trigger.png", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    selection = new tile(renderer, "textures/engine/marker.bmp", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
+    marker = new tile(renderer, "textures/engine/marker.bmp", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
+    markerz = new tile(renderer, "textures/engine/marker.bmp", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
+    worldsoundIcon = new tile(renderer, "textures/engine/speaker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    listenerIcon = new tile(renderer, "textures/engine/listener.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    navNodeIcon = new tile(renderer, "textures/engine/walker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    musicIcon = new tile(renderer, "textures/engine/music.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    cueIcon = new tile(renderer, "textures/engine/cue.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    waypointIcon = new tile(renderer, "textures/engine/waypoint.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    doorIcon = new tile(renderer, "textures/engine/door.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    triggerIcon = new tile(renderer, "textures/engine/trigger.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
 
     selection->software = 1;
     marker->software = 1;
@@ -941,7 +955,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/trigger.png");
+        selection->image = IMG_Load("textures/engine/trigger.bmp");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
         selection->wraptexture = 0;
@@ -1036,7 +1050,7 @@ void write_map(entity* mapent) {
             lx = px;
             ly = py;
             makingbox = 1;
-            selection->image = IMG_Load("textures/engine/wall.png");
+            selection->image = IMG_Load("textures/engine/wall.bmp");
             selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
             SDL_FreeSurface(selection->image);
         }
@@ -1812,7 +1826,7 @@ void write_map(entity* mapent) {
                                 }
                                 if(TriRectOverlap(n, dneighbor.x, dneighbor.y, dneighbor.width, dneighbor.height)) {
                                     b->shineBot = false; 
-                                    b->shadeBot = 2; //new change
+                                    b->shadeBot = 0; //new change
                                 }
                                 
                             }
@@ -2810,9 +2824,9 @@ void write_map(entity* mapent) {
                         delete captexDisplay;
                         captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
                         
-                        captex = "textures/diffuse/mapeditor/a.png"; 
-                        walltex = "textures/diffuse/mapeditor/c.png"; 
-                        floortex = "textures/diffuse/mapeditor/b.png"; 
+                        captex = "textures/diffuse/mapeditor/a.bmp"; 
+                        walltex = "textures/diffuse/mapeditor/c.bmp"; 
+                        floortex = "textures/diffuse/mapeditor/b.bmp"; 
                         break;
                     }
                     if(word == "grid") {
@@ -3098,7 +3112,7 @@ void write_map(entity* mapent) {
         if(autoMakeWallcaps) {
             int step = g_platformResolution;
             for (int i = 0; i < 55; i+=step) {
-                mapObject* e = new mapObject(renderer, captex, "textures/engine/a.png", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                mapObject* e = new mapObject(renderer, captex, "textures/engine/a.bmp", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
                 n->children.push_back(e);
             }
             
@@ -3110,7 +3124,7 @@ void write_map(entity* mapent) {
         if(autoMakeWalls){
             //a tile on the floor to help with the edge of the diagonal wall pieces
             //this tile won't be saved, because it uses an engine mask
-            //tile* t = new tile(renderer, walltex.c_str(), "textures/engine/a.png", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
+            //tile* t = new tile(renderer, walltex.c_str(), "textures/engine/a.bmp", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
             for (int j = wallstart; j < wallheight; j+=vstep) {
                 for (int i = 0; i < 64; i+=step) {
                     mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (i * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, (i * XtoY));
@@ -3131,14 +3145,14 @@ void write_map(entity* mapent) {
         if(autoMakeWallcaps) {
             int step = g_platformResolution;
             for (int i = 0; i < 55; i+=step) {
-                mapObject* e = new mapObject(renderer, captex, "textures/engine/b.png", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                mapObject* e = new mapObject(renderer, captex, "textures/engine/b.bmp", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
                 n->children.push_back(e);
             }
             
         }
 
         //a tile on the floor to help with the edge of the diagonal wall pieces
-        //tile* t = new tile(renderer, walltex.c_str(), "textures/engine/b.png", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
+        //tile* t = new tile(renderer, walltex.c_str(), "textures/engine/b.bmp", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
 
         int step = 2;
         int vstep = 64;
@@ -3161,7 +3175,7 @@ void write_map(entity* mapent) {
         }
         int step = g_platformResolution;
         for (int i = 0; i < 55; i+=step) {
-            mapObject* child = new mapObject(renderer, n->captexture, "textures/engine/c.png", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+            mapObject* child = new mapObject(renderer, n->captexture, "textures/engine/c.bmp", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
             n->children.push_back(child);
         }
     }
@@ -3174,7 +3188,7 @@ void write_map(entity* mapent) {
         }
         int step = g_platformResolution;
         for (int i = 0; i < 55; i+=step) {
-            mapObject* child = new mapObject(renderer, n->captexture, "textures/engine/d.png", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+            mapObject* child = new mapObject(renderer, n->captexture, "textures/engine/d.bmp", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
             n->children.push_back(child);
         }
         
@@ -3359,6 +3373,8 @@ public:
 
     textbox* healthText = 0;
 
+    int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
+
 	void showTalkingUI() {
 		//M("showTalkingUI()");
         talkingBox->show = 1;
@@ -3426,7 +3442,7 @@ public:
         inventoryB->persistent = true;
         inventoryB->priority = -4;
 
-		healthText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
+		healthText = new textbox(renderer, "blem blem", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
 		healthText->boxWidth = 0.95;
 		healthText->width = 0.95;
 		healthText->boxHeight = 0.25;
@@ -3436,10 +3452,10 @@ public:
         healthText->show = 1;
         healthText->align = 2;
 
-        escText = new textbox(renderer, "Press escape to quit without saving", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
+        escText = new textbox(renderer, "", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
 
 		escText->boxX = 0.5;
-		escText->boxY = 0.8;
+		escText->boxY = 0.83;
         escText->boxWidth = 0.98;
         escText->boxHeight = 0.25 - 0.02;
 		escText->worldspace = 0;
@@ -3869,6 +3885,8 @@ public:
 			entity* e = new entity(renderer, name.c_str());
             e->x = xpos;
             e->y = ypos;
+            e->shadow->x = e->x + e->shadow->xoffset;
+            e->shadow->y = e->y + e->shadow->yoffset;
 
 			talker->dialogue_index++;
 			this->continueDialogue();
@@ -3876,12 +3894,17 @@ public:
 		}
 
 		//destroy entity
-		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/kill") {
+		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/destroy") {
 			string s = talker->sayings.at(talker->dialogue_index + 1);
 			//erase '&'
-			s.erase(0, 6);
+			s.erase(0, 9);
 			//s is the name of the entity to destroy
-			
+			if(talker->name == s){
+                talker->tangible = 0;
+                talker->dialogue_index++;
+                this->continueDialogue();
+                return;
+            }
 			for (long long unsigned int i = 0; i < g_entities.size(); i++) {
 				if(g_entities[i]->inParty) { continue; }
 				SDL_Rect b = {g_entities[i]->x, g_entities[i]->y - g_entities[i]->height, g_entities[i]->width, g_entities[i]->height};
@@ -3947,8 +3970,6 @@ public:
 			vector<string> x = splitString(s, ' ');
             string teleportMeSTR = x[0];
             string teleportToMeSTR = x[1];
-            D(teleportMeSTR);
-            D(teleportToMeSTR);
             entity* teleportMe = searchEntities(teleportMeSTR);
             entity* teleportToMe = searchEntities(teleportToMeSTR);
 			if(teleportMe != nullptr && teleportToMe != nullptr) {
@@ -3962,10 +3983,34 @@ public:
 			this->continueDialogue();
 			return;
 		}
+
+        //spawn entity at an entity
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entspawn") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 10);
+			vector<string> x = splitString(s, ' ');
+            string teleportMeSTR = x[0];
+            string teleportToMeSTR = x[1];
+            entity* teleportMe = new entity(renderer, teleportMeSTR.c_str());
+            entity* teleportToMe = searchEntities(teleportToMeSTR);
+			if(teleportMe != nullptr && teleportToMe != nullptr) {
+                teleportMe->setOriginX(teleportToMe->getOriginX());
+                teleportMe->setOriginY(teleportToMe->getOriginY());
+                teleportMe->xvel = 0;
+                teleportMe->yvel = 0;
+                teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
+                teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
+            }
+            
+			talker->dialogue_index++;
+			this->continueDialogue();
+			return;
+		}
        
 
         //change cameratarget
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/lookat") {
+        // /lookat ward 0 0
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/lookat ") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 8);
 			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
@@ -3976,6 +4021,7 @@ public:
             entity* hopeful = searchEntities(name);
 			if(hopeful != nullptr) {
                 g_focus = hopeful;
+                cout << "set focus properly" << endl;
                 if(transitionspeed != 0) {
                     //This check means that if the camera is already moving, don't reset
                     //it's velocity, because that would be jarring
@@ -3994,6 +4040,55 @@ public:
 			talker->dialogue_index++;
 			this->continueDialogue();
 			return;
+		}
+
+        //change cameratarget
+        // /lookat ward 0 0
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,10) == "/lookatall") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 11);
+			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            string transtr = "0";
+            transtr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+            float transitionspeed = stof(transtr);
+            
+            vector<entity*> hopefuls = gatherEntities(name);
+			if(hopefuls.size() != 0) {
+                g_focus = hopefuls[countEntities];
+                if(transitionspeed != 0) {
+                    //This check means that if the camera is already moving, don't reset
+                    //it's velocity, because that would be jarring
+                    if(g_camera.lag == 0) {
+                        g_camera.lag = transitionspeed;
+                        g_camera.lagaccel = transitionspeed;
+                    } else {
+                        g_camera.lagaccel = transitionspeed;
+                    }
+                } else {
+                    g_camera.lag = 0;
+                    g_camera.lagaccel = g_camera.DEFAULTLAGACCEL;
+                }
+            
+            }
+            countEntities++;
+			if(countEntities == hopefuls.size()) {
+                //continue
+                countEntities = 0;
+                talker->dialogue_index++;
+                this->continueDialogue();
+                return;
+            } else {
+                //wait for input
+                curText = "";
+                pushedText = "";
+                typing = true;
+                //showTalkingUI();
+                //updateText();
+                hideTalkingUI();
+                //talker->dialogue_index++;
+                
+                return;
+            }
 		}
 
         //spawn item in world
@@ -4104,7 +4199,7 @@ public:
         }
 
         //load savefile
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/load") {
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/loadsave") {
             loadSave();
 
             //close dialogue
@@ -4263,27 +4358,24 @@ public:
                 if(banished) {
                     banishMe->zaccel = zaccel;
                     banishMe->banished = 1;
-                    if(banishMe->overlappedNodes.empty()) {
-                        auto r = banishMe->getMovedBounds();
-                        D(r.x);
-                        D(r.y);
-                        D(r.width);
-                        D(r.height);
-                        D(banishMe->name);
-                        D(banishMe->bounds.width);
-                        D(banishMe->bounds.height);
-                        for(auto x : g_navNodes) {
-                            // !!! this also isn't 3d-safe
-                            rect nodespot = {x->x - 32, x->y -22, 64, 45};
-                            D(nodespot.x);
-                            D(nodespot.y);
-                            if(RectOverlap(r, nodespot)) {
-                                banishMe->overlappedNodes.push_back(x);
-                                //M("node enabled!");
-                                //x->enabled = 1;
-                            }
-                        }
-                    }
+	                banishMe->shadow->enabled = 0;
+
+
+                    //this is set on mapload so commenting this out should be fine
+                    // if(banishMe->overlappedNodes.empty()) {
+                    //     auto r = banishMe->getMovedBounds();
+                    //     for(auto x : g_navNodes) {
+                    //         // !!! this also isn't 3d-safe
+                    //         rect nodespot = {x->x - 32, x->y -22, 64, 45};
+                    //         D(nodespot.x);
+                    //         D(nodespot.y);
+                    //         if(RectOverlap(r, nodespot)) {
+                    //             banishMe->overlappedNodes.push_back(x);
+                    //             //M("node enabled!");
+                    //             //x->enabled = 1;
+                    //         }
+                    //     }
+                    // }
                     
                 } else {
                     banishMe->banished = 0;
@@ -4299,6 +4391,7 @@ public:
                         //     y->prev = nullptr;
                         // }
                     }
+                    banishMe->shadow->enabled = 1;
                 }
             }
 
@@ -4343,7 +4436,7 @@ public:
         //play sound at an entity
         // /sound heavy-door-open doora
         // /sound croak protag
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entclang") {
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entsound") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 10);
             vector<string> split = splitString(s, ' ');
@@ -4351,10 +4444,7 @@ public:
             string entName = split[1];
             entity* hopeful = 0;
             hopeful = searchEntities(entName);
-            D(entName);
-            D(soundName);
             if(hopeful != nullptr){
-                M("ready to play a sound");
                 //play a sound at the entity
                 playSoundByName(soundName, hopeful->getOriginX(), hopeful->getOriginY());
             } else {
@@ -4367,10 +4457,26 @@ public:
             return;
         }
 
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/clang") {
+        //play a sound that's been loaded into the level as a cue
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/sound") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 7);
             playSoundByName(s);
+
+            talker->dialogue_index++;
+            this->continueDialogue();
+            return;
+        }
+
+        //play a sound from the disk
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,14) == "/loadplaysound") {
+            string s = talker->sayings.at(talker->dialogue_index + 1);
+			s.erase(0, 15);
+            string loadstring = "audio/sounds/" + s + ".wav";
+            Mix_Chunk* a = Mix_LoadWAV(loadstring.c_str());
+            if(!g_mute && a != nullptr) {
+                Mix_PlayChannel(0, a,0);
+            }
 
             talker->dialogue_index++;
             this->continueDialogue();
@@ -4382,9 +4488,23 @@ public:
             this->hideTalkingUI();
             this->curText = "";
             this->pushedText = "";
-            this->
+            this->hideInventoryUI();
+            inPauseMenu = 0;
             talker->dialogue_index++;
             this->continueDialogue();
+            return;
+        }
+
+        //wait for input
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,13) == "/waitforinput") {
+            curText = "";
+            pushedText = "";
+            typing = true;
+            //showTalkingUI();
+            //updateText();
+            hideTalkingUI();
+            talker->dialogue_index++;
+            
             return;
         }
 
