@@ -8,7 +8,7 @@
 #include "globals.cpp"
 #include "objects.cpp"
 #include "map_editor.cpp"
-
+#include "lightcookietesting.cpp"
 
 using namespace std;
 
@@ -338,6 +338,52 @@ int main(int argc, char ** argv) {
 
 	bool storedJump = 0; //buffer the input from a jump if the player is off the ground, quake-style
 	
+	//This stuff is for the FoW mechanic
+		
+    SDL_Surface* SurfaceA = IMG_Load("misc/resolution.bmp");
+	SDL_Surface* SurfaceB = IMG_Load("misc/b.png");
+	
+	SDL_Texture* TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
+	//SDL_Texture* TextureA = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);	
+	SDL_Texture* TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
+
+	SDL_FreeSurface(SurfaceA);
+	SDL_FreeSurface(SurfaceB);
+
+	SDL_Texture* TextureC;
+
+
+	SDL_Texture* result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 300, 300);
+	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_MOD);
+	SDL_SetTextureBlendMode(TextureA, SDL_BLENDMODE_MOD);
+	SDL_SetTextureBlendMode(TextureB, SDL_BLENDMODE_NONE);
+
+	SDL_SetRenderDrawColor(renderer, 0,0,0,0);
+	SDL_RenderPresent(renderer);
+	SDL_GL_SetSwapInterval(1);
+
+	//textures for adding operation
+	SDL_Texture* canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 300, 300);
+
+	SDL_Surface* lightSurface = IMG_Load("misc/light.png");
+	SDL_Texture* light = SDL_CreateTextureFromSurface(renderer, lightSurface);
+	SDL_FreeSurface(lightSurface);
+
+
+	vector<int> column1 = {1, 1, 1, 1, 1, 1, 1, 1};
+	vector<int> column2 = {1, 1, 0, 1, 1, 1, 1, 1};
+	vector<int> column3 = {1, 1, 1, 1, 1, 1, 1, 1};
+	vector<int> column4 = {1, 1, 1, 1, 1, 1, 1, 1};
+	vector<int> column5 = {1, 1, 1, 1, 1, 1, 1, 1};
+	
+	g_fogcookies.push_back(column1);
+	g_fogcookies.push_back(column2);
+	g_fogcookies.push_back(column3);
+	g_fogcookies.push_back(column4);
+	g_fogcookies.push_back(column5);
+
+
+
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
 	while (!quit) {
@@ -414,6 +460,11 @@ int main(int argc, char ** argv) {
 		ticks = SDL_GetTicks();
 		elapsed = ticks - lastticks;
 		lastticks = ticks;
+
+		//I(elapsed);
+
+		//lock time
+		elapsed = 16;
 
 		//cooldowns
 		halfsecondtimer+=elapsed;
@@ -522,6 +573,7 @@ int main(int argc, char ** argv) {
 		}
 
 		//background
+		//SDL_SetRenderTarget(renderer, TextureA);
 		SDL_RenderClear(renderer);
 		if(g_backgroundLoaded && g_useBackgrounds) { //if the level has a background and the user would like to see it
 			SDL_RenderCopy(renderer, background, NULL, NULL);
@@ -718,6 +770,33 @@ int main(int argc, char ** argv) {
 			for(int i =0; i < 50; i++) {
 				devinput[i]=0;
 			}
+
+		}
+
+		//Fog of war
+		if(g_fogofwarEnabled) {
+
+			//find the start of the fogcookies
+			//start ten blocks before the focused entity
+			//and eight blocks above
+			// int temp = g_camera.x - (10 * 64);
+			// int px = round(temp/64)*64;
+			// temp = g_camera.y - (8 * 55);
+			// int py = round(temp/(float)round(55))*(float)round(55);
+			int px = (int)g_camera.x % 64;
+			int py = (int)g_camera.y % 55;
+
+
+			addTextures(renderer, g_fogcookies, canvas, light, 300, 300, 21, 21);
+
+
+			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
+			
+			//render graphics
+			//SDL_RenderClear(renderer);
+			SDL_Rect dstrect = {64 - px, 55 -py, 20 * 64, 16 * 55};
+			SDL_RenderCopy(renderer, TextureC, NULL, &dstrect);
+	
 
 		}
 		

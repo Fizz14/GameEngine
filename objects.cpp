@@ -5236,6 +5236,13 @@ public:
 	}
 };
 
+//data for the "cookies" of illumination subtracted from
+//the darkness of the world to represent player vision
+class lightcookie {
+	
+
+};
+
 // class particle: public actor{};
 
 // //originally made for smoke

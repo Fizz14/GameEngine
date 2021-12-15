@@ -195,6 +195,10 @@ int g_walldarkness = 55; //65, 75. could be controlled by the map unless you get
 bool g_unlit = 0; //set to 1 if the user has the lowest graphical setting, to disable lighting in maps for performance. Don't eh, don't dev like this
 int g_graphicsquality = 3; // 0 is least, 4 is max
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
+int g_fogofwarEnabled = 1;
+int g_fogofwarRays = 100;
+vector<vector<int>> g_fogcookies;
+
 
 //for having items bounce
 float g_itemsinea = 0;
