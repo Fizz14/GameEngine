@@ -777,19 +777,32 @@ int main(int argc, char ** argv) {
 			for(int i = 0; i < g_fogcookies.size(); i++) {
 				for(int j = 0; j < g_fogcookies[0].size(); j++) {
 					flipper = !flipper;
-					if( Distance(i, j, 10, 8) < 4) {
+					int xpos = ((i - 10) * 64) + g_focus->getOriginX();
+					int ypos = ((j - 9) * 64) + g_focus->getOriginY();
+					if(LineTrace(g_focus->getOriginX(), g_focus->getOriginY(), xpos, ypos, true, 30, 0)) {	
 						g_fogcookies[i][j] = 1;
 					} else {
 						g_fogcookies[i][j] = 0;
 					}
 				}
+				flipper = !flipper;
 			}
 
-			int px = -(int)g_focus->x % 64;
-			int py = -(int)g_focus->y % 55;
+			//these are the corners and the center
+			// g_fogcookies[0][0] = 1;
+			// g_fogcookies[20][0] = 1;
+			// g_fogcookies[20][17] = 1;
+			// g_fogcookies[0][17] = 1;
+			// g_fogcookies[10][9] = 1;
+
+
+			int px = -(int)g_focus->getOriginX() % 64;
 			
 			//offset us to the protag's location
-			int yoffset =  ((g_focus->y- (g_focus->z + g_focus->zeight) * XtoZ)) * g_camera.zoom;
+			//int yoffset =  ((g_focus->y- (g_focus->z + g_focus->zeight) * XtoZ)) * g_camera.zoom;
+			//the zeight is constant at level 2  for now
+			int yoffset =  ((g_focus->getOriginY() - (0) * XtoZ)) * g_camera.zoom;
+			
 			//and then subtract half of the screen
 			yoffset -= yoffset % 55;
 			yoffset -= (g_fogheight * 55 + 12)/2;
@@ -808,15 +821,15 @@ int main(int argc, char ** argv) {
 			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
 			
 			//render graphics
-			SDL_Rect dstrect = {px - 14, yoffset, g_fogwidth * 64 + 46, g_fogheight * 55 + 12};
+			SDL_Rect dstrect = {px - 20, yoffset -8, g_fogwidth * 64 + 50, g_fogheight * 55 + 30};
 			SDL_RenderCopy(renderer, TextureC, NULL, &dstrect);
 			
 			//black bars :/
-			// SDL_Rect topbar = {px, - 13 + yoffset - 5000, 1500, 5000};
-			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+			SDL_Rect topbar = {px, yoffset - 5000, 1500, 5000};
+			SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
 			
-			// SDL_Rect botbar = {px, - 13 + yoffset +  g_fogheight * 55 + 12, 1500, 5000};
-			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+			SDL_Rect botbar = {px, yoffset +  g_fogheight * 55 + 12, 1500, 5000};
+			SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
 			
 		}
 

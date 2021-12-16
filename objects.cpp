@@ -4310,11 +4310,6 @@ bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, 
 			}
 		}
 	}
-	if(display) {
-		SDL_RenderPresent(renderer);
-		SDL_RenderClear(renderer);
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	}
 	return true;
 }
 
