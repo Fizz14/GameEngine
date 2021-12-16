@@ -15,7 +15,11 @@ SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogcookies,
 		for(int j = 0; j < fogcookies[0].size(); j++) {
 			if(fogcookies[i][j]) {
 				//render the lightspot
-				SDL_Rect dstrect = {i * ( (widthOfIlluminateMe - paddingx) / fogcookies.size()), j * ( (heightOfIlluminateMe -paddingy) /fogcookies[0].size()), (widthOfIlluminateMe + paddingx * 4)/fogcookies.size(), (heightOfIlluminateMe + paddingy * 4)/fogcookies[0].size()};
+				SDL_Rect dstrect = {i * ( (widthOfIlluminateMe ) / fogcookies.size()),
+				 					j * ( (heightOfIlluminateMe) /fogcookies[0].size()), 
+				 					(widthOfIlluminateMe + paddingx)/fogcookies.size(), 
+				 					(heightOfIlluminateMe + paddingy)/fogcookies[0].size()};
+				
 				SDL_RenderCopy(renderer, lightspot, NULL, &dstrect);
 
 				

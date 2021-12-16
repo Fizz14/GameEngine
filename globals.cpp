@@ -197,7 +197,10 @@ int g_graphicsquality = 3; // 0 is least, 4 is max
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
-vector<vector<int>> g_fogcookies;
+//vector<vector<int>> g_fogcookies;
+int g_fogheight = 18;
+int g_fogwidth = 21;
+
 
 
 //for having items bounce

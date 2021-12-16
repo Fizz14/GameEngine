@@ -350,10 +350,15 @@ int main(int argc, char ** argv) {
 	SDL_FreeSurface(SurfaceA);
 	SDL_FreeSurface(SurfaceB);
 
+	SDL_Surface* blackbarSurface = IMG_Load("textures/engine/black.bmp");
+	SDL_Texture* blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
+
+	SDL_FreeSurface(blackbarSurface);
+
 	SDL_Texture* TextureC;
 
 
-	SDL_Texture* result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 300, 300);
+	SDL_Texture* result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_MOD);
 	SDL_SetTextureBlendMode(TextureA, SDL_BLENDMODE_MOD);
 	SDL_SetTextureBlendMode(TextureB, SDL_BLENDMODE_NONE);
@@ -363,25 +368,15 @@ int main(int argc, char ** argv) {
 	SDL_GL_SetSwapInterval(1);
 
 	//textures for adding operation
-	SDL_Texture* canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 300, 300);
+	SDL_Texture* canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 
 	SDL_Surface* lightSurface = IMG_Load("misc/light.png");
 	SDL_Texture* light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 	SDL_FreeSurface(lightSurface);
 
 
-	vector<int> column1 = {1, 1, 1, 1, 1, 1, 1, 1};
-	vector<int> column2 = {1, 1, 0, 1, 1, 1, 1, 1};
-	vector<int> column3 = {1, 1, 1, 1, 1, 1, 1, 1};
-	vector<int> column4 = {1, 1, 1, 1, 1, 1, 1, 1};
-	vector<int> column5 = {1, 1, 1, 1, 1, 1, 1, 1};
 	
-	g_fogcookies.push_back(column1);
-	g_fogcookies.push_back(column2);
-	g_fogcookies.push_back(column3);
-	g_fogcookies.push_back(column4);
-	g_fogcookies.push_back(column5);
-
+	std::vector<std::vector<int> > g_fogcookies( g_fogwidth, std::vector<int>(g_fogheight));
 
 
 	//software lifecycle text
@@ -773,32 +768,59 @@ int main(int argc, char ** argv) {
 
 		}
 
-		//Fog of war
+		//Fogofwar
 		if(g_fogofwarEnabled) {
 
-			//find the start of the fogcookies
-			//start ten blocks before the focused entity
-			//and eight blocks above
-			// int temp = g_camera.x - (10 * 64);
-			// int px = round(temp/64)*64;
-			// temp = g_camera.y - (8 * 55);
-			// int py = round(temp/(float)round(55))*(float)round(55);
-			int px = (int)g_camera.x % 64;
-			int py = (int)g_camera.y % 55;
+			//this is the worst functional code I've written, with no exceptions
 
+			bool flipper = 0;
+			for(int i = 0; i < g_fogcookies.size(); i++) {
+				for(int j = 0; j < g_fogcookies[0].size(); j++) {
+					flipper = !flipper;
+					if( Distance(i, j, 10, 8) < 4) {
+						g_fogcookies[i][j] = 1;
+					} else {
+						g_fogcookies[i][j] = 0;
+					}
+				}
+			}
 
-			addTextures(renderer, g_fogcookies, canvas, light, 300, 300, 21, 21);
+			int px = -(int)g_focus->x % 64;
+			int py = -(int)g_focus->y % 55;
+			
+			//offset us to the protag's location
+			int yoffset =  ((g_focus->y- (g_focus->z + g_focus->zeight) * XtoZ)) * g_camera.zoom;
+			//and then subtract half of the screen
+			yoffset -= yoffset % 55;
+			yoffset -= (g_fogheight * 55 + 12)/2;
+			yoffset -= g_camera.y;
+			
+
+			//we do this nonsense to keep the offset on the grid
+			//yoffset -= yoffset % 55;
+
+			//px = 64 - px - 64;
+			//py = 55 - py - 55;
+			// 50 50
+			addTextures(renderer, g_fogcookies, canvas, light, 500, 500, 210, 210);
 
 
 			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
 			
 			//render graphics
-			//SDL_RenderClear(renderer);
-			SDL_Rect dstrect = {64 - px, 55 -py, 20 * 64, 16 * 55};
+			SDL_Rect dstrect = {px - 14, yoffset, g_fogwidth * 64 + 46, g_fogheight * 55 + 12};
 			SDL_RenderCopy(renderer, TextureC, NULL, &dstrect);
-	
-
+			
+			//black bars :/
+			// SDL_Rect topbar = {px, - 13 + yoffset - 5000, 1500, 5000};
+			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+			
+			// SDL_Rect botbar = {px, - 13 + yoffset +  g_fogheight * 55 + 12, 1500, 5000};
+			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+			
 		}
+
+		
 		
 		//ui
 		if(!inPauseMenu && g_showHUD) {
