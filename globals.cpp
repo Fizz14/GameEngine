@@ -197,12 +197,21 @@ int g_graphicsquality = 3; // 0 is least, 4 is max
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
-//vector<vector<int>> g_fogcookies;
+
 int g_fogheight = 18;
 int g_fogwidth = 21;
 int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
 
+
+std::vector<std::vector<int> > g_fogcookies( g_fogwidth, std::vector<int>(g_fogheight));
+//this second vector is for storing the cookies that are ontopof walls
+//that way, we can draw too layers of shadow before actors and one after
+std::vector<std::vector<int> > g_savedcookies( g_fogwidth, std::vector<int>(g_fogheight));
+
+//data for two passes of cookies
+std::vector<std::vector<int> > g_fc( g_fogwidth, std::vector<int>(g_fogheight));
+std::vector<std::vector<int> > g_sc( g_fogwidth, std::vector<int>(g_fogheight));
 
 //for having items bounce
 float g_itemsinea = 0;

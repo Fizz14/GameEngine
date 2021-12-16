@@ -4394,7 +4394,8 @@ public:
                     banishMe->shadow->enabled = 1;
                 }
             }
-
+            g_lastFunctionalX = -numeric_limits<int>::max();
+            g_lastFunctionalY = - numeric_limits<int>::max();
             talker->dialogue_index++;
             this->continueDialogue();
             return;

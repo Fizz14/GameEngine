@@ -4,8 +4,6 @@
 #include <vector>
 using namespace std;
 
-// vector<vector<int>> g_fogcookies;
-
 SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogcookies, SDL_Texture* &illuminateMe, SDL_Texture* &lightspot, int widthOfIlluminateMe, int heightOfIlluminateMe, int paddingx, int paddingy) {
 	SDL_SetRenderTarget(renderer, illuminateMe);
 	SDL_RenderClear(renderer);
