@@ -267,7 +267,7 @@ public:
 	}
 };
 
-bool LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer);
+bool LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer, int resolution);
 
 class mapCollision {
 public:
@@ -3370,7 +3370,7 @@ public:
 					//can we get a new target from the same faction that we are agrod against?
 					bool setNewTarget = 0;
 					for(auto x : g_entities) {
-						if(x->tangible && x->faction == target->faction && LineTrace(this->getOriginX(), this->getOriginY(), x->getOriginX(), x->getOriginY(), false, 30, this->layer)) {
+						if(x->tangible && x->faction == target->faction && LineTrace(this->getOriginX(), this->getOriginY(), x->getOriginX(), x->getOriginY(), false, 30, this->layer, 10)) {
 							target = x;
 							setNewTarget = 1;
 							break;
@@ -3675,7 +3675,7 @@ public:
 						ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
 						
 
-						if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
+						if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
 							//M("There's a good position, keeping my distance");
 							//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
 							
@@ -4277,8 +4277,8 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 }
 
 //returns true if there was no hit
-bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0) {
-	float resolution = 10;
+bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0, int resolution = 10) {
+	//float resolution = 10;
 	
 	if(display) {
 		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);

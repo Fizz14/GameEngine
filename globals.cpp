@@ -200,7 +200,8 @@ int g_fogofwarRays = 100;
 //vector<vector<int>> g_fogcookies;
 int g_fogheight = 18;
 int g_fogwidth = 21;
-
+int g_lastFunctionalX = 0; //for optimizing the FoW calcs
+int g_lastFunctionalY = 0;
 
 
 //for having items bounce

@@ -670,6 +670,92 @@ int main(int argc, char ** argv) {
 			}
 		}
 
+
+		SDL_Rect FoWrect;
+
+		//Fogofwar
+		if(g_fogofwarEnabled) {
+
+			//this is the worst functional code I've written, with no exceptions
+
+			int functionalX = g_focus->getOriginX();
+			int functionalY = g_focus->getOriginY();
+
+			functionalX -= functionalX % 64;
+			functionalX += 32;
+			functionalY -= functionalY % 55;
+			functionalY += 26;
+
+			if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY) {
+				bool flipper = 0;
+				for(int i = 0; i < g_fogcookies.size(); i++) {
+					for(int j = 0; j < g_fogcookies[0].size(); j++) {
+						flipper = !flipper;
+						int xpos = ((i - 10) * 64) + functionalX;
+						int ypos = ((j - 9) * 55) + functionalY;
+						if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 15, 0, 14)) {
+							g_fogcookies[i][j] = 1;
+						} else {
+							g_fogcookies[i][j] = 0;
+						}
+					}
+					flipper = !flipper;
+				}
+			}
+
+			g_lastFunctionalX = functionalX;
+			g_lastFunctionalY = functionalY;
+
+			//these are the corners and the center
+			// g_fogcookies[0][0] = 1;
+			// g_fogcookies[20][0] = 1;
+			// g_fogcookies[20][17] = 1;
+			// g_fogcookies[0][17] = 1;
+			// g_fogcookies[10][9] = 1;
+
+
+			int px = -(int)g_focus->getOriginX() % 64;
+			
+			//offset us to the protag's location
+			//int yoffset =  ((g_focus->y- (g_focus->z + g_focus->zeight) * XtoZ)) * g_camera.zoom;
+			//the zeight is constant at level 2  for now
+			int yoffset =  (g_focus->getOriginY() ) * g_camera.zoom;
+			
+			//and then subtract half of the screen
+			yoffset -= yoffset % 55;
+			yoffset -= (g_fogheight * 55 + 12)/2;
+			yoffset -= g_camera.y;
+
+			//we do this nonsense to keep the offset on the grid
+			//yoffset -= yoffset % 55;
+
+			//px = 64 - px - 64;
+			//py = 55 - py - 55;
+			// 50 50
+			addTextures(renderer, g_fogcookies, canvas, light, 500, 500, 210, 210);
+
+
+			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
+			
+			//render graphics
+			FoWrect = {px - 20, yoffset -8, g_fogwidth * 64 + 50, g_fogheight * 55 + 30};
+			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+			
+			//do it for z = 64
+			FoWrect.y -= 64 * XtoZ;
+			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+			
+
+			//black bars :/
+			SDL_Rect topbar = {px, yoffset - 5000, 1500, 5000};
+			SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+			
+			SDL_Rect botbar = {px, yoffset +  g_fogheight * 55 + 12, 1500, 5000};
+			SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+			
+		}
+
+
 		//sort		
 		sort_by_y(g_actors);
 		for(long long unsigned int i=0; i < g_actors.size(); i++){
@@ -682,7 +768,7 @@ int main(int argc, char ** argv) {
 			}
 		}
 
-		
+
 		//map editing
 		if(devMode) {
 				
@@ -770,66 +856,17 @@ int main(int argc, char ** argv) {
 
 		//Fogofwar
 		if(g_fogofwarEnabled) {
-
-			//this is the worst functional code I've written, with no exceptions
-
-			bool flipper = 0;
-			for(int i = 0; i < g_fogcookies.size(); i++) {
-				for(int j = 0; j < g_fogcookies[0].size(); j++) {
-					flipper = !flipper;
-					int xpos = ((i - 10) * 64) + g_focus->getOriginX();
-					int ypos = ((j - 9) * 64) + g_focus->getOriginY();
-					if(LineTrace(g_focus->getOriginX(), g_focus->getOriginY(), xpos, ypos, true, 30, 0)) {	
-						g_fogcookies[i][j] = 1;
-					} else {
-						g_fogcookies[i][j] = 0;
-					}
-				}
-				flipper = !flipper;
-			}
-
-			//these are the corners and the center
-			// g_fogcookies[0][0] = 1;
-			// g_fogcookies[20][0] = 1;
-			// g_fogcookies[20][17] = 1;
-			// g_fogcookies[0][17] = 1;
-			// g_fogcookies[10][9] = 1;
-
-
-			int px = -(int)g_focus->getOriginX() % 64;
-			
-			//offset us to the protag's location
-			//int yoffset =  ((g_focus->y- (g_focus->z + g_focus->zeight) * XtoZ)) * g_camera.zoom;
-			//the zeight is constant at level 2  for now
-			int yoffset =  ((g_focus->getOriginY() - (0) * XtoZ)) * g_camera.zoom;
-			
-			//and then subtract half of the screen
-			yoffset -= yoffset % 55;
-			yoffset -= (g_fogheight * 55 + 12)/2;
-			yoffset -= g_camera.y;
-			
-
-			//we do this nonsense to keep the offset on the grid
-			//yoffset -= yoffset % 55;
-
-			//px = 64 - px - 64;
-			//py = 55 - py - 55;
-			// 50 50
-			addTextures(renderer, g_fogcookies, canvas, light, 500, 500, 210, 210);
-
-
-			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
-			
 			//render graphics
-			SDL_Rect dstrect = {px - 20, yoffset -8, g_fogwidth * 64 + 50, g_fogheight * 55 + 30};
-			SDL_RenderCopy(renderer, TextureC, NULL, &dstrect);
+			FoWrect.y -= 64 * XtoZ;
+			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
 			
-			//black bars :/
-			SDL_Rect topbar = {px, yoffset - 5000, 1500, 5000};
-			SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+
+			// //black bars :/
+			// SDL_Rect topbar = {px, yoffset - 5000, 1500, 5000};
+			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
 			
-			SDL_Rect botbar = {px, yoffset +  g_fogheight * 55 + 12, 1500, 5000};
-			SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+			// SDL_Rect botbar = {px, yoffset +  g_fogheight * 55 + 12, 1500, 5000};
+			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
 			
 		}
 
