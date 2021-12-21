@@ -116,6 +116,8 @@ int main(int argc, char ** argv) {
 	
 	g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
 	
+
+
 	//protag healthbar
 	ui* protagHealthbarA = new ui(renderer, "textures/ui/healthbarA.png", 0,0, 0.05, 0.02, -3);
 	protagHealthbarA->persistent = 1;
@@ -328,6 +330,7 @@ int main(int argc, char ** argv) {
 		//srand(time(NULL));
 	}
 
+
 	ui* inventoryMarker = new ui(renderer, "textures/ui/non_selector.png", 0, 0, 0.15, 0.15, 2);
 	inventoryMarker->show = 0;
 	inventoryMarker->persistent = 1;
@@ -374,8 +377,9 @@ int main(int argc, char ** argv) {
 	SDL_Texture* light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 	SDL_FreeSurface(lightSurface);
 
-
-	
+	//spawn orbital for fomm
+	entity* arna = new entity(renderer, "arm-a");
+	//entity* arme = new entity(renderer, "arm-e");
 
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
@@ -671,9 +675,6 @@ int main(int argc, char ** argv) {
 
 		SDL_Rect FoWrect;
 
-		
-
-
 		//sort		
 		sort_by_y(g_actors);
 		for(long long unsigned int i=0; i < g_actors.size(); i++){
@@ -790,9 +791,9 @@ int main(int argc, char ** argv) {
 				for(int i = 0; i < g_fogcookies.size(); i++) {
 					for(int j = 0; j < g_fogcookies[0].size(); j++) {
 						flipper = !flipper;
-						int xpos = ((i - 10) * 64) + functionalX;
-						int ypos = ((j - 9) * 55) + functionalY;
-						if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 15, 0, 14, 1)) {
+						int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
+						int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
+						if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 15, 0, 15, 1)) {
 							g_fogcookies[i][j] = 1;
 							g_fc[i][j] = 1;
 
@@ -865,18 +866,7 @@ int main(int argc, char ** argv) {
 			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
 			
 
-			//black bars :/
-			SDL_Rect topbar = {px, yoffset - 5000, 1500, 5000};
-			SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
 			
-			SDL_Rect botbar = {px, yoffset +  g_fogheight * 55 + 12, 1500, 5000};
-			SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
-			
-		}
-
-		//Fogofwar
-		if(g_fogofwarEnabled) {
-
 			addTextures(renderer, g_sc, canvas, light, 500, 500, 210, 210);
 
 
@@ -884,17 +874,17 @@ int main(int argc, char ** argv) {
 				
 		
 			//render graphics
-			FoWrect.y -= 64 * XtoZ;
+			FoWrect.y -= 67 * XtoZ;
 			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+		
+			//black bars :/
+			SDL_Rect topbar = {px, FoWrect.y - 5000, 1500, 5000};
+			SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+			
+			SDL_Rect botbar = {px, FoWrect.y +  g_fogheight * 55 + 12, 1500, 5000};
+			SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
 			
 
-			// //black bars :/
-			// SDL_Rect topbar = {px, yoffset - 5000, 1500, 5000};
-			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
-			
-			// SDL_Rect botbar = {px, yoffset +  g_fogheight * 55 + 12, 1500, 5000};
-			// SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
-			
 		}
 
 		

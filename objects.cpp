@@ -1204,11 +1204,11 @@ public:
 
 	//for moving the object by its origin
 	//this won't move the origin relative to the sprite or anything like that
-	void setOriginX(int fx) {
+	void setOriginX(float fx) {
 		x = fx - bounds.x - bounds.width/2;
 	}
 
-	void setOriginY(int fy) {
+	void setOriginY(float fy) {
 		y = fy - bounds.y - bounds.height/2;
 	}
 };
@@ -1709,6 +1709,10 @@ public:
 	}
 };
 
+
+entity* searchEntities(string fname);
+
+
 class entity:public actor {
 public:
 	//dialogue
@@ -1791,6 +1795,17 @@ public:
 	bool wallcap = false; //used for wallcaps
 	cshadow * shadow = 0;
 	bool rectangularshadow = 0;
+	
+	//stuff for orbitals
+	bool isOrbital = false;		
+	entity* parent = nullptr;
+	float angularPosition = 0;
+	float angularSpeed = 10;
+	float orbitRange = 1;
+	int orbitOffset = 0; //the frames of offset for an orbital. 
+	
+
+	vector<entity*> children;
 	
 	//for textured entities (e.g. wallcap)
 	float xoffset = 0;
@@ -2049,6 +2064,27 @@ public:
 		file >> comment;
 		file >> essential;
 
+		file >> comment;
+		string parentName;
+		file >> parentName;
+		if(parentName != "null") {
+			entity* hopeful = searchEntities(parentName);
+			if(hopeful != nullptr) {
+				this->isOrbital = 1;
+				this->parent = hopeful;
+				parent->children.push_back(this);
+			
+				curwidth = width;
+				curheight = height;		
+			
+			}
+		}
+
+		file >> comment;
+		file >> orbitRange;
+
+		file >> comment;
+		file >> orbitOffset;
 
 		if(canFight) {
 			//check if someone else already made the attack
@@ -2125,7 +2161,7 @@ public:
 		SDL_QueryTexture(texture, NULL, NULL, &w, &h);
 
 		//make entities pop in unless this is a mapload
-		if(!transition) {
+		if(!transition && !isOrbital) {
 			curwidth = 0;
 			curheight = 0;
 		} else {
@@ -2362,15 +2398,19 @@ public:
 			g_solid_entities.erase(remove(g_solid_entities.begin(), g_solid_entities.end(), this), g_solid_entities.end());
 		}
 
+		for(auto x : this->children) {
+			x->tangible = 0;
+		}
+
 		g_entities.erase(remove(g_entities.begin(), g_entities.end(), this), g_entities.end());
 		
 	}
 
-	int getOriginX() {
+	float getOriginX() {
 		return x + bounds.x + bounds.width/2;
 	}
 
-	int getOriginY() {
+	float getOriginY() {
 		return y + bounds.y + bounds.height/2;
 	}
 
@@ -2393,6 +2433,8 @@ public:
 	void shoot();
 
 	void render(SDL_Renderer * renderer, camera fcamera) {
+		
+		
 		if(!tangible) {return;}
 		if(this == protag) { g_protagHasBeenDrawnThisFrame = 1; }
 		//if its a wallcap, tile the image just like a maptile
@@ -2446,10 +2488,15 @@ public:
 			}
 			hadInput = 0;
 
+
+			
 			frame = animation * xframes + frameInAnimation;
 			SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
 			//genericmode has just one frame
 			if(isWorlditem) {frame = 0;}
+			
+			
+
 			if(framespots.size() > 1) {
 				int spinOffset = 0;
 				int framePlusSpinOffset = frame;
@@ -2457,15 +2504,12 @@ public:
 					//change player frames to make a spin effect
 				}
 				
-				
-				
+			
 				SDL_Rect srcrect = {framespots[framePlusSpinOffset].x,framespots[framePlusSpinOffset].y, framewidth, frameheight};
 				const SDL_FPoint center = {0 ,0};
 				if(flashingMS > 0) {
 					SDL_SetTextureColorMod(texture, 255, 255 * (1-((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
 				}
-
-				
 
 				if(texture != NULL) {
 					SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
@@ -2597,7 +2641,99 @@ public:
 	//returns a pointer to a door that the player used
 	virtual door* update(vector<door*> doors, float elapsed) {
 		if(!tangible) {return nullptr;}
+		if(isOrbital) {
+			this->z = parent->z + parent->zeight/2;
+			
+		
+			float angle = convertFrameToAngle(parent->frame, parent->flip == SDL_FLIP_HORIZONTAL);
 
+	
+
+			//orbitoffset is the number of frames, counter-clockwise from facing straight down
+			
+			angle += (float)orbitOffset * (M_PI/4);
+			angle = fmod(angle , (2* M_PI)); 
+
+			this->setOriginX(parent->getOriginX() + cos(angle + angularPosition) * orbitRange);
+			this->setOriginY(parent->getOriginY() + sin(angle + angularPosition) * orbitRange);
+
+			this->sortingOffset += 	
+
+
+
+			if(yframes == 8) {
+				this->animation = convertAngleToFrame(angle);
+				this->flip = SDL_FLIP_NONE;
+			} else {
+				this->flip = parent->flip;
+				this->animation = parent->animation;
+			}
+			
+			//update shadow
+			float heightfloor = 0;
+			layer = max(z /64, 0.0f);
+			layer = min(layer, (int)g_boxs.size() - 1);
+			//should we fall?
+			bool should_fall = 1;
+			float floor = 0;
+			if(layer > 0) {
+				//!!!
+				rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+				//rect thisMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
+				for (auto n : g_boxs[layer - 1]) {
+					if(RectOverlap(n->bounds, thisMovedBounds)) {
+						floor = 64 * (layer);
+						break;
+					}
+				}
+				for (auto n : g_triangles[layer - 1]) {
+					if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
+						floor = 64 * (layer);
+						break;
+					}
+				
+				}
+			
+			
+				float shadowFloor = floor;
+				floor = max(floor, heightfloor);
+			
+				bool breakflag = 0;
+				for(int i = layer - 1; i >= 0; i--) {
+					for (auto n : g_boxs[i]) {
+						if(RectOverlap(n->bounds, thisMovedBounds)) {
+							shadowFloor = 64 * (i + 1);
+							breakflag = 1;
+							break;
+						}
+					}
+					if(breakflag) {break;}
+					for (auto n : g_triangles[i]) {
+						if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
+							shadowFloor = 64 * (i + 1);
+							breakflag = 1;
+							break;
+						}
+					
+					}
+					if(breakflag) {break;}
+				}
+				if(breakflag == 0) {
+					//just use heightmap
+					shadowFloor = floor;
+				}
+				this->shadow->z = shadowFloor;
+			} else { 
+				this->shadow->z = heightfloor;
+				floor = heightfloor;
+			}
+			shadow->x = x + shadow->xoffset;
+			shadow->y = y + shadow->yoffset;
+
+
+
+			return nullptr;
+		}
 		if(msPerFrame != 0) {
 			msTilNextFrame += elapsed;
 			if(msTilNextFrame > msPerFrame && xframes > 1) {
@@ -4413,8 +4549,7 @@ public:
 		SDL_FreeSurface(textsurface);
 		font = TTF_OpenFont(g_font.c_str(), size);
 		textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
-		texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-		int texW = 0;
+		texttexture = SDL_CreateTextureFromSurface(renderer, textsurface); int texW = 0;
 		int texH = 0;
 		SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
 		width = texW;
@@ -5293,7 +5428,6 @@ class lightcookie {
 // 		SDL_RenderCopyF(renderer, texture, NULL, &dstrect);	
 // 	}
 // };
-
 
 
 #endif

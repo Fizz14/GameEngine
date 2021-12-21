@@ -87,10 +87,6 @@ class collisionZone;
 
 vector<cshadow*> g_shadows;
 
-vector<actor*> g_actors;
-
-vector<mapObject*> g_mapObjects;
-
 vector<entity*> g_entities;
 
 vector<entity*> g_solid_entities;
@@ -105,6 +101,10 @@ vector<textbox*> g_textboxes;
 
 vector<ui*> g_ui;
 
+vector<actor*> g_actors;
+
+vector<mapObject*> g_mapObjects;
+
 vector<mapCollision*> g_mapCollisions;
 
 vector<vector<tri*>> g_triangles;
@@ -114,6 +114,7 @@ vector<vector<ramp*>> g_ramps;
 vector<heightmap*> g_heightmaps;
 
 vector<navNode*> g_navNodes;
+
 
 struct cmpCoord {
     bool operator()(const pair<int, int> a, const pair<int, int> b) const {
@@ -178,6 +179,9 @@ void E(T msg, bool disableNewline = 0) { if(!devMode || !showErrorMessages) {ret
 template<typename T>
 void I(T msg, bool disableNewline = 0) { if(!showImportantMessages) {return;} cout << "I: " << msg; if(!disableNewline) { cout << endl; } }
 
+//Temporary debugging statements- I won't allow myself to block these
+#define T(a) std::cout << #a << ": " << (a) << endl;
+
 
 //for visuals
 float p_ratio = 1.151;
@@ -198,11 +202,14 @@ float g_extraShadowSize = 20; //how much bigger are shadows in comparison to the
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
 
+
+//industry standard needs greater fogheight 
 int g_fogheight = 18;
 int g_fogwidth = 21;
 int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
-
+int g_fogMiddleX = 10;
+int g_fogMiddleY = 9;
 
 std::vector<std::vector<int> > g_fogcookies( g_fogwidth, std::vector<int>(g_fogheight));
 //this second vector is for storing the cookies that are ontopof walls
@@ -596,6 +603,23 @@ float convertFrameToAngle(int frame, bool flipped) {
 		if(frame == 2) {return 0;}
 		if(frame == 3) {return (M_PI * 7)/4;}
 		if(frame == 4) {return (M_PI * 6)/4;}
+	}
+
+	return 0;
+}
+
+//convert an angle to a sprite's frame, for eight-frame sprites (arms)
+int convertAngleToFrame(float angle) {
+	vector<float> angles = {0, (M_PI*1)/4, M_PI/2, (M_PI * 3)/4, M_PI, (M_PI * 5)/4, (M_PI * 6)/4, (M_PI * 7)/4, M_PI * 2};
+	for(int i = 0; i < angles.size(); i++) {
+		if(angles[i] + M_PI/8 > angle) {
+			//this rather silly check is done to accomodate certain values of orbitOffset that would  push angle to not quite fit normally
+			//this change came with the ninth entry in the vector of angles
+			if(i == 8) {
+				i = 0;
+			}
+			return 7-i;
+		}
 	}
 
 	return 0;

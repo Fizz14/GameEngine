@@ -2762,12 +2762,12 @@ void write_map(entity* mapent) {
                         line >> protag->bounds.height;
                         break;
                     }
-                    if(word == "shadowx") {
+                    if(word == "shadowx" || word == "sx") {
                         line >> protag->shadow->x;
                         protag->shadow->xoffset += protag->width/2 - protag->shadow->width/2;
                         break;
                     }
-                    if(word == "shadowy") {
+                    if(word == "shadowy" || word == "sy") {
                         line >> protag->shadow->yoffset;
                         protag->shadow->yoffset += protag->height - protag->shadow->height/2;
                         break;
