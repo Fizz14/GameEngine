@@ -378,8 +378,11 @@ int main(int argc, char ** argv) {
 	SDL_FreeSurface(lightSurface);
 
 	//spawn orbital for fomm
-	entity* arna = new entity(renderer, "arm-a");
-	//entity* arme = new entity(renderer, "arm-e");
+	entity* arma = new entity(renderer, "arm-a");
+	entity* arnb = new entity(renderer, "arm-b");
+	entity* armc = new entity(renderer, "arm-c");
+	entity* arnd = new entity(renderer, "arm-d");
+	entity* arme = new entity(renderer, "arm-e");
 
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);

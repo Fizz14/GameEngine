@@ -1171,6 +1171,7 @@ public:
 	float height = 0;
 	float zeight = 0;
 	float sortingOffset = 0;
+	float baseSortingOffset = 0;
 	SDL_Texture* texture;
 	rect bounds = {0, 0, 10, 10};
 	string name = "unnamed";
@@ -1972,7 +1973,7 @@ public:
 
 		file >> comment;
 		file >> this->sortingOffset;
-
+		this->baseSortingOffset = sortingOffset;
 		file >> comment;
 		float fsize;
 		file >> fsize;
@@ -2006,7 +2007,7 @@ public:
 
 		//bigger shadows have bigger sortingoffsets
 		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
-		sortingOffset += 8;
+		//sortingOffset += 8;
 
 		file >> comment;
 		file >> this->dynamic;
@@ -2290,7 +2291,7 @@ public:
 
 		//bigger shadows have bigger sortingoffsets
 		shadow->sortingOffset = 65 * (shadow->height / 44.4) + tempshadowSoffset;
-		sortingOffset = 8;
+		//sortingOffset = 8;
 		
 
 		file >> comment;
@@ -2650,19 +2651,17 @@ public:
 	
 
 			//orbitoffset is the number of frames, counter-clockwise from facing straight down
+			float fangle = angle;
+			fangle += (float)orbitOffset * (M_PI/4);
+			fangle = fmod(fangle , (2* M_PI)); 
+
+			this->setOriginX(parent->getOriginX() + cos(fangle) * orbitRange);
+			this->setOriginY(parent->getOriginY() + sin(fangle) * orbitRange);
+
+			this->sortingOffset = baseSortingOffset + sin(fangle) * 21;
 			
-			angle += (float)orbitOffset * (M_PI/4);
-			angle = fmod(angle , (2* M_PI)); 
-
-			this->setOriginX(parent->getOriginX() + cos(angle + angularPosition) * orbitRange);
-			this->setOriginY(parent->getOriginY() + sin(angle + angularPosition) * orbitRange);
-
-			this->sortingOffset += 	
-
-
-
 			if(yframes == 8) {
-				this->animation = convertAngleToFrame(angle);
+				this->animation = convertAngleToFrame(fangle);
 				this->flip = SDL_FLIP_NONE;
 			} else {
 				this->flip = parent->flip;
