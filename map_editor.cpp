@@ -2507,7 +2507,12 @@ void write_map(entity* mapent) {
 
                         break;
                     }
-
+                    if(word == "fogofwar" || word == "fow") {
+                        bool b;
+                        if(line >> b) {
+                            g_fogofwarEnabled = b;
+                        }
+                    }
                     if(word == "budget") {
                         int a;
                         if(line >> a) {
@@ -3713,10 +3718,8 @@ public:
                 // *15 29 -> if data is 15, go to line 29
                 string s = talker->sayings.at(talker->dialogue_index + 1 + j);
                 s.erase(0, 1);
-                M(s.substr(0, s.find(':')));
                 int condition = stoi( s.substr(0, s.find(':')));
                 s.erase(0, s.find(':') + 1);
-                M(s);
                 int jump = stoi(s);
                 if(numberOfEntity >= condition) {
                     talker->dialogue_index = jump - 3;
@@ -4568,13 +4571,9 @@ public:
         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/heal") {
             string s = talker->sayings.at(talker->dialogue_index + 1);
 			s.erase(0, 6);
-            D(s);
 			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            D(s);
             string tangiblestatestr = "0";
             tangiblestatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            D(name);
-            D(tangiblestatestr);
             int tangiblestate = stof(tangiblestatestr);
             
             

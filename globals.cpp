@@ -459,7 +459,7 @@ string g_lifecycle = "Alpha";
 
 //world
 int g_layers = 12; //max blocks in world
-float g_bhoppingBoost = 1; //the factor applied to friction whilst bhopping, not good, basically just airspeed modifier rn
+float g_bhoppingBoost = 2; //the factor applied to friction whilst airborn, not good, basically just airspeed modifier rn
 
 //map editing, mapeditor, map-editor
 bool g_mousemode = 1;
@@ -478,6 +478,9 @@ std::map<string, int> g_save = {};
 //movement
 float g_dash_cooldown = 1000;
 float g_max_dash_cooldown = 1000;
+float g_jump_afterslow = 0.1;
+float g_jump_afterslow_seconds = 3;
+bool storedJump = 0;
 
 
 bool fileExists (const std::string& name) {

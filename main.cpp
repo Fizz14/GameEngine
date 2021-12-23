@@ -47,7 +47,7 @@ int main(int argc, char ** argv) {
 	IMG_Init(IMG_INIT_PNG);
 	TTF_Init();
 	
-	window = SDL_CreateWindow("Carbin",
+	window = SDL_CreateWindow("Game",
 	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
@@ -97,13 +97,9 @@ int main(int argc, char ** argv) {
 	//narrarator->name = "sp-narrarator";
 
 	entity* fomm;
-	if(devMode) {
-		//fomm = new entity(renderer, "fommconstruction"); 
-		fomm = new entity(renderer, "fomm"); 
-		//g_defaultZoom = 0.85;
-	} else {
-		fomm = new entity(renderer, "fomm"); 
-	}
+
+	fomm = new entity(renderer, "fomm"); 
+
 	
 	
 	fomm->inParty = 1;
@@ -339,8 +335,6 @@ int main(int argc, char ** argv) {
 	inventoryText->show = 0;
 	inventoryText->align = 1;
 
-	bool storedJump = 0; //buffer the input from a jump if the player is off the ground, quake-style
-	
 	//This stuff is for the FoW mechanic
 		
     SDL_Surface* SurfaceA = IMG_Load("misc/resolution.bmp");
@@ -378,11 +372,11 @@ int main(int argc, char ** argv) {
 	SDL_FreeSurface(lightSurface);
 
 	//spawn orbital for fomm
-	entity* arma = new entity(renderer, "arm-a");
-	entity* arnb = new entity(renderer, "arm-b");
-	entity* armc = new entity(renderer, "arm-c");
-	entity* arnd = new entity(renderer, "arm-d");
-	entity* arme = new entity(renderer, "arm-e");
+	entity* arma = new entity(renderer, "arm-a"); arma->persistentGeneral = 1;
+	entity* armb = new entity(renderer, "arm-b"); armb->persistentGeneral = 1;
+	entity* armc = new entity(renderer, "arm-c"); armc->persistentGeneral = 1; 
+	entity* armd = new entity(renderer, "arm-d"); armd->persistentGeneral = 1;
+	entity* arme = new entity(renderer, "arm-e"); arme->persistentGeneral = 1;
 
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
@@ -777,7 +771,7 @@ int main(int argc, char ** argv) {
 		}
 
 		//Fogofwar
-		if(g_fogofwarEnabled) {
+		if(g_fogofwarEnabled && !devMode) {
 
 			//this is the worst functional code I've written, with no exceptions
 
@@ -906,7 +900,7 @@ int main(int argc, char ** argv) {
 		//move the healthbar properly to the protagonist
 		rect obj; // = {( , (((protag->y - ((protag->height))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom, (protag->width * g_camera.zoom), (protag->height * g_camera.zoom))};		
 		obj.x = ((protag->x -g_camera.x) * g_camera.zoom);
-		obj.y = (((protag->y - ((floor(protag->height)))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom;
+		obj.y = (((protag->y - ((floor(protag->height)* 0.9))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom;
 		obj.width = (protag->width * g_camera.zoom);
 		obj.height = (floor(protag->height) * g_camera.zoom);
 
@@ -1576,6 +1570,7 @@ void getInput(float &elapsed) {
 				SoldUIUp = (oldUIUp) ? 6 : 30;				
 			} else {
 				protag->move_up();
+				
 			}
 			oldUIUp = 1;
 		} else {

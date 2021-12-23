@@ -1745,6 +1745,10 @@ public:
 	float xmaxspeed = 0;
 	float ymaxspeed = 0;
 	float friction = 0;
+	float baseFriction = 0;	
+	float slowSeconds = 0;
+	float slowPercent = 0;
+
 
 	int update_z_time = 0; 
 	int max_update_z_time = 1; //update zpos every x frames
@@ -1798,8 +1802,9 @@ public:
 	bool rectangularshadow = 0;
 	
 	//stuff for orbitals
-	bool isOrbital = false;		
+	bool isOrbital = false;
 	entity* parent = nullptr;
+	string parentName = "null";
 	float angularPosition = 0;
 	float angularSpeed = 10;
 	float orbitRange = 1;
@@ -1886,6 +1891,9 @@ public:
 	//used for setting the nararator
 	bool persistentHidden = 0;
 
+	//used for preserving the arms, but it can be used for other stuff
+	bool persistentGeneral = 0;
+
 	//misc scripting stuff
 	bool banished = 0;
 	bool solid = 0;
@@ -1957,6 +1965,8 @@ public:
 		
 		file >> comment;
 		file >> this->friction;
+		baseFriction = friction;
+
 		file >> comment;
 		float twidth, theight, tzeight;
 		file >> twidth;
@@ -2066,7 +2076,6 @@ public:
 		file >> essential;
 
 		file >> comment;
-		string parentName;
 		file >> parentName;
 		if(parentName != "null") {
 			entity* hopeful = searchEntities(parentName);
@@ -2643,7 +2652,7 @@ public:
 	virtual door* update(vector<door*> doors, float elapsed) {
 		if(!tangible) {return nullptr;}
 		if(isOrbital) {
-			this->z = parent->z + parent->zeight/2;
+			this->z = parent->z -10 - (parent->height - parent->curheight);
 			
 		
 			float angle = convertFrameToAngle(parent->frame, parent->flip == SDL_FLIP_HORIZONTAL);
@@ -2658,8 +2667,8 @@ public:
 			this->setOriginX(parent->getOriginX() + cos(fangle) * orbitRange);
 			this->setOriginY(parent->getOriginY() + sin(fangle) * orbitRange);
 
-			this->sortingOffset = baseSortingOffset + sin(fangle) * 21;
-			
+			this->sortingOffset = baseSortingOffset + sin(fangle) * 21 + 10 + (parent->height - parent->curheight);
+
 			if(yframes == 8) {
 				this->animation = convertAngleToFrame(fangle);
 				this->flip = SDL_FLIP_NONE;
@@ -3054,7 +3063,16 @@ public:
 		if(!xcollide && !transition) { 
 			x+= xvel * ((double) elapsed / 256.0);
 		}
-
+		//T(slowSeconds);
+		//T(g_jump_afterslow_seconds);
+		if(slowSeconds > 0) {
+			slowSeconds -= elapsed/1000;
+			friction = baseFriction * slowPercent;
+		} else {
+			friction = baseFriction;
+		}
+		
+		
 		if(grounded) {
 			yvel *= pow(friction, ((double) elapsed / 256.0));
 			xvel *= pow(friction, ((double) elapsed / 256.0));
@@ -3293,6 +3311,12 @@ public:
 			if(grounded == 0 && this == protag) {
 				//play landing sound
 				playSound(-1, g_land, 0);
+
+				if(!storedJump) { 
+					//penalize the player for not bhopping
+					protag->slowPercent = g_jump_afterslow;
+					protag->slowSeconds = g_jump_afterslow_seconds;
+				}
 			}
 			grounded = 1;
 			zvel = max(zvel, 0.0f);
@@ -4217,6 +4241,22 @@ int loadSave() {
 
 	file.close();
 
+	for(auto x : g_entities) {
+		x->children.clear(); // might be a leak here
+	}
+
+	//re-attach persistent orbitals
+	for(auto x : g_entities) {
+		if(x->persistentGeneral && x->parentName != "null") {
+			entity* hopeful = searchEntities(x->parentName);
+			if(hopeful != nullptr) {
+				x->isOrbital = 1;
+				x->parent = hopeful;
+				x->parent->children.push_back(x);		
+			}
+		
+		}
+	}
 
 	return 0;
 }
@@ -5062,7 +5102,7 @@ void clear_map(camera& cameraToReset) {
 	Mix_FadeOutMusic(1000);
 	{
 		
-		SDL_GL_SetSwapInterval(0);
+		//SDL_GL_SetSwapInterval(0);
 		bool cont = false;
 		float ticks = 0;
 		float lastticks = 0;
@@ -5162,11 +5202,14 @@ void clear_map(camera& cameraToReset) {
 
 	//copy protag to a pointer, clear the array, and re-add protag
 	entity* hold_narra = nullptr;
+	vector<entity*> persistentEnts;
 	//D(protag->inParty);
 	for(int i=0; i< size; i++) {
 		if(g_entities[0]->inParty) {
 			//remove from array without deleting
 			g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
+
+			g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
 		} else if (g_entities[0]->persistentHidden) {
 			//do nothing because nar is handled differently now
 			if(hold_narra == nullptr) {
@@ -5177,6 +5220,13 @@ void clear_map(camera& cameraToReset) {
 			} else {
 				throw("critical error");
 			}
+		} else if(g_entities[0]->persistentGeneral) {
+			persistentEnts.push_back(g_entities[0]);
+			g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
+			g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
+
+
+			
 		} else {
 			
 			delete g_entities[0];
@@ -5192,6 +5242,12 @@ void clear_map(camera& cameraToReset) {
 		g_actors.push_back(n);
 	}
 		
+	//push back any ents that were persisent (arms)
+	for(auto n : persistentEnts) {
+		g_entities.push_back(n);
+		g_actors.push_back(n);
+	}
+
 	//push the narrarator back on
 	g_entities.push_back(hold_narra);
 	g_actors.push_back(hold_narra);
