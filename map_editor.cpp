@@ -192,6 +192,10 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
             SDL_FreeSurface(bs);
         }
+        if(word == "dark") {
+            iss >> s0 >> p1;
+            g_fogofwarEnabled = p1;
+        }
         if(word == "box") {
             //M("loading collisisons" << endl;
             iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> s1 >> s2 >> p6 >> p7 >> p8 >> s3; 
@@ -679,6 +683,10 @@ bool mapeditor_save_map(string word) {
         ofile << "enemy " << it->first << " " << it->second << endl;
     }
 
+    //write fow
+
+    ofile << "dark " << g_fogofwarEnabled << endl; 
+
     bool limitflag = 0;
     for (auto x: limits) { if(x != 0) {limitflag = 1; }}
     
@@ -761,7 +769,7 @@ bool mapeditor_save_map(string word) {
     }
 
     for (long long unsigned int i = 0; i < g_entities.size(); i++) {
-        if(!g_entities[i]->inParty && !g_entities[i]->persistentHidden) {
+        if(!g_entities[i]->inParty && !g_entities[i]->persistentHidden && !g_entities[i]->persistentGeneral) {
             if(g_entities[i]->isWorlditem) {
                 ofile << "item " << g_entities[i]->name.substr(5) << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) <<  " " << to_string(g_entities[i]->z) << endl;
             } else {
@@ -1157,7 +1165,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/invisiblewall.png");
+        selection->image = IMG_Load("textures/engine/invisiblewall.bmp");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
         
@@ -1169,7 +1177,7 @@ void write_map(entity* mapent) {
                 box* c;
 
                 
-                string sthwall = "textures/engine/seethru.png";
+                string sthwall = "textures/engine/seethru.bmp";
                 if(makeboxs) {
                     for (int i = wallstart/64; i < wallheight / 64; i++) {
                         bool fcap = (!(i + 1 < wallheight/64));//&& autoMakeWallcaps;
@@ -1203,7 +1211,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/navmesh.png");
+        selection->image = IMG_Load("textures/engine/navmesh.bmp");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
     } else {
@@ -1765,7 +1773,7 @@ void write_map(entity* mapent) {
                             if(i == g_layers) { continue; }
                             for(auto n : g_boxs[i+1]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
+                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
                                 if(RectOverlap(inneighbor, n->bounds)) {
                                     b->capped = false;
                                 }
@@ -1779,7 +1787,7 @@ void write_map(entity* mapent) {
                             rect a = {((b->x1 + b->x2) /2) - 4, ((b->y1 + b->y2) / 2) - 4, 8, 8};
                             for(auto n : g_triangles[i+1]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
+                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
                                 if(TriRectOverlap(n, a)) {
                                     b->capped = false;
                                 }
@@ -1801,7 +1809,7 @@ void write_map(entity* mapent) {
                             b->shineBot = true;
 
                             //don't calculate lighting for invisible walls
-                            if(b->walltexture == "textures/engine/seethru.png") {
+                            if(b->walltexture == "textures/engine/seethru.bmp") {
                                 b->shineTop = 0;
                                 b->shineBot = 0;
                                 continue;
@@ -1810,7 +1818,7 @@ void write_map(entity* mapent) {
                             //check for overlap with all other boxes
                             for(auto n : g_boxs[i]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
+                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
                                 if(n == b) {continue;}
                                 
                                 if(RectOverlap(n->bounds, uneighbor)) {
@@ -1871,7 +1879,7 @@ void write_map(entity* mapent) {
                                 for(auto n: g_boxs[0]) {
                                     if(n == b) {continue;}
                                     //don't calculate lighting by invisible walls
-                                    if(n->walltexture == "textures/engine/seethru.png") {continue;}
+                                    if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
                                     if(RectOverlap(n->bounds, uneighbor)) {
                                         b->shadeTop = false;
                                     }
@@ -1905,7 +1913,7 @@ void write_map(entity* mapent) {
                             if(i > 0){
                                 for(auto n: g_boxs[i-1]) {
                                     //don't calculate lighting by invisible walls
-                                    if(n->walltexture == "textures/engine/seethru.png") {continue;}
+                                    if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
                                     if(!n->capped) {continue;}
                                     
                                     if(RectOverlap(n->bounds, uneighbor)) {
@@ -1939,7 +1947,7 @@ void write_map(entity* mapent) {
                                 
                                 
                             }
-                            if(b->walltexture == "textures/engine/seethru.png") {
+                            if(b->walltexture == "textures/engine/seethru.bmp") {
                                 b->shineTop = 0;
                                 b->shineBot = 0;
                                 //continue;
@@ -1962,7 +1970,7 @@ void write_map(entity* mapent) {
                             } else {
                                 for(auto b : g_boxs[i-1]) {
                                     //don't calculate lighting by invisible walls
-                                    if(b->walltexture == "textures/engine/seethru.png") {continue;}
+                                    if(b->walltexture == "textures/engine/seethru.bmp") {continue;}
                                     if(TriRectOverlap(tri, b->bounds.x + 2, b->bounds.y + 2,b->bounds.width - 4, b->bounds.height - 4)) {
                                         tri->shaded = 1;
                                     }
@@ -2226,7 +2234,7 @@ void write_map(entity* mapent) {
                             if(i == g_layers) { continue; }
                             for(auto n : g_boxs[i+1]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.png") {continue;}
+                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
                                 if(RectOverlap(inneighbor, n->bounds)) {
                                     b->capped = false;
                                 }
@@ -2498,7 +2506,22 @@ void write_map(entity* mapent) {
                 if(word == "set" || word == "s") {
                     line >> word;
                     D(word);
-
+                    if(word == "protag" || word == "me") {
+                        line >> word;
+                        entity* hopeful = searchEntities(word);
+                        if(hopeful != nullptr) {
+                            protag = hopeful;
+                        }
+                        break;
+                    }
+                    if(word == "focus") {
+                        line >> word;
+                        entity* hopeful = searchEntities(word);
+                        if(hopeful != nullptr) {
+                            g_focus = hopeful;
+                        }
+                        break;
+                    }
                     if(word == "mapdir" || word == "md") {
                         string a;
                         if(line >> a) {
@@ -2507,7 +2530,7 @@ void write_map(entity* mapent) {
 
                         break;
                     }
-                    if(word == "fogofwar" || word == "fow") {
+                    if(word == "fogofwar" || word == "fow" || word == "dark" || word == "darkness") {
                         bool b;
                         if(line >> b) {
                             g_fogofwarEnabled = b;
@@ -2739,7 +2762,13 @@ void write_map(entity* mapent) {
                     break;
                 }
                 
-                
+                if(word == "agro") {
+                    line >> word;
+                    entity* hopeful = searchEntities(word);
+                    if(hopeful != nullptr) {
+                        hopeful->agrod = 1;
+                    }
+                } 
 
                 if(word == "adj" || word == "adjust") {
                     //adjust

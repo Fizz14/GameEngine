@@ -677,6 +677,7 @@ int main(int argc, char ** argv) {
 		for(long long unsigned int i=0; i < g_actors.size(); i++){
 			g_actors[i]->render(renderer, g_camera);
 		}
+		//T(g_actors.size());
 
 		for(long long unsigned int i=0; i < g_tiles.size(); i++){
 			if(g_tiles[i]->z == 2) {
