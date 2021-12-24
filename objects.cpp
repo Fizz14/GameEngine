@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #include "globals.cpp"
+#include "lightcookietesting.cpp"
 
 #define PI 3.14159265
 
@@ -1214,7 +1215,15 @@ public:
 	}
 };
 
-	class cshadow:public actor {
+int compare_ent (actor* a, actor* b) {
+  	return a->y + a->z + a->sortingOffset < b->y + b->z + b->sortingOffset;
+}
+
+void sort_by_y(vector<actor*> &g_entities) {
+    stable_sort(g_entities.begin(), g_entities.end(), compare_ent);
+}
+
+class cshadow:public actor {
 public:
 	float size;
 	actor* owner = 0;
@@ -5149,7 +5158,218 @@ void clear_map(camera& cameraToReset) {
 		int pitch;
 
 		float offset = imageHeight;
+
 		
+		SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
+		SDL_SetRenderTarget(renderer, frame);
+
+		//render current frame to texture -- this is gonna get weird
+		{
+			
+			if(g_backgroundLoaded && g_useBackgrounds) { //if the level has a background and the user would like to see it
+				SDL_RenderCopy(renderer, background, NULL, NULL);
+			}
+			
+			for(auto n : g_entities) {
+				n->cooldown -= elapsed;
+			}
+			
+			
+			//tiles
+			for(long long unsigned int i=0; i < g_tiles.size(); i++){
+				if(g_tiles[i]->z ==0) {
+					g_tiles[i]->render(renderer, g_camera);
+				}
+			}
+
+			for(long long unsigned int i=0; i < g_tiles.size(); i++){
+				if(g_tiles[i]->z ==1) {
+					g_tiles[i]->render(renderer, g_camera);
+				}
+			}
+
+
+			SDL_Rect FoWrect;
+
+			//sort		
+			sort_by_y(g_actors);
+			for(long long unsigned int i=0; i < g_actors.size(); i++){
+				g_actors[i]->render(renderer, g_camera);
+			}
+			//T(g_actors.size());
+
+			for(long long unsigned int i=0; i < g_tiles.size(); i++){
+				if(g_tiles[i]->z == 2) {
+					g_tiles[i]->render(renderer, g_camera);
+				}
+			}
+
+			//extern SDL_Texture* TextureA;
+			//extern SDL_Texture* TextureC;
+			//extern SDL_Texture* canvas;
+			//extern SDL_Texture* light;
+			//extern SDL_Texture* result;
+			//extern SDL_Texture* blackbarTexture;
+
+
+			//Fogofwar
+			T(g_fogofwarEnabled);
+			if(g_fogofwarEnabled && !devMode) {
+
+				// int functionalX = g_focus->getOriginX();
+				// int functionalY = g_focus->getOriginY();
+
+				// functionalX -= functionalX % 64;
+				// functionalX += 32;
+				// functionalY -= functionalY % 55;
+				// functionalY += 26;
+
+				// if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY) {
+				// 	bool flipper = 0;
+				// 	for(int i = 0; i < g_fogcookies.size(); i++) {
+				// 		for(int j = 0; j < g_fogcookies[0].size(); j++) {
+				// 			flipper = !flipper;
+				// 			int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
+				// 			int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
+				// 			if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 15, 0, 15, 1)) {
+				// 				g_fogcookies[i][j] = 1;
+				// 				g_fc[i][j] = 1;
+
+				// 				g_sc[i][j] = 1;
+				// 			} else {
+				// 				g_fogcookies[i][j] = 0;
+								
+				// 				g_fc[i][j] = 0;
+				// 				g_sc[i][j] = 0;
+				// 			}
+				// 		}
+				// 	}
+				// }
+
+				//save cookies that are just dark because they are inside of walls to g_savedcookies
+				// for(int i = 0; i < g_fogcookies.size(); i++) {
+				// 	for(int j = 0; j < g_fogcookies[0].size(); j++) {
+				// 		int xpos = ((i - 10) * 64) + functionalX;
+				// 		int ypos = ((j - 9) * 55) + functionalY;
+				// 		//is this cookie in a wall? or behind a wall
+				// 		if(!LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1)) {
+				// 			g_fc[i][j] = 1;
+									
+				// 		}	
+				// 		if(!LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1)) {
+				// 			g_fc[i][j] = 1;	
+				// 		}
+				// 	}
+				// }
+
+				// g_lastFunctionalX = functionalX;
+				// g_lastFunctionalY = functionalY;
+
+				//these are the corners and the center
+				// g_fogcookies[0][0] = 1;
+				// g_fogcookies[20][0] = 1;
+				// g_fogcookies[20][17] = 1;
+				// g_fogcookies[0][17] = 1;
+				// g_fogcookies[10][9] = 1; 
+
+				int px = -(int)g_focus->getOriginX() % 64;
+				
+				//offset us to the protag's location
+				//int yoffset =  ((g_focus->y- (g_focus->z + g_focus->zeight) * XtoZ)) * g_camera.zoom;
+				//the zeight is constant at level 2  for now
+				int yoffset =  (g_focus->getOriginY() ) * g_camera.zoom;
+				
+				//and then subtract half of the screen
+				yoffset -= yoffset % 55;
+				yoffset -= (g_fogheight * 55 + 12)/2;
+				yoffset -= g_camera.y;
+
+				//we do this nonsense to keep the offset on the grid
+				//yoffset -= yoffset % 55;
+
+				//px = 64 - px - 64;
+				//py = 55 - py - 55;
+				// 50 50
+				SDL_SetRenderTarget(renderer, NULL);
+				addTextures(renderer, g_fc, canvas, light, 500, 500, 210, 210);
+
+
+				TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
+				
+				//render graphics
+				FoWrect = {px - 20, yoffset -8, g_fogwidth * 64 + 50, g_fogheight * 55 + 30};
+				SDL_SetRenderTarget(renderer, frame);
+				SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+				
+				//do it for z = 64
+				FoWrect.y -= 64 * XtoZ;
+				SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+				
+
+				SDL_SetRenderTarget(renderer, NULL);
+				addTextures(renderer, g_sc, canvas, light, 500, 500, 210, 210);
+
+
+				TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
+				SDL_SetRenderTarget(renderer, frame);
+			
+				//render graphics
+				FoWrect.y -= 67 * XtoZ;
+				SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+			
+				//black bars :/
+				SDL_Rect topbar = {px, FoWrect.y - 5000, 1500, 5000};
+				SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+				
+				SDL_Rect botbar = {px, FoWrect.y +  g_fogheight * 55 + 12, 1500, 5000};
+				SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+				
+
+			}
+
+			
+			
+			//ui
+			// if(!inPauseMenu && g_showHUD) {
+			// 	// !!! segfaults on mapload sometimes
+			// 	adventureUIManager->healthText->updateText( to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), WIN_WIDTH * g_minifontsize, 0.9); 
+			// 	adventureUIManager->healthText->show = 1;
+				
+			// } else {
+			// 	adventureUIManager->healthText->show = 0;
+				
+			// }
+
+			// //move the healthbar properly to the protagonist
+			// rect obj; // = {( , (((protag->y - ((protag->height))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom, (protag->width * g_camera.zoom), (protag->height * g_camera.zoom))};		
+			// obj.x = ((protag->x -g_camera.x) * g_camera.zoom);
+			// obj.y = (((protag->y - ((floor(protag->height)* 0.9))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom;
+			// obj.width = (protag->width * g_camera.zoom);
+			// obj.height = (floor(protag->height) * g_camera.zoom);
+
+			// protagHealthbarA->x = (((float)obj.x + obj.width/2) / (float)WIN_WIDTH) - protagHealthbarA->width/2.0;
+			// protagHealthbarA->y = ((float)obj.y) / (float)WIN_HEIGHT;
+			// protagHealthbarB->x = protagHealthbarA->x;
+			// protagHealthbarB->y = protagHealthbarA->y;
+			
+			// protagHealthbarC->x = protagHealthbarA->x;
+			// protagHealthbarC->y = protagHealthbarA->y;
+			// protagHealthbarC->width = (protag->hp / protag->maxhp) * 0.05;
+			// adventureUIManager->healthText->boxX = protagHealthbarA->x + protagHealthbarA->width/2;
+			// adventureUIManager->healthText->boxY = protagHealthbarA->y - 0.005;
+			
+			for(long long unsigned int i=0; i < g_ui.size(); i++){
+				g_ui[i]->render(renderer, g_camera);
+			}	
+			for(long long unsigned int i=0; i < g_textboxes.size(); i++){
+				g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+			}	
+
+			//SDL_RenderPresent(renderer);
+		}
+		
+		
+		SDL_SetRenderTarget(renderer, NULL);
 		while (!cont) {
 			
 			//onframe things
@@ -5200,9 +5420,13 @@ void clear_map(camera& cameraToReset) {
 			}	
 			lastticks = ticks;
 
+			SDL_RenderClear(renderer);
+			//render last frame
+			SDL_RenderCopy(renderer, frame, NULL, NULL);	
 			SDL_UnlockTexture(transitionTexture);
 			SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
-
+			//cout << "you are seeing the saved frame" << endl;
+			//SDL_Delay(1);
 			SDL_RenderPresent(renderer);
 
 			if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {

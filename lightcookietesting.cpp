@@ -1,3 +1,6 @@
+#ifndef cookies_h
+#define cookies_h
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <iostream>
@@ -138,3 +141,5 @@ SDL_Texture* IlluminateTexture(SDL_Renderer* renderer, SDL_Texture* &mask, SDL_T
 // 	}
 
 // }
+
+#endif

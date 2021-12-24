@@ -22,13 +22,13 @@ using namespace std;
 //   	return a->getOriginY() + a->z < b->getOriginY() +b->z;
 // }
 
-int compare_ent (actor* a, actor* b) {
-  	return a->y + a->z + a->sortingOffset < b->y + b->z + b->sortingOffset;
-}
+// int compare_ent (actor* a, actor* b) {
+//   	return a->y + a->z + a->sortingOffset < b->y + b->z + b->sortingOffset;
+// }
 
-void sort_by_y(vector<actor*> &g_entities) {
-    stable_sort(g_entities.begin(), g_entities.end(), compare_ent);
-}
+// void sort_by_y(vector<actor*> &g_entities) {
+//     stable_sort(g_entities.begin(), g_entities.end(), compare_ent);
+// }
 
 void getInput(float& elapsed);
  
@@ -310,7 +310,7 @@ int main(int argc, char ** argv) {
 
 	srand(time(NULL));
 	if(devMode) {
-		g_transitionSpeed = 10000;
+		//g_transitionSpeed = 10000;
 		//!!!
 		loadSave();
 		//empty map or default map for map editing, perhaps a tutorial even
@@ -360,22 +360,22 @@ int main(int argc, char ** argv) {
     SDL_Surface* SurfaceA = IMG_Load("misc/resolution.bmp");
 	SDL_Surface* SurfaceB = IMG_Load("misc/b.png");
 	
-	SDL_Texture* TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
+	TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 	//SDL_Texture* TextureA = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);	
-	SDL_Texture* TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
+	TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
 
 	SDL_FreeSurface(SurfaceA);
 	SDL_FreeSurface(SurfaceB);
 
 	SDL_Surface* blackbarSurface = IMG_Load("textures/engine/black.bmp");
-	SDL_Texture* blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
+	blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
 
 	SDL_FreeSurface(blackbarSurface);
 
-	SDL_Texture* TextureC;
+	//SDL_Texture* TextureC;
 
 
-	SDL_Texture* result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
+	result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_MOD);
 	SDL_SetTextureBlendMode(TextureA, SDL_BLENDMODE_MOD);
 	SDL_SetTextureBlendMode(TextureB, SDL_BLENDMODE_NONE);
@@ -385,10 +385,10 @@ int main(int argc, char ** argv) {
 	SDL_GL_SetSwapInterval(1);
 
 	//textures for adding operation
-	SDL_Texture* canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
+	canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 
 	SDL_Surface* lightSurface = IMG_Load("misc/light.png");
-	SDL_Texture* light = SDL_CreateTextureFromSurface(renderer, lightSurface);
+	light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 	SDL_FreeSurface(lightSurface);
 
 	//spawn orbital for fomm

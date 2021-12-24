@@ -153,7 +153,7 @@ vector<collisionZone*> g_collisionZones;
 map<string, int> enemiesMap; //stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0; //how many points this map can spend on enemies;
 
-bool boxsenabled = true; //affects both map editor and full game. Dont edit here
+bool boxsenabled = 1; //affects both map editor and full game. Dont edit here
 
 bool onionmode = 0; //hide custom graphics
 bool genericmode = 0;
@@ -201,6 +201,16 @@ int g_graphicsquality = 3; // 0 is least, 4 is max
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
+
+//for fow
+SDL_Texture* result;
+SDL_Texture* canvas;
+SDL_Texture* light;
+SDL_Texture* TextureA;
+SDL_Texture* TextureB;
+SDL_Texture* TextureC;
+SDL_Texture* blackbarTexture;
+
 
 
 //industry standard needs greater fogheight 
@@ -459,7 +469,7 @@ string g_lifecycle = "Alpha";
 
 //world
 int g_layers = 12; //max blocks in world
-float g_bhoppingBoost = 3; //the factor applied to friction whilst airborn, not good, basically just airspeed modifier rn
+float g_bhoppingBoost = 20; //the factor applied to friction whilst airborn, not good, basically just airspeed modifier rn
 
 //map editing, mapeditor, map-editor
 bool g_mousemode = 1;

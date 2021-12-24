@@ -1535,7 +1535,7 @@ void write_map(entity* mapent) {
             //const Uint8* keystate = SDL_GetKeyboardState(NULL);
             
             //turn off VSYNC because otherwise we jitter between this frame and the last while typing
-            SDL_GL_SetSwapInterval(0);
+            //SDL_GL_SetSwapInterval(0);
             while(polling) {
                 SDL_Delay(10);
                 while( SDL_PollEvent( &console_event ) ){
