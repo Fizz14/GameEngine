@@ -161,7 +161,7 @@ bool freecamera = 0;
 bool devMode = 0;
 bool canSwitchOffDevMode = 0;
 bool inputRefreshCanSwitchOffDevMode = 0;
-bool showDevMessages = 0;
+bool showDevMessages = 1;
 bool showErrorMessages = 0;
 bool showImportantMessages = 1;
 
@@ -459,7 +459,7 @@ string g_lifecycle = "Alpha";
 
 //world
 int g_layers = 12; //max blocks in world
-float g_bhoppingBoost = 2; //the factor applied to friction whilst airborn, not good, basically just airspeed modifier rn
+float g_bhoppingBoost = 3; //the factor applied to friction whilst airborn, not good, basically just airspeed modifier rn
 
 //map editing, mapeditor, map-editor
 bool g_mousemode = 1;
@@ -479,7 +479,7 @@ std::map<string, int> g_save = {};
 float g_dash_cooldown = 1000;
 float g_max_dash_cooldown = 1000;
 float g_jump_afterslow = 0.1;
-float g_jump_afterslow_seconds = 3;
+float g_jump_afterslow_seconds = 0;
 bool storedJump = 0;
 
 

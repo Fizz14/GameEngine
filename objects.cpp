@@ -1943,10 +1943,11 @@ public:
 		string temp;
 		file >> temp;
 		string spritefilevar;
-		
-		
-		spritefilevar = "textures/sprites/" + temp + ".bmp";
-		
+		if(temp.substr(0,3) == "sp-") {
+			spritefilevar = "textures/engine/" + temp + ".bmp";
+		} else {
+			spritefilevar = "textures/sprites/" + temp + ".bmp";
+		}
 		
 		const char* spritefile = spritefilevar.c_str();
 		float size;
@@ -2076,6 +2077,9 @@ public:
 		file >> essential;
 
 		file >> comment;
+		file >> this->persistentGeneral;
+
+		file >> comment;
 		file >> parentName;
 		if(parentName != "null") {
 			entity* hopeful = searchEntities(parentName);
@@ -2096,13 +2100,14 @@ public:
 		file >> comment;
 		file >> orbitOffset;
 
+	
 		if(canFight) {
 			//check if someone else already made the attack
 			bool cached = 0;
 			hisweapon = new weapon(weaponName, this->faction != 0);
 		}
 
-		file.close();
+		
 		
 		//load dialogue file
 		if(1) {
@@ -2201,6 +2206,25 @@ public:
 		
 		
 		g_entities.push_back(this);
+		
+		file >> comment;
+		//spawn everything on spawnlist
+		int overflow = 100;
+		for(;;) {
+
+			string line;
+			file >> line;
+			if(line == "}" || line == "") {break;};
+			overflow--;
+			if(overflow < 0) {E("Bad spawnlist."); break;}
+			entity* a = new entity(renderer, line);
+			T(a->name);
+			if(a->parentName == this->name) {
+				a->parent = this;
+			}
+		}
+
+		file.close();
 	}
 
 	//for worlditems, load the ent file but use a texture by name

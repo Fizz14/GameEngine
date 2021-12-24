@@ -91,27 +91,27 @@ int main(int argc, char ** argv) {
 	entity* narrarator;
 	// !!! reduce first launch overhead by 
 	// making the narrarator use a sprite with 1 pixel
-	narrarator = new entity(renderer, "fomm");
-	narrarator->tangible =0;
+	narrarator = new entity(renderer, "sp-joseph");
+	narrarator->tangible = 0;
 	narrarator->persistentHidden = 1;
 	//narrarator->name = "sp-narrarator";
 
-	entity* fomm;
+	// entity* fomm;
+	// cout << "about to make fomm" << endl;
+	// //fomm = new entity(renderer, "fomm"); 
 
-	fomm = new entity(renderer, "fomm"); 
-
 	
 	
-	fomm->inParty = 1;
-	party.push_back(fomm);
-	fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
-	fomm->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
-	protag = fomm;
-	g_cameraShove = protag->hisweapon->attacks[0]->range/2;
-	g_focus = protag;
+	// fomm->inParty = 1;
+	// party.push_back(fomm);
+	// fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
+	// fomm->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
+	// protag = fomm;
+	// g_cameraShove = protag->hisweapon->attacks[0]->range/2;
+	// g_focus = protag;
 	
-	g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
-	
+	// g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
+			
 
 
 	//protag healthbar
@@ -315,14 +315,34 @@ int main(int argc, char ** argv) {
 		loadSave();
 		//empty map or default map for map editing, perhaps a tutorial even
 		load_map(renderer, "maps/sp-title/editordefault.map","a");
-		g_map = "g";
+		//g_map = "g";
 		protag->x = 100000;
 		protag->y = 100000;
 		
 		
 	} else {
 		//load the titlescreen
-		load_map(renderer, "maps/" + g_map + "/" + g_map + ".map", "a");
+		I(g_map);
+		//we need a dummy protag
+		// entity* dummy = new entity(renderer, "sp-joseph");
+		// protag = dummy;
+
+		entity* fomm;
+		cout << "about to make fomm" << endl;
+		fomm = new entity(renderer, "sp-joseph"); 
+		
+
+
+		fomm->inParty = 1;
+		party.push_back(fomm);
+		protag = fomm;
+		g_focus = protag;
+		fomm->name = "sp-dummy";
+
+		g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
+
+
+		load_map(renderer, "maps/sp-title/sp-title.map", "a");
 		//srand(time(NULL));
 	}
 
@@ -372,11 +392,11 @@ int main(int argc, char ** argv) {
 	SDL_FreeSurface(lightSurface);
 
 	//spawn orbital for fomm
-	entity* arma = new entity(renderer, "arm-a"); arma->persistentGeneral = 1;
-	entity* armb = new entity(renderer, "arm-b"); armb->persistentGeneral = 1;
-	entity* armc = new entity(renderer, "arm-c"); armc->persistentGeneral = 1; 
-	entity* armd = new entity(renderer, "arm-d"); armd->persistentGeneral = 1;
-	entity* arme = new entity(renderer, "arm-e"); arme->persistentGeneral = 1;
+	//entity* arma = new entity(renderer, "arm-a"); arma->persistentGeneral = 1;
+	//entity* armb = new entity(renderer, "arm-b"); armb->persistentGeneral = 1;
+	//entity* armc = new entity(renderer, "arm-c"); armc->persistentGeneral = 1; 
+	//entity* armd = new entity(renderer, "arm-d"); armd->persistentGeneral = 1;
+	//entity* arme = new entity(renderer, "arm-e"); arme->persistentGeneral = 1;
 
 	//software lifecycle text
 	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
@@ -1897,9 +1917,11 @@ void getInput(float &elapsed) {
 		//increase gridsize
 		devinput[8] = 1;
 	}
-	if(keystate[SDL_SCANCODE_KP_1] && devMode) {
+	if(keystate[SDL_SCANCODE_O] && devMode) {
 		//enable/disable collisions
 		devinput[9] = 1;
+		//mysteriously, this doesn't work anymore
+		//might
 	}
 	if(keystate[SDL_SCANCODE_KP_5] && devMode) {
 		//triangles

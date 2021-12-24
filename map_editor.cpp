@@ -1462,6 +1462,7 @@ void write_map(entity* mapent) {
         drawhitboxes = !drawhitboxes;
     }
 
+
     if(devinput[8] && !olddevinput[8]) {
         //grow grid
         // grid *= 2;
@@ -2503,6 +2504,10 @@ void write_map(entity* mapent) {
                     populateMapWithEntities();
                     break;
                 }
+                if(word == "ghost" || word == "geist") {
+                    boxsenabled = !boxsenabled;
+                    break;
+                }
                 if(word == "set" || word == "s") {
                     line >> word;
                     D(word);
@@ -2724,7 +2729,7 @@ void write_map(entity* mapent) {
                         }
                         break;
                     }
-                    if(word == "boxs") {
+                    if(word == "collisions" || "collision") {
                         bool num;
                         if(line >> num) {
                             boxsenabled = num;
