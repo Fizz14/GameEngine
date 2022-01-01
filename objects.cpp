@@ -1755,6 +1755,8 @@ public:
 	float ymaxspeed = 0;
 	float friction = 0;
 	float baseFriction = 0;	
+
+	float currentAirBoost = 0;
 	float slowSeconds = 0;
 	float slowPercent = 0;
 
@@ -3110,8 +3112,13 @@ public:
 			yvel *= pow(friction, ((double) elapsed / 256.0));
 			xvel *= pow(friction, ((double) elapsed / 256.0));
 		} else {
-			yvel *= pow(friction*g_bhoppingBoost, ((double) elapsed / 256.0));
-			xvel *= pow(friction*g_bhoppingBoost, ((double) elapsed / 256.0));
+			yvel *= pow(friction*this->currentAirBoost, ((double) elapsed / 256.0));
+			xvel *= pow(friction*this->currentAirBoost, ((double) elapsed / 256.0));
+			this->currentAirBoost += (g_deltaBhopBoost * ((double) elapsed / 256.0)) * min(pow( pow(x,2) + pow(y, 2), 0.2) / xmaxspeed, 1.0);
+			if(this->currentAirBoost > g_maxBhoppingBoost) {
+				this->currentAirBoost = g_maxBhoppingBoost;
+			}
+			I(this->currentAirBoost);
 		}
 
 		float heightfloor = 0; //filled with floor z from heightmap
@@ -3349,6 +3356,8 @@ public:
 					//penalize the player for not bhopping
 					protag->slowPercent = g_jump_afterslow;
 					protag->slowSeconds = g_jump_afterslow_seconds;
+					protag->currentAirBoost = g_defaultBhoppingBoost;
+						
 				}
 			}
 			grounded = 1;

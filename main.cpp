@@ -485,7 +485,7 @@ int main(int argc, char ** argv) {
 		use_cooldown -= elapsed / 1000;
 		musicFadeTimer += elapsed;
 		musicUpdateTimer += elapsed;
-		g_dash_cooldown -= elapsed;
+		//g_dash_cooldown -= elapsed;
 
 		if(inPauseMenu) {
 			//if we're paused, freeze gametime
@@ -660,8 +660,8 @@ int main(int argc, char ** argv) {
 			//lerp cameratargets
 			g_cameraAimingOffsetY = g_cameraAimingOffsetY*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetYTarget *(1-(g_cameraAimingOffsetLerpScale));
 			g_cameraAimingOffsetX = g_cameraAimingOffsetX*g_cameraAimingOffsetLerpScale + g_cameraAimingOffsetXTarget *(1-(g_cameraAimingOffsetLerpScale));
-			float zoomoffsetx = (WIN_WIDTH /2) / g_zoom_mod;
-			float zoomoffsety = (WIN_HEIGHT /2) / g_zoom_mod;
+			float zoomoffsetx = ((float)WIN_WIDTH /2) / g_zoom_mod;
+			float zoomoffsety = ((float)WIN_HEIGHT /2) / g_zoom_mod;
 			//g_camera.zoom = 0.9;
 			
 			g_camera.update_movement(elapsed, g_focus->getOriginX() - zoomoffsetx + (g_cameraAimingOffsetX * g_cameraShove), ((g_focus->getOriginY() - XtoZ * g_focus->z) - zoomoffsety - (g_cameraAimingOffsetY * g_cameraShove)));
