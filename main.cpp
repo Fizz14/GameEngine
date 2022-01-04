@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-#include <SDL2/SDL.h>        
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_mixer.h>
@@ -1196,28 +1196,71 @@ int main(int argc, char ** argv) {
 		SDL_RenderPresent(renderer);
 		
 		//update music
-		if(musicUpdateTimer > 500) {
+		
+		if(musicUpdateTimer > 500) {		
 			musicUpdateTimer = 0;
-			if(g_musicNodes.size() > 0) {
-				newClosest = protag->Get_Closest_Node(g_musicNodes);
-				if(closestMusicNode == nullptr && !g_mute) { 
-					Mix_PlayMusic(newClosest->blip, -1); 
+			
+			//check musicalentities
+			entity* listenToMe = nullptr;
+			for(auto x : g_musicalEntities) {
+				if(XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius) {
+					//we should be playing his music
+					//incorporate priority later
+					listenToMe = x;
+				}
+			}
+			if(listenToMe != nullptr) {
+				closestMusicNode = nullptr;
+				if(g_currentMusicPlayingEntity != listenToMe) {
+					Mix_FadeOutMusic(200);
+					//Mix_PlayMusic(listenToMe->theme, 0);
 					Mix_VolumeMusic(g_music_volume * 128);
-					closestMusicNode = newClosest; 
-				} else { 
-
-					//Segfaults, todo is initialize these musicNodes to have something
-					if(newClosest->name != closestMusicNode->name) {
-						//D(newClosest->name);
-						if(newClosest->name == "silence") {
+					entFadeFlag = 1;
+					fadeFlag = 0;
+					musicFadeTimer = 0;
+					g_currentMusicPlayingEntity = listenToMe;
+					I("scheduled to switch TO entmusic");
+				}
+			} else {
+				bool hadEntPlayingMusic = 0;
+				if(g_currentMusicPlayingEntity != nullptr) {
+					//stop ent music
+					//Mix_FadeOutMusic(1000);
+					hadEntPlayingMusic = 1;
+					g_currentMusicPlayingEntity = nullptr;
+				}
+				if(g_musicNodes.size() > 0 && !g_mute) {
+					newClosest = protag->Get_Closest_Node(g_musicNodes);
+					if(closestMusicNode == nullptr) {
+						if(!hadEntPlayingMusic) {						
+							Mix_PlayMusic(newClosest->blip, -1); 
+							Mix_VolumeMusic(g_music_volume * 128);
+							closestMusicNode = newClosest;
+						} else {
+							closestMusicNode = newClosest;
+							//change music
 							Mix_FadeOutMusic(1000);
-						}
-						closestMusicNode = newClosest;
-						//change music
-						Mix_FadeOutMusic(1000);
-						musicFadeTimer = 0;
-						fadeFlag = 1;
+							musicFadeTimer = 0;
+							fadeFlag = 1;
+							entFadeFlag = 0;
+						} 
+
+					} else { 
+
+						//Segfaults, todo is initialize these musicNodes to have something
+						if(newClosest->name != closestMusicNode->name) {
+							//D(newClosest->name);
+							//if(newClosest->name == "silence") {
+								//Mix_FadeOutMusic(1000);
+							//}
+							closestMusicNode = newClosest;
+							//change music
+							Mix_FadeOutMusic(1000);
+							musicFadeTimer = 0;
+							fadeFlag = 1;
+							entFadeFlag = 0;
 						
+						}
 					}
 				}
 			}
@@ -1230,12 +1273,17 @@ int main(int argc, char ** argv) {
 			}
 			
 		}
-		if(fadeFlag && musicFadeTimer > 1000 && newClosest != 0) {
+		if(fadeFlag && musicFadeTimer > 1000 /*&& newClosest != 0*/) {
 			fadeFlag = 0;
 			Mix_HaltMusic();
 			Mix_FadeInMusic(newClosest->blip, -1, 1000);
-			
 		}
+		if(entFadeFlag && musicFadeTimer > 200) {
+			entFadeFlag = 0;
+			Mix_HaltMusic();
+			Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
+			I("actually played entmusic");
+		} 
 
 		//wakeup manager if it is sleeping
 		if(adventureUIManager->sleepflag) {

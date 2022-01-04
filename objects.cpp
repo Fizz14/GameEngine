@@ -1733,6 +1733,10 @@ public:
 	Mix_Chunk* footstep;
 	Mix_Chunk* footstep2;
 	Mix_Chunk* voice;
+	
+	//for musical entities
+	Mix_Music* theme = 0;
+	float musicRadius = 50;
 
 	int footstep_reset = 0; //used for playing footsteps accurately with anim
 
@@ -2234,6 +2238,18 @@ public:
 				a->parent = this;
 			}
 		}
+
+		//music and radius
+		file >> comment;
+		string musicname = "0";
+		file >> musicname;
+		if(musicname != "0") {
+			musicname = "audio/music/" + musicname + ".ogg";
+			this->theme = Mix_LoadMUS(musicname.c_str());
+			g_musicalEntities.push_back(this);
+		}
+		file >> comment;
+		file >> musicRadius;
 
 		file.close();
 	}
@@ -3118,7 +3134,7 @@ public:
 			if(this->currentAirBoost > g_maxBhoppingBoost) {
 				this->currentAirBoost = g_maxBhoppingBoost;
 			}
-			I(this->currentAirBoost);
+			// !!! make this not suck
 		}
 
 		float heightfloor = 0; //filled with floor z from heightmap
@@ -5141,6 +5157,7 @@ public:
 void clear_map(camera& cameraToReset) {
 	g_budget = 0;
 	enemiesMap.clear();
+	g_musicalEntities.clear();
 	Mix_FadeOutMusic(1000);
 	{
 		

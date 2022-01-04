@@ -150,6 +150,9 @@ vector<particle*> g_particles;
 
 vector<collisionZone*> g_collisionZones;
 
+vector<entity*> g_musicalEntities;
+entity* g_currentMusicPlayingEntity = 0;
+
 map<string, int> enemiesMap; //stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0; //how many points this map can spend on enemies;
 
@@ -435,7 +438,8 @@ Mix_Chunk* g_deathsound;
 musicNode* closestMusicNode;
 musicNode* newClosest;
 int musicFadeTimer = 0;
-bool fadeFlag = 0;
+bool fadeFlag = 0;		//for waiting between fading music in and out
+bool entFadeFlag = 0;
 int musicUpdateTimer = 0;
 Mix_Chunk* g_bulletdestroySound;
 Mix_Chunk* g_playerdamage;
