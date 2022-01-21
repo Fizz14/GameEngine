@@ -488,18 +488,21 @@ string g_saveName = "a";
 
 std::map<string, int> g_save = {};
 
+//AI
+enum state {agro, patrol, roam, wait, buff, disabled};
+
 //movement
 
 float g_bhoppingBoost = 4; //the factor applied to friction whilst airborn
-float g_defaultBhoppingBoost = 2;
-float g_maxBhoppingBoost = 6;
+float g_defaultBhoppingBoost = 1;
+float g_maxBhoppingBoost = 2;
 float g_deltaBhopBoost = 0.2;
 
 //float g_dash_cooldown = 1000;
 //float g_max_dash_cooldown = 1000;
 
 float g_jump_afterslow = 0.1;
-float g_jump_afterslow_seconds = 1;
+float g_jump_afterslow_seconds = 0;
 
 
 bool storedJump = 0;

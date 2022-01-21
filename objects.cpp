@@ -1719,8 +1719,121 @@ public:
 	}
 };
 
+//work as INSTANCES and not INDEXES
+class ability {
+public:
+	int lowerCooldownBound = 40000;
+	int upperCooldownBound = 60000;
+	
+	int cooldownMS = 50000;
+	
+	float lowerRangeBound = 0; //in worldpixels
+	float upperRangeBound = 5;
+	
+	//we need a way to make abilities feel right, in terms of how they're charged
+	//for instance, it would be odd if as soon as the player found an enemy, they suddenly used three abilities almost
+	//at the same time, the moment they came into range
+	//and, it would be odd if there were abilities that were meant to be seen rarely with high cooldowns, 
+	//but were never used because the player would break range before it could happen
+	//so abilities must be set with different ways of cooling down
+	// 0 -> reset -> ability is reset when out of range. The ability is only charged when in range
+	// 1 -> stable -> ability isn't reset, but it only charges when in range.
+	// 2 -> accumulate -> ability charges regardless of range, meaning it will often activate as soon as the enemy finds the player
+
+
+	int resetStableAccumulate = 1;
+
+	vector<string> script;
+
+	string name = "unset";
+
+	ability(string binding) {
+		name = binding;
+		ifstream stream;
+		string loadstr;
+		//try to open from local map folder first
+		
+		loadstr = "maps/" + g_mapdir + "/" + binding + ".txt";
+		//D(loadstr);
+		const char* plik = loadstr.c_str();
+		
+		stream.open(plik);
+		
+		if (!stream.is_open()) {
+			stream.open("scripts/abilities/" + binding + ".txt");
+		}
+		string line;
+
+		getline(stream, line);
+
+		while (getline(stream, line)) {
+			script.push_back(line);
+		}
+		
+		parseScriptForLabels(script);
+		
+	}
+
+};
 
 entity* searchEntities(string fname);
+
+//this is a testament to how bad I am at programming
+//dont as I have done
+
+class adventureUI {
+public:
+
+	bool playersUI = 1; //is this the UI the player will use
+						//for talking, using items, etc?
+
+	bool executingScript = 0;
+
+	ui* talkingBox = 0;
+	textbox* talkingText = 0;
+    textbox* responseText = 0;
+    textbox* escText = 0;
+	string pushedText; //holds what will be the total contents of the messagebox. 
+	string curText; //holds what the user currently sees; e.g. half of the message because it hasnt been typed out yet
+	bool typing = false; //true if text is currently being typed out to the window.
+	Mix_Chunk* blip =  Mix_LoadWAV( "sounds/voice-bogged.wav" );
+    Mix_Chunk* confirm_noise = Mix_LoadWAV( "sounds/peg.wav" );
+	vector<string>* sayings;
+	entity* talker = 0;
+	bool askingQuestion = false; //set if current cue is a question
+    string response = "tired"; //contains the last response the player gave to a question
+    vector<string> responses; //contains each possible response to a question
+    int response_index = 0; //number of response from array responses
+    int sleepingMS = 0; //MS to sleep cutscene/script
+    bool sleepflag = 0; //true for one frame after starting a sleep
+    bool mobilize = 0; //used to allow the player to move during /sleep calls
+
+    ui* inventoryA = 0; //big box, which has all of the items that the player has
+    ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
+
+    textbox* healthText = 0;
+
+    int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
+
+	void showTalkingUI();
+	void hideTalkingUI();
+    
+
+    void showInventoryUI();
+
+    void hideInventoryUI();
+
+	adventureUI(SDL_Renderer* renderer);
+	
+	~adventureUI();
+
+	void pushText(entity* ftalker);
+	
+	void updateText();
+
+	void continueDialogue();
+};
+
 
 
 class entity:public actor {
@@ -1815,7 +1928,9 @@ public:
 	bool wallcap = false; //used for wallcaps
 	cshadow * shadow = 0;
 	bool rectangularshadow = 0;
-	
+	bool isAI = 0;	
+
+
 	//stuff for orbitals
 	bool isOrbital = false;
 	entity* parent = nullptr;
@@ -1859,6 +1974,18 @@ public:
 	int spinningMS = 0; //have they initiated a dodge backwards recently
 	int lastSpinFrame = 0; //used for animating characters whilst dodging
 
+	//ability-system
+	//enemies need a way to call their own scripts
+	//without worrying about being interupted by the player
+	//just don't have them use the dialog-box
+	adventureUI* myScriptCaller;
+	vector<ability> myAbilities;
+	float autoAgroRadius = -1;
+	float enrageSpeedbuff = 0;
+	//aiIndex is used for having AI use their own patrolPoints
+	//and not someone-else's
+	int aiIndex = 0;
+	
 	//stats/leveling
 	float level = 1; //affects damage
 	float damagemultiplier = 0.2; // how much damage do you gain per level
@@ -2251,6 +2378,91 @@ public:
 		file >> comment;
 		file >> musicRadius;
 
+		//load ai-data 
+		// !!! add support for local AI files (is it worth it efficiency-wise?)
+		if(fileExists("entities/ai/"+filename + ".ai")) {
+			I("Detected AI-file for entity " + filename);
+			this->isAI = 1;
+			ifstream stream;
+			string loadstr;
+
+			loadstr = "entities/ai/" + filename + ".ai";
+			const char* plik = loadstr.c_str();
+		
+			stream.open(plik);
+
+			string line;
+			string comment;
+
+			stream >> comment; //abilities_and_radiuses_formate...
+			stream >> comment; //abilities 
+			stream >> comment; // {
+
+			//take in each ability
+			bool hasAtleastOneAbility = 0;
+			for(;;) {
+				if(! (stream >> line) ) {break;};
+				if(line[0] == '}') {break;}
+				hasAtleastOneAbility = 1;
+				//line contains the name of an ability
+				ability newAbility = ability(line);
+				
+				//they're stored as seconds in the configfile, but ms in the object
+				float seconds = 0;
+				stream >> seconds;
+				newAbility.lowerRangeBound = seconds * 64;
+				stream >> seconds;
+				newAbility.upperRangeBound = seconds * 64;
+				stream >> seconds;
+				newAbility.lowerCooldownBound = seconds * 1000;
+				stream >> seconds;
+				newAbility.upperCooldownBound = seconds * 1000;
+
+
+				char rsa;
+				stream >> rsa;
+				if(rsa == 'R') {
+					newAbility.resetStableAccumulate = 0;
+				} else if (rsa == 'S') {
+					newAbility.resetStableAccumulate = 1;
+				} else if (rsa == 'A') {
+					newAbility.resetStableAccumulate = 2;
+				}
+
+				//
+
+				newAbility.cooldownMS = (newAbility.lowerCooldownBound + newAbility.upperCooldownBound) / 2;
+				I(line);
+				I(newAbility.upperCooldownBound);
+				I(newAbility.resetStableAccumulate);
+				this->myAbilities.push_back(newAbility);
+			}
+
+			//give us a way to call scripts if we have an ability
+			if(hasAtleastOneAbility) {
+				// !!! make another constructor that doesn't have a dialogbox
+				myScriptCaller = new adventureUI(renderer);
+				myScriptCaller->playersUI = 0;
+				myScriptCaller->talker = this;
+
+			}
+
+			stream >> comment; //ai_index
+			stream >> this->aiIndex;
+
+			stream >> comment; //auto_Agro_radius
+			stream >> autoAgroRadius;
+			
+			stream >> comment; //enrage_speed_bonus
+			stream >> enrageSpeedbuff;
+
+			stream >> comment; //target_faction
+			stream >> targetFaction;
+
+			stream.close();
+
+		}
+
 		file.close();
 	}
 
@@ -2446,6 +2658,10 @@ public:
 		}
 		if(!asset_sharer) {
 			SDL_DestroyTexture(texture);
+		}
+
+		if(myScriptCaller!= nullptr){
+			delete myScriptCaller;
 		}
 
 		//delete hisweapon;
@@ -3496,6 +3712,71 @@ public:
 						if(y->target == nullptr) {
 							y->target = this->target;
 						}
+					}
+				}
+			}
+		}
+
+		if(isAI) {
+
+			//check the auto-agro-range
+			if(target == nullptr) {
+				for(auto x : g_entities) {
+					if(x->faction == this->targetFaction) {
+						if(XYWorldDistance(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY()) < this->autoAgroRadius * 64) {
+							
+							if(LineTrace(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)) {
+								this->target = x;
+								this->agrod = 1;
+							}
+						}
+					}
+				}
+			}
+
+			//likely has abilities to use
+			//are any abilities ready?
+			for(auto &x : myAbilities) {
+				//accumulate-abilities will always decrease CD
+				if(x.resetStableAccumulate == 2) {
+					x.cooldownMS -= elapsed;
+				}
+				if(target == nullptr) {if(x.resetStableAccumulate == 0) {x.cooldownMS = x.upperCooldownBound;};continue;}
+				float dist = XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY());
+				float inRange = 0;
+				if(dist <= x.upperRangeBound  && dist >= x.lowerRangeBound) {
+					inRange = 1;
+					if(x.resetStableAccumulate != 2) {
+						x.cooldownMS -= elapsed;
+					}
+				} else {
+					//reset-abilities are reset when out of range
+					if(x.resetStableAccumulate == 0) {
+						x.cooldownMS = (x.lowerCooldownBound + x.upperCooldownBound)/2;
+					}
+				}
+
+				if(x.cooldownMS < 0) {
+					
+					//do we acknowledge the player's existance?
+					if(target != nullptr) {
+					
+						//are we in range to the player?
+						
+						if( inRange && !myScriptCaller->executingScript) {
+
+							I(this->name + " used " + x.name + " at " + target->name + ".");
+							
+							this->dialogue_index = 0;
+							this->sayings = x.script;
+							I(x.script.size());
+							this->myScriptCaller->executingScript = 1;
+							this->dialogue_index = -1;	
+							this->myScriptCaller->talker = this;
+							this->myScriptCaller->continueDialogue();
+							x.cooldownMS = (rand() % (x.upperCooldownBound - x.lowerCooldownBound)) + x.lowerCooldownBound; 
+						}
+					
 					}
 				}
 			}

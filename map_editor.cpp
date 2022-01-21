@@ -2988,6 +2988,10 @@ void write_map(entity* mapent) {
                     line >> radius;
                     cueSound* m = new cueSound(entstring, px + marker->width/2, py + marker->height/2, radius);
                 }
+                if(word == "pointofinterest" || word == "poi") {
+                    
+                    break;
+                }
                 if(word == "way" || word == "w") {
                     line >> entstring;
                     waypoint* m = new waypoint(entstring, px + marker->width/2, py + marker->height/2, wallstart);
@@ -3386,1316 +3390,1297 @@ void close_map_writing() {
 
 
 //specific class, the ui that the player will use 90% of the time. Should have a spot for dialogue, inventory, pause screen.
-class adventureUI {
-public:
-	ui* talkingBox = 0;
-	textbox* talkingText = 0;
-    textbox* responseText = 0;
-    textbox* escText = 0;
-	string pushedText; //holds what will be the total contents of the messagebox. 
-	string curText; //holds what the user currently sees; e.g. half of the message because it hasnt been typed out yet
-	bool typing = false; //true if text is currently being typed out to the window.
-	Mix_Chunk* blip =  Mix_LoadWAV( "sounds/voice-bogged.wav" );
-    Mix_Chunk* confirm_noise = Mix_LoadWAV( "sounds/peg.wav" );
-	vector<string>* sayings;
-	entity* talker = 0;
-	bool askingQuestion = false; //set if current cue is a question
-    string response = "tired"; //contains the last response the player gave to a question
-    vector<string> responses; //contains each possible response to a question
-    int response_index = 0; //number of response from array responses
-    int sleepingMS = 0; //MS to sleep cutscene/script
-    bool sleepflag = 0; //true for one frame after starting a sleep
-    bool mobilize = 0; //used to allow the player to move during /sleep calls
 
-    ui* inventoryA = 0; //big box, which has all of the items that the player has
-    ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
+void adventureUI::showTalkingUI() {
+    //M("showTalkingUI()");
+    talkingBox->show = 1;
+    talkingText->show = 1;
+    talkingText->updateText("",34, 34);
+    responseText->show = 1;
+}
 
-    textbox* healthText = 0;
+void adventureUI::hideTalkingUI() {
+    //M("hideTalkingUI()");
+    talkingBox->show = 0;
+    talkingText->show = 0;
+    responseText->show = 0;
+    responseText->updateText("",34, 34);
+    
+}
 
-    int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
 
-	void showTalkingUI() {
-		//M("showTalkingUI()");
-        talkingBox->show = 1;
-		talkingText->show = 1;
-        talkingText->updateText("",34, 34);
+void adventureUI::showInventoryUI() {
+    inventoryA->show = 1;
+    inventoryB->show = 1;
+    escText->show = 1;
+}
+
+void adventureUI::hideInventoryUI() {
+    inventoryA->show = 0;
+    inventoryB->show = 0;
+    escText->show = 0;
+}
+
+adventureUI::adventureUI(SDL_Renderer* renderer) {
+    talkingBox = new ui(renderer, "textures/ui/menu9patchblack.png", 0, 0.65, 1, 0.35, 0);
+    talkingBox->patchwidth = 213;
+    talkingBox->patchscale = 0.4;
+    talkingBox->is9patch = true;
+    talkingBox->persistent = true;
+
+    talkingText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
+    talkingText->boxWidth = 0.95;
+    talkingText->width = 0.95;
+    talkingText->boxHeight = 0.25;
+    talkingText->boxX = 0.05;
+    talkingText->boxY = 0.7;
+    talkingText->worldspace = 1;
+
+    responseText = new textbox(renderer, "Yes", WIN_WIDTH * 0.5, 0, 0, 0.9);
+    responseText->boxWidth = 0.95;
+    responseText->width = 0.95;
+    responseText->boxHeight = 0.;
+    responseText->boxX = 0.15;
+    responseText->boxY = 0.87;
+    responseText->worldspace = 1;
+    responseText->align = 2; //center-align
+    
+    inventoryA = new ui(renderer, "textures/ui/menu9patchblack.png", 0.01, 0.01, 0.98, 0.75 -0.01, 1);
+    inventoryA->is9patch = true;
+    inventoryA->patchwidth = 213;
+    inventoryA->patchscale = 0.4;
+    inventoryA->persistent = true;
+    
+    inventoryB = new ui(renderer, "textures/ui/menu9patchblack.png", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
+    inventoryB->is9patch = true;
+    inventoryB->patchwidth = 213;
+    inventoryB->patchscale = 0.4;
+    inventoryB->persistent = true;
+    inventoryB->priority = -4;
+
+    healthText = new textbox(renderer, "blem blem", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
+    healthText->boxWidth = 0.95;
+    healthText->width = 0.95;
+    healthText->boxHeight = 0.25;
+    healthText->boxX = 0.1;
+    healthText->boxY = 0.015;
+    healthText->worldspace = 0;
+    healthText->show = 1;
+    healthText->align = 2;
+
+    escText = new textbox(renderer, "", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
+
+    escText->boxX = 0.5;
+    escText->boxY = 0.83;
+    escText->boxWidth = 0.98;
+    escText->boxHeight = 0.25 - 0.02;
+    escText->worldspace = 0;
+    escText->show = 1;
+    escText->align = 2;
+
+
+    hideInventoryUI();
+
+    hideTalkingUI();
+}
+
+adventureUI::~adventureUI() {
+    M("~adventureUI()");
+    Mix_FreeChunk(blip);
+    Mix_FreeChunk(confirm_noise);
+    delete talkingBox;
+    delete talkingText;
+    delete inventoryA;
+    delete inventoryB;
+}
+
+
+void adventureUI::pushText(entity* ftalker) {
+    inPauseMenu = 0;
+    adventureUIManager->hideInventoryUI();
+    talker = ftalker;
+    g_talker = ftalker;
+    if(sayings->at(talker->dialogue_index).at(0) == '%') {
+        pushedText = sayings->at(talker->dialogue_index).substr(1);
+    } else {
+        pushedText = sayings->at(talker->dialogue_index);
+    }
+    curText = "";
+    typing = true;
+    showTalkingUI();
+}
+
+void adventureUI::updateText() {
+    talkingText->updateText(curText, WIN_WIDTH *g_fontsize, 0.9);
+    
+    // if(sleepingMS > 1) {
+    //     sleepingMS -= elapsed;
+    //     this->hideTalkingUI();
+    //     return;
+    // } else {
+    //     if(sleepflag){
+    //         this->showTalkingUI();
+    //         sleepflag = 0;
+    //     }
+    // }
+
+    if(askingQuestion) {
+        string former = "   ";
+        string latter = "   ";
+        if(response_index > 0) {
+            former = " < ";
+        }
+        if(response_index < responses.size() - 1) {
+            latter = " > ";
+        }
+        responseText->updateText(former + responses[response_index] + latter, WIN_WIDTH *g_fontsize, 0.9);
         responseText->show = 1;
+        response = responses[response_index];
         
-	}
-	void hideTalkingUI() {
-		//M("hideTalkingUI()");
-        talkingBox->show = 0;
-		talkingText->show = 0;
+    } else {
+        responseText->updateText("", WIN_WIDTH *g_fontsize, 0.9);
         responseText->show = 0;
-        responseText->updateText("",34, 34);
+    }
+    
+    if(pushedText != curText) {
+        int index = curText.length();
+        curText += pushedText.at(index);
         
-	}
+        //Play a clank
+        if(blip != NULL) {
+            Mix_HaltChannel(6);    
+            Mix_VolumeChunk(blip, 20);
+            playSound( 6, blip, 0 );
+        }
+    } else {
+        typing = false;
+    }
+}
+void adventureUI::continueDialogue() {
+    //has our entity died?
+    //M("A");
+    if(g_forceEndDialogue && playersUI) {
+        g_forceEndDialogue = 0;
+        protag_is_talking = 2;
+        adventureUIManager->hideTalkingUI();
+        return;
+    }
+    //M("B");
+    
+    if(sleepingMS > 1) {
+        sleepingMS -= elapsed;
+        protag_is_talking = !mobilize;
+        return;
+    } else {
+        if(sleepflag){
+            mobilize = 0;
+            this->showTalkingUI();
+            sleepflag = 0;
+        }
+    }
+
+    if(playersUI) {
+        protag_is_talking = 1;
+    } 
+    executingScript = 1;
     
 
-    void showInventoryUI() {
-        inventoryA->show = 1;
-        inventoryB->show = 1;
-        escText->show = 1;
-    }
 
-    void hideInventoryUI() {
-        inventoryA->show = 0;
-        inventoryB->show = 0;
-        escText->show = 0;
-    }
+    //M("C");
 
-	adventureUI(SDL_Renderer* renderer) {
-		talkingBox = new ui(renderer, "textures/ui/menu9patchblack.png", 0, 0.65, 1, 0.35, 0);
-		talkingBox->patchwidth = 213;
-		talkingBox->patchscale = 0.4;
-		talkingBox->is9patch = true;
-        talkingBox->persistent = true;
-
-		talkingText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
-		talkingText->boxWidth = 0.95;
-		talkingText->width = 0.95;
-		talkingText->boxHeight = 0.25;
-		talkingText->boxX = 0.05;
-		talkingText->boxY = 0.7;
-		talkingText->worldspace = 1;
-
-        responseText = new textbox(renderer, "Yes", WIN_WIDTH * 0.5, 0, 0, 0.9);
-		responseText->boxWidth = 0.95;
-		responseText->width = 0.95;
-		responseText->boxHeight = 0.;
-		responseText->boxX = 0.15;
-		responseText->boxY = 0.87;
-		responseText->worldspace = 1;
-        responseText->align = 2; //center-align
-		
-        inventoryA = new ui(renderer, "textures/ui/menu9patchblack.png", 0.01, 0.01, 0.98, 0.75 -0.01, 1);
-        inventoryA->is9patch = true;
-        inventoryA->patchwidth = 213;
-		inventoryA->patchscale = 0.4;
-        inventoryA->persistent = true;
-        
-        inventoryB = new ui(renderer, "textures/ui/menu9patchblack.png", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
-        inventoryB->is9patch = true;
-        inventoryB->patchwidth = 213;
-		inventoryB->patchscale = 0.4;
-        inventoryB->persistent = true;
-        inventoryB->priority = -4;
-
-		healthText = new textbox(renderer, "blem blem", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
-		healthText->boxWidth = 0.95;
-		healthText->width = 0.95;
-		healthText->boxHeight = 0.25;
-		healthText->boxX = 0.1;
-		healthText->boxY = 0.015;
-		healthText->worldspace = 0;
-        healthText->show = 1;
-        healthText->align = 2;
-
-        escText = new textbox(renderer, "", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
-
-		escText->boxX = 0.5;
-		escText->boxY = 0.83;
-        escText->boxWidth = 0.98;
-        escText->boxHeight = 0.25 - 0.02;
-		escText->worldspace = 0;
-        escText->show = 1;
-        escText->align = 2;
-
-
-        hideInventoryUI();
-
-		hideTalkingUI();
-	}
-	
-	~adventureUI() {
-		M("~adventureUI()");
-		Mix_FreeChunk(blip);
-		Mix_FreeChunk(confirm_noise);
-        delete talkingBox;
-		delete talkingText;
-        delete inventoryA;
-        delete inventoryB;
-	}
-
-
-	void pushText(entity* ftalker) {
-        inPauseMenu = 0;
-        adventureUIManager->hideInventoryUI();
-		talker = ftalker;
-        g_talker = ftalker;
-        if(sayings->at(talker->dialogue_index).at(0) == '%') {
-            pushedText = sayings->at(talker->dialogue_index).substr(1);
-        } else {
-            pushedText = sayings->at(talker->dialogue_index);
-        }
-		curText = "";
-		typing = true;
-		showTalkingUI();
-	}
-	
-	void updateText() {
-		talkingText->updateText(curText, WIN_WIDTH *g_fontsize, 0.9);
-        
-        // if(sleepingMS > 1) {
-        //     sleepingMS -= elapsed;
-        //     this->hideTalkingUI();
-        //     return;
-        // } else {
-        //     if(sleepflag){
-        //         this->showTalkingUI();
-        //         sleepflag = 0;
-        //     }
-        // }
-
-        if(askingQuestion) {
-            string former = "   ";
-            string latter = "   ";
-            if(response_index > 0) {
-                former = " < ";
-            }
-            if(response_index < responses.size() - 1) {
-                latter = " > ";
-            }
-            responseText->updateText(former + responses[response_index] + latter, WIN_WIDTH *g_fontsize, 0.9);
-            responseText->show = 1;
-            response = responses[response_index];
-            
-        } else {
-            responseText->updateText("", WIN_WIDTH *g_fontsize, 0.9);
-            responseText->show = 0;
-        }
-        
-        if(pushedText != curText) {
-			int index = curText.length();
-			curText += pushedText.at(index);
-			
-			//Play a clank
-			if(blip != NULL) {
-                Mix_HaltChannel(6);    
-                Mix_VolumeChunk(blip, 20);
-                playSound( 6, blip, 0 );
-            }
-		} else {
-			typing = false;
-		}
-	}
-	void continueDialogue() {
-        //has our entity died?
-        //M("A");
-        if(g_forceEndDialogue) {
-            g_forceEndDialogue = 0;
+    //showTalkingUI();
+    //D(talker->dialogue_index);
+    //D(talker->sayings.size());
+    //D(talker->name);
+    if(talker->sayings.at(talker->dialogue_index + 1) == "#") {
+        if(playersUI) {
             protag_is_talking = 2;
-			adventureUIManager->hideTalkingUI();
+        }
+        executingScript = 0;
+
+        mobilize = 0;
+        adventureUIManager->hideTalkingUI();
+        talker->dialogue_index = 0;
+        talker->animate = 0;
+        if(talker->turnToFacePlayer) {
+            if(talker->defaultAnimation == 0 || talker->defaultAnimation == 4) {
+                talker->flip = SDL_FLIP_NONE;
+            }
+            talker->animation = talker->defaultAnimation;
+        }
+        return;
+    } 
+
+    //question
+    if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '%') {
+        //make a question
+        talker->dialogue_index++;
+        pushText(talker);
+        askingQuestion = true;
+        //put responses in responses vector
+        int j = 1;
+        string res = talker->sayings.at(talker->dialogue_index + j).substr(1);
+        responses.clear();
+        while (res.find(':') != std::string::npos) {
+            responses.push_back(res.substr(0, res.find(':')));
+            j++;
+            res = talker->sayings.at(talker->dialogue_index + j).substr(1);
+        }
+        return;
+    } else {
+        askingQuestion = false;
+    }
+
+    //item prompt
+    //$
+    if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '$') {
+        int j = 1;
+        //parse which block of memory we are interested in
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 1);
+
+        int numberOfItem = 0;
+        indexItem* itemref = 0;
+        for(auto x : mainProtag->inventory) {
+            if(x.first->name == s) {
+                numberOfItem = x.second;
+                itemref = x.first;
+            }
+        }
+        
+        string res = talker->sayings.at(talker->dialogue_index + 1 + j);
+        while (res.find('*') != std::string::npos) {
+            
+            //parse option
+            // *15 29 -> if data is 15, go to line 29
+            string s = talker->sayings.at(talker->dialogue_index + 1 + j);
+            s.erase(0, 1);
+            int condition = stoi( s.substr(0, s.find(':')));
+            s.erase(0, s.find(':') + 1);
+            int jump = stoi(s);
+            if(numberOfItem >= condition) {
+                talker->dialogue_index = jump - 3;
+                this->continueDialogue();
+                return;
+            }
+            j++;
+            res = talker->sayings.at(talker->dialogue_index + 1 + j);
+
+        }
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //give item
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/give") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        vector<string> x = splitString(s, ' ');
+        
+        indexItem* a = new indexItem(x[0], 0);
+        
+        //if you just type the name of the item, it's assumed that we are giving one
+        if(x.size() < 2) {
+            x.push_back("1");
+        }
+
+        mainProtag->getItem(a, stoi(x[1]) );
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/take") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        D(s);
+        vector<string> x = splitString(s, ' ');
+        
+        indexItem* a = new indexItem(x[0], 0);
+        
+        //if you just type the name of the item, it's assumed that we are giving one
+        if(x.size() < 2) {
+            x.push_back("1");
+        }
+        
+        mainProtag->loseItem(a, stoi(x[1]) );
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //check number of living entities by name
+    // /count
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/count") {
+        int j = 1;
+        //parse which block of memory we are interested in
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 7);
+        D(s);
+        string name = s;
+
+        int numberOfEntity = 0;
+
+        for(auto x : g_entities) {
+            if(x->name == name && x->tangible) {
+                numberOfEntity++;
+            }
+        }
+        
+        
+        string res = talker->sayings.at(talker->dialogue_index + 1 + j);
+        while (res.find('*') != std::string::npos) {
+            //parse option
+            // *15 29 -> if data is 15, go to line 29
+            string s = talker->sayings.at(talker->dialogue_index + 1 + j);
+            s.erase(0, 1);
+            int condition = stoi( s.substr(0, s.find(':')));
+            s.erase(0, s.find(':') + 1);
+            int jump = stoi(s);
+            if(numberOfEntity >= condition) {
+                talker->dialogue_index = jump - 3;
+                this->continueDialogue();
+                return;
+            }
+            j++;
+            res = talker->sayings.at(talker->dialogue_index + 1 + j);
+
+        }
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //write selfdata 5->[4]
+    if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        int value = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
+        string blockstr = s.substr(s.find('[')); 
+        blockstr.pop_back(); blockstr.erase(0, 1);
+        int block = stoi (blockstr);
+        talker->data[block] = value;
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //write random number to selfdata
+    // 0-1000->[4]
+    if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        int firstvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
+        int secondvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
+        
+        string blockstr = s.substr(s.find('[')); 
+        blockstr.pop_back(); blockstr.erase(0, 1);
+        int block = stoi (blockstr);
+
+        talker->data[block] = rand() % (secondvalue - firstvalue + 1) + firstvalue;
+        D(talker->data[block]);
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //read selfdata [5]
+    if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("\\[[[:digit:]]+\\]"))) {
+        int j = 1;
+        //parse which block of memory we are interested in
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 1);
+        string blockstr = s.substr(0, s.find(']'));
+        int block = stoi(blockstr);
+        string res = talker->sayings.at(talker->dialogue_index + 1 + j);
+        while (res.find('*') != std::string::npos) {
+            
+            //parse option
+            // *15 29 -> if data is 15, go to line 29
+            string s = talker->sayings.at(talker->dialogue_index + 1 + j);
+            s.erase(0, 1);
+            int condition = stoi( s.substr(0, s.find(':')));
+            s.erase(0, s.find(':') + 1);
+            int jump = stoi(s);
+            if(talker->data[block] == condition) {
+                talker->dialogue_index = jump - 3;
+                this->continueDialogue();
+                return;
+            }
+            j++;
+            res = talker->sayings.at(talker->dialogue_index + 1 + j);
+
+        }
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //comment
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,2) =="//") {
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //option/jump
+    if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '*') {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 1);
+        string condition = s.substr(0, s.find(':')); s.erase(0, s.find(':') + 1);
+        int jump = stoi(s);
+        if(response == condition) {
+            response = "";
+            response_index = 0;
+            playSound(-1, confirm_noise, 0);
+            talker->dialogue_index = jump - 3;
+            D(talker->dialogue_index);
+            D(talker->sayings.at(talker->dialogue_index+1));
+            this->continueDialogue();
+        } else {
+            talker->dialogue_index++;
+            this->continueDialogue();
+        }
+
+        
+        return;
+    }
+
+    //change mapdir
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/mapdir") {
+        M("setting mapdir");
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 8);
+        g_mapdir = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //change map
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,4) == "/map") {
+        M("changing map");
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        //erase '@'
+        s.erase(0, 5);
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        string dest_waypoint = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        //if the script just has "@" and that's all, send the player to the last saved map
+        if(name.length() == 0) {
+            name = g_mapOfLastSave;
+            cout << g_waypointOfLastSave << endl;
+            dest_waypoint = g_waypointOfLastSave;
+        }
+        
+
+        //close dialogue
+        adventureUIManager->hideTalkingUI();
+        talker->dialogue_index = 0;
+        talker->animate = 0;
+        
+        clear_map(g_camera);
+        g_map = name;
+        const string toMap = "maps/" + g_mapdir + "/" + g_map + ".map";;
+        load_map(renderer, toMap, dest_waypoint);
+
+        // //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
+        if(canSwitchOffDevMode) { init_map_writing(renderer);}
+        protag_is_talking = 0;
+        protag_can_move = 1;    
+        //clear talker so that g_forceEndDialogue will not be set to 1
+        //g_talker = nullptr;
+        return;
+    }
+
+    //spawn entity
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/spawn") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        //erase '&'
+        M("spawned entity");
+        s.erase(0, 7);
+        int xpos, ypos;
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        xpos = stoi(s.substr(0, s.find(' '))); s.erase(0, s.find(' ') + 1);
+        ypos = stoi(s.substr(0, s.find(' '))); s.erase(0, s.find(' ') + 1);
+        entity* e = new entity(renderer, name.c_str());
+        e->x = xpos;
+        e->y = ypos;
+        e->shadow->x = e->x + e->shadow->xoffset;
+        e->shadow->y = e->y + e->shadow->yoffset;
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //destroy entity
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/destroy") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        //erase '&'
+        s.erase(0, 9);
+        //s is the name of the entity to destroy
+        if(talker->name == s){
+            talker->tangible = 0;
+            talker->dialogue_index++;
+            this->continueDialogue();
             return;
         }
-        //M("B");
+        for (long long unsigned int i = 0; i < g_entities.size(); i++) {
+            if(g_entities[i]->inParty) { continue; }
+            SDL_Rect b = {g_entities[i]->x, g_entities[i]->y - g_entities[i]->height, g_entities[i]->width, g_entities[i]->height};
+            
+            if(g_entities[i]->name == s) {
+                delete g_entities[i];
+                break;
+            }
         
-        if(sleepingMS > 1) {
-            sleepingMS -= elapsed;
-            protag_is_talking = !mobilize;
+        }
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //move entity
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/move") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        vector<string> x = splitString(s, ' ');
+        string name = x[0];
+        int p0 = stoi(x[1]);
+        int p1 = stoi(x[2]);
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            
+            hopeful->agrod = 0;
+            hopeful->Destination = getNodeByPosition(p0, p1);
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //teleport entity
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/teleport") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 10);
+        vector<string> x = splitString(s, ' ');
+        string name = x[0];
+        int p0 = stoi(x[1]);
+        int p1 = stoi(x[2]);
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            
+            hopeful->x = p0;
+            hopeful->y = p1;
+            hopeful->xvel = 0;
+            hopeful->yvel = 0;
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //teleport entity to another entity
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,12) == "/entteleport") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 13);
+        vector<string> x = splitString(s, ' ');
+        string teleportMeSTR = x[0];
+        string teleportToMeSTR = x[1];
+        entity* teleportMe = searchEntities(teleportMeSTR);
+        entity* teleportToMe = searchEntities(teleportToMeSTR);
+        if(teleportMe != nullptr && teleportToMe != nullptr) {
+            teleportMe->setOriginX(teleportToMe->getOriginX());
+            teleportMe->setOriginY(teleportToMe->getOriginY());
+            teleportMe->xvel = 0;
+            teleportMe->yvel = 0;
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //spawn entity at an entity
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entspawn") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 10);
+        vector<string> x = splitString(s, ' ');
+        string teleportMeSTR = x[0];
+        string teleportToMeSTR = x[1];
+        entity* teleportMe = new entity(renderer, teleportMeSTR.c_str());
+        entity* teleportToMe = searchEntities(teleportToMeSTR);
+        if(teleportMe != nullptr && teleportToMe != nullptr) {
+            teleportMe->setOriginX(teleportToMe->getOriginX());
+            teleportMe->setOriginY(teleportToMe->getOriginY());
+            teleportMe->xvel = 0;
+            teleportMe->yvel = 0;
+            teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
+            teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+    
+
+    //change cameratarget
+    // /lookat ward 0 0
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/lookat ") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 8);
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        string transtr = "0";
+        transtr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        float transitionspeed = stof(transtr);
+        
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            g_focus = hopeful;
+            cout << "set focus properly" << endl;
+            if(transitionspeed != 0) {
+                //This check means that if the camera is already moving, don't reset
+                //it's velocity, because that would be jarring
+                if(g_camera.lag == 0) {
+                    g_camera.lag = transitionspeed;
+                    g_camera.lagaccel = transitionspeed;
+                } else {
+                    g_camera.lagaccel = transitionspeed;
+                }
+            } else {
+                g_camera.lag = 0;
+                g_camera.lagaccel = g_camera.DEFAULTLAGACCEL;
+            }
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //change cameratarget
+    // /lookat ward 0 0
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,10) == "/lookatall") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 11);
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        string transtr = "0";
+        transtr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        float transitionspeed = stof(transtr);
+        
+        vector<entity*> hopefuls = gatherEntities(name);
+        if(hopefuls.size() != 0) {
+            g_focus = hopefuls[countEntities];
+            if(transitionspeed != 0) {
+                //This check means that if the camera is already moving, don't reset
+                //it's velocity, because that would be jarring
+                if(g_camera.lag == 0) {
+                    g_camera.lag = transitionspeed;
+                    g_camera.lagaccel = transitionspeed;
+                } else {
+                    g_camera.lagaccel = transitionspeed;
+                }
+            } else {
+                g_camera.lag = 0;
+                g_camera.lagaccel = g_camera.DEFAULTLAGACCEL;
+            }
+        
+        }
+        countEntities++;
+        if(countEntities == hopefuls.size()) {
+            //continue
+            countEntities = 0;
+            talker->dialogue_index++;
+            this->continueDialogue();
             return;
         } else {
-            if(sleepflag){
-                mobilize = 0;
-                this->showTalkingUI();
-                sleepflag = 0;
-            }
-        }
-
-        protag_is_talking = 1;
-
-
-        //M("C");
-
-        //showTalkingUI();
-        //D(talker->dialogue_index);
-        //D(talker->sayings.size());
-        //D(talker->name);
-		if(talker->sayings.at(talker->dialogue_index + 1) == "#") {
-			protag_is_talking = 2;
-            mobilize = 0;
-			adventureUIManager->hideTalkingUI();
-			talker->dialogue_index = 0;
-			talker->animate = 0;
-            if(talker->turnToFacePlayer) {
-                if(talker->defaultAnimation == 0 || talker->defaultAnimation == 4) {
-                    talker->flip = SDL_FLIP_NONE;
-                }
-                talker->animation = talker->defaultAnimation;
-            }
-            return;
-		} 
-
-		//question
-		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '%') {
-			//make a question
-			talker->dialogue_index++;
-			pushText(talker);
-			askingQuestion = true;
-            //put responses in responses vector
-            int j = 1;
-            string res = talker->sayings.at(talker->dialogue_index + j).substr(1);
-            responses.clear();
-            while (res.find(':') != std::string::npos) {
-                responses.push_back(res.substr(0, res.find(':')));
-                j++;
-                res = talker->sayings.at(talker->dialogue_index + j).substr(1);
-            }
-			return;
-		} else {
-            askingQuestion = false;
-		}
-
-        //item prompt
-        //$
-		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '$') {
-            int j = 1;
-            //parse which block of memory we are interested in
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-            s.erase(0, 1);
-
-            int numberOfItem = 0;
-            indexItem* itemref = 0;
-            for(auto x : mainProtag->inventory) {
-                if(x.first->name == s) {
-                    numberOfItem = x.second;
-                    itemref = x.first;
-                }
-            }
-            
-            string res = talker->sayings.at(talker->dialogue_index + 1 + j);
-            while (res.find('*') != std::string::npos) {
-                
-                //parse option
-                // *15 29 -> if data is 15, go to line 29
-                string s = talker->sayings.at(talker->dialogue_index + 1 + j);
-                s.erase(0, 1);
-                int condition = stoi( s.substr(0, s.find(':')));
-                s.erase(0, s.find(':') + 1);
-                int jump = stoi(s);
-                if(numberOfItem >= condition) {
-                    talker->dialogue_index = jump - 3;
-                    this->continueDialogue();
-                    return;
-                }
-                j++;
-                res = talker->sayings.at(talker->dialogue_index + 1 + j);
-
-            }
-            talker->dialogue_index++;
-            this->continueDialogue();
-			return;
-		}
-
-        //give item
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/give") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-            vector<string> x = splitString(s, ' ');
-            
-            indexItem* a = new indexItem(x[0], 0);
-            
-            //if you just type the name of the item, it's assumed that we are giving one
-            if(x.size() < 2) {
-                x.push_back("1");
-            }
-
-            mainProtag->getItem(a, stoi(x[1]) );
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/take") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-            D(s);
-            vector<string> x = splitString(s, ' ');
-            
-            indexItem* a = new indexItem(x[0], 0);
-            
-            //if you just type the name of the item, it's assumed that we are giving one
-            if(x.size() < 2) {
-                x.push_back("1");
-            }
-            
-            mainProtag->loseItem(a, stoi(x[1]) );
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //check number of living entities by name
-        // /count
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/count") {
-            int j = 1;
-            //parse which block of memory we are interested in
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-            s.erase(0, 7);
-            D(s);
-            string name = s;
-
-            int numberOfEntity = 0;
-
-            for(auto x : g_entities) {
-                if(x->name == name && x->tangible) {
-                    numberOfEntity++;
-                }
-            }
-            
-            
-            string res = talker->sayings.at(talker->dialogue_index + 1 + j);
-            while (res.find('*') != std::string::npos) {
-                //parse option
-                // *15 29 -> if data is 15, go to line 29
-                string s = talker->sayings.at(talker->dialogue_index + 1 + j);
-                s.erase(0, 1);
-                int condition = stoi( s.substr(0, s.find(':')));
-                s.erase(0, s.find(':') + 1);
-                int jump = stoi(s);
-                if(numberOfEntity >= condition) {
-                    talker->dialogue_index = jump - 3;
-                    this->continueDialogue();
-                    return;
-                }
-                j++;
-                res = talker->sayings.at(talker->dialogue_index + 1 + j);
-
-            }
-            talker->dialogue_index++;
-            this->continueDialogue();
-			return;
-		}
-
-        //write selfdata 5->[4]
-        if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-            int value = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
-            string blockstr = s.substr(s.find('[')); 
-            blockstr.pop_back(); blockstr.erase(0, 1);
-            int block = stoi (blockstr);
-            talker->data[block] = value;
-            talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-        }
-
-        //write random number to selfdata
-        // 0-1000->[4]
-        if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-            int firstvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
-            int secondvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
-            
-            string blockstr = s.substr(s.find('[')); 
-            blockstr.pop_back(); blockstr.erase(0, 1);
-            int block = stoi (blockstr);
-
-            talker->data[block] = rand() % (secondvalue - firstvalue + 1) + firstvalue;
-            D(talker->data[block]);
-            talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-        }
-
-        //read selfdata [5]
-		if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("\\[[[:digit:]]+\\]"))) {
-            int j = 1;
-            //parse which block of memory we are interested in
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-            s.erase(0, 1);
-            string blockstr = s.substr(0, s.find(']'));
-            int block = stoi(blockstr);
-            string res = talker->sayings.at(talker->dialogue_index + 1 + j);
-            while (res.find('*') != std::string::npos) {
-                
-                //parse option
-                // *15 29 -> if data is 15, go to line 29
-                string s = talker->sayings.at(talker->dialogue_index + 1 + j);
-                s.erase(0, 1);
-                int condition = stoi( s.substr(0, s.find(':')));
-                s.erase(0, s.find(':') + 1);
-                int jump = stoi(s);
-                if(talker->data[block] == condition) {
-                    talker->dialogue_index = jump - 3;
-                    this->continueDialogue();
-                    return;
-                }
-                j++;
-                res = talker->sayings.at(talker->dialogue_index + 1 + j);
-
-            }
-            talker->dialogue_index++;
-            this->continueDialogue();
-			return;
-		}
-
-		//comment
-		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,2) =="//") {
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //option/jump
-		if(talker->sayings.at(talker->dialogue_index + 1).at(0) == '*') {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-            s.erase(0, 1);
-            string condition = s.substr(0, s.find(':')); s.erase(0, s.find(':') + 1);
-            int jump = stoi(s);
-            if(response == condition) {
-                response = "";
-                response_index = 0;
-                playSound(-1, confirm_noise, 0);
-                talker->dialogue_index = jump - 3;
-                D(talker->dialogue_index);
-                D(talker->sayings.at(talker->dialogue_index+1));
-                this->continueDialogue();
-            } else {
-                talker->dialogue_index++;
-                this->continueDialogue();
-            }
-
-			
-			return;
-		}
-
-        //change mapdir
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/mapdir") {
-            M("setting mapdir");
-			string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 8);
-			g_mapdir = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-		}
-
-		//change map
-		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,4) == "/map") {
-            M("changing map");
-			string s = talker->sayings.at(talker->dialogue_index + 1);
-			//erase '@'
-			s.erase(0, 5);
-			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            string dest_waypoint = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            //if the script just has "@" and that's all, send the player to the last saved map
-            if(name.length() == 0) {
-                name = g_mapOfLastSave;
-                cout << g_waypointOfLastSave << endl;
-                dest_waypoint = g_waypointOfLastSave;
-            }
-			
-
-			//close dialogue
-			adventureUIManager->hideTalkingUI();
-			talker->dialogue_index = 0;
-			talker->animate = 0;
-            
-            clear_map(g_camera);
-            g_map = name;
-            const string toMap = "maps/" + g_mapdir + "/" + g_map + ".map";;
-			load_map(renderer, toMap, dest_waypoint);
-
-            // //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
-            if(canSwitchOffDevMode) { init_map_writing(renderer);}
-            protag_is_talking = 0;
-            protag_can_move = 1;    
-            //clear talker so that g_forceEndDialogue will not be set to 1
-            //g_talker = nullptr;
-			return;
-		}
-
-		//spawn entity
-		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/spawn") {
-			string s = talker->sayings.at(talker->dialogue_index + 1);
-			//erase '&'
-            M("spawned entity");
-			s.erase(0, 7);
-			int xpos, ypos;
-			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-			xpos = stoi(s.substr(0, s.find(' '))); s.erase(0, s.find(' ') + 1);
-			ypos = stoi(s.substr(0, s.find(' '))); s.erase(0, s.find(' ') + 1);
-			entity* e = new entity(renderer, name.c_str());
-            e->x = xpos;
-            e->y = ypos;
-            e->shadow->x = e->x + e->shadow->xoffset;
-            e->shadow->y = e->y + e->shadow->yoffset;
-
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-		//destroy entity
-		if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/destroy") {
-			string s = talker->sayings.at(talker->dialogue_index + 1);
-			//erase '&'
-			s.erase(0, 9);
-			//s is the name of the entity to destroy
-			if(talker->name == s){
-                talker->tangible = 0;
-                talker->dialogue_index++;
-                this->continueDialogue();
-                return;
-            }
-			for (long long unsigned int i = 0; i < g_entities.size(); i++) {
-				if(g_entities[i]->inParty) { continue; }
-				SDL_Rect b = {g_entities[i]->x, g_entities[i]->y - g_entities[i]->height, g_entities[i]->width, g_entities[i]->height};
-				
-				if(g_entities[i]->name == s) {
-					delete g_entities[i];
-					break;
-				}
-            
-        	}
-
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //move entity
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/move") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-			vector<string> x = splitString(s, ' ');
-            string name = x[0];
-            int p0 = stoi(x[1]);
-            int p1 = stoi(x[2]);
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr) {
-               
-                hopeful->agrod = 0;
-                hopeful->Destination = getNodeByPosition(p0, p1);
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //teleport entity
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/teleport") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 10);
-			vector<string> x = splitString(s, ' ');
-            string name = x[0];
-            int p0 = stoi(x[1]);
-            int p1 = stoi(x[2]);
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr) {
-               
-                hopeful->x = p0;
-                hopeful->y = p1;
-                hopeful->xvel = 0;
-                hopeful->yvel = 0;
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //teleport entity to another entity
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,12) == "/entteleport") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 13);
-			vector<string> x = splitString(s, ' ');
-            string teleportMeSTR = x[0];
-            string teleportToMeSTR = x[1];
-            entity* teleportMe = searchEntities(teleportMeSTR);
-            entity* teleportToMe = searchEntities(teleportToMeSTR);
-			if(teleportMe != nullptr && teleportToMe != nullptr) {
-                teleportMe->setOriginX(teleportToMe->getOriginX());
-                teleportMe->setOriginY(teleportToMe->getOriginY());
-                teleportMe->xvel = 0;
-                teleportMe->yvel = 0;
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //spawn entity at an entity
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entspawn") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 10);
-			vector<string> x = splitString(s, ' ');
-            string teleportMeSTR = x[0];
-            string teleportToMeSTR = x[1];
-            entity* teleportMe = new entity(renderer, teleportMeSTR.c_str());
-            entity* teleportToMe = searchEntities(teleportToMeSTR);
-			if(teleportMe != nullptr && teleportToMe != nullptr) {
-                teleportMe->setOriginX(teleportToMe->getOriginX());
-                teleportMe->setOriginY(teleportToMe->getOriginY());
-                teleportMe->xvel = 0;
-                teleportMe->yvel = 0;
-                teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
-                teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-       
-
-        //change cameratarget
-        // /lookat ward 0 0
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/lookat ") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 8);
-			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            string transtr = "0";
-            transtr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            float transitionspeed = stof(transtr);
-            
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr) {
-                g_focus = hopeful;
-                cout << "set focus properly" << endl;
-                if(transitionspeed != 0) {
-                    //This check means that if the camera is already moving, don't reset
-                    //it's velocity, because that would be jarring
-                    if(g_camera.lag == 0) {
-                        g_camera.lag = transitionspeed;
-                        g_camera.lagaccel = transitionspeed;
-                    } else {
-                        g_camera.lagaccel = transitionspeed;
-                    }
-                } else {
-                    g_camera.lag = 0;
-                    g_camera.lagaccel = g_camera.DEFAULTLAGACCEL;
-                }
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //change cameratarget
-        // /lookat ward 0 0
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,10) == "/lookatall") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 11);
-			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            string transtr = "0";
-            transtr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            float transitionspeed = stof(transtr);
-            
-            vector<entity*> hopefuls = gatherEntities(name);
-			if(hopefuls.size() != 0) {
-                g_focus = hopefuls[countEntities];
-                if(transitionspeed != 0) {
-                    //This check means that if the camera is already moving, don't reset
-                    //it's velocity, because that would be jarring
-                    if(g_camera.lag == 0) {
-                        g_camera.lag = transitionspeed;
-                        g_camera.lagaccel = transitionspeed;
-                    } else {
-                        g_camera.lagaccel = transitionspeed;
-                    }
-                } else {
-                    g_camera.lag = 0;
-                    g_camera.lagaccel = g_camera.DEFAULTLAGACCEL;
-                }
-            
-            }
-            countEntities++;
-			if(countEntities == hopefuls.size()) {
-                //continue
-                countEntities = 0;
-                talker->dialogue_index++;
-                this->continueDialogue();
-                return;
-            } else {
-                //wait for input
-                curText = "";
-                pushedText = "";
-                typing = true;
-                //showTalkingUI();
-                //updateText();
-                hideTalkingUI();
-                //talker->dialogue_index++;
-                
-                return;
-            }
-		}
-
-        //spawn item in world
-         if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/item") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-			vector<string> x = splitString(s, ' ');
-            string name = x[0];
-            int p0 = stoi(x[1]);
-            int p1 = stoi(x[2]);
-            D(x[0]);
-            D(x[1]);
-            D(x[2]);
-            worldItem* a = new worldItem(name, 0);
-            a->x = p0;
-            a->y = p1;
-            M(a->x);
-            M(a->y);
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //refresh a trigger by ID
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/refresh") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 9);
-			
-            int tID = stoi(s);
-            if(tID < g_triggers.size()) {
-                g_triggers[tID]->active = 1;
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
-
-        //sleep
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/sleep") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 7);
-            string msstr = "0";
-            msstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            int ms = 0;
-            ms = stoi(msstr);
-            sleepingMS = ms;
-            talker->dialogue_index++;
-            sleepflag = 1;
-            this->continueDialogue();
-            return;
-        }
-
-
-        //mobile sleep, sleep but let the player walk
-        //I'm not really sure why you'd want this actually, and come to think of it
-        //since the scripting shtick can only run one script at once, this
-        //is vastly less helpful than I anticipated
-        //timer-object afterall?
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/msleep") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 8);
-            string msstr = "0";
-            msstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            int ms = 0;
-            ms = stoi(msstr);
-            sleepingMS = ms;
-            sleepflag = 1;
-            mobilize = 1;
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //call a script
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/script") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 8); 
-            D(s);
-
-            ifstream stream;
-            string loadstr;
-
-            loadstr = "maps/" + g_map + "/" + s + ".txt";
-            const char* plik = loadstr.c_str();
-            
-            stream.open(plik);
-            
-            if (!stream.is_open()) {
-                stream.open("scripts/" + s + ".txt");
-            }
-            string line;
-
-            getline(stream, line);
-            
-            vector<string> nscript;
-            while (getline(stream, line)) {
-                nscript.push_back(line);
-                D(line);
-            }
-            adventureUIManager->blip = g_ui_voice; 
-            adventureUIManager->sayings = &nscript;
-            adventureUIManager->talker = protag;
-            protag->sayings = nscript;
-            protag->dialogue_index = -1;
-            adventureUIManager->continueDialogue();
-        }
-
-        //load savefile
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/loadsave") {
-            loadSave();
-
-            //close dialogue
-		
-            adventureUIManager->hideTalkingUI();
-            //reset character's dialogue_index
-            talker->dialogue_index = 0;
-            //stop talker from bouncing
-            talker->animate = 0;
-            
-            clear_map(g_camera);
-            auto x = splitString(g_mapOfLastSave, '/');
-            g_mapdir = x[0];
-            g_map = x[1];
-            //cout << "mapdir : " << g_mapdir << endl;
-            //cout << "map : " << g_map << endl;
-            //SDL_Delay(5000);
-            load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
-            
-            //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
-            if(canSwitchOffDevMode) { init_map_writing(renderer);}
-            protag_is_talking = 0;
-            protag_can_move = 1;
-            return;
-        }
-
-        //write savefile
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/save") {
-            writeSave();
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //change user
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/user") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-            g_saveName = s;
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //check savefield
-        if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("\\{([a-zA-Z0-9_]){1,}\\}"))) {
-            M("Tried to check a save field");
-            //
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 1);
-            s.erase(s.length() - 1, 1);
-            
-            int value = checkSaveField(s);
-
-            int j = 1;
-            string res = talker->sayings.at(talker->dialogue_index + 1 + j);
-            while (res.find('*') != std::string::npos) {
-                string s = talker->sayings.at(talker->dialogue_index + 1 + j);
-                s.erase(0, 1);
-                int condition = stoi( s.substr(0, s.find(':')));
-                s.erase(0, s.find(':') + 1);
-                int jump = stoi(s);
-                if(value == condition) {
-                    talker->dialogue_index = jump - 3;
-                    this->continueDialogue();
-                    return;
-                }
-                j++;
-                res = talker->sayings.at(talker->dialogue_index + 1 + j);
-
-            }
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-			return;
-		}
-
-        //write to savefield
-        if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}"))) {
-            M("tried to write to savedata");
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-            s.erase(s.length() - 1, 1);
-
-            string valuestr = s.substr(0, s.find('-'));
-            int value = stoi(valuestr);
-
-            string field = s.substr(s.find('{')+1, s.length() - 1);
-            D(value);
-            D(field);
-            writeSaveField(field, value);
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //unconditional jump
-        if(talker->sayings.at(talker->dialogue_index + 1).at(0) == ':') {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 1);
-            string DIstr = "0";
-            DIstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            int DI = 0;
-            D(DIstr);
-            DI = stoi(DIstr);
-            talker->dialogue_index = DI - 3;
-            this->continueDialogue();
-            return;
-        }
-
-        //solidify entity
-        // /solidify door 1
-        // /solidify wall 0
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/solidify") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 10);
-            
-            entity* solidifyMe = 0;
-            auto parts = splitString(s, ' ');
-
-            solidifyMe = searchEntities(parts[0]);
-            bool solidifystate = (parts[1] == "1");
-            if(solidifyMe != 0) {
-                if(solidifystate) {
-                    solidifyMe->solidify();
-                } else {
-                    solidifyMe->unsolidify();
-                }
-                
-            }
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //make entity disapear by floating up
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/banish") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 8);
-            
-            entity* banishMe = 0;
-            auto parts = splitString(s, ' ');
-
-            banishMe = searchEntities(parts[0]);
-            bool banished = 1;
-            if(parts.size() > 1) {
-                banished = (parts[1] != "0");
-            }
-            int zaccel = 220;
-            if(parts.size() > 2) {
-                zaccel = stoi(parts[2]);
-            }
-            if(banishMe != 0) {
-                if(banished) {
-                    banishMe->zaccel = zaccel;
-                    banishMe->banished = 1;
-	                banishMe->shadow->enabled = 0;
-
-
-                    //this is set on mapload so commenting this out should be fine
-                    // if(banishMe->overlappedNodes.empty()) {
-                    //     auto r = banishMe->getMovedBounds();
-                    //     for(auto x : g_navNodes) {
-                    //         // !!! this also isn't 3d-safe
-                    //         rect nodespot = {x->x - 32, x->y -22, 64, 45};
-                    //         D(nodespot.x);
-                    //         D(nodespot.y);
-                    //         if(RectOverlap(r, nodespot)) {
-                    //             banishMe->overlappedNodes.push_back(x);
-                    //             //M("node enabled!");
-                    //             //x->enabled = 1;
-                    //         }
-                    //     }
-                    // }
-                    
-                } else {
-                    banishMe->banished = 0;
-                    banishMe->dynamic = 1;
-                    SDL_SetTextureAlphaMod(banishMe->texture, 255);
-                    // this means that there will be problems if doors overlap- at the moment, that seems absurd
-                    for(auto x : banishMe->overlappedNodes) {
-                        M("Node disabled!");
-                        x->enabled = 0;
-                        x->prev = nullptr;
-                        // for(auto y : x->friends) {
-                        //     y->enabled = 0;
-                        //     y->prev = nullptr;
-                        // }
-                    }
-                    banishMe->shadow->enabled = 1;
-                }
-            }
-            g_lastFunctionalX = -numeric_limits<int>::max();
-            g_lastFunctionalY = - numeric_limits<int>::max();
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        
-        //change animation data
-        //anim entity direction msPerFrame frameInAnimation LoopAnimation
-        //set direction to -1 to not set the direction
-        //set msperframe to 0 to not animate
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/anim") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-            vector<string> split = splitString(s, ' ');
-            
-            entity* ent = 0;
-            //if the entity we are talking to is the same as the one we want to animate, just animate talker
-            if(talker->name == split[0]) {
-                ent = talker;
-            } else {
-                ent = searchEntities(split[0]);
-            }
-            if(ent != 0) {
-                int animationset = stoi(split[1]);
-                if(animationset != -1) {
-                    ent->animation = stoi(split[1]);
-                }
-                ent->msPerFrame = stoi(split[2]);
-                ent->frameInAnimation = stoi(split[3]);
-                ent->loopAnimation = stoi(split[4]);
-                ent->scriptedAnimation = 1;
-            }
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-        
-        //play sound at an entity
-        // /sound heavy-door-open doora
-        // /sound croak protag
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entsound") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 10);
-            vector<string> split = splitString(s, ' ');
-            string soundName = split[0];
-            string entName = split[1];
-            entity* hopeful = 0;
-            hopeful = searchEntities(entName);
-            if(hopeful != nullptr){
-                //play a sound at the entity
-                playSoundByName(soundName, hopeful->getOriginX(), hopeful->getOriginY());
-            } else {
-                //entity was not found, so lets not play a sound
-            }
-            
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //play a sound that's been loaded into the level as a cue
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/sound") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 7);
-            playSoundByName(s);
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //play a sound from the disk
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,14) == "/loadplaysound") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 15);
-            string loadstring = "audio/sounds/" + s + ".wav";
-            Mix_Chunk* a = Mix_LoadWAV(loadstring.c_str());
-            if(!g_mute && a != nullptr) {
-                Mix_PlayChannel(0, a,0);
-            }
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //hide textbox
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/hideui") {
-            this->hideTalkingUI();
-            this->curText = "";
-            this->pushedText = "";
-            this->hideInventoryUI();
-            inPauseMenu = 0;
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
-        }
-
-        //wait for input
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,13) == "/waitforinput") {
+            //wait for input
             curText = "";
             pushedText = "";
             typing = true;
             //showTalkingUI();
             //updateText();
             hideTalkingUI();
-            talker->dialogue_index++;
+            //talker->dialogue_index++;
             
             return;
         }
+    }
 
-        //agro/unagro enemy
-        // /agro oilman 1
-        // /agro wubba 0
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/agro") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-            D(s);
-			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            D(s);
-            string agrostatestr = "0";
-            agrostatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            D(name);
-            D(agrostatestr);
-            float agrostate = stof(agrostatestr);
-            
-            
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr) {
-                hopeful->agrod = agrostate;
+    //spawn item in world
+        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/item") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        vector<string> x = splitString(s, ' ');
+        string name = x[0];
+        int p0 = stoi(x[1]);
+        int p1 = stoi(x[2]);
+        D(x[0]);
+        D(x[1]);
+        D(x[2]);
+        worldItem* a = new worldItem(name, 0);
+        a->x = p0;
+        a->y = p1;
+        M(a->x);
+        M(a->y);
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //refresh a trigger by ID
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,8) == "/refresh") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 9);
+        
+        int tID = stoi(s);
+        if(tID < g_triggers.size()) {
+            g_triggers[tID]->active = 1;
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //sleep
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/sleep") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 7);
+        string msstr = "0";
+        msstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        int ms = 0;
+        ms = stoi(msstr);
+        sleepingMS = ms;
+        talker->dialogue_index++;
+        sleepflag = 1;
+        this->continueDialogue();
+        return;
+    }
+
+
+    //mobile sleep, sleep but let the player walk
+    //I'm not really sure why you'd want this actually, and come to think of it
+    //since the scripting shtick can only run one script at once, this
+    //is vastly less helpful than I anticipated
+    //timer-object afterall?
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/msleep") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 8);
+        string msstr = "0";
+        msstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        int ms = 0;
+        ms = stoi(msstr);
+        sleepingMS = ms;
+        sleepflag = 1;
+        mobilize = 1;
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //call a script
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/script") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 8); 
+        D(s);
+
+        ifstream stream;
+        string loadstr;
+
+        loadstr = "maps/" + g_map + "/" + s + ".txt";
+        const char* plik = loadstr.c_str();
+        
+        stream.open(plik);
+        
+        if (!stream.is_open()) {
+            stream.open("scripts/" + s + ".txt");
+        }
+        string line;
+
+        getline(stream, line);
+        
+        vector<string> nscript;
+        while (getline(stream, line)) {
+            nscript.push_back(line);
+            D(line);
+        }
+        adventureUIManager->blip = g_ui_voice; 
+        adventureUIManager->sayings = &nscript;
+        adventureUIManager->talker = protag;
+        protag->sayings = nscript;
+        protag->dialogue_index = -1;
+        adventureUIManager->continueDialogue();
+    }
+
+    //load savefile
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/loadsave") {
+        loadSave();
+
+        //close dialogue
+    
+        adventureUIManager->hideTalkingUI();
+        //reset character's dialogue_index
+        talker->dialogue_index = 0;
+        //stop talker from bouncing
+        talker->animate = 0;
+        
+        clear_map(g_camera);
+        auto x = splitString(g_mapOfLastSave, '/');
+        g_mapdir = x[0];
+        g_map = x[1];
+        //cout << "mapdir : " << g_mapdir << endl;
+        //cout << "map : " << g_map << endl;
+        //SDL_Delay(5000);
+        load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+        
+        //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
+        if(canSwitchOffDevMode) { init_map_writing(renderer);}
+        protag_is_talking = 0;
+        protag_can_move = 1;
+        return;
+    }
+
+    //write savefile
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/save") {
+        writeSave();
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //change user
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/user") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        g_saveName = s;
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //check savefield
+    if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("\\{([a-zA-Z0-9_]){1,}\\}"))) {
+        M("Tried to check a save field");
+        //
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 1);
+        s.erase(s.length() - 1, 1);
+        
+        int value = checkSaveField(s);
+
+        int j = 1;
+        string res = talker->sayings.at(talker->dialogue_index + 1 + j);
+        while (res.find('*') != std::string::npos) {
+            string s = talker->sayings.at(talker->dialogue_index + 1 + j);
+            s.erase(0, 1);
+            int condition = stoi( s.substr(0, s.find(':')));
+            s.erase(0, s.find(':') + 1);
+            int jump = stoi(s);
+            if(value == condition) {
+                talker->dialogue_index = jump - 3;
+                this->continueDialogue();
+                return;
             }
+            j++;
+            res = talker->sayings.at(talker->dialogue_index + 1 + j);
 
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
         }
 
-        //make entity tangible
-        // /tangible oilman 0
-        // /tangible wubba 1
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
 
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/tangible") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 10);
-            D(s);
-			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            D(s);
-            string tangiblestatestr = "0";
-            tangiblestatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            D(name);
-            D(tangiblestatestr);
-            float tangiblestate = stof(tangiblestatestr);
-            
-            
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr) {
-                hopeful->tangible = tangiblestate;
+    //write to savefield
+    if(regex_match (talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}"))) {
+        M("tried to write to savedata");
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(s.length() - 1, 1);
+
+        string valuestr = s.substr(0, s.find('-'));
+        int value = stoi(valuestr);
+
+        string field = s.substr(s.find('{')+1, s.length() - 1);
+        D(value);
+        D(field);
+        writeSaveField(field, value);
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //unconditional jump
+    if(talker->sayings.at(talker->dialogue_index + 1).at(0) == ':') {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 1);
+        string DIstr = "0";
+        DIstr = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        int DI = 0;
+        D(DIstr);
+        DI = stoi(DIstr);
+        talker->dialogue_index = DI - 3;
+        this->continueDialogue();
+        return;
+    }
+
+    //solidify entity
+    // /solidify door 1
+    // /solidify wall 0
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/solidify") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 10);
+        
+        entity* solidifyMe = 0;
+        auto parts = splitString(s, ' ');
+
+        solidifyMe = searchEntities(parts[0]);
+        bool solidifystate = (parts[1] == "1");
+        if(solidifyMe != 0) {
+            if(solidifystate) {
+                solidifyMe->solidify();
+            } else {
+                solidifyMe->unsolidify();
             }
-
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
+            
         }
 
-        //heal entity
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/heal") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 6);
-			string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            string tangiblestatestr = "0";
-            tangiblestatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-            int tangiblestate = stof(tangiblestatestr);
-            
-            
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr) {
-                hopeful->hp += tangiblestate;
-                if(hopeful->hp > hopeful->maxhp) {
-                    hopeful->hp = hopeful->maxhp;
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //make entity disapear by floating up
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/banish") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 8);
+        
+        entity* banishMe = 0;
+        auto parts = splitString(s, ' ');
+
+        banishMe = searchEntities(parts[0]);
+        bool banished = 1;
+        if(parts.size() > 1) {
+            banished = (parts[1] != "0");
+        }
+        int zaccel = 220;
+        if(parts.size() > 2) {
+            zaccel = stoi(parts[2]);
+        }
+        if(banishMe != 0) {
+            if(banished) {
+                banishMe->zaccel = zaccel;
+                banishMe->banished = 1;
+                banishMe->shadow->enabled = 0;
+
+
+                //this is set on mapload so commenting this out should be fine
+                // if(banishMe->overlappedNodes.empty()) {
+                //     auto r = banishMe->getMovedBounds();
+                //     for(auto x : g_navNodes) {
+                //         // !!! this also isn't 3d-safe
+                //         rect nodespot = {x->x - 32, x->y -22, 64, 45};
+                //         D(nodespot.x);
+                //         D(nodespot.y);
+                //         if(RectOverlap(r, nodespot)) {
+                //             banishMe->overlappedNodes.push_back(x);
+                //             //M("node enabled!");
+                //             //x->enabled = 1;
+                //         }
+                //     }
+                // }
+                
+            } else {
+                banishMe->banished = 0;
+                banishMe->dynamic = 1;
+                SDL_SetTextureAlphaMod(banishMe->texture, 255);
+                // this means that there will be problems if doors overlap- at the moment, that seems absurd
+                for(auto x : banishMe->overlappedNodes) {
+                    M("Node disabled!");
+                    x->enabled = 0;
+                    x->prev = nullptr;
+                    // for(auto y : x->friends) {
+                    //     y->enabled = 0;
+                    //     y->prev = nullptr;
+                    // }
                 }
+                banishMe->shadow->enabled = 1;
             }
+        }
+        g_lastFunctionalX = -numeric_limits<int>::max();
+        g_lastFunctionalY = - numeric_limits<int>::max();
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
 
-
-            talker->dialogue_index++;
-            this->continueDialogue();
-            return;
+    
+    //change animation data
+    //anim entity direction msPerFrame frameInAnimation LoopAnimation
+    //set direction to -1 to not set the direction
+    //set msperframe to 0 to not animate
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/anim") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        vector<string> split = splitString(s, ' ');
+        
+        entity* ent = 0;
+        //if the entity we are talking to is the same as the one we want to animate, just animate talker
+        if(talker->name == split[0]) {
+            ent = talker;
+        } else {
+            ent = searchEntities(split[0]);
+        }
+        if(ent != 0) {
+            int animationset = stoi(split[1]);
+            if(animationset != -1) {
+                ent->animation = stoi(split[1]);
+            }
+            ent->msPerFrame = stoi(split[2]);
+            ent->frameInAnimation = stoi(split[3]);
+            ent->loopAnimation = stoi(split[4]);
+            ent->scriptedAnimation = 1;
         }
 
-        //add entity to the party
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/enlist") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 8);
-            string name = s;
-            
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr) {
-                hopeful->inParty = 1;
-                hopeful->tangible = 0;
-                party.push_back(hopeful);
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+    
+    //play sound at an entity
+    // /sound heavy-door-open doora
+    // /sound croak protag
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/entsound") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 10);
+        vector<string> split = splitString(s, ' ');
+        string soundName = split[0];
+        string entName = split[1];
+        entity* hopeful = 0;
+        hopeful = searchEntities(entName);
+        if(hopeful != nullptr){
+            //play a sound at the entity
+            playSoundByName(soundName, hopeful->getOriginX(), hopeful->getOriginY());
+        } else {
+            //entity was not found, so lets not play a sound
+        }
+        
 
-        //remove entity from the party
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/delist") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 8);
-            string name = s;
-            
-            entity* hopeful = searchEntities(name);
-			if(hopeful != nullptr && hopeful != mainProtag) {
-                hopeful->inParty = 0;
-                hopeful->tangible = 1;
-                party.erase(remove(party.begin(), party.end(), hopeful), party.end());
-                if(hopeful == protag) {
-                    //set protag to mainProtag
-                    mainProtag->x = mainProtag->getOriginX() - mainProtag->bounds.x - mainProtag->bounds.width/2;
-					mainProtag->y = mainProtag->getOriginY() - mainProtag->bounds.y - mainProtag->bounds.height/2;
-					mainProtag->z = protag->z;
-					mainProtag->xvel = protag->xvel;
-					mainProtag->yvel = protag->yvel;
-					mainProtag->zvel = protag->zvel;
-					
-					mainProtag->animation = protag->animation;
-					mainProtag->flip = protag->flip;
-                    protag=mainProtag;
-                }
-            }
-            
-			talker->dialogue_index++;
-			this->continueDialogue();
-			return;
-		}
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
 
-        //overwrite a save
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,10) == "/clearsave") {
-            string s = talker->sayings.at(talker->dialogue_index + 1);
-			s.erase(0, 11);
-            string name = s;
-            D("trying to clear save " + s);
-            filesystem::copy("user/saves/newsave.txt", "user/saves/" + s + ".txt", std::filesystem::copy_options::overwrite_existing);
-            talker->dialogue_index++;
-			this->continueDialogue();
-			return;
+    //play a sound that's been loaded into the level as a cue
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,6) == "/sound") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 7);
+        playSoundByName(s);
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //play a sound from the disk
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,14) == "/loadplaysound") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 15);
+        string loadstring = "audio/sounds/" + s + ".wav";
+        Mix_Chunk* a = Mix_LoadWAV(loadstring.c_str());
+        if(!g_mute && a != nullptr) {
+            Mix_PlayChannel(0, a,0);
         }
 
-        //quit the game
-        if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/quit") {
-            quit = 1;
-            return;
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //hide textbox
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/hideui") {
+        this->hideTalkingUI();
+        this->curText = "";
+        this->pushedText = "";
+        this->hideInventoryUI();
+        inPauseMenu = 0;
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //wait for input
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,13) == "/waitforinput") {
+        curText = "";
+        pushedText = "";
+        typing = true;
+        //showTalkingUI();
+        //updateText();
+        hideTalkingUI();
+        talker->dialogue_index++;
+        
+        return;
+    }
+
+    //agro/unagro enemy
+    // /agro oilman 1
+    // /agro wubba 0
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/agro") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        D(s);
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        D(s);
+        string agrostatestr = "0";
+        agrostatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        D(name);
+        D(agrostatestr);
+        float agrostate = stof(agrostatestr);
+        
+        
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            hopeful->agrod = agrostate;
         }
 
-		//default - keep talking
-		talker->dialogue_index++;
-		pushText(talker);	
-	}
-};
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //make entity tangible
+    // /tangible oilman 0
+    // /tangible wubba 1
+
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/tangible") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 10);
+        D(s);
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        D(s);
+        string tangiblestatestr = "0";
+        tangiblestatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        D(name);
+        D(tangiblestatestr);
+        float tangiblestate = stof(tangiblestatestr);
+        
+        
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            hopeful->tangible = tangiblestate;
+        }
+
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //heal entity
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/heal") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 6);
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        string tangiblestatestr = "0";
+        tangiblestatestr = s;//s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        int tangiblestate = stof(tangiblestatestr);
+        
+        
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            hopeful->hp += tangiblestate;
+            if(hopeful->hp > hopeful->maxhp) {
+                hopeful->hp = hopeful->maxhp;
+            }
+        }
+
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //add entity to the party
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/enlist") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 8);
+        string name = s;
+        
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            hopeful->inParty = 1;
+            hopeful->tangible = 0;
+            party.push_back(hopeful);
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //remove entity from the party
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/delist") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 8);
+        string name = s;
+        
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr && hopeful != mainProtag) {
+            hopeful->inParty = 0;
+            hopeful->tangible = 1;
+            party.erase(remove(party.begin(), party.end(), hopeful), party.end());
+            if(hopeful == protag) {
+                //set protag to mainProtag
+                mainProtag->x = mainProtag->getOriginX() - mainProtag->bounds.x - mainProtag->bounds.width/2;
+                mainProtag->y = mainProtag->getOriginY() - mainProtag->bounds.y - mainProtag->bounds.height/2;
+                mainProtag->z = protag->z;
+                mainProtag->xvel = protag->xvel;
+                mainProtag->yvel = protag->yvel;
+                mainProtag->zvel = protag->zvel;
+                
+                mainProtag->animation = protag->animation;
+                mainProtag->flip = protag->flip;
+                protag=mainProtag;
+            }
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //overwrite a save
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,10) == "/clearsave") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 11);
+        string name = s;
+        D("trying to clear save " + s);
+        filesystem::copy("user/saves/newsave.txt", "user/saves/" + s + ".txt", std::filesystem::copy_options::overwrite_existing);
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //quit the game
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/quit") {
+        quit = 1;
+        return;
+    }
+
+    //default - keep talking
+    talker->dialogue_index++;
+    pushText(talker);	
+}
+
 
 // #endif

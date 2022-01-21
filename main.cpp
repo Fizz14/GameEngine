@@ -1219,7 +1219,6 @@ int main(int argc, char ** argv) {
 					fadeFlag = 0;
 					musicFadeTimer = 0;
 					g_currentMusicPlayingEntity = listenToMe;
-					I("scheduled to switch TO entmusic");
 				}
 			} else {
 				bool hadEntPlayingMusic = 0;
@@ -1282,7 +1281,6 @@ int main(int argc, char ** argv) {
 			entFadeFlag = 0;
 			Mix_HaltMusic();
 			Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
-			I("actually played entmusic");
 		} 
 
 		//wakeup manager if it is sleeping
