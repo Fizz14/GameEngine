@@ -3005,7 +3005,6 @@ void write_map(entity* mapent) {
                 }
                 if(word == "pointofinterest" || word == "poi") {
                     int index = 0;
-                    I("Dev tried to make a poi");
                     if(line >> index) {
                         pointOfInterest* p = new pointOfInterest(px + marker->width/2, py + marker->height/2, index);
                     }
@@ -3498,6 +3497,7 @@ adventureUI::adventureUI(SDL_Renderer* renderer) {
     escText->show = 1;
     escText->align = 2;
 
+    playersUI = 1;
 
     hideInventoryUI();
 
@@ -3506,8 +3506,12 @@ adventureUI::adventureUI(SDL_Renderer* renderer) {
 
 adventureUI::~adventureUI() {
     M("~adventureUI()");
-    Mix_FreeChunk(blip);
-    Mix_FreeChunk(confirm_noise);
+    
+    if(this->playersUI) {
+        Mix_FreeChunk(blip);
+        Mix_FreeChunk(confirm_noise);
+    }
+
     delete talkingBox;
     delete talkingText;
     delete inventoryA;
@@ -3995,6 +3999,7 @@ void adventureUI::continueDialogue() {
 
         if(hopeful != nullptr) {
             hopeful->agrod = 0;
+            hopeful->target = nullptr;
             hopeful->myTravelstyle = roam;
             hopeful->poiIndex = p0;
             hopeful->traveling = 1;
@@ -4018,6 +4023,7 @@ void adventureUI::continueDialogue() {
 
         if(hopeful != nullptr) {
             hopeful->agrod = 0;
+            hopeful->target = nullptr;
             hopeful->myTravelstyle = patrol;
             hopeful->poiIndex = p0;
             hopeful->traveling = 1;

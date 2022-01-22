@@ -279,7 +279,6 @@ public:
 	pointOfInterest(int fx, int fy, int findex) : x(fx), y(fy), index(findex) {
 		if(findex > g_numberOfInterestSets) {index = 0;}
 		g_setsOfInterest.at(index).push_back(this);	
-		I(g_setsOfInterest.at(index).size());
 		
 	}
 
@@ -2008,7 +2007,7 @@ public:
 	//enemies need a way to call their own scripts
 	//without worrying about being interupted by the player
 	//just don't have them use the dialog-box
-	adventureUI* myScriptCaller;
+	adventureUI* myScriptCaller = nullptr;
 	vector<ability> myAbilities;
 	float autoAgroRadius = -1;
 	float enrageSpeedbuff = 0;
@@ -2120,6 +2119,9 @@ public:
 		} else {
 			spritefilevar = "textures/sprites/" + temp + ".bmp";
 		}
+
+		//check local folder
+		if(fileExists("maps/" + g_mapdir + "/" + filename + ".bmp")) {spritefilevar = "maps/" + g_mapdir + "/" + filename + ".bmp";}
 		
 		const char* spritefile = spritefilevar.c_str();
 		float size;
@@ -2282,29 +2284,38 @@ public:
 		
 		
 		//load dialogue file
-		if(1) {
-			string txtfilename = "";
-			//open from local folder first
-			D("maps/" + g_mapdir + "/" + filename + ".txt");
-			if (fileExists("maps/" + g_mapdir + "/" + filename + ".txt")) {
-				txtfilename = "maps/" + g_mapdir + "/" + filename + ".txt";
-				M("Using local script");
-			} else {
-				M("Using global script");
-				txtfilename = "scripts/" + filename + ".txt";
-			}
-			ifstream file(txtfilename);
-			string line;
-
-			//load voice
-			getline(file, line);
-			line = "audio/sounds/voice-" + line +".wav";
-			voice = Mix_LoadWAV(line.c_str());
-
-			while(getline(file, line)) {
-				sayings.push_back(line);
-			}	
+		
+		string txtfilename = "";
+		//open from local folder first
+		D("maps/" + g_mapdir + "/" + filename + ".txt");
+		if (fileExists("maps/" + g_mapdir + "/" + filename + ".txt")) {
+			txtfilename = "maps/" + g_mapdir + "/" + filename + ".txt";
+			M("Using local script");
+		} else {
+			M("Using global script");
+			txtfilename = "scripts/" + filename + ".txt";
 		}
+		ifstream nfile(txtfilename);
+		string line;
+
+		//load voice
+		getline(nfile, line);
+		line = "audio/sounds/voice-" + line +".wav";
+		voice = Mix_LoadWAV(line.c_str());
+
+		int overflowprotect = 5000;
+		int i = 0;
+		cout << "About to take in lines" << endl;
+		while(getline(nfile, line)) {
+			sayings.push_back(line);
+			if(i > overflowprotect) {
+				E("Prevented overflow reading script for entity " + name);
+				throw("Overflow");
+			}
+			i++;
+		}	
+		cout << "we have taken all the lines" << endl;
+	
 
 		parseScriptForLabels(sayings);
 
@@ -2390,7 +2401,6 @@ public:
 			overflow--;
 			if(overflow < 0) {E("Bad spawnlist."); break;}
 			entity* a = new entity(renderer, line);
-			T(a->name);
 			if(a->parentName == this->name) {
 				a->parent = this;
 			}
@@ -2411,7 +2421,6 @@ public:
 		//load ai-data 
 		// !!! add support for local AI files (is it worth it efficiency-wise?)
 		if(fileExists("entities/ai/"+filename + ".ai")) {
-			I("Detected AI-file for entity " + filename);
 			this->isAI = 1;
 			ifstream stream;
 			string loadstr;
@@ -2462,9 +2471,6 @@ public:
 				//
 
 				newAbility.cooldownMS = (newAbility.lowerCooldownBound + newAbility.upperCooldownBound) / 2;
-				I(line);
-				I(newAbility.upperCooldownBound);
-				I(newAbility.resetStableAccumulate);
 				this->myAbilities.push_back(newAbility);
 			}
 
@@ -3360,8 +3366,6 @@ public:
 		if(!xcollide && !transition) { 
 			x+= xvel * ((double) elapsed / 256.0);
 		}
-		//T(slowSeconds);
-		//T(g_jump_afterslow_seconds);
 		if(slowSeconds > 0) {
 			slowSeconds -= elapsed/1000;
 			friction = baseFriction * slowPercent;
@@ -3764,6 +3768,9 @@ public:
 				}
 			}
 
+
+			//if(this->name == "zombie") {T(target); T(agrod);}
+
 			//likely has abilities to use
 			//are any abilities ready?
 			for(auto &x : myAbilities) {
@@ -3799,7 +3806,6 @@ public:
 							
 							this->dialogue_index = 0;
 							this->sayings = x.script;
-							I(x.script.size());
 							this->myScriptCaller->executingScript = 1;
 							this->dialogue_index = -1;	
 							this->myScriptCaller->talker = this;
@@ -4029,7 +4035,8 @@ public:
 			float xvector = -xvel;
 			float yvector = -yvel;
 			//if he's not traveling very fast it looks natural to not change angle
-			if(Distance(0,0,xvel, yvel) > this->xmaxspeed * 0.5) {recalcAngle = 1;}
+			//recalcAngle = 1;
+			if(Distance(0,0,xvel, yvel) > 0) {recalcAngle = 1;}
 			if(recalcAngle) {
 				float angle = atan2(yvector, xvector);
 				flip = SDL_FLIP_NONE;
@@ -4079,7 +4086,6 @@ public:
 			//here's the code for roaming/patrolling
 			//we aren't agrod.
 			if(traveling) {
-				T("Entity " + name + "now traveling");
 				if(readyForNextTravelInstruction) {
 					readyForNextTravelInstruction = 0;
 					if(myTravelstyle == roam) {
@@ -5559,7 +5565,6 @@ void clear_map(camera& cameraToReset) {
 			for(long long unsigned int i=0; i < g_actors.size(); i++){
 				g_actors[i]->render(renderer, g_camera);
 			}
-			//T(g_actors.size());
 
 			for(long long unsigned int i=0; i < g_tiles.size(); i++){
 				if(g_tiles[i]->z == 2) {
@@ -5567,16 +5572,9 @@ void clear_map(camera& cameraToReset) {
 				}
 			}
 
-			//extern SDL_Texture* TextureA;
-			//extern SDL_Texture* TextureC;
-			//extern SDL_Texture* canvas;
-			//extern SDL_Texture* light;
-			//extern SDL_Texture* result;
-			//extern SDL_Texture* blackbarTexture;
 
 
 			//Fogofwar
-			T(g_fogofwarEnabled);
 			if(g_fogofwarEnabled && !devMode) {
 
 				// int functionalX = g_focus->getOriginX();
@@ -6011,8 +6009,8 @@ void clear_map(camera& cameraToReset) {
 	}
 
 	for(int i = 0; i < g_numberOfInterestSets; i++) {
-		for(int j = 0; j < g_setsOfInterest[i].size(); j++) {
-			delete g_setsOfInterest[i][j];
+		while(g_setsOfInterest[i].size() > 0) {
+			delete g_setsOfInterest[i][0];
 		}
 	}
 	

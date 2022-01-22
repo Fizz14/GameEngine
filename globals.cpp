@@ -168,8 +168,8 @@ bool freecamera = 0;
 bool devMode = 0;
 bool canSwitchOffDevMode = 0;
 bool inputRefreshCanSwitchOffDevMode = 0;
-bool showDevMessages = 0;
-bool showErrorMessages = 0;
+bool showDevMessages = 1;
+bool showErrorMessages = 1;
 bool showImportantMessages = 1;
 
 //quick debug info
@@ -189,6 +189,10 @@ void I(T msg, bool disableNewline = 0) { if(!showImportantMessages) {return;} co
 //Temporary debugging statements- I won't allow myself to block these
 #define T(a) std::cout << #a << ": " << (a) << endl;
 
+void breakpoint() {
+	I("Have broken");
+	return;
+}
 
 //for visuals
 float p_ratio = 1.151;
@@ -208,6 +212,7 @@ int g_graphicsquality = 3; // 0 is least, 4 is max
 float g_extraShadowSize = 20; //how much bigger are shadows in comparison to their hitboxes.
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
+bool g_showHealthbar = 0;
 
 //for fow
 SDL_Texture* result;

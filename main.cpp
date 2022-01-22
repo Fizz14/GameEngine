@@ -48,7 +48,7 @@ int main(int argc, char ** argv) {
 	TTF_Init();
 	
 	window = SDL_CreateWindow("Game",
-	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
+	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_SetWindowMinimumSize(window, 100, 100);
@@ -124,6 +124,11 @@ int main(int argc, char ** argv) {
 	ui* protagHealthbarC = new ui(renderer, "textures/ui/healthbarC.png", 0,0, 0.05, 0.02, -1);
 	protagHealthbarC->persistent = 1;
 	protagHealthbarC->shrinkPixels = 1;
+
+	protagHealthbarA->show = g_showHealthbar;
+	protagHealthbarB->show = g_showHealthbar;
+	protagHealthbarC->show = g_showHealthbar;
+	
 
 	//for transition
 	SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.bmp");
@@ -327,7 +332,6 @@ int main(int argc, char ** argv) {
 		
 	} else {
 		//load the titlescreen
-		I(g_map);
 		//we need a dummy protag
 		// entity* dummy = new entity(renderer, "sp-joseph");
 		// protag = dummy;
@@ -968,7 +972,7 @@ int main(int argc, char ** argv) {
 		if(!inPauseMenu && g_showHUD) {
 			// !!! segfaults on mapload sometimes
 			adventureUIManager->healthText->updateText( to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), WIN_WIDTH * g_minifontsize, 0.9); 
-			adventureUIManager->healthText->show = 1;
+			adventureUIManager->healthText->show = g_showHealthbar;
 			
 		} else {
 			adventureUIManager->healthText->show = 0;
