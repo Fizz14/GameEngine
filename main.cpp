@@ -278,6 +278,11 @@ int main(int argc, char ** argv) {
 		vector<ramp*> v = {};
 		g_ramps.push_back(v);
 	}
+	
+	for(int i = 0; i < g_numberOfInterestSets; i++) {
+		vector<pointOfInterest*> v = {};
+		g_setsOfInterest.push_back(v);
+	}
 
 	//init static resources
 	g_bulletdestroySound = Mix_LoadWAV("audio/sounds/step.wav");
@@ -715,6 +720,19 @@ int main(int argc, char ** argv) {
 			for (int i = 0; i < g_worldsounds.size(); i++) {
 				SDL_Rect obj = {(g_worldsounds[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
 				SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
+
+				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+
+
 				nodeInfoText->x = obj.x;
 				nodeInfoText->y = obj.y - 20;
 				nodeInfoText->updateText(g_worldsounds[i]->name, 15, 15);
@@ -724,28 +742,67 @@ int main(int argc, char ** argv) {
 			for (int i = 0; i < g_musicNodes.size(); i++) {
 				SDL_Rect obj = {(g_musicNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
 				SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
-				nodeInfoText->x = obj.x;
-				nodeInfoText->y = obj.y - 20;
-				nodeInfoText->updateText(g_musicNodes[i]->name, 15, 15);
-				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+
+				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+
 			}
 
 			for (int i = 0; i < g_cueSounds.size(); i++) {
 				SDL_Rect obj = {(g_cueSounds[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
 				SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
-				nodeInfoText->x = obj.x;
-				nodeInfoText->y = obj.y - 20;
-				nodeInfoText->updateText(g_cueSounds[i]->name, 15, 15);
-				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+
 			}
 
 			for (int i = 0; i < g_waypoints.size(); i++) {
 				SDL_Rect obj = {(g_waypoints[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
 				SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
-				nodeInfoText->x = obj.x;
-				nodeInfoText->y = obj.y - 20;
-				nodeInfoText->updateText(g_waypoints[i]->name, 15, 15);
-				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+			}
+
+			for(auto x : g_setsOfInterest) {
+				for(auto y : x) {
+					SDL_Rect obj = {(y->x - g_camera.x - 20) * g_camera.zoom , (y->y - g_camera.y - 20) * g_camera.zoom , 40 * g_camera.zoom, 40 * g_camera.zoom};
+					SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
+					
+					SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+
+					SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+					SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+					SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+					SDL_FreeSurface(textsurface);
+					SDL_DestroyTexture(texttexture);
+				}
 			}
 
 			//doors

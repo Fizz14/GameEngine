@@ -72,6 +72,7 @@ tile* listenerIcon;
 tile* musicIcon; 
 tile* cueIcon; 
 tile* waypointIcon; 
+tile* poiIcon;
 tile* doorIcon; 
 tile* triggerIcon;
 textbox* nodeInfoText;
@@ -292,6 +293,11 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         if(word == "waypoint") {
             iss >> s0 >> s1 >> p1 >> p2 >> p3;
             waypoint* w = new waypoint(s1, p1, p2, p3);
+        }
+
+        if(word == "poi") {
+            iss >> s0 >> p1 >> p2 >> p3;
+            pointOfInterest* p = new pointOfInterest(p1, p2, p3);
         }
         
         if(word == "ui") {
@@ -756,6 +762,13 @@ bool mapeditor_save_map(string word) {
     for (int i = 0; i < g_waypoints.size(); i++) {
         ofile << "waypoint " << g_waypoints[i]->name << " " << g_waypoints[i]->x << " " << g_waypoints[i]->y <<  " " << g_waypoints[i]->z << endl;
     }
+
+    for (auto x : g_setsOfInterest) {
+        for(auto y : x) {
+            ofile << "poi " << y->x << " " << y->y << " " << y->index << endl;
+        }
+    }
+
     for (int i = 0; i < g_navNodes.size(); i++) {
         ofile << "navNode " << g_navNodes[i]->x << " " << g_navNodes[i]->y << " " << g_navNodes[i]->z << endl;
     }
@@ -803,6 +816,7 @@ void init_map_writing(SDL_Renderer* renderer) {
     musicIcon = new tile(renderer, "textures/engine/music.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
     cueIcon = new tile(renderer, "textures/engine/cue.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
     waypointIcon = new tile(renderer, "textures/engine/waypoint.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    poiIcon = new tile(renderer, "textures/engine/pointofinterest.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
     doorIcon = new tile(renderer, "textures/engine/door.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
     triggerIcon = new tile(renderer, "textures/engine/trigger.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
 
@@ -815,6 +829,7 @@ void init_map_writing(SDL_Renderer* renderer) {
     musicIcon->software = 1;
     cueIcon->software = 1;
     waypointIcon->software = 1;
+    poiIcon->software = 1;
     doorIcon->software = 1;
     triggerIcon->software = 1;
     
@@ -2989,7 +3004,12 @@ void write_map(entity* mapent) {
                     cueSound* m = new cueSound(entstring, px + marker->width/2, py + marker->height/2, radius);
                 }
                 if(word == "pointofinterest" || word == "poi") {
-                    
+                    int index = 0;
+                    I("Dev tried to make a poi");
+                    if(line >> index) {
+                        pointOfInterest* p = new pointOfInterest(px + marker->width/2, py + marker->height/2, index);
+                    }
+
                     break;
                 }
                 if(word == "way" || word == "w") {
@@ -3962,6 +3982,54 @@ void adventureUI::continueDialogue() {
         this->continueDialogue();
         return;
     }
+
+    //have entity roam
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,5) == "/roam") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0,6);
+        vector<string> x = splitString(s, ' ');
+        string name = x[0];
+        int p0 = stoi(x[1]);
+
+        entity* hopeful = searchEntities(name);
+
+        if(hopeful != nullptr) {
+            hopeful->agrod = 0;
+            hopeful->myTravelstyle = roam;
+            hopeful->poiIndex = p0;
+            hopeful->traveling = 1;
+            hopeful->readyForNextTravelInstruction = 1;
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //have entity patrol
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,7) == "/patrol") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0,8);
+        vector<string> x = splitString(s, ' ');
+        string name = x[0];
+        int p0 = stoi(x[1]);
+
+        entity* hopeful = searchEntities(name);
+
+        if(hopeful != nullptr) {
+            hopeful->agrod = 0;
+            hopeful->myTravelstyle = patrol;
+            hopeful->poiIndex = p0;
+            hopeful->traveling = 1;
+            hopeful->readyForNextTravelInstruction = 1;
+            hopeful->currentPoiForPatrolling = -1;
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+    
 
     //teleport entity
     if(talker->sayings.at(talker->dialogue_index + 1).substr(0,9) == "/teleport") {

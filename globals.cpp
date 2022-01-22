@@ -85,6 +85,8 @@ class particle;
 
 class collisionZone;
 
+class pointOfInterest;
+
 vector<cshadow*> g_shadows;
 
 vector<entity*> g_entities;
@@ -114,6 +116,8 @@ vector<vector<ramp*>> g_ramps;
 vector<heightmap*> g_heightmaps;
 
 vector<navNode*> g_navNodes;
+
+vector<vector<pointOfInterest*>> g_setsOfInterest;
 
 
 struct cmpCoord {
@@ -474,6 +478,8 @@ string g_lifecycle = "Alpha";
 //world
 int g_layers = 12; //max blocks in world
 
+int g_numberOfInterestSets = 50; // number of individual sets of pointsOfInterest available for entities to use
+
 //map editing, mapeditor, map-editor
 bool g_mousemode = 1;
 bool keyboard_marker_vertical_modifier_refresh = 0;
@@ -489,7 +495,7 @@ string g_saveName = "a";
 std::map<string, int> g_save = {};
 
 //AI
-enum state {agro, patrol, roam, wait, buff, disabled};
+enum travelstyle {roam, patrol};
 
 //movement
 

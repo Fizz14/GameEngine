@@ -270,6 +270,25 @@ public:
 
 bool LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer, int resolution, bool visibility);
 
+class pointOfInterest {
+public:
+	int x = 0;
+	int y = 0;
+	int index = 0;
+
+	pointOfInterest(int fx, int fy, int findex) : x(fx), y(fy), index(findex) {
+		if(findex > g_numberOfInterestSets) {index = 0;}
+		g_setsOfInterest.at(index).push_back(this);	
+		I(g_setsOfInterest.at(index).size());
+		
+	}
+
+	//probably best to not call this when unloading a level
+	~pointOfInterest() {
+		g_setsOfInterest.at(index).erase(remove(g_setsOfInterest.at(index).begin(), g_setsOfInterest.at(index).end(), this), g_setsOfInterest.at(index).end());
+	}
+};
+
 class mapCollision {
 public:
 	//related to saving/displaying the block
@@ -1957,14 +1976,25 @@ public:
 	int data[255] = {0};
 
 	//combat
-	//todo: make this a vector so enemies can have multiple attacks
-	//enemies can have a passive to use all of their attacks at once
-	//enemies can see which attack has the highest dps against the player by experimenting, and then use that against the player
 	weapon* hisweapon = 0;
 	bool canFight = 1;
 	bool invincible = 0;
 	//float invincibleMS = 0; //ms before setting invincible to 0
 	bool agrod = 0; //are they fighting a target?
+	
+	//these two values are for having enemies travel 
+	int poiIndex = 0;
+	bool traveling = 0;   
+	//this is for the way that the entity will travel. 
+	//Roam means pick a random poi, go there, and then pick another random one, etc.
+	//patrol means go through the nodes in a loop
+	travelstyle myTravelstyle = roam;
+	int currentPoiForPatrolling = 0;
+
+	//this variable is set to one for one frame
+	//if this entity has reached a poi and will start looking again for one.
+	bool readyForNextTravelInstruction = 0; 
+	
 	entity* target = nullptr; //who are they fighting?
 	int targetFaction = -10; //what faction are they fighting at the moment? If agrod and they lose their target, they will pick a random visible target having this faction
 	coord dcoord; //place where they want to stand
@@ -4045,6 +4075,31 @@ public:
 					//M("H");
 				}
 			}
+
+			//here's the code for roaming/patrolling
+			//we aren't agrod.
+			if(traveling) {
+				T("Entity " + name + "now traveling");
+				if(readyForNextTravelInstruction) {
+					readyForNextTravelInstruction = 0;
+					if(myTravelstyle == roam) {
+						//generate random number corresponding to an index of our poi vector
+						int random = rand() % g_setsOfInterest.at(poiIndex).size();
+						pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(random);
+						Destination = getNodeByPosition(targetDest->x, targetDest->y);
+					} else if(myTravelstyle == patrol) {
+						currentPoiForPatrolling++;
+						if(currentPoiForPatrolling > g_setsOfInterest.at(poiIndex).size()-1) {currentPoiForPatrolling = 0;}
+						pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(currentPoiForPatrolling);
+						Destination = getNodeByPosition(targetDest->x, targetDest->y);
+					}
+				} else {
+					//should we be ready for our next travel-instruction?
+					if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 64) {
+						readyForNextTravelInstruction = 1;
+					}
+				}
+			}
 		}
 	
 		//navigate
@@ -4927,7 +4982,8 @@ public:
 		SDL_FreeSurface(textsurface);
 		font = TTF_OpenFont(g_font.c_str(), size);
 		textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
-		texttexture = SDL_CreateTextureFromSurface(renderer, textsurface); int texW = 0;
+		texttexture = SDL_CreateTextureFromSurface(renderer, textsurface); 
+		int texW = 0;
 		int texH = 0;
 		SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
 		width = texW;
@@ -5953,6 +6009,14 @@ void clear_map(camera& cameraToReset) {
 		backgroundstr = "";
 		background = 0;
 	}
+
+	for(int i = 0; i < g_numberOfInterestSets; i++) {
+		for(int j = 0; j < g_setsOfInterest[i].size(); j++) {
+			delete g_setsOfInterest[i][j];
+		}
+	}
+	
+
 	newClosest = 0;
 }
 
