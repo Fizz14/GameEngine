@@ -5,10 +5,10 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_mixer.h>
 #include <stdlib.h>
-#include "globals.cpp"
-#include "objects.cpp"
-#include "map_editor.cpp"
-#include "lightcookietesting.cpp"
+#include "globals.h"
+#include "objects.h"
+#include "map_editor.h"
+#include "lightcookietesting.h"
 
 using namespace std;
 
@@ -33,22 +33,25 @@ using namespace std;
 void getInput(float& elapsed);
  
 
-int main(int argc, char ** argv) {
+int WinMain(int argc, char ** argv) {
 	//load first arg into variable devmode
-	if(argc > 1) {
+	devMode = 1; canSwitchOffDevMode = 1;
+	/*
+	if(argc > 1 && 0) {
 		devMode = (argv[1][0] == '1');
 		canSwitchOffDevMode = devMode;
 	}
 	if(argc > 2) {
 		genericmode = (argv[2][0] == '1');
 	}
+	*/
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	IMG_Init(IMG_INIT_PNG);
 	TTF_Init();
 	
 	window = SDL_CreateWindow("Game",
-	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
+	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_SetWindowMinimumSize(window, 100, 100);
@@ -317,14 +320,15 @@ int main(int argc, char ** argv) {
 
 
 
-
+	cout << "are we getting here" << endl;
 	srand(time(NULL));
 	if(devMode) {
 		//g_transitionSpeed = 10000;
 		//!!!
 		loadSave();
+		cout << "finished loadSave()" << endl;
 		//empty map or default map for map editing, perhaps a tutorial even
-		load_map(renderer, "maps/sp-title/editordefault.map","a");
+		//load_map(renderer, "maps/sp-title/editordefault.map","a");
 		//g_map = "g";
 		protag->x = 100000;
 		protag->y = 100000;
@@ -706,7 +710,6 @@ int main(int argc, char ** argv) {
 		for(long long unsigned int i=0; i < g_actors.size(); i++){
 			g_actors[i]->render(renderer, g_camera);
 		}
-		//T(g_actors.size());
 
 		for(long long unsigned int i=0; i < g_tiles.size(); i++){
 			if(g_tiles[i]->z == 2) {
@@ -1208,6 +1211,7 @@ int main(int argc, char ** argv) {
 		//transition
 		{
 			if (transition) {
+				
 				g_forceEndDialogue = 0;
 				//onframe things
 				SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
@@ -1221,6 +1225,7 @@ int main(int argc, char ** argv) {
 				// Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
 				transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
 				for(int x = 0;  x < transitionImageWidth; x++) {
+					//!!! this is for a debuggingsession for windows, take it out soon
 					for(int y = 0; y < transitionImageHeight; y++) {
 						int dest = (y * transitionImageWidth) + x;
 						int src =  (y * transitionImageWidth) + x;
@@ -1248,12 +1253,13 @@ int main(int argc, char ** argv) {
 					transition = 0;
 					
 				}
+			breakpoint();
 			} else {
 				transitionDelta = transitionImageHeight;
 			}
         
    	 	}
-
+		
 		SDL_RenderPresent(renderer);
 		
 		//update music
