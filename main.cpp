@@ -47,7 +47,7 @@ int WinMain(int argc, char ** argv) {
 	*/
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-	IMG_Init(IMG_INIT_PNG);
+	IMG_Init(IMG_INIT_JPG|IMG_INIT_PNG);
 	TTF_Init();
 	
 	window = SDL_CreateWindow("Game",
@@ -509,7 +509,7 @@ int WinMain(int argc, char ** argv) {
 		getInput(elapsed);
 
 		//spring
-		if(input[8] && !oldinput[8] && protag->grounded && protag_can_move || input[8] && storedJump && protag->grounded && protag_can_move) {
+		if((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move)) {
 			protag->zaccel = 180;
 			storedJump = 0;
 		} else { 
@@ -620,7 +620,7 @@ int WinMain(int argc, char ** argv) {
 
 
 		//listeners
-		for (int i = 0; i < g_listeners.size(); i++) {
+		for (long long unsigned int i = 0; i < g_listeners.size(); i++) {
 			if(g_listeners[i]->update()) {
 				adventureUIManager->blip = NULL;
 				adventureUIManager->sayings = &g_listeners[i]->script;
@@ -724,11 +724,11 @@ int WinMain(int argc, char ** argv) {
 			nodeInfoText->textcolor = {0, 0, 0};
 
 			//draw nodes
-			for (int i = 0; i < g_worldsounds.size(); i++) {
-				SDL_Rect obj = {(g_worldsounds[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+			for (long long unsigned int i = 0; i < g_worldsounds.size(); i++) {
+				SDL_Rect obj = {(int)((g_worldsounds[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 				SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
 
-				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+				SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
 
 				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
 				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
@@ -746,11 +746,11 @@ int WinMain(int argc, char ** argv) {
 				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
 			}
 
-			for (int i = 0; i < g_musicNodes.size(); i++) {
-				SDL_Rect obj = {(g_musicNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+			for (long long unsigned int i = 0; i < g_musicNodes.size(); i++) {
+				SDL_Rect obj = {(int)((g_musicNodes[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 				SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
 
-				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
 
 				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
 				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
@@ -763,10 +763,10 @@ int WinMain(int argc, char ** argv) {
 
 			}
 
-			for (int i = 0; i < g_cueSounds.size(); i++) {
-				SDL_Rect obj = {(g_cueSounds[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+			for (long long unsigned int i = 0; i < g_cueSounds.size(); i++) {
+				SDL_Rect obj = { (int)((g_cueSounds[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 				SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
-				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
 
 				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
 				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
@@ -779,10 +779,10 @@ int WinMain(int argc, char ** argv) {
 
 			}
 
-			for (int i = 0; i < g_waypoints.size(); i++) {
-				SDL_Rect obj = {(g_waypoints[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+			for (long long unsigned int i = 0; i < g_waypoints.size(); i++) {
+				SDL_Rect obj = {(int)((g_waypoints[i]->x -g_camera.x - 20)* g_camera.zoom ), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 				SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
-				SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
 
 				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
 				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
@@ -796,10 +796,10 @@ int WinMain(int argc, char ** argv) {
 
 			for(auto x : g_setsOfInterest) {
 				for(auto y : x) {
-					SDL_Rect obj = {(y->x - g_camera.x - 20) * g_camera.zoom , (y->y - g_camera.y - 20) * g_camera.zoom , 40 * g_camera.zoom, 40 * g_camera.zoom};
+					SDL_Rect obj = {(int)((y->x - g_camera.x - 20) * g_camera.zoom ), (int)((y->y - g_camera.y - 20) * g_camera.zoom ), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 					SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
 					
-					SDL_Rect textrect = {obj.x, obj.y + 20, obj.w - 15, obj.h - 15};
+					SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
 
 					SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
 					SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
@@ -813,11 +813,11 @@ int WinMain(int argc, char ** argv) {
 			}
 
 			//doors
-			for (int i = 0; i < g_doors.size(); i++) {
-				SDL_Rect obj = {(g_doors[i]->x -g_camera.x)* g_camera.zoom , ((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom), (g_doors[i]->width * g_camera.zoom), (g_doors[i]->height * g_camera.zoom)};
+			for (long long unsigned int i = 0; i < g_doors.size(); i++) {
+				SDL_Rect obj = {(int)((g_doors[i]->x -g_camera.x)* g_camera.zoom) , (int)(((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
 				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
 				//the wall
-				SDL_Rect obj2 = {(g_doors[i]->x -g_camera.x)* g_camera.zoom, ((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom), (g_doors[i]->width * g_camera.zoom), ( (g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom)};
+				SDL_Rect obj2 = {(int)((g_doors[i]->x -g_camera.x)* g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(( (g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
 				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
 				nodeInfoText->x = obj.x + 25;
 				nodeInfoText->y = obj.y + 25;
@@ -825,11 +825,11 @@ int WinMain(int argc, char ** argv) {
 				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
 			}
 
-			for (int i = 0; i < g_triggers.size(); i++) {
-				SDL_Rect obj = {(g_triggers[i]->x -g_camera.x)* g_camera.zoom , ((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom), (g_triggers[i]->width * g_camera.zoom), (g_triggers[i]->height * g_camera.zoom)};
+			for (long long unsigned int i = 0; i < g_triggers.size(); i++) {
+				SDL_Rect obj = {(int)((g_triggers[i]->x -g_camera.x)* g_camera.zoom) , (int)(((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
 				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
 				//the wall
-				SDL_Rect obj2 = {(g_triggers[i]->x -g_camera.x)* g_camera.zoom, ((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom), (g_triggers[i]->width * g_camera.zoom), ( (g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom)};
+				SDL_Rect obj2 = {(int)((g_triggers[i]->x -g_camera.x)* g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(( (g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
 				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
 
 				nodeInfoText->x = obj.x + 25;
@@ -839,8 +839,8 @@ int WinMain(int argc, char ** argv) {
 			}
 
 			//listeners
-			for (int i = 0; i < g_listeners.size(); i++) {
-				SDL_Rect obj = {(g_listeners[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+			for (long long unsigned int i = 0; i < g_listeners.size(); i++) {
+				SDL_Rect obj = {(int)((g_listeners[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
 				SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
 				nodeInfoText->x = obj.x;
 				nodeInfoText->y = obj.y - 20;
@@ -870,8 +870,8 @@ int WinMain(int argc, char ** argv) {
 
 			if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY) {
 				bool flipper = 0;
-				for(int i = 0; i < g_fogcookies.size(); i++) {
-					for(int j = 0; j < g_fogcookies[0].size(); j++) {
+				for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+					for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
 						flipper = !flipper;
 						int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
 						int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
@@ -891,8 +891,8 @@ int WinMain(int argc, char ** argv) {
 			}
 
 			//save cookies that are just dark because they are inside of walls to g_savedcookies
-			for(int i = 0; i < g_fogcookies.size(); i++) {
-				for(int j = 0; j < g_fogcookies[0].size(); j++) {
+			for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+				for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
 					int xpos = ((i - 10) * 64) + functionalX;
 					int ypos = ((j - 9) * 55) + functionalY;
 					//is this cookie in a wall? or behind a wall
@@ -1032,7 +1032,7 @@ int WinMain(int argc, char ** argv) {
 
 				
 				
-				SDL_Rect drect = {x, y, itemWidth, itemWidth};
+				SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth};
 				D(mainProtag->inventory.size());
 				if(it->second > 0) {
 					SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
@@ -1169,7 +1169,7 @@ int WinMain(int argc, char ** argv) {
 		}
 
 		//delete projectiles with expired lifetimes
-		for(int i = 0; i < g_projectiles.size(); i ++) {
+		for(long long unsigned int i = 0; i < g_projectiles.size(); i ++) {
 			if(g_projectiles[i]->lifetime <= 0) {
 				delete g_projectiles[i];
 				i--;
@@ -1177,7 +1177,7 @@ int WinMain(int argc, char ** argv) {
 		}
 
 		//triggers
-		for (int i = 0; i < g_triggers.size(); i++) {
+		for (long long unsigned i = 0; i < g_triggers.size(); i++) {
 			if(!g_triggers[i]->active) {continue;}
 			rect trigger = {g_triggers[i]->x, g_triggers[i]->y, g_triggers[i]->width, g_triggers[i]->height};
 			entity* checkHim = searchEntities(g_triggers[i]->targetEntity);
@@ -1204,7 +1204,7 @@ int WinMain(int argc, char ** argv) {
 		}
 
 		//worldsounds
-		for (int i = 0; i < g_worldsounds.size(); i++) {
+		for (long long unsigned int i = 0; i < g_worldsounds.size(); i++) {
 			g_worldsounds[i]->update(elapsed);
 		}
 		
@@ -1220,7 +1220,7 @@ int WinMain(int argc, char ** argv) {
 				Uint32 format = SDL_PIXELFORMAT_ARGB8888;
 				SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
 				Uint32* pixels = (Uint32*)transitionPixelReference;
-				int numPixels = transitionImageWidth * transitionImageHeight;
+				//int numPixels = transitionImageWidth * transitionImageHeight;
 				Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255 );
 				// Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
 				transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
@@ -1228,7 +1228,7 @@ int WinMain(int argc, char ** argv) {
 					//!!! this is for a debuggingsession for windows, take it out soon
 					for(int y = 0; y < transitionImageHeight; y++) {
 						int dest = (y * transitionImageWidth) + x;
-						int src =  (y * transitionImageWidth) + x;
+						//int src =  (y * transitionImageWidth) + x;
 						
 						if(pow(pow(transitionImageWidth/2 - x,2) + pow(transitionImageHeight + y,2),0.5) < transitionDelta) {
 							pixels[dest] = 0;
@@ -1253,7 +1253,6 @@ int WinMain(int argc, char ** argv) {
 					transition = 0;
 					
 				}
-			breakpoint();
 			} else {
 				transitionDelta = transitionImageHeight;
 			}
@@ -1482,9 +1481,9 @@ int interact(float elapsed, entity* protag) {
 		}
 
 
-		for (int i = 0; i < g_entities.size(); i++) {
+		for (long long unsigned int i = 0; i < g_entities.size(); i++) {
 
-			SDL_Rect hisrect = {g_entities[i]->x+ g_entities[i]->bounds.x, g_entities[i]->y + g_entities[i]->bounds.y, g_entities[i]->bounds.width, g_entities[i]->bounds.height};				
+			SDL_Rect hisrect = {(int)g_entities[i]->x+ g_entities[i]->bounds.x, (int)g_entities[i]->y + g_entities[i]->bounds.y, (int)g_entities[i]->bounds.width, (int)g_entities[i]->bounds.height};				
 			hisrect = transformRect(hisrect);
 			
 			if(g_entities[i] != protag && RectOverlap(hisrect, srect)) {

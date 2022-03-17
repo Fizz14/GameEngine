@@ -653,7 +653,7 @@ float convertFrameToAngle(int frame, bool flipped) {
 //convert an angle to a sprite's frame, for eight-frame sprites (arms)
 int convertAngleToFrame(float angle) {
 	vector<float> angles = {0, (M_PI*1)/4, M_PI/2, (M_PI * 3)/4, M_PI, (M_PI * 5)/4, (M_PI * 6)/4, (M_PI * 7)/4, M_PI * 2};
-	for(int i = 0; i < angles.size(); i++) {
+	for(long long unsigned int i = 0; i < angles.size(); i++) {
 		if(angles[i] + M_PI/8 > angle) {
 			//this rather silly check is done to accomodate certain values of orbitOffset that would  push angle to not quite fit normally
 			//this change came with the ninth entry in the vector of angles
@@ -675,7 +675,8 @@ float XYWorldDistance(int x1, int y1, int x2, int y2) {
 }
 
 vector<string> splitString (string s, char delimiter) {
-    int start, end;
+    int start;
+	long long unsigned int end;
 	start = 0;
     string token;
     vector<string> ret;

@@ -28,16 +28,16 @@ using namespace std;
 void parseScriptForLabels(vector<string> &sayings) {
 	//parse sayings for lables
 	vector<pair<string, int>> symboltable;
-	for(int i = 0; i < sayings.size(); i++) {
+	for(int i = 0; i < (int)sayings.size(); i++) {
 		if(sayings[i][0] == '<') {
 			pair<string, int> pushMeBack{ sayings[i].substr(1,sayings[i].length() - 2), i };
 			symboltable.push_back(pushMeBack);
 		}
 	}
 
-	for(int i = 0; i < sayings.size(); i++) {
+	for(int i = 0; i < (int)sayings.size(); i++) {
 		int pos = sayings[i].find(":");
-		if(pos != string::npos) {
+		if(pos != (int)string::npos) {
 			for(auto y: symboltable) {
 				D(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)));
 				if(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)) == y.first) {
@@ -82,22 +82,22 @@ public:
 	{
 		case 1:
 			return *p;
-			break;
+			//break;
 
 		case 2:
 			return *(Uint16 *)p;
-			break;
+			//break;
 
 		case 3:
 			if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
 				return p[0] << 16 | p[1] << 8 | p[2];
 			else
 				return p[0] | p[1] << 8 | p[2] << 16;
-				break;
+				//break;
 
 			case 4:
 				return *(Uint32 *)p;
-				break;
+				//break;
 
 			default:
 				return 0;
@@ -135,13 +135,13 @@ public:
 	}
 
 	void Update_Costs() {
-		for (int i = 0; i < friends.size(); i++) {
+		for (int i = 0; i < (int)friends.size(); i++) {
 			costs[i] = XYWorldDistance(x, y, friends[i]->x, friends[i]->y);
 		}
 	}
 
 	void Render(int red, int green, int blue) {
-		SDL_Rect obj = {(this->x -g_camera.x - 20)* g_camera.zoom , ((this->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+		SDL_Rect obj = {(int)((this->x -g_camera.x - 20)* g_camera.zoom) , (int)(((this->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 		SDL_SetTextureColorMod(nodeDebug, red, green, blue);
 		SDL_RenderCopy(renderer, nodeDebug, NULL, &obj);
 	}
@@ -220,7 +220,7 @@ void RecursiveNavNodeDelete(navNode* a) {
 
 void Update_NavNode_Costs(vector<navNode*> fnodes) {
 	M("Update_NavNode_Costs()" );
-	for (int i = 0; i < fnodes.size(); i++) {
+	for (int i = 0; i < (int)fnodes.size(); i++) {
 		fnodes[i]->Update_Costs();
 	}
 }
@@ -309,7 +309,20 @@ public:
 	}
 	~mapCollision() {
 		M("~mapCollision()");
+		//I("Let's delete a mapcollision");
+		//SDL_Delay(500);
+		//this crashes on windows
 		g_mapCollisions.erase(remove(g_mapCollisions.begin(), g_mapCollisions.end(), this), g_mapCollisions.end());
+		
+		//I("Removed from g_mapCollisions");
+		//SDL_Delay(500);
+		//I("Lets try to delete the vector \"children\" ourselves");
+		vector<mapObject*> pissoff = {};
+		children = pissoff;
+
+		I("Yes, we succesfully deleted vector 'children' ");
+
+		//SDL_Delay(500);
 	}
 	
 };
@@ -629,7 +642,16 @@ public:
 	}
 	~box() {
 		M("~box()");
+		//I("Deleting a box");
+		//SDL_Delay(1000);
+		
+
 		g_boxs[layer].erase(remove(g_boxs[layer].begin(), g_boxs[layer].end(), this), g_boxs[layer].end());
+		
+
+
+		//I("Finished deleting a box");
+		//SDL_Delay(1000);
 	}
 };
 
@@ -660,7 +682,7 @@ public:
 	//ATM we will be doing this on mapload
 	void inviteAllGuests() {
 		for(int i = 0; i < g_layers; i++) {
-			for(int j = 0; j < g_boxs[i].size(); j++){
+			for(int j = 0; j < (int)g_boxs[i].size(); j++){
 				if(RectOverlap(this->bounds, g_boxs[i][j]->bounds)) {
 					guests[i].push_back(g_boxs[i][j]);
 				}
@@ -669,7 +691,7 @@ public:
 	}
 
 	void debugRender(SDL_Renderer* renderer) {
-		SDL_FRect rend = {bounds.x, bounds.y, bounds.width, bounds.height};
+		SDL_FRect rend = {(float)bounds.x, (float)bounds.y, (float)bounds.width, (float)bounds.height};
 		rend = transformRect(rend);
 		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
 		SDL_RenderDrawRectF(renderer, &rend);
@@ -783,7 +805,7 @@ public:
 		fileaddress = filename;
 		bool cached = false;
 		//has someone else already made a texture?
-		for(unsigned int i=0; i < g_tiles.size(); i++){
+		for(int i=0; i < (int)g_tiles.size(); i++){
 			if(g_tiles[i]->fileaddress == this->fileaddress && g_tiles[i]->mask_fileaddress == mask_filename) {
 				//make sure both are walls or both aren't
 				if(g_tiles[i]->wall == this->wall) {
@@ -1207,7 +1229,7 @@ public:
 		g_actors.push_back(this);
 	}
 	
-	~actor() {
+	virtual ~actor() {
 		//M("~actor()");
 		g_actors.erase(remove(g_actors.begin(), g_actors.end(), this), g_actors.end());
 	}
@@ -1827,7 +1849,7 @@ public:
 	bool askingQuestion = false; //set if current cue is a question
     string response = "tired"; //contains the last response the player gave to a question
     vector<string> responses; //contains each possible response to a question
-    int response_index = 0; //number of response from array responses
+    long long unsigned int response_index = 0; //number of response from array responses
     int sleepingMS = 0; //MS to sleep cutscene/script
     bool sleepflag = 0; //true for one frame after starting a sleep
     bool mobilize = 0; //used to allow the player to move during /sleep calls
@@ -1860,7 +1882,7 @@ public:
 
 
 
-class entity:public actor {
+class entity :public actor {
 public:
 	//dialogue
 	vector<string> sayings;
@@ -2090,7 +2112,7 @@ public:
 		M("entity()");
 
 		ifstream file;
-		bool using_default = 0;
+		//bool using_default = 0;
 		this->name = filename;
 
 		string loadstr;
@@ -2110,7 +2132,7 @@ public:
 			
 			if (!file.is_open()) {
 				//just make a default entity
-				using_default = 1;
+				//using_default = 1;
 				string newfile = "entities/default.ent";
 				file.open(newfile);
 			}
@@ -2280,7 +2302,7 @@ public:
 	
 		if(canFight) {
 			//check if someone else already made the attack
-			bool cached = 0;
+			//bool cached = 0;
 			hisweapon = new weapon(weaponName, this->faction != 0);
 		}
 
@@ -2506,7 +2528,7 @@ public:
 		M("entity()");
 		sortingOffset = 16;
 		ifstream file;
-		bool using_default = 0;
+		//bool using_default = 0;
 		this->name = texturename;
 		isWorlditem = 1;
 		this->faction = -1;
@@ -2751,7 +2773,7 @@ public:
 			
 			
 
-		SDL_FPoint nowt = {0, 0};
+		//SDL_FPoint nowt = {0, 0};
 		
 		rect obj(((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , (((y - ((curheight * (XtoY) + (height * (1-XtoY)))) - (z + floatheight) * XtoZ) - fcamera.y) * fcamera.zoom), (curwidth * fcamera.zoom), (curheight * fcamera.zoom));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
@@ -2801,14 +2823,14 @@ public:
 
 			
 			frame = animation * xframes + frameInAnimation;
-			SDL_FRect dstrect = { obj.x, obj.y, obj.width, obj.height};
+			SDL_FRect dstrect = { (float)obj.x, (float)obj.y, (float)obj.width, (float)obj.height};
 			//genericmode has just one frame
 			if(isWorlditem) {frame = 0;}
 			
 			
 
 			if(framespots.size() > 1) {
-				int spinOffset = 0;
+				//int spinOffset = 0;
 				int framePlusSpinOffset = frame;
 				if(spinningMS > 0) {
 					//change player frames to make a spin effect
@@ -2935,7 +2957,7 @@ public:
 
 		//todo check for boxs
 		if(array.size() == 0) {return nullptr;}
-		for (int i = 0; i < array.size(); i++) {
+		for (long long unsigned int i = 0; i < array.size(); i++) {
 			float dist = Distance(cacheX, cacheY, array[i]->x, array[i]->y);
 			if(dist < min_dist || flag) {
 				min_dist = dist;
@@ -2982,7 +3004,7 @@ public:
 			layer = max(z /64, 0.0f);
 			layer = min(layer, (int)g_boxs.size() - 1);
 			//should we fall?
-			bool should_fall = 1;
+			//bool should_fall = 1;
 			float floor = 0;
 			if(layer > 0) {
 				//!!!
@@ -3151,7 +3173,7 @@ public:
 		if(boxsenabled) {
 			//..check door
 			if(this == protag) {
-				for (int i = 0; i < doors.size(); i++) {	
+				for (int i = 0; i < (int)doors.size(); i++) {	
 					//update bounds with new posj
 					rect movedbounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y  + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
 					//did we walk into a door?
@@ -3195,7 +3217,7 @@ public:
 			
 
 			if(usedCZ == 0) {
-				for (int i = 0; i < g_boxs[layer].size(); i++) {	
+				for (int i = 0; i < (int)g_boxs[layer].size(); i++) {	
 					
 					//update bounds with new pos
 					rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
@@ -3225,7 +3247,7 @@ public:
 
 					
 				}
-				for (int i = 0; i < g_boxs[layer].size(); i++) {
+				for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
 					movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 					//uh oh, did we collide with something?
 					if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
@@ -3238,7 +3260,7 @@ public:
 					}
 				}
 			} else {
-				for (int i = 0; i < boxesToUse.size(); i++) {	
+				for (int i = 0; i < (int)boxesToUse.size(); i++) {	
 					
 					//update bounds with new pos
 					rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
@@ -3268,7 +3290,7 @@ public:
 
 					
 				}
-				for (int i = 0; i < boxesToUse.size(); i++) {
+				for (int i = 0; i < (int)boxesToUse.size(); i++) {
 					movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 					//uh oh, did we collide with something?
 					if(RectOverlap(movedbounds, boxesToUse.at(i)->bounds)) {
@@ -3399,12 +3421,12 @@ public:
 			//this is poorly set up. It would be better if heightmaps were assigned to tiles, obviously, with a pointer
 			bool breakflag = 0;
 
-			for (int i = g_tiles.size() - 1; i >= 0; i--) {
+			for (int i = (int)g_tiles.size() - 1; i >= 0; i--) {
 				if(g_tiles[i]->fileaddress == "textures/marker.bmp") {continue; }
 				tilerect = rect(g_tiles[i]->x, g_tiles[i]->y, g_tiles[i]->width, g_tiles[i]->height);
 				
 				if(RectOverlap(tilerect, movedbounds)) {
-					for (int j = 0; j < g_heightmaps.size(); j++) {
+					for (int j = 0; j < (int)g_heightmaps.size(); j++) {
 						//M("looking for a heightmap");
 						//D(g_heightmaps[j]->name);
 						//D(g_tiles[i]->fileaddress);
@@ -3496,7 +3518,7 @@ public:
 		layer = max(z /64, 0.0f);
 		layer = min(layer, (int)g_boxs.size() - 1);
 		//should we fall?
-		bool should_fall = 1;
+		//bool should_fall = 1;
 		float floor = 0;
 		if(layer > 0) {
 			//!!!
@@ -4086,12 +4108,12 @@ public:
 					readyForNextTravelInstruction = 0;
 					if(myTravelstyle == roam) {
 						//generate random number corresponding to an index of our poi vector
-						int random = rand() % g_setsOfInterest.at(poiIndex).size();
+						int random = rand() % (int)g_setsOfInterest.at(poiIndex).size();
 						pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(random);
 						Destination = getNodeByPosition(targetDest->x, targetDest->y);
 					} else if(myTravelstyle == patrol) {
 						currentPoiForPatrolling++;
-						if(currentPoiForPatrolling > g_setsOfInterest.at(poiIndex).size()-1) {currentPoiForPatrolling = 0;}
+						if(currentPoiForPatrolling > (int)g_setsOfInterest.at(poiIndex).size()-1) {currentPoiForPatrolling = 0;}
 						pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(currentPoiForPatrolling);
 						Destination = getNodeByPosition(targetDest->x, targetDest->y);
 					}
@@ -4217,7 +4239,7 @@ public:
 						}
 					}
 
-					if(this->hisweapon->attacks[hisweapon->combo]->name == "approach" && hisweapon->attacks.size() > hisweapon->combo) {
+					if(this->hisweapon->attacks[hisweapon->combo]->name == "approach" && (int)hisweapon->attacks.size() > hisweapon->combo) {
 						this->hisweapon->attacks[hisweapon->combo]->range = this->hisweapon->attacks[hisweapon->combo + 1]->range;
 					}
 
@@ -4355,7 +4377,7 @@ public:
 			timeSinceLastDijkstra = dijkstraSpeed + rand() % 500;
 			navNode* targetNode = ultimateTargetNode;
 			vector<navNode*> bag;
-			for (int i = 0; i < g_navNodes.size(); i++) {
+			for (int i = 0; i < (int)g_navNodes.size(); i++) {
 				
 				bag.push_back(g_navNodes[i]);
 				
@@ -4377,7 +4399,7 @@ public:
 
 				
 				
-				for (int i = 0; i < bag.size(); i++) { 	
+				for (int i = 0; i < (int)bag.size(); i++) { 	
 					
 					// !!! the second condition was added early december 2021
 					// it it could cause problems
@@ -4417,7 +4439,7 @@ public:
 
 				//u is closest node in bag
 				bag.erase(remove(bag.begin(), bag.end(), u), bag.end());
-				for (int i = 0; i < u->friends.size(); i++) {
+				for (long long unsigned int i = 0; i < u->friends.size(); i++) {
 					if(u->enabled) {
 						
 						float alt = u->costFromSource + u->costs[i];
@@ -4583,12 +4605,12 @@ int loadSave() {
 	getline(file,line);
 	
 	//delete current party
-	int repetitions = party.size();
-	for(auto x : party) {
-		M("about to delete someone from the old party");
-		//possibly unsafe
-		//delete x;
-	}
+	//int repetitions = (int) party.size();
+	// for(auto x : party) {
+	// 	M("about to delete someone from the old party");
+	// 	//possibly unsafe
+	// 	//delete x;
+	// }
 	party.clear();
 
 	M("Lets load the party");
@@ -4796,7 +4818,7 @@ void entity::shoot() {
 		}
 	  	hisweapon->combo++;
 	
-		if(hisweapon->combo > hisweapon->attacks.size() - 1) {hisweapon->combo = 0;}
+		if(hisweapon->combo > (int)(hisweapon->attacks.size() - 1)) {hisweapon->combo = 0;}
 		hisweapon->comboResetMS = 0;
 	}
 }
@@ -4829,7 +4851,7 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 		SDL_SetTextureAlphaMod(this->texture, alphamod);
 	}
 
-	SDL_FRect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (width * size), (height * size)* (637 /640) * 0.9};
+	SDL_FRect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (float)(width * size), (float)((height * size)* (637 /640) * 0.9)};
 	//SDL_Rect dstrect = {500, 500, 200, 200 };
 	//dstrect.y += (owner->height -(height/2)) * fcamera.zoom;
 	float temp;
@@ -4862,14 +4884,14 @@ bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, 
 		int xpos = (i/resolution) * x1 + (1 - i/resolution) * x2;
 		int ypos = (i/resolution) * y1 + (1 - i/resolution) * y2;
 		rect a = rect(xpos - xsize/2, ypos - size/2, xsize, size);
-		SDL_Rect b = {((xpos- xsize/2) - g_camera.x) * g_camera.zoom, ((ypos- size/2) - g_camera.y) * g_camera.zoom, xsize, size};
+		SDL_Rect b = {(int)(((xpos- xsize/2) - g_camera.x) * g_camera.zoom), (int)(((ypos- size/2) - g_camera.y) * g_camera.zoom), (int)(xsize), (int)(size)};
 
 		if(display) {
 			SDL_RenderDrawRect(renderer, &b);
 		}	
 		
 		
-		for (int j = 0; j < g_boxs[layer].size(); j++) {
+		for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++) {
 			if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
 				lineTraceX = a.x + a.width/2;
 				lineTraceY = a.y + a.height/2;
@@ -4949,15 +4971,15 @@ public:
 		if(show) {
 			if(worldspace) {
 				if(align == 1) {
-					SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, width,  thisrect.h};
+					SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, (float)width,  (float)thisrect.h};
 					SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
 				} else {
 					if(align == 0) {
-						SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, width,  thisrect.h};
+						SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
 						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
 					} else {
 						//center text
-						SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, width,  thisrect.h};
+						SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, (float)width,  (float)thisrect.h};
 						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
 					}
 				}
@@ -4965,15 +4987,15 @@ public:
 				
 			} else {
 				if(align == 1) {
-					SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, width,  thisrect.h};
+					SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, (float)width,  (float)thisrect.h};
 					SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
 				} else {
 					if(align == 0) {
-						SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, width,  thisrect.h};
+						SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
 						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
 					} else {
 						//center text
-						SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, width,  thisrect.h};
+						SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, (float)width,  (float)thisrect.h};
 						SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
 					}
 				}
@@ -5049,7 +5071,7 @@ public:
 		SDL_FreeSurface(image);
 	}
 
-	~ui() {
+	virtual ~ui() {
 		M("~ui()" );
 		SDL_DestroyTexture(texture);
 		
@@ -5070,7 +5092,7 @@ public:
 				while (i < ibound) {
 					int j = 0;
 					while (j < jbound) {
-						SDL_FRect dstrect = {i + (x * WIN_WIDTH), j + (y * WIN_HEIGHT), scaledpatchwidth, scaledpatchwidth}; //change patchwidth in this declaration for sprite scale
+						SDL_FRect dstrect = {i + (x * WIN_WIDTH), j + (y * WIN_HEIGHT), (float)scaledpatchwidth, (float)scaledpatchwidth}; //change patchwidth in this declaration for sprite scale
 						SDL_Rect srcrect;
 						srcrect.h = patchwidth;
 						srcrect.w = patchwidth;
@@ -5150,8 +5172,8 @@ public:
 		}
 
 		rect movedbounds;
-		bool ycollide = 0;
-		bool xcollide = 0;
+		//bool ycollide = 0;
+		//bool xcollide = 0;
 		y+= yvel * ((double) elapsed / 256.0);
 		x+= xvel * ((double) elapsed / 256.0);
 		
@@ -5736,7 +5758,7 @@ void clear_map(camera& cameraToReset) {
 			Uint32 format = SDL_PIXELFORMAT_ARGB8888;
 			SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
 			Uint32* pixels = (Uint32*)pixelReference;
-			int numPixels = imageWidth * imageHeight;
+			//int numPixels = imageWidth * imageHeight;
 			Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
 			//Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
 
@@ -5747,7 +5769,7 @@ void clear_map(camera& cameraToReset) {
 
 
 					int dest = (y * imageWidth) + x;
-					int src =  (y * imageWidth) + x;
+					//int src =  (y * imageWidth) + x;
 					
 					if(pow(pow(imageWidth/2 - x,2) + pow(imageHeight + y,2),0.5) < offset) {
 						pixels[dest] = transparent;
@@ -5797,7 +5819,7 @@ void clear_map(camera& cameraToReset) {
 
 	cameraToReset.resetCamera();
 	int size;
-	size = g_entities.size();
+	size = (int)g_entities.size();
 
 	g_actors.clear();
 
@@ -5836,7 +5858,7 @@ void clear_map(camera& cameraToReset) {
 		}
 	}
 	//push back any entities that were in the party
-	for (int i = 0; i < party.size(); i++) {
+	for (long long unsigned int i = 0; i < party.size(); i++) {
 		g_entities.push_back(party[i]);
 		g_actors.push_back(party[i]);
 	}
@@ -5855,52 +5877,52 @@ void clear_map(camera& cameraToReset) {
 	g_entities.push_back(hold_narra);
 	g_actors.push_back(hold_narra);
 
-	size = g_tiles.size();
+	size = (int)g_tiles.size();
 	for(int i = 0; i < size; i++) {
 		delete g_tiles[0];
 	}
 
-	size = g_navNodes.size();
+	size = (int)g_navNodes.size();
 	for(int i = 0; i < size; i++) {
 		delete g_navNodes[0];
 	}
 
-	size = g_worldsounds.size();
+	size = (int)g_worldsounds.size();
 	for(int i = 0; i < size; i++) {
 		delete g_worldsounds[0];
 	}
 
-	size = g_musicNodes.size();
+	size = (int)g_musicNodes.size();
 	for(int i = 0; i < size; i++) {
 		delete g_musicNodes[0];
 	}
 
-	size = g_cueSounds.size();
+	size = (int)g_cueSounds.size();
 	for(int i = 0; i < size; i++) {
 		delete g_cueSounds[0];
 	}
 
-	size = g_waypoints.size();
+	size = (int)g_waypoints.size();
 	for(int i = 0; i < size; i++) {
 		delete g_waypoints[0];
 	}
 
-	size = g_doors.size();
+	size = (int)g_doors.size();
 	for(int i = 0; i < size; i++) {
 		delete g_doors[0];
 	}
 
-	size = g_triggers.size();
+	size = (int)g_triggers.size();
 	for(int i = 0; i < size; i++) {
 		delete g_triggers[0];
 	}
 
-	size = g_heightmaps.size();
+	size = (int)g_heightmaps.size();
 	for(int i = 0; i < size; i++) {
 		delete g_heightmaps[0];
 	}
 
-	size = g_listeners.size();
+	size = (int)g_listeners.size();
 	for(int i = 0; i < size; i++) {
 		delete g_listeners[0];
 	}
@@ -5924,7 +5946,7 @@ void clear_map(camera& cameraToReset) {
 	// }
 
 	vector<weapon*> persistentweapons;
-	size = g_weapons.size();
+	size = (int)g_weapons.size();
 	for(int i = 0; i < size; i++) {
 		bool partyOwned = false;
 		//check if party members own the weapons
@@ -5946,7 +5968,7 @@ void clear_map(camera& cameraToReset) {
 	}
 
 	vector<ui*> persistentui;
-	size = g_ui.size();
+	size = (int)g_ui.size();
 	for(int i = 0; i < size; i++) {
 		if(g_ui[0]->persistent) {
 			persistentui.push_back(g_ui[0]);
@@ -5968,10 +5990,10 @@ void clear_map(camera& cameraToReset) {
 
 	//new, delete all mc, which will automatycznie delete the others
 	//here's where we could save some textures if we're going to a map in the same level, might be worth it
-	size = g_mapCollisions.size();
+	size = (int)g_mapCollisions.size();
 	for (int i = 0; i < size; i++) {
 		//M("Lets delete a mapCol");
-		int jsize = g_mapCollisions[0]->children.size();
+		int jsize = (int)g_mapCollisions[0]->children.size();
 		for (int j = 0; j < jsize; j ++) {
 			//M("Lets delete a mapCol child");
 			delete g_mapCollisions[0]->children[j];
@@ -5985,13 +6007,13 @@ void clear_map(camera& cameraToReset) {
 	g_collisionZones.clear();
 
 	//clear layers of boxes and triangles
-	for(int i = 0; i < g_boxs.size(); i++) {
+	for(long long unsigned int i = 0; i < g_boxs.size(); i++) {
 		g_boxs[i].clear();
 	}
-	for(int i = 0; i < g_triangles.size(); i++) {
+	for(long long unsigned int i = 0; i < g_triangles.size(); i++) {
 		g_triangles[i].clear();
 	}
-	for(int i = 0; i < g_ramps.size(); i++) {
+	for(long long unsigned int i = 0; i < g_ramps.size(); i++) {
 		g_ramps[i].clear();
 	}
 	if(g_backgroundLoaded && background != 0) {
