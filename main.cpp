@@ -51,7 +51,7 @@ int WinMain(int argc, char ** argv) {
 	TTF_Init();
 	
 	window = SDL_CreateWindow("Game",
-	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
+	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_SetWindowMinimumSize(window, 100, 100);
@@ -198,6 +198,7 @@ int WinMain(int argc, char ** argv) {
 	valuestr = line.substr(line.find(' '),  line.length());
 	value = stof(valuestr);
 	g_music_volume = value;
+	cout << g_music_volume << endl;
 
 	//get sfx volume
 	getline(bindfile, line);
@@ -318,9 +319,6 @@ int WinMain(int argc, char ** argv) {
 
 	// }
 
-
-
-	cout << "are we getting here" << endl;
 	srand(time(NULL));
 	if(devMode) {
 		//g_transitionSpeed = 10000;
@@ -360,7 +358,7 @@ int WinMain(int argc, char ** argv) {
 	}
 
 
-	ui* inventoryMarker = new ui(renderer, "textures/ui/non_selector.png", 0, 0, 0.15, 0.15, 2);
+	ui* inventoryMarker = new ui(renderer, "textures/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
 	inventoryMarker->show = 0;
 	inventoryMarker->persistent = 1;
 
@@ -371,14 +369,14 @@ int WinMain(int argc, char ** argv) {
 	//This stuff is for the FoW mechanic
 		
     SDL_Surface* SurfaceA = IMG_Load("misc/resolution.bmp");
-	SDL_Surface* SurfaceB = IMG_Load("misc/b.png");
+	//SDL_Surface* SurfaceB = IMG_Load("misc/b.bmp");
 	
 	TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 	//SDL_Texture* TextureA = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);	
-	TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
+	//TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
 
 	SDL_FreeSurface(SurfaceA);
-	SDL_FreeSurface(SurfaceB);
+	//SDL_FreeSurface(SurfaceB);
 
 	SDL_Surface* blackbarSurface = IMG_Load("textures/engine/black.bmp");
 	blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
@@ -400,19 +398,10 @@ int WinMain(int argc, char ** argv) {
 	//textures for adding operation
 	canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 
-	SDL_Surface* lightSurface = IMG_Load("misc/light.png");
+	SDL_Surface* lightSurface = IMG_Load("misc/light.bmp");
 	light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 	SDL_FreeSurface(lightSurface);
 
-	//spawn orbital for fomm
-	//entity* arma = new entity(renderer, "arm-a"); arma->persistentGeneral = 1;
-	//entity* armb = new entity(renderer, "arm-b"); armb->persistentGeneral = 1;
-	//entity* armc = new entity(renderer, "arm-c"); armc->persistentGeneral = 1; 
-	//entity* armd = new entity(renderer, "arm-d"); armd->persistentGeneral = 1;
-	//entity* arme = new entity(renderer, "arm-e"); arme->persistentGeneral = 1;
-
-	//software lifecycle text
-	//new textbox(renderer, g_lifecycle.c_str(), 40,WIN_WIDTH * 0.8,0, WIN_WIDTH * 0.2);
 	while (!quit) {
 		//some event handling
 		while(SDL_PollEvent(&event)) {
@@ -863,6 +852,9 @@ int WinMain(int argc, char ** argv) {
 			int functionalX = g_focus->getOriginX();
 			int functionalY = g_focus->getOriginY();
 
+			//int functionalX = g_camera.x + WIN_WIDTH/2;
+			//int functionalY = g_camera.y = WIN_HEIGHT/2;
+
 			functionalX -= functionalX % 64;
 			functionalX += 32;
 			functionalY -= functionalY % 55;
@@ -875,7 +867,7 @@ int WinMain(int argc, char ** argv) {
 						flipper = !flipper;
 						int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
 						int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
-						if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 15, 0, 15, 1)) {
+						if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
 							g_fogcookies[i][j] = 1;
 							g_fc[i][j] = 1;
 
@@ -940,7 +932,7 @@ int WinMain(int argc, char ** argv) {
 			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
 			
 			//render graphics
-			FoWrect = {px - 20, yoffset -8, g_fogwidth * 64 + 50, g_fogheight * 55 + 30};
+			FoWrect = {px - 20, yoffset +20, g_fogwidth * 64 + 50, g_fogheight * 55 + 18};
 			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
 			
 			//do it for z = 64
@@ -1262,7 +1254,6 @@ int WinMain(int argc, char ** argv) {
 		SDL_RenderPresent(renderer);
 		
 		//update music
-		
 		if(musicUpdateTimer > 500) {		
 			musicUpdateTimer = 0;
 			
@@ -1298,7 +1289,8 @@ int WinMain(int argc, char ** argv) {
 					newClosest = protag->Get_Closest_Node(g_musicNodes);
 					if(closestMusicNode == nullptr) {
 						if(!hadEntPlayingMusic) {						
-							Mix_PlayMusic(newClosest->blip, -1); 
+							Mix_PlayMusic(newClosest->blip, -1);
+							I(g_music_volume);
 							Mix_VolumeMusic(g_music_volume * 128);
 							closestMusicNode = newClosest;
 						} else {
@@ -1341,6 +1333,7 @@ int WinMain(int argc, char ** argv) {
 		if(fadeFlag && musicFadeTimer > 1000 /*&& newClosest != 0*/) {
 			fadeFlag = 0;
 			Mix_HaltMusic();
+			cout << "played some music " << newClosest->name << endl;
 			Mix_FadeInMusic(newClosest->blip, -1, 1000);
 		}
 		if(entFadeFlag && musicFadeTimer > 200) {

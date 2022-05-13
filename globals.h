@@ -229,7 +229,7 @@ SDL_Texture* blackbarTexture;
 
 
 //industry standard needs greater fogheight 
-int g_fogheight = 18;
+int g_fogheight = 19;  //was 18, want 19
 int g_fogwidth = 21;
 int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
@@ -309,8 +309,8 @@ class camera {
 public:
 	float oldx = 0;
 	float oldy = 0;
-	float x = 200;
-	float y = 200;
+	int x = 200;
+	int y = 200;
 	float width = 640;
 	float height = 480;
 	float lag = 0.0;

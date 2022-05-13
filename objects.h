@@ -307,22 +307,51 @@ public:
 		M("mapCollision()");
 		g_mapCollisions.push_back(this);
 	}
-	~mapCollision() {
+
+	//copy constructor
+	mapCollision(const mapCollision & other) {
+		this->walltexture = other.walltexture;
+		this->captexture = other.captexture;
+		this->capped = other.capped;
+		this->children = other.children;
+		g_mapCollisions.push_back(this);
+	}
+	
+	// //move constructor
+	// mapCollision(mapCollision && other) {
+	// 	this->walltexture = other.walltexture;
+	// 	this->captexture = other.captexture;
+	// 	this->capped = other.capped;
+	// 	this->children = other.children;
+	// }
+
+	//copy assignment
+	mapCollision& operator=(const mapCollision &other) {
+		mapCollision*a;
+		a->walltexture = other.walltexture;
+		a->captexture = other.captexture;
+		a->capped = other.capped;
+		a->children = other.children;
+		g_mapCollisions.push_back(a);
+		return *a;
+	}
+
+	// //move assignment
+	// mapCollision& operator=(mapCollision &&) {
+	// 	this->walltexture = other.walltexture;
+	// 	this->captexture = other.captexture;
+	// 	this->capped = other.capped;
+	// 	this->children = other.children;
+	// }
+
+	virtual ~mapCollision() {
 		M("~mapCollision()");
-		//I("Let's delete a mapcollision");
-		//SDL_Delay(500);
-		//this crashes on windows
+
+		//this can crash on windows
 		g_mapCollisions.erase(remove(g_mapCollisions.begin(), g_mapCollisions.end(), this), g_mapCollisions.end());
 		
-		//I("Removed from g_mapCollisions");
-		//SDL_Delay(500);
-		//I("Lets try to delete the vector \"children\" ourselves");
-		vector<mapObject*> pissoff = {};
-		children = pissoff;
 
-		I("Yes, we succesfully deleted vector 'children' ");
-
-		//SDL_Delay(500);
+		children.clear();
 	}
 	
 };
@@ -642,16 +671,7 @@ public:
 	}
 	~box() {
 		M("~box()");
-		//I("Deleting a box");
-		//SDL_Delay(1000);
-		
-
 		g_boxs[layer].erase(remove(g_boxs[layer].begin(), g_boxs[layer].end(), this), g_boxs[layer].end());
-		
-
-
-		//I("Finished deleting a box");
-		//SDL_Delay(1000);
 	}
 };
 
@@ -3374,6 +3394,7 @@ public:
 			
 		}
 		
+	
 
 
 		if(!ycollide && !transition) { 
@@ -3574,7 +3595,7 @@ public:
 
 		//try ramps?
 		//!!! can crash if the player gets too high
-		/*
+		
 		if(layer < g_layers) { 
 			for(auto r : g_ramps[this->layer]) {
 				rect a = rect(r->x, r->y, 64, 55);
@@ -3627,7 +3648,7 @@ public:
 				}
 			}
 		}
-		*/
+		
 		if(z > floor + 1) {
 			zaccel -= g_gravity * ((double) elapsed / 256.0);
 			grounded = 0;
@@ -3828,7 +3849,14 @@ public:
 							this->dialogue_index = -1;	
 							this->myScriptCaller->talker = this;
 							this->myScriptCaller->continueDialogue();
-							x.cooldownMS = ( fmod(rand(),  (x.upperCooldownBound - x.lowerCooldownBound)) ) + x.lowerCooldownBound; 
+							if(x.upperCooldownBound - x.lowerCooldownBound <= 0) {
+								x.cooldownMS = x.lowerCooldownBound;
+							} else {
+								x.cooldownMS = ( fmod(rand(),  (x.upperCooldownBound - x.lowerCooldownBound)) ) + x.lowerCooldownBound;
+							}
+							I("Set his cooldown to " + to_string(x.cooldownMS)); 
+							I(x.upperCooldownBound);
+							I(x.lowerCooldownBound);
 						}
 					
 					}
@@ -4104,7 +4132,7 @@ public:
 			//here's the code for roaming/patrolling
 			//we aren't agrod.
 			if(traveling) {
-				if(readyForNextTravelInstruction) {
+				if(readyForNextTravelInstruction && g_setsOfInterest.at(poiIndex).size() != 0) {
 					readyForNextTravelInstruction = 0;
 					if(myTravelstyle == roam) {
 						//generate random number corresponding to an index of our poi vector

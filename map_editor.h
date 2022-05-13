@@ -2038,59 +2038,44 @@ void write_map(entity* mapent) {
                         refresh = false;
                         for(long long unsigned int i = 0; i < g_boxs.size(); i++) {
                             for(auto him: g_boxs[i]) {
-                                I(" 1) ");
                                 //is there a collision in the space one block to the right of this block, and at the top?
                                 //  * * x
                                 //  * *
                                 for(auto other: g_boxs[i]) {
-                                    I(" 2) ");
                                     if(RectOverlap(rect(him->bounds.x + him->bounds.width + 2, him->bounds.y + 2, 64 - 4, 55 - 4), other->bounds)) {
                                         //does it have the same shineTop as him?
-                                        I(" 3) ");
                                         if(him->shineTop == other->shineTop) {
-                                            I(" 4) ");
                                             //does it have the same height and y position as him?
                                             if(him->bounds.y == other->bounds.y && him->bounds.height == other->bounds.height) {
-                                                I(" 5) ");
                                                 //does it have the same shineBot as him?
                                                 if(him->shineBot == other->shineBot) {
-                                                    I(" 6) ");
                                                     //shading?
                                                     if(him->shadeBot == other->shadeBot && him->shadeTop == other->shadeTop) {
-                                                        I(" 7) ");
                                                         //textures?
                                                         if(him->captexture == other->captexture && him->walltexture == other->walltexture) {
-                                                            I(" 8) ");
                                                             //both capped or not capped?
                                                             if(him->capped == other->capped) {
-                                                                I(" 9) ");
                                                                 //join the two blocks
                                                                 string shadestring = "";
                                                                 if(him->shadeTop) {shadestring+= "1";} else {shadestring+= "0";}
                                                                 if(him->shadeBot) {shadestring+= "1";} else {shadestring+= "0";}
                                                                 if(him->shadeLeft) {shadestring+= "1";} else {shadestring+= "0";}
                                                                 if(other->shadeRight) {shadestring+= "1";} else {shadestring+= "0";}
-                                                                I(" 10) ");
                                                                 box* b = new box(him->bounds.x, him->bounds.y, him->bounds.width + other->bounds.width, him->bounds.height, him->layer, him->walltexture, him->captexture, him->capped, him->shineTop, him->shineBot, shadestring.c_str());
                                                                 (void)b;
                                                                 for(auto child:him->children) {
                                                                     delete child;
                                                                 }
-                                                                I(" 11) ");
-                                                                I("This is the crash");
                                                                 breakpoint();
                                                                 //SDL_Delay(1000);
                                                                 delete him; 
-                                                                I("This is after the crash.");
                                                                 //SDL_Delay(1000);
                                                                 for(auto child:other->children) {
                                                                     
                                                                     delete child;
                                                                 }
-                                                                I(" 12) ");
                                                                 delete other;
                                                                 refresh = true;
-                                                                I(" 13) ");
                                                             }
                                                         }
                                                     }
@@ -4071,13 +4056,17 @@ void adventureUI::continueDialogue() {
             hopeful = this->talker;
         }
 
-        if(hopeful != nullptr) {
+        if(hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0) {
             hopeful->agrod = 0;
             hopeful->target = nullptr;
             hopeful->myTravelstyle = roam;
             hopeful->poiIndex = p0;
             hopeful->traveling = 1;
             hopeful->readyForNextTravelInstruction = 1;
+        }
+
+        if (g_setsOfInterest.at(p0).size() == 0) {
+            E("You told an entity to roam but there are no pointOfInterest-instances.");
         }
         
         talker->dialogue_index++;
