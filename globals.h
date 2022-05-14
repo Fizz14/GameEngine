@@ -235,6 +235,12 @@ int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
 int g_fogMiddleX = 10;
 int g_fogMiddleY = 9;
+float g_viewdist = 310; //300 seems like a good value for scares. 310 is good for casual players.
+int g_tile_fade_speed = 20;
+int xtileshift = 0;
+int ytileshift = 0;
+bool g_force_cookies_update = 0;
+
 
 std::vector<std::vector<int> > g_fogcookies( g_fogwidth, std::vector<int>(g_fogheight));
 //this second vector is for storing the cookies that are ontopof walls
@@ -508,7 +514,7 @@ enum travelstyle {roam, patrol};
 //movement
 
 float g_bhoppingBoost = 4; //the factor applied to friction whilst airborn
-float g_defaultBhoppingBoost = 1;
+float g_defaultBhoppingBoost = 4;
 float g_maxBhoppingBoost = 2;
 float g_deltaBhopBoost = 0.2;
 

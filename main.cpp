@@ -860,28 +860,138 @@ int WinMain(int argc, char ** argv) {
 			functionalY -= functionalY % 55;
 			functionalY += 26;
 
-			if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY) {
-				bool flipper = 0;
-				for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
-					for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
-						flipper = !flipper;
-						int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
-						int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
-						if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
-							g_fogcookies[i][j] = 1;
-							g_fc[i][j] = 1;
 
-							g_sc[i][j] = 1;
-						} else {
-							g_fogcookies[i][j] = 0;
+			//for low spec, update only when the player moves across a space
+			if(g_graphicsquality == 0) {
+				//for low spec
+				if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY || g_force_cookies_update) {
+					int xdiff = functionalX - g_lastFunctionalX;
+					int ydiff = functionalY - g_lastFunctionalY;
+					
+					//to make old tiles fade out
+
+					bool flipper = 0;
+					for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+						for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+							flipper = !flipper;
+							int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
+							int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
+							if(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) {
+								//g_fogcookies[i][j] -= g_tile_fade_speed; if (g_fogcookies[i][j] < 0) g_fogcookies[i][j] = 0; 
+								g_fogcookies[i][j] = 0;
+								
+								//g_fc[i][j] -= g_tile_fade_speed; if (g_fc[i][j] < 0) g_fc[i][j] = 0; 
+								g_fc[i][j] = 0;
+
+								//g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) g_sc[i][j] = 0; 
+								g_sc[i][j] = 0;
+
+							} else if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
+								g_fogcookies[i][j] = 255;
+								g_fc[i][j] = 255;
+
+								g_sc[i][j] = 255;
+							} else {
+
+								//g_fogcookies[i][j] -= g_tile_fade_speed; if (g_fogcookies[i][j] < 0) g_fogcookies[i][j] = 0; 
+								g_fogcookies[i][j] = 0;
+								
+								//g_fc[i][j] -= g_tile_fade_speed; if (g_fc[i][j] < 0) g_fc[i][j] = 0; 
+								g_fc[i][j] = 0;
+
+								//g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) g_sc[i][j] = 0; 
+								g_sc[i][j] = 0;
+							}
 							
-							g_fc[i][j] = 0;
-							g_sc[i][j] = 0;
+						}
+					}
+				}
+			} else {
+				if(1/*functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY*/) {
+					
+					
+					if(functionalX != g_lastFunctionalX) {
+						xtileshift = functionalX - g_lastFunctionalX;
+						xtileshift = xtileshift / abs(xtileshift);
+
+						if(functionalY == g_lastFunctionalY) {
+							ytileshift = 0;
+						}
+
+					} 
+					
+					if (functionalY != g_lastFunctionalY) {
+						
+						ytileshift = functionalY - g_lastFunctionalY;
+
+						ytileshift = ytileshift / abs(ytileshift);
+
+						if(functionalX == g_lastFunctionalX) {
+							xtileshift = 0;
+						}
+					}
+
+					if(g_force_cookies_update) {
+						if(functionalX == g_lastFunctionalX) {xtileshift = 0;}
+						if(functionalY == g_lastFunctionalY) {ytileshift = 0;}
+						
+					}
+					
+					//to make old tiles fade out, when we move set the tiles opacity to their "old" tile
+					if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY || g_force_cookies_update) {
+						//copy the vector
+						auto fogcopy = g_fogcookies;
+					
+						for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+							for(long long unsigned j = 0; j < g_fogcookies.size(); j++) {
+								//check if there was an "old" cookie
+								if((i + xtileshift >= 0 && i + xtileshift < g_fogcookies.size()) && (j + ytileshift >= 0 && j + ytileshift < g_fogcookies.size()-2)){
+								
+									g_fogcookies[i][j] = fogcopy[i + xtileshift][j + ytileshift];
+									g_fc[i][j] = fogcopy[i + xtileshift][j + ytileshift];
+									
+									g_sc[i][j] = fogcopy[i + xtileshift][j + ytileshift];
+									
+								} 
+								
+							}
+						}
+						
+					}
+
+		
+					for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+						for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+							int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
+							int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
+							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
+							
+								g_fogcookies[i][j] += g_tile_fade_speed; if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
+								//g_fogcookies[i][j] = 0;
+								
+								g_fc[i][j] += g_tile_fade_speed; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 
+								//g_fc[i][j] = 0;
+
+								g_sc[i][j] += g_tile_fade_speed; if (g_sc[i][j] >255) {g_sc[i][j] = 255;}
+								//g_sc[i][j] = 0;
+
+							} else {
+
+								g_fogcookies[i][j] -= g_tile_fade_speed; if (g_fogcookies[i][j] < 0) {g_fogcookies[i][j] = 0;} 
+								//g_fogcookies[i][j] = 0;
+								
+								g_fc[i][j] -= g_tile_fade_speed; if (g_fc[i][j] < 0) {g_fc[i][j] = 0; }
+								//g_fc[i][j] = 0;
+
+								g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) {g_sc[i][j] = 0;} 
+								//g_sc[i][j] = 0;
+
+							}
 						}
 					}
 				}
 			}
-
+ 
 			//save cookies that are just dark because they are inside of walls to g_savedcookies
 			for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
 				for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
@@ -889,11 +999,11 @@ int WinMain(int argc, char ** argv) {
 					int ypos = ((j - 9) * 55) + functionalY;
 					//is this cookie in a wall? or behind a wall
 					if(!LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1)) {
-						g_fc[i][j] = 1;
+						g_fc[i][j] = 255;
 								
 					}	
 					if(!LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1)) {
-						g_fc[i][j] = 1;	
+						g_fc[i][j] = 255;	
 					}
 				}
 			}
@@ -926,13 +1036,13 @@ int WinMain(int argc, char ** argv) {
 			//px = 64 - px - 64;
 			//py = 55 - py - 55;
 			// 50 50
-			addTextures(renderer, g_fc, canvas, light, 500, 500, 210, 210);
+			addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250);
 
 
 			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
 			
 			//render graphics
-			FoWrect = {px - 20, yoffset +20, g_fogwidth * 64 + 50, g_fogheight * 55 + 18};
+			FoWrect = {px - 23, yoffset +15, g_fogwidth * 64 + 50, g_fogheight * 55 + 18};
 			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
 			
 			//do it for z = 64
@@ -941,7 +1051,7 @@ int WinMain(int argc, char ** argv) {
 			
 
 			
-			addTextures(renderer, g_sc, canvas, light, 500, 500, 210, 210);
+			addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250);
 
 
 			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);

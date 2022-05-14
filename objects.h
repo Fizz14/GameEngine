@@ -3349,7 +3349,7 @@ public:
 					}
 
 					if(n->type == 0 || n->type == 1) {
-						xpush = -jerk;
+						xpush = -jerk; ;
 					}
 					
 					
@@ -3394,7 +3394,7 @@ public:
 			
 		}
 		
-	
+
 
 
 		if(!ycollide && !transition) { 
@@ -5698,13 +5698,13 @@ void clear_map(camera& cameraToReset) {
 				//py = 55 - py - 55;
 				// 50 50
 				SDL_SetRenderTarget(renderer, NULL);
-				addTextures(renderer, g_fc, canvas, light, 500, 500, 210, 210);
+				addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250);
 
 
 				TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
 				
 				//render graphics
-				FoWrect = {px - 20, yoffset -8, g_fogwidth * 64 + 50, g_fogheight * 55 + 30};
+				FoWrect = {px - 23, yoffset +15, g_fogwidth * 64 + 50, g_fogheight * 55 + 18};
 				SDL_SetRenderTarget(renderer, frame);
 				SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
 				
@@ -5714,7 +5714,7 @@ void clear_map(camera& cameraToReset) {
 				
 
 				SDL_SetRenderTarget(renderer, NULL);
-				addTextures(renderer, g_sc, canvas, light, 500, 500, 210, 210);
+				addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250);
 
 
 				TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
@@ -5730,7 +5730,7 @@ void clear_map(camera& cameraToReset) {
 				
 				SDL_Rect botbar = {px, FoWrect.y +  g_fogheight * 55 + 12, 1500, 5000};
 				SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
-				
+				SDL_RenderPresent(renderer);
 
 			}
 

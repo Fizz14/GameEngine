@@ -20,7 +20,12 @@ inline SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogc
 				 					(int)(j * ( (heightOfIlluminateMe) /fogcookies[0].size())), 
 				 					(int)((widthOfIlluminateMe + paddingx)/fogcookies.size()), 
 				 					(int)((heightOfIlluminateMe + paddingy)/fogcookies[0].size())};
-				
+
+
+				if(g_graphicsquality != 0) {
+					SDL_SetTextureAlphaMod(lightspot, fogcookies[i][j]);
+				}
+
 				SDL_RenderCopy(renderer, lightspot, NULL, &dstrect);
 
 				

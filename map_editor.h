@@ -3338,7 +3338,7 @@ void write_map(entity* mapent) {
         }
        walltex = texstrs[walltexIndex];
        delete walltexDisplay;
-        walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0.9, 0.1, 0.1, 0);
+        walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, 0);
     }
 
     if(devinput[18] && !olddevinput[18]) {
@@ -3355,7 +3355,7 @@ void write_map(entity* mapent) {
         }
         captex = texstrs[captexIndex];
         delete captexDisplay;
-        captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0.9, 0.1, 0.1, 0);
+        captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, 0);
     }
 
     //make collision-zone
@@ -4558,8 +4558,8 @@ void adventureUI::continueDialogue() {
                 banishMe->shadow->enabled = 1;
             }
         }
-        g_lastFunctionalX = -numeric_limits<int>::max();
-        g_lastFunctionalY = - numeric_limits<int>::max();
+        g_force_cookies_update = 1;
+        
         talker->dialogue_index++;
         this->continueDialogue();
         return;
