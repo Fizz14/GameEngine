@@ -22,6 +22,8 @@
 //this is unique to the windowsport
 #include "windowsinclude.h"
 
+
+#undef M_PI
 # define M_PI 3.14159265358979323846
 
 using namespace std;
@@ -219,11 +221,14 @@ bool g_showHealthbar = 0;
 
 //for fow
 SDL_Texture* result;
+SDL_Texture* result_c;
 SDL_Texture* canvas;
+SDL_Texture* canvas_fc;
 SDL_Texture* light;
 SDL_Texture* TextureA;
 SDL_Texture* TextureB;
 SDL_Texture* TextureC;
+SDL_Texture* TextureD;
 SDL_Texture* blackbarTexture;
 
 
@@ -235,8 +240,8 @@ int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
 int g_fogMiddleX = 10;
 int g_fogMiddleY = 9;
-float g_viewdist = 310; //300 seems like a good value for scares. 310 is good for casual players.
-int g_tile_fade_speed = 20;
+float g_viewdist = 310; //240, 310 is casual, 340 could be from an upgrade.
+int g_tile_fade_speed = 20; //30
 int xtileshift = 0;
 int ytileshift = 0;
 bool g_force_cookies_update = 0;
@@ -250,6 +255,12 @@ std::vector<std::vector<int> > g_savedcookies( g_fogwidth, std::vector<int>(g_fo
 //data for two passes of cookies
 std::vector<std::vector<int> > g_fc( g_fogwidth, std::vector<int>(g_fogheight));
 std::vector<std::vector<int> > g_sc( g_fogwidth, std::vector<int>(g_fogheight));
+
+//fogslates - 19 x 2 = 38 actors.
+std::vector<entity*> g_fogslates;
+std::vector<entity*> g_fogslatesA;
+std::vector<entity*> g_fogslatesB;
+
 
 //for having items bounce
 float g_itemsinea = 0;

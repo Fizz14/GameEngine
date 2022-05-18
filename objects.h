@@ -1938,7 +1938,7 @@ public:
 	float friction = 0;
 	float baseFriction = 0;	
 
-	float currentAirBoost = 0;
+	float currentAirBoost = 1;
 	float slowSeconds = 0;
 	float slowPercent = 0;
 
@@ -1986,6 +1986,8 @@ public:
 	bool hadInput = 0; //had input this frame;
 	int shooting = 0; //1 if character is shooting
 
+	int opacity = 255; //opacity from 0 to 255, used for hiding shaded entities.	
+	
 	//object-related design
 	bool dynamic = true; //true for things such as wallcaps. movement/box is not calculated if this is false
 	bool inParty = false;
@@ -2795,7 +2797,7 @@ public:
 
 		//SDL_FPoint nowt = {0, 0};
 		
-		rect obj(((x -fcamera.x + (width-curwidth)/2)* fcamera.zoom) , (((y - ((curheight * (XtoY) + (height * (1-XtoY)))) - (z + floatheight) * XtoZ) - fcamera.y) * fcamera.zoom), (curwidth * fcamera.zoom), (curheight * fcamera.zoom));		
+		rect obj(((floor(x) -fcamera.x + (width-floor(curwidth))/2)* 1) , (((floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y) * 1), (floor(curwidth) * 1), (floor(curheight) * 1));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
@@ -3854,9 +3856,9 @@ public:
 							} else {
 								x.cooldownMS = ( fmod(rand(),  (x.upperCooldownBound - x.lowerCooldownBound)) ) + x.lowerCooldownBound;
 							}
-							I("Set his cooldown to " + to_string(x.cooldownMS)); 
-							I(x.upperCooldownBound);
-							I(x.lowerCooldownBound);
+							//I("Set his cooldown to " + to_string(x.cooldownMS)); 
+							//I(x.upperCooldownBound);
+							//I(x.lowerCooldownBound);
 						}
 					
 					}

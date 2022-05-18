@@ -13,38 +13,13 @@
 using namespace std;
 
 
-
-// int compare_ent (entity* a, entity* b) {
-//   return a->y+ a->z  + a->sortingOffset < b->y +b->z + b->sortingOffset;
-// }
-
-// int compare_ent (actor* a, actor* b) {
-//   	return a->getOriginY() + a->z < b->getOriginY() +b->z;
-// }
-
-// int compare_ent (actor* a, actor* b) {
-//   	return a->y + a->z + a->sortingOffset < b->y + b->z + b->sortingOffset;
-// }
-
-// void sort_by_y(vector<actor*> &g_entities) {
-//     stable_sort(g_entities.begin(), g_entities.end(), compare_ent);
-// }
-
 void getInput(float& elapsed);
  
 
-int WinMain(int argc, char ** argv) {
-	//load first arg into variable devmode
+int WinMain() {
+
 	devMode = 1; canSwitchOffDevMode = 1;
-	/*
-	if(argc > 1 && 0) {
-		devMode = (argv[1][0] == '1');
-		canSwitchOffDevMode = devMode;
-	}
-	if(argc > 2) {
-		genericmode = (argv[2][0] == '1');
-	}
-	*/
+
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	IMG_Init(IMG_INIT_JPG|IMG_INIT_PNG);
@@ -55,6 +30,8 @@ int WinMain(int argc, char ** argv) {
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_SetWindowMinimumSize(window, 100, 100);
+
+	SDL_SetWindowPosition(window, 1280, 720);
 
 	// for( int i = 0; i < SDL_GetNumRenderDrivers(); ++i ) {
 	// 	SDL_RendererInfo rendererInfo = {};
@@ -293,6 +270,8 @@ int WinMain(int argc, char ** argv) {
 		g_setsOfInterest.push_back(v);
 	}
 
+	
+
 	//init static resources
 	g_bulletdestroySound = Mix_LoadWAV("audio/sounds/step.wav");
 	g_playerdamage = Mix_LoadWAV("audio/sounds/playerdamage.wav");
@@ -367,11 +346,15 @@ int WinMain(int argc, char ** argv) {
 	inventoryText->align = 1;
 
 	//This stuff is for the FoW mechanic
-		
+
+	// misc/resolution.bmp has resolution 1920 x 1200 	
     SDL_Surface* SurfaceA = IMG_Load("misc/resolution.bmp");
 	//SDL_Surface* SurfaceB = IMG_Load("misc/b.bmp");
 	
 	TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
+	TextureD = SDL_CreateTextureFromSurface(renderer, SurfaceA);
+
+
 	//SDL_Texture* TextureA = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);	
 	//TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
 
@@ -387,9 +370,74 @@ int WinMain(int argc, char ** argv) {
 
 
 	result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
+	result_c = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
+	
 	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_MOD);
-	SDL_SetTextureBlendMode(TextureA, SDL_BLENDMODE_MOD);
-	SDL_SetTextureBlendMode(TextureB, SDL_BLENDMODE_NONE);
+	SDL_SetTextureBlendMode(result_c, SDL_BLENDMODE_MOD);
+
+	SDL_SetTextureBlendMode(TextureA, SDL_BLENDMODE_MOD);	
+	SDL_SetTextureBlendMode(TextureA, SDL_BLENDMODE_MOD);	
+	SDL_SetTextureBlendMode(TextureD, SDL_BLENDMODE_MOD);
+	
+
+	//SDL_SetTextureBlendMode(TextureB, SDL_BLENDMODE_NONE);
+	
+	//init fogslates
+	
+	entity* s;
+	
+	for (size_t i = 0; i < 19; i++) {
+		s = new entity(renderer, "sp-fogslate");
+		g_fogslates.push_back(s);
+		s->height = 56;
+		s->width = g_fogwidth * 64 + 50;
+		s->xframes = 1;
+		s->yframes = 19;
+		s->animation = i;
+		//s->persistentGeneral = 1;
+		s->frameheight = 26;
+		s->framewidth = 500;
+		s->shadow->width = 0;
+		s->dynamic = 0;
+		s->sortingOffset = -35;
+	}
+
+	for (size_t i = 0; i < 19; i++) {
+		s = new entity(renderer, "sp-fogslate");
+		g_fogslatesA.push_back(s);
+		s->z = 64;
+		s->height = 56;
+		s->width = g_fogwidth * 64 + 50;
+		s->xframes = 1;
+		s->yframes = 19;
+		s->animation = i;
+		//s->persistentGeneral = 1;
+		s->frameheight = 26;
+		s->framewidth = 500;
+		s->shadow->width = 0;
+		s->dynamic = 0;
+		s->sortingOffset = -65; //55
+	}
+
+	for (size_t i = 0; i < 19; i++) {
+		s = new entity(renderer, "sp-fogslate");
+		g_fogslatesB.push_back(s);
+		s->height = 56;
+		s->width = g_fogwidth * 64 + 50;
+		s->xframes = 1;
+		s->yframes = 19;
+		s->animation = i;
+		//s->persistentGeneral = 1;
+		s->frameheight = 26;
+		s->framewidth = 500;
+		s->shadow->width = 0;
+		s->dynamic = 0;
+		s->sortingOffset = 4500; // !!! might need to be bigger
+	}
+
+	SDL_DestroyTexture(s->texture);
+	
+
 
 	SDL_SetRenderDrawColor(renderer, 0,0,0,0);
 	SDL_RenderPresent(renderer);
@@ -397,12 +445,17 @@ int WinMain(int argc, char ** argv) {
 
 	//textures for adding operation
 	canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
+	canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 
 	SDL_Surface* lightSurface = IMG_Load("misc/light.bmp");
 	light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 	SDL_FreeSurface(lightSurface);
 
+	for(auto x : g_fogslates) {
+		x->texture = TextureC;
+	}
 	while (!quit) {
+
 		//some event handling
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -844,7 +897,7 @@ int WinMain(int argc, char ** argv) {
 
 		}
 
-		//Fogofwar
+		//old Fogofwar
 		if(g_fogofwarEnabled && !devMode) {
 
 			//this is the worst functional code I've written, with no exceptions
@@ -941,6 +994,8 @@ int WinMain(int argc, char ** argv) {
 					if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY || g_force_cookies_update) {
 						//copy the vector
 						auto fogcopy = g_fogcookies;
+						auto fccopy = g_fc;
+						auto sccopy = g_sc;
 					
 						for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
 							for(long long unsigned j = 0; j < g_fogcookies.size(); j++) {
@@ -948,9 +1003,9 @@ int WinMain(int argc, char ** argv) {
 								if((i + xtileshift >= 0 && i + xtileshift < g_fogcookies.size()) && (j + ytileshift >= 0 && j + ytileshift < g_fogcookies.size()-2)){
 								
 									g_fogcookies[i][j] = fogcopy[i + xtileshift][j + ytileshift];
-									g_fc[i][j] = fogcopy[i + xtileshift][j + ytileshift];
+									g_fc[i][j] = fccopy[i + xtileshift][j + ytileshift];
 									
-									g_sc[i][j] = fogcopy[i + xtileshift][j + ytileshift];
+									g_sc[i][j] = sccopy[i + xtileshift][j + ytileshift];
 									
 								} 
 								
@@ -964,12 +1019,20 @@ int WinMain(int argc, char ** argv) {
 						for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
 							int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
 							int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
+
+							int xpos_fc = ((i - 10) * 64) + functionalX;
+							int ypos_fc = ((j - 9) * 55) + functionalY;
 							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
 							
 								g_fogcookies[i][j] += g_tile_fade_speed; if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
 								//g_fogcookies[i][j] = 0;
 								
+								//if you want to increment g_fc, there is an additional rule
+								//
+								
 								g_fc[i][j] += g_tile_fade_speed; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 
+								
+								
 								//g_fc[i][j] = 0;
 
 								g_sc[i][j] += g_tile_fade_speed; if (g_sc[i][j] >255) {g_sc[i][j] = 255;}
@@ -981,6 +1044,7 @@ int WinMain(int argc, char ** argv) {
 								//g_fogcookies[i][j] = 0;
 								
 								g_fc[i][j] -= g_tile_fade_speed; if (g_fc[i][j] < 0) {g_fc[i][j] = 0; }
+								
 								//g_fc[i][j] = 0;
 
 								g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) {g_sc[i][j] = 0;} 
@@ -993,20 +1057,23 @@ int WinMain(int argc, char ** argv) {
 			}
  
 			//save cookies that are just dark because they are inside of walls to g_savedcookies
+			//AND if they tile infront is at 255
+			
 			for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
 				for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
 					int xpos = ((i - 10) * 64) + functionalX;
 					int ypos = ((j - 9) * 55) + functionalY;
 					//is this cookie in a wall? or behind a wall
-					if(!LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1)) {
-						g_fc[i][j] = 255;
-								
-					}	
-					if(!LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1)) {
-						g_fc[i][j] = 255;	
+					if(j+1 < g_fogcookies.size() && g_fc[i][j+1] > 0) {
+
+						if(!LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1) || !LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1)) {
+							g_fc[i][j] += g_tile_fade_speed*2; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 	
+							g_fc[i][j] = 255;
+						}
 					}
 				}
 			}
+			
 
 			g_lastFunctionalX = functionalX;
 			g_lastFunctionalY = functionalY;
@@ -1030,36 +1097,65 @@ int WinMain(int argc, char ** argv) {
 			yoffset -= (g_fogheight * 55 + 12)/2;
 			yoffset -= g_camera.y;
 
-			//we do this nonsense to keep the offset on the grid
+			//we do this stuff to keep the offset on the grid
 			//yoffset -= yoffset % 55;
 
 			//px = 64 - px - 64;
 			//py = 55 - py - 55;
 			// 50 50
 			addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250);
-
-
-			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
+			
+			TextureC = IlluminateTexture(renderer, TextureD, canvas, result_c);
 			
 			//render graphics
 			FoWrect = {px - 23, yoffset +15, g_fogwidth * 64 + 50, g_fogheight * 55 + 18};
-			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+			//SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+
+			for(auto x : g_fogslates) {
+				x->texture = TextureC;
+			}
+
+			for (size_t i = 0; i < g_fogslates.size(); i++) {
+				g_fogslates[i]->x = (int)g_focus->getOriginX() + px - 658; //655
+				g_fogslates[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
+			}
 			
+
 			//do it for z = 64
 			FoWrect.y -= 64 * XtoZ;
-			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
-			
+			//SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+			for(auto x : g_fogslatesA) {
+				x->texture = TextureC;
+			}
+
+			for (size_t i = 0; i < g_fogslatesA.size(); i++) {
+				g_fogslatesA[i]->x = (int)g_focus->getOriginX() + px - 658; //655
+				g_fogslatesA[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
+			}
 
 			
 			addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250);
 
 
-			TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
+			TextureB = IlluminateTexture(renderer, TextureA, canvas, result);
+			
+			for(auto x : g_fogslatesB) {
+				x->texture = TextureB;
+				x->z = 128;
 				
-		
+			}
+
+			for (size_t i = 0; i < g_fogslates.size(); i++) {
+				g_fogslatesB[i]->x = (int)g_focus->getOriginX() + px - 658; //655
+				g_fogslatesB[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
+				
+			}
+
+
+
 			//render graphics
 			FoWrect.y -= 67 * XtoZ;
-			SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
+			//SDL_RenderCopy(renderer, TextureB, NULL, &FoWrect);
 		
 			//black bars :/
 			SDL_Rect topbar = {px, FoWrect.y - 5000, 1500, 5000};
@@ -1400,7 +1496,6 @@ int WinMain(int argc, char ** argv) {
 					if(closestMusicNode == nullptr) {
 						if(!hadEntPlayingMusic) {						
 							Mix_PlayMusic(newClosest->blip, -1);
-							I(g_music_volume);
 							Mix_VolumeMusic(g_music_volume * 128);
 							closestMusicNode = newClosest;
 						} else {
