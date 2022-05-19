@@ -737,7 +737,7 @@ bool mapeditor_save_map(string word) {
     word = "maps/" + g_mapdir  + "/" + word + ".map";
     
     //make folders for custom assets
-    vector<string> dirs = {"ai","attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "textures", "weapons", "masks", "heightmaps", "backgrounds", "ui"};
+    vector<string> dirs = {"ai","attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "diffuse", "weapons", "masks", "heightmaps", "backgrounds", "ui"};
     for(auto x : dirs) {
         std::filesystem::create_directories("maps/" + g_mapdir + "/" + x);
     }
@@ -1515,6 +1515,24 @@ void write_map(entity* mapent) {
                             // !!! Technically this is unsafe, the data should be handled better
                         }
                     }
+                    for(auto x : g_cueSounds) {
+                        rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
+                        rect b = {(int)x->x, (int)x->y, 60, 40};
+                        if(RectOverlap(markerrect, b)) {
+                            delete x;
+                            // !!! Technically this is unsafe, the data should be handled better
+                        }
+                    }
+                    for(auto x : g_worldsounds) {
+                        rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
+                        rect b = {(int)x->x, (int)x->y, 60, 40};
+                        if(RectOverlap(markerrect, b)) {
+                            delete x;
+                            // !!! Technically this is unsafe, the data should be handled better
+                        }
+                    }
+                    
+                    
 
                     //rect markerrect = {marker->x, marker->y, marker->width, marker->height};
                     for(long long unsigned int i = 0; i < g_tiles.size(); i++) {
@@ -3114,7 +3132,7 @@ void write_map(entity* mapent) {
                     e->shadow->y = e->y + e->shadow->yoffset;
                     break;
                 }
-                if(word == "sound" || word == "snd") {
+                if(word == "sound" || word == "snd" || word == "worldsound" || word == "ws") {
                     line >> entstring;
                     worldsound* w = new worldsound(entstring, px + marker->width/2, py + marker->height/2);
                     (void)w;

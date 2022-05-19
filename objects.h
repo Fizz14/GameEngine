@@ -5270,30 +5270,38 @@ public:
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_map + "/" + filename + ".ws";
-		//loadstr);
+		loadstr = "maps/" + g_mapdir + "/worldsounds/" + filename + ".ws";
+		D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
 		
 		if (!file.is_open()) {
-			loadstr = "worldsounds/sounds/" + filename + ".ws";
+			loadstr = "stock/worldsounds/" + filename + ".ws";
 			const char* plik = loadstr.c_str();
 			
 			file.open(plik);
 			
 			if (!file.is_open()) {
-				string newfile = "worldsounds/sounds/default.ws";
+				string newfile = "stock/worldsounds/default.ws";
 				file.open(newfile);
 			}
 		}
 		
 		string temp;
 		file >> temp;
-		temp = "audio/sounds/" + temp + ".wav";
+		string existSTR;
+		existSTR = "maps/" + g_mapdir + "/sounds/" + temp + ".wav";
+		D(existSTR);
+		if(!fileExists(existSTR)) {
+			existSTR = "stock/sounds/" + temp + ".wav";
+			if(!fileExists(existSTR)) {
+				existSTR = "stock/sounds/default.wav";
+			}
+		}
 		
-		blip = Mix_LoadWAV(temp.c_str());
 		
+		blip = Mix_LoadWAV(existSTR.c_str());
 		
 		x = fx;
 		y = fy;
@@ -5321,8 +5329,8 @@ public:
 	}
 
 	void update(float elapsed) {
-		float dist = Distance(x, y, g_camera.x + g_camera.width/2, g_camera.y + g_camera.height/2);
-		
+		//!!! you can update this with the middle of the camera instead of the focused actor
+		float dist = Distance(x, y, g_focus->getOriginX(), g_focus->getOriginY());
 		//linear
 		float cur_volume = ((maxDistance - dist)/maxDistance) * volumeFactor * 128;
 		
@@ -5338,9 +5346,6 @@ public:
 		
 		if(cooldown < 0) {
 			//change volume
-			
-			
-			
 			playSound(-1, blip, 0);
 			cooldown = rand() % (int)maxWait + minWait;
 		} else {
@@ -5388,8 +5393,15 @@ public:
 	bool played = 0;
 	cueSound(string fileaddress, int fx, int fy, int fradius) {
 		name = fileaddress;
-		fileaddress = "audio/sounds/" + fileaddress + ".wav";
-		blip = Mix_LoadWAV(fileaddress.c_str());
+		string existSTR;
+		existSTR = "maps/" + g_mapdir + "/sounds/" + fileaddress + ".wav"; 
+		if(!fileExists(existSTR)) {
+			existSTR = "stock/sounds/" + fileaddress + ".wav";
+			if(!fileExists(existSTR)) {
+				existSTR = "stock/sounds/defaults.wav";
+			}
+		}
+		blip = Mix_LoadWAV(existSTR.c_str());
 		x = fx;
 		y = fy;
 		radius = fradius;
