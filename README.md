@@ -1,6 +1,6 @@
 Specifically, how to get this code working on windows:
 
-get SDL2_image.dll, SDL2_mixer.dll, SDL2_ttf.dll, and SDL2.dll, libogg-0.dll, libfreetype-6.dll, libvorbis-0.dll, and libvorbisfile-3.dll and put them with the code.
+get SDL2_image.dll, SDL2_mixer.dll, SDL2_ttf.dll, SDL2.dll, zlib1.dll, libogg-0.dll, libfreetype-6.dll, libvorbis-0.dll, and libvorbisfile-3.dll and put them with the code.
 
 You need lots of textures and configuration files to get it to work, check the googledrive.
 
