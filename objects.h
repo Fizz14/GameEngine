@@ -1083,15 +1083,16 @@ public:
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_map + "/" + filename + ".atk";
-		//D(loadstr);
+		loadstr = "maps/" + g_mapdir + "/attacks/" + filename + ".atk";
+
+		D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
 		
 		if (!file.is_open()) {
 			//load from global folder
-			loadstr = "entities/attacks/" + filename + ".atk";
+			loadstr = "stock/attacks/" + filename + ".atk";
 			//D(loadstr);
 			const char* plik = loadstr.c_str();
 			
@@ -1099,14 +1100,22 @@ public:
 			
 			if (!file.is_open()) {
 				//just make a default entity
-				string newfile = "entities/attacks/default.atk";
+				string newfile = "stock/attacks/default.atk";
 				//D(loadstr);
 				file.open(newfile);
 			}
 		}
 
 		file >> spritename;
-		string temp = "textures/sprites/" + spritename + ".bmp";
+
+		string temp;
+		temp = "maps/" + g_mapdir + "/sprites/" + spritename + ".bmp";
+		if(!fileExists(temp)) {
+			temp = "stock/sprites/" + spritename + ".bmp";
+			if(!fileExists(temp)) {
+				temp = "stock/sprites/default.bmp";
+			}
+		}
 
 		//only try to share textures if this isnt an entity
 		//that can ever be part of the party
@@ -1199,7 +1208,17 @@ public:
 
 		ifstream file;
 		string line;
-		string address = "entities/weapons/" + name + ".wep";
+		string address;
+		
+		//local
+		address = "maps/" + g_mapdir + "/weapons/" + name + ".wep";
+		if(!fileExists(address)) {
+			address = "stock/weapons/" + name + ".wep";
+			if(!fileExists(address)) {
+				address = "stock/weapons/" + name + ".wep";
+			}
+		}
+
 		string field = "";
 		string value = "";
 		file.open(address);
@@ -1739,15 +1758,21 @@ public:
 
 		//is there a special sprite for how it appears in the inv?
 		//if not, just use the standard one
-		if(fileExists("textures/sprites/items/" + fname + "-inv.bmp")) {
-			lstr = "textures/sprites/items/" + fname + "-inv.bmp";
+
+		//check local first
+		if(fileExists("maps/" + g_mapdir + "/items/" + fname + "-inv.bmp")) {
+			lstr = "maps/" + g_mapdir + "/items/" + fname + "-inv.bmp";
+		} else if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".bmp")){
+			lstr = "maps/" + g_mapdir + "/items/" + fname + ".bmp";
+		} else if(fileExists("stock/sprites/items/" + fname + "-inv.bmp")) {
+			lstr = "stock/sprites/items/" + fname + "-inv.bmp";
 		} else {
-			if(fileExists("textures/sprites/items/" + fname + ".bmp")) {
-				lstr = "textures/sprites/items/" + fname + ".bmp";
+			if(fileExists("stock/sprites/items/" + fname + ".bmp")) {
+				lstr = "stock/sprites/items/" + fname + ".bmp";
 				
 			} else {
 				//failsafe - load an image we know we have
-				lstr = "textures/sprites/fomm.bmp";
+				lstr = "stock/sprites/default.bmp";
 			}
 		}
 		
@@ -1819,14 +1844,14 @@ public:
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_mapdir + "/" + binding + ".txt";
+		loadstr = "maps/" + g_mapdir + "/scripts/" + binding + ".txt";
 		//D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		stream.open(plik);
 		
 		if (!stream.is_open()) {
-			stream.open("scripts/abilities/" + binding + ".txt");
+			stream.open("stock/scripts/" + binding + ".txt");
 		}
 		string line;
 
@@ -1937,6 +1962,7 @@ public:
 	float ymaxspeed = 0;
 	float friction = 0;
 	float baseFriction = 0;	
+	int recalcAngle = 0; //a timer for when to draw sprites with diff angle
 
 	float currentAirBoost = 1;
 	float slowSeconds = 0;
@@ -2140,14 +2166,14 @@ public:
 		string loadstr;
 		//try to open from local map folder first
 		
-		loadstr = "maps/" + g_mapdir + "/" + filename + ".ent";
+		loadstr = "maps/" + g_mapdir + "/entities/" + filename + ".ent";
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
 		
 		if (!file.is_open()) {
 			//load from global folder
-			loadstr = "entities/" + filename + ".ent";
+			loadstr = "stock/entities/" + filename + ".ent";
 			const char* plik = loadstr.c_str();
 			
 			file.open(plik);
@@ -2155,7 +2181,7 @@ public:
 			if (!file.is_open()) {
 				//just make a default entity
 				//using_default = 1;
-				string newfile = "entities/default.ent";
+				string newfile = "stock/entities/default.ent";
 				file.open(newfile);
 			}
 		}
@@ -2164,13 +2190,13 @@ public:
 		file >> temp;
 		string spritefilevar;
 		if(temp.substr(0,3) == "sp-") {
-			spritefilevar = "textures/engine/" + temp + ".bmp";
+			spritefilevar = "engine/" + temp + ".bmp";
 		} else {
-			spritefilevar = "textures/sprites/" + temp + ".bmp";
+			spritefilevar = "stock/sprites/" + temp + ".bmp";
 		}
 
 		//check local folder
-		if(fileExists("maps/" + g_mapdir + "/" + filename + ".bmp")) {spritefilevar = "maps/" + g_mapdir + "/" + filename + ".bmp";}
+		if(fileExists("maps/" + g_mapdir + "/sprites/" + filename + ".bmp")) {spritefilevar = "maps/" + g_mapdir + "/sprites/" + filename + ".bmp";}
 		
 		const char* spritefile = spritefilevar.c_str();
 		float size;
@@ -2334,21 +2360,17 @@ public:
 		
 		string txtfilename = "";
 		//open from local folder first
-		D("maps/" + g_mapdir + "/" + filename + ".txt");
-		if (fileExists("maps/" + g_mapdir + "/" + filename + ".txt")) {
-			txtfilename = "maps/" + g_mapdir + "/" + filename + ".txt";
-			M("Using local script");
+		if (fileExists("maps/" + g_mapdir + "/scripts/" + filename + ".txt")) {
+			txtfilename = "maps/" + g_mapdir + "/scripts/" + filename + ".txt";
 		} else {
-			M("Using global script");
-			txtfilename = "scripts/" + filename + ".txt";
+			txtfilename = "stock/scripts/" + filename + ".txt";
 		}
 		ifstream nfile(txtfilename);
 		string line;
 
 		//load voice
-		getline(nfile, line);
-		line = "audio/sounds/voice-" + line +".wav";
-		voice = Mix_LoadWAV(line.c_str());
+		string voiceSTR = "stock/sounds/voice-normal.wav";
+		voice = Mix_LoadWAV(voiceSTR.c_str());
 
 		int overflowprotect = 5000;
 		int i = 0;
@@ -2357,7 +2379,7 @@ public:
 			if(i > overflowprotect) {
 				E("Prevented overflow reading script for entity " + name);
 				throw("Overflow");
-			}
+			}	
 			i++;
 		}
 	
@@ -2454,24 +2476,33 @@ public:
 		file >> comment;
 		string musicname = "0";
 		file >> musicname;
+		string fileExistsSTR;
 		if(musicname != "0") {
-			musicname = "audio/music/" + musicname + ".ogg";
-			this->theme = Mix_LoadMUS(musicname.c_str());
+			fileExistsSTR = "maps/" + g_mapdir + "/music/" + musicname + ".ogg";
+			if(!fileExists(musicname)) {	
+				fileExistsSTR = "stock/music/" + musicname + ".ogg";
+			}
+			this->theme = Mix_LoadMUS(fileExistsSTR.c_str());
 			g_musicalEntities.push_back(this);
 		}
 		file >> comment;
 		file >> musicRadius;
+		//convert blocks to worldpixels
+		musicRadius *= 64;
 
 		//load ai-data 
-		// !!! add support for local AI files (is it worth it efficiency-wise?)
-		if(fileExists("entities/ai/"+filename + ".ai")) {
+		string AIloadstr;
+		if(fileExists("maps/" + g_mapdir + "/ai/" + filename + ".ai")) {
 			this->isAI = 1;
+			AIloadstr = "maps/" + g_mapdir + "/ai/" + filename + ".ai";
+		} else if(fileExists("stock/ai/"+filename + ".ai")) {
+			this->isAI = 1;
+			AIloadstr = "stock/ai/" + filename + ".ai";
+		}
+		if(this->isAI) {
+			
 			ifstream stream;
-			string loadstr;
-
-			loadstr = "entities/ai/" + filename + ".ai";
-			const char* plik = loadstr.c_str();
-		
+			const char* plik = AIloadstr.c_str();
 			stream.open(plik);
 
 			string line;
@@ -2557,7 +2588,7 @@ public:
 		string loadstr;
 
 		//load from global folder
-		loadstr = "entities/worlditem.ent";
+		loadstr = "engine/worlditem.ent";
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
@@ -2569,7 +2600,7 @@ public:
 		string spritefilevar;
 		
 
-		spritefilevar = "textures/sprites/items/" + texturename + ".bmp";
+		spritefilevar = "stock/sprites/items/" + texturename + ".bmp";
 		SDL_Surface* image = IMG_Load(spritefilevar.c_str());
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		M(spritefilevar );
@@ -3988,7 +4019,7 @@ public:
 					
 					float xvector;
 					float yvector;
-					bool recalcAngle = 0; //should we change his angle in the first place?
+					//bool recalcAngle = 0; //should we change his angle in the first place?
 					//combatrange is higher than shooting range because sometimes that range is broken while a fight is still happening, so he shouldnt turn away
 					if(distanceToTarget < this->hisweapon->attacks[hisweapon->combo]->range * 1.7) {
 						//set vectors from target
@@ -4000,10 +4031,12 @@ public:
 						xvector = -xvel;
 						yvector = -yvel;
 						//if he's not traveling very fast it looks natural to not change angle
-						if(Distance(0,0,xaccel, yaccel) > this->xmaxspeed * 0.8) {recalcAngle = 1;}
+						recalcAngle+= elapsed;
+						//if(Distance(0,0,xaccel, yaccel) > this->xmaxspeed * 0.8) {recalcAngle = 1;}
 					}
 					
-					if(recalcAngle) {
+					if(recalcAngle > 0) {
+						recalcAngle = -1000; //update every second
 						float angle = atan2(yvector, xvector);
 					
 						flip = SDL_FLIP_NONE;
@@ -4076,7 +4109,7 @@ public:
 			
 			//code for becoming agrod when seeing a hostile entity will go here
 			//face the direction we are moving
-			bool recalcAngle = 0; //should we change his angle in the first place?
+			//bool recalcAngle = 0; //should we change his angle in the first place?
 			//combatrange is higher than shooting range because sometimes that range is broken while a fight is still happening, so he shouldnt turn away
 			
 			//set vectors from velocity
@@ -4085,7 +4118,9 @@ public:
 			//if he's not traveling very fast it looks natural to not change angle
 			//recalcAngle = 1
 			if(Distance(0,0,xaccel, yaccel) > 0.95 * xmaxspeed) {recalcAngle = 1;}
-			if(recalcAngle) {
+			recalcAngle+= elapsed;
+			if(recalcAngle>0) {
+				recalcAngle = -1000;
 				float angle = atan2(yvector, xvector);
 				flip = SDL_FLIP_NONE;
 				up = 0; down = 0; left = 0; right = 0;
@@ -5324,8 +5359,15 @@ public:
 
 	musicNode(string fileaddress, int fx, int fy) {
 		name = fileaddress;
-		fileaddress = "audio/music/" + fileaddress + ".ogg";
-		blip = Mix_LoadMUS(fileaddress.c_str());
+		
+		string temp = "maps/" + g_mapdir + "/music/" + fileaddress + ".ogg";
+		if(!fileExists(temp)) {
+			temp = "stock/music/" + fileaddress + ".ogg";
+		}
+
+		
+		
+		blip = Mix_LoadMUS(temp.c_str());
 		x = fx;
 		y = fy;
 		g_musicNodes.push_back(this);
@@ -5562,7 +5604,7 @@ void clear_map(camera& cameraToReset) {
 		transitionMinFrametime = 1/mframes * 1000;
 		
 		
-		SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.bmp");
+		SDL_Surface* transitionSurface = IMG_Load("engine/transition.bmp");
 
 		int imageWidth = transitionSurface->w;
 		int imageHeight = transitionSurface->h;

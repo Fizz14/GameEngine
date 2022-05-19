@@ -173,7 +173,7 @@ bool freecamera = 0;
 bool devMode = 0;
 bool canSwitchOffDevMode = 0;
 bool inputRefreshCanSwitchOffDevMode = 0;
-bool showDevMessages = 0;
+bool showDevMessages = 1;
 bool showErrorMessages = 0;
 bool showImportantMessages = 1;
 
@@ -241,7 +241,7 @@ int g_lastFunctionalY = 0;
 int g_fogMiddleX = 10;
 int g_fogMiddleY = 9;
 float g_viewdist = 310; //240, 310 is casual, 340 could be from an upgrade.
-int g_tile_fade_speed = 20; //30
+int g_tile_fade_speed = 50; //40
 int xtileshift = 0;
 int ytileshift = 0;
 bool g_force_cookies_update = 0;

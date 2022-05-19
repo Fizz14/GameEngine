@@ -26,7 +26,7 @@ int WinMain() {
 	TTF_Init();
 	
 	window = SDL_CreateWindow("Game",
-	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
+	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_SetWindowMinimumSize(window, 100, 100);
@@ -60,10 +60,10 @@ int WinMain() {
 	//set global shadow-texture
 
 	//!!! move these to the engine folder
-	SDL_Surface* image = IMG_Load("textures/engine/shadow.bmp");
+	SDL_Surface* image = IMG_Load("engine/shadow.bmp");
 	g_shadowTexture = SDL_CreateTextureFromSurface(renderer, image);
 	SDL_FreeSurface(image);
-	image = IMG_Load("textures/engine/shadow-square.bmp");
+	image = IMG_Load("engine/shadow-square.bmp");
 	g_shadowTextureAlternate = SDL_CreateTextureFromSurface(renderer, image);
 	SDL_FreeSurface(image);
 
@@ -95,13 +95,13 @@ int WinMain() {
 
 
 	//protag healthbar
-	ui* protagHealthbarA = new ui(renderer, "textures/ui/healthbarA.png", 0,0, 0.05, 0.02, -3);
+	ui* protagHealthbarA = new ui(renderer, "stock/ui/healthbarA.png", 0,0, 0.05, 0.02, -3);
 	protagHealthbarA->persistent = 1;
-	ui* protagHealthbarB = new ui(renderer, "textures/ui/healthbarB.png", 0,0, 0.05, 0.02, -2);
+	ui* protagHealthbarB = new ui(renderer, "stock/ui/healthbarB.png", 0,0, 0.05, 0.02, -2);
 	protagHealthbarB->persistent = 1;
 	protagHealthbarB->shrinkPixels = 1;
 	
-	ui* protagHealthbarC = new ui(renderer, "textures/ui/healthbarC.png", 0,0, 0.05, 0.02, -1);
+	ui* protagHealthbarC = new ui(renderer, "stock/ui/healthbarC.png", 0,0, 0.05, 0.02, -1);
 	protagHealthbarC->persistent = 1;
 	protagHealthbarC->shrinkPixels = 1;
 
@@ -111,7 +111,7 @@ int WinMain() {
 	
 
 	//for transition
-	SDL_Surface* transitionSurface = IMG_Load("textures/engine/transition.bmp");
+	SDL_Surface* transitionSurface = IMG_Load("engine/transition.bmp");
 
 	int transitionImageWidth = transitionSurface->w;
 	int transitionImageHeight = transitionSurface->h;
@@ -125,7 +125,7 @@ int WinMain() {
 	float transitionDelta = transitionImageHeight;
 
 	//font
-	g_font = "fonts/Monda-Bold.ttf";
+	g_font = "engine/Monda-Bold.ttf";
 
 	//setup UI
 	adventureUIManager = new adventureUI(renderer);
@@ -135,7 +135,7 @@ int WinMain() {
 		//done once, because textboxes aren't cleared during clear_map()
 		nodeInfoText = new textbox(renderer, "", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
 		config = "edit";
-		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("textures/engine/walker.bmp"));
+		nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walker.bmp"));
 		
 	}
 	//set bindings from file
@@ -337,7 +337,7 @@ int WinMain() {
 	}
 
 
-	ui* inventoryMarker = new ui(renderer, "textures/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
+	ui* inventoryMarker = new ui(renderer, "stock/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
 	inventoryMarker->show = 0;
 	inventoryMarker->persistent = 1;
 
@@ -347,9 +347,9 @@ int WinMain() {
 
 	//This stuff is for the FoW mechanic
 
-	// misc/resolution.bmp has resolution 1920 x 1200 	
-    SDL_Surface* SurfaceA = IMG_Load("misc/resolution.bmp");
-	//SDL_Surface* SurfaceB = IMG_Load("misc/b.bmp");
+	// engine/resolution.bmp has resolution 1920 x 1200 	
+    SDL_Surface* SurfaceA = IMG_Load("engine/resolution.bmp");
+	//SDL_Surface* SurfaceB = IMG_Load("engine/b.bmp");
 	
 	TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 	TextureD = SDL_CreateTextureFromSurface(renderer, SurfaceA);
@@ -361,7 +361,7 @@ int WinMain() {
 	SDL_FreeSurface(SurfaceA);
 	//SDL_FreeSurface(SurfaceB);
 
-	SDL_Surface* blackbarSurface = IMG_Load("textures/engine/black.bmp");
+	SDL_Surface* blackbarSurface = IMG_Load("engine/black.bmp");
 	blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
 
 	SDL_FreeSurface(blackbarSurface);
@@ -447,7 +447,7 @@ int WinMain() {
 	canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 	canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
 
-	SDL_Surface* lightSurface = IMG_Load("misc/light.bmp");
+	SDL_Surface* lightSurface = IMG_Load("engine/light.bmp");
 	light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 	SDL_FreeSurface(lightSurface);
 
@@ -835,6 +835,7 @@ int WinMain() {
 				SDL_FreeSurface(textsurface);
 				SDL_DestroyTexture(texttexture);
 			}
+			
 
 			for(auto x : g_setsOfInterest) {
 				for(auto y : x) {
@@ -1024,30 +1025,30 @@ int WinMain() {
 							int ypos_fc = ((j - 9) * 55) + functionalY;
 							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
 							
-								g_fogcookies[i][j] += g_tile_fade_speed; if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
+								g_fogcookies[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
 								//g_fogcookies[i][j] = 0;
 								
 								//if you want to increment g_fc, there is an additional rule
 								//
 								
-								g_fc[i][j] += g_tile_fade_speed; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 
+								g_fc[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 
 								
 								
 								//g_fc[i][j] = 0;
 
-								g_sc[i][j] += g_tile_fade_speed; if (g_sc[i][j] >255) {g_sc[i][j] = 255;}
+								g_sc[i][j] += g_tile_fade_speed * (elapsed/60); if (g_sc[i][j] >255) {g_sc[i][j] = 255;}
 								//g_sc[i][j] = 0;
 
 							} else {
 
-								g_fogcookies[i][j] -= g_tile_fade_speed; if (g_fogcookies[i][j] < 0) {g_fogcookies[i][j] = 0;} 
+								g_fogcookies[i][j] -= g_tile_fade_speed * (elapsed/60); if (g_fogcookies[i][j] < 0) {g_fogcookies[i][j] = 0;} 
 								//g_fogcookies[i][j] = 0;
 								
-								g_fc[i][j] -= g_tile_fade_speed; if (g_fc[i][j] < 0) {g_fc[i][j] = 0; }
+								g_fc[i][j] -= g_tile_fade_speed * (elapsed/60); if (g_fc[i][j] < 0) {g_fc[i][j] = 0; }
 								
 								//g_fc[i][j] = 0;
 
-								g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) {g_sc[i][j] = 0;} 
+								g_sc[i][j] -= g_tile_fade_speed * (elapsed/60); if (g_sc[i][j] < 0) {g_sc[i][j] = 0;} 
 								//g_sc[i][j] = 0;
 
 							}
@@ -1157,11 +1158,10 @@ int WinMain() {
 			FoWrect.y -= 67 * XtoZ;
 			//SDL_RenderCopy(renderer, TextureB, NULL, &FoWrect);
 		
-			//black bars :/
-			SDL_Rect topbar = {px, FoWrect.y - 5000, 1500, 5000};
+			//black bars 
+			SDL_Rect topbar = {px, FoWrect.y - 5000, 1500, 5020};
 			SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
-			
-			SDL_Rect botbar = {px, FoWrect.y +  g_fogheight * 55 + 12, 1500, 5000};
+			SDL_Rect botbar = {px, FoWrect.y +  g_fogheight * 55 + 10, 1500, 5000};
 			SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
 			
 

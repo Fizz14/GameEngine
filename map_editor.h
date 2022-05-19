@@ -42,9 +42,9 @@ float mapeditorNavNodeTraceRadius = 100;  //for choosing the radius of the trace
 vector<string> consolehistory;
 int consolehistoryindex = 0;
 
-string captex = "textures/diffuse/mapeditor/cap.bmp"; 
-string walltex = "textures/diffuse/mapeditor/wall.bmp"; 
-string floortex = "textures/diffuse/mapeditor/floor.bmp"; 
+string captex = "stock/diffuse/mapeditor/cap.bmp"; 
+string walltex = "stock/diffuse/mapeditor/wall.bmp"; 
+string floortex = "stock/diffuse/mapeditor/floor.bmp"; 
 string masktex = "&";
 //vector of strings to be filled with each texture in the user's texture directory, for easier selection 
 vector<string> texstrs;
@@ -188,7 +188,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "bg" && g_useBackgrounds) {
             iss >> s0 >> backgroundstr;
-            SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".bmp").c_str());
+            SDL_Surface* bs = IMG_Load(("stock/backgrounds/" + backgroundstr + ".bmp").c_str());
 	        background = SDL_CreateTextureFromSurface(renderer, bs);
             g_backgroundLoaded = 1;
             SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
@@ -197,6 +197,28 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         if(word == "dark") {
             iss >> s0 >> p1;
             g_fogofwarEnabled = p1;
+            if(g_fogofwarEnabled) {
+                for(auto x : g_fogslates) {
+                    x->tangible = 1;
+                }
+                for(auto x : g_fogslatesA) {
+                    x->tangible = 1;
+                }
+                for(auto x : g_fogslatesB) {
+                    x->tangible = 1;
+                }
+
+            } else {
+                for(auto x : g_fogslates) {
+                    x->tangible = 0;
+                }
+                for(auto x : g_fogslatesA) {
+                    x->tangible = 0;
+                }
+                for(auto x : g_fogslatesB) {
+                    x->tangible = 0;
+                }
+            }
         }
         if(word == "box") {
             //M("loading collisisons" << endl;
@@ -374,14 +396,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 
                     if(box->shineBot){
                         //shine
-                        child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 54/2,  box->layer * 64 + 64, box->bounds.width, 54);
+                        child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 54/2,  box->layer * 64 + 64, box->bounds.width, 54);
                         child->sortingOffset = -26;
                         
                         box->children.push_back(child);
                     }
                     if(box->shineTop){
                         //back
-                        child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp",  "&", box->bounds.x, box->bounds.y + 54/2, box->layer * 64 + 64, box->bounds.width, 54/2);
+                        child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp",  "&", box->bounds.x, box->bounds.y + 54/2, box->layer * 64 + 64, box->bounds.width, 54/2);
                         box->children.push_back(child);
                     }
                     
@@ -390,20 +412,20 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 
                     //front shading
                     if(box->shadeBot == 1) {
-                        child = new mapObject(renderer, "textures/lighting/OCCLUSION.bmp",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 19 + 2, 64 * box->layer + 2, box->bounds.width, 55);
+                        child = new mapObject(renderer, "engine/OCCLUSION.bmp",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 19 + 2, 64 * box->layer + 2, box->bounds.width, 55);
                         box->children.push_back(child);
                     }
                     //left
                     int step = g_platformResolution;
                     if(box->shadeLeft) {
                         for (int i = 0; i < box->bounds.height; i+=step) {
-                            child = new mapObject(renderer, "textures/lighting/h-OCCLUSION.bmp",  "&", box->bounds.x - 27, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55/2, step);
+                            child = new mapObject(renderer, "engine/h-OCCLUSION.bmp",  "&", box->bounds.x - 27, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55/2, step);
                             box->children.push_back(child);
                         }
                     }
                     if(box->shadeRight) {
                         for (int i = 0; i < box->bounds.height; i+=step) { //5, 8   
-                            child = new mapObject(renderer, "textures/lighting/h-OCCLUSION.bmp",  "&", box->bounds.x + box->bounds.width, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55/2, step);
+                            child = new mapObject(renderer, "engine/h-OCCLUSION.bmp",  "&", box->bounds.x + box->bounds.width, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55/2, step);
                             box->children.push_back(child);
                         }
                     }
@@ -412,22 +434,22 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     
                     //corner a
                     if(box->shadeLeft && box->shadeTop) {
-                        child = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", box->bounds.x - (38 - 19), box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
+                        child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x - (38 - 19), box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
                         box->children.push_back(child);
                     }
                     //corner b
                     if(box->shadeRight && box->shadeTop) {
-                        child = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", box->bounds.x + box->bounds.width, box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
+                        child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x + box->bounds.width, box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
                         box->children.push_back(child);
                     }
                     //corner c
                     if(box->shadeLeft && (box->shadeBot == 1)){
-                        child = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", box->bounds.x - (38 - 19), box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
+                        child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x - (38 - 19), box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
                         box->children.push_back(child);
                     }
                     //corner d
                     if(box->shadeRight && (box->shadeBot == 1)) {
-                        child = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", box->bounds.x + box->bounds.width, box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
+                        child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x + box->bounds.width, box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
                         box->children.push_back(child);
                     }
                 
@@ -441,13 +463,13 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     int step = g_platformResolution;
                     if(triangle->capped) {
                         for (int i = 0; i < 55; i+=step) {
-                            child = new mapObject(renderer, triangle->captexture, "textures/engine/a.bmp", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                            child = new mapObject(renderer, triangle->captexture, "engine/a.bmp", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                             triangle->children.push_back(child);
                         }
                         //diagonal shine
                         step = g_TiltResolution;
                         for (int i = 0; i < 64; i+=step) {
-                            child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, (i * XtoY) + 0);
+                            child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, (i * XtoY) + 0);
                             child->sortingOffset = -25;
                             triangle->children.push_back(child);
                         }
@@ -467,7 +489,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     if(triangle->shaded) {
                         for (int i = 0; i < 64; i+=step) {
                             
-                            child = new mapObject(renderer, "textures/lighting/OCCLUSION.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - (i * XtoY) - 1, triangle->layer * 64, step,  50, 0, (i * XtoY) + 0);
+                            child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - (i * XtoY) - 1, triangle->layer * 64, step,  50, 0, (i * XtoY) + 0);
                             triangle->children.push_back(child);
                             
                         }
@@ -479,12 +501,12 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         int step = g_platformResolution;
                         if(triangle->capped) {
                             for (int i = 0; i < 55; i+=step) {
-                                child = new mapObject(renderer, triangle->captexture, "textures/engine/b.bmp", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                child = new mapObject(renderer, triangle->captexture, "engine/b.bmp", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                 triangle->children.push_back(child);
                             }
                             step = g_TiltResolution;
                             for (int i = 0; i < 64; i+=step) {
-                                child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step,  55, 0, ((64 - i) * XtoY));
+                                child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step,  55, 0, ((64 - i) * XtoY));
                                 child->sortingOffset = -25;
                                 triangle->children.push_back(child);
                             }
@@ -505,7 +527,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         if(triangle->shaded) {
                             for (int i = 0; i < 64; i+=step) {
                                 
-                                child = new mapObject(renderer, "textures/lighting/OCCLUSION.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - step) - i) * XtoY) - 1, 64 * triangle->layer, step,  50, 0, ((64 - i) * XtoY));
+                                child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - step) - i) * XtoY) - 1, 64 * triangle->layer, step,  50, 0, ((64 - i) * XtoY));
                                 triangle->children.push_back(child);
                                 
                             }
@@ -515,28 +537,28 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                             if(triangle->capped) {
                                 int step = g_platformResolution;
                                 for (int i = 0; i < 55; i+=step) {
-                                    child = new mapObject(renderer, triangle->captexture, "textures/engine/c.bmp", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                    child = new mapObject(renderer, triangle->captexture, "engine/c.bmp", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                     triangle->children.push_back(child);
                                 }
                                  step = g_TiltResolution;
                                 for (int i = 0; i < 64; i+=step) {
-                                    child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (i * XtoY) + 0);
+                                    child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (i * XtoY) + 0);
                                     triangle->children.push_back(child);
                                 }
                             }
-                            //child = new mapObject(renderer, triangle->captexture, "textures/engine/c.bmp", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
+                            //child = new mapObject(renderer, triangle->captexture, "engine/c.bmp", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
                             //triangle->children.push_back(child);
                         } else {
                             
                             if(triangle->capped) {
                                 int step = g_platformResolution;
                                 for (int i = 0; i < 55; i+=step) {
-                                    child = new mapObject(renderer, triangle->captexture, "textures/engine/d.bmp", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                    child = new mapObject(renderer, triangle->captexture, "engine/d.bmp", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                     triangle->children.push_back(child);
                                 }
                                 step = g_TiltResolution;
                                 for (int i = 0; i < 64; i+=step) {
-                                    child = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step,  34, 0, ((64 - i) * XtoY));
+                                    child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step,  34, 0, ((64 - i) * XtoY));
                                     triangle->children.push_back(child);
                                 }
                             }
@@ -644,7 +666,7 @@ void changeTheme(string str) {
     if(g_backgroundLoaded) {
         SDL_DestroyTexture(background);
     }
-    SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".bmp").c_str());
+    SDL_Surface* bs = IMG_Load(("stock/backgrounds/" + backgroundstr + ".bmp").c_str());
     background = SDL_CreateTextureFromSurface(renderer, bs);
     g_backgroundLoaded = 1;
     SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
@@ -654,12 +676,18 @@ void changeTheme(string str) {
 
     //re-populate the array of textures that we rotate thru for creating floors, walls, and caps
     texstrs.clear();
-    string path = "textures/diffuse/" + textureDirectory;
-    D(path);
-    if(!filesystem::exists(path)) {
-        M("Theme " + path + "not found");
-        return;
-    }
+    //check local folder first
+    string path;
+    path = "maps/" + g_mapdir + "stock/diffuse/";
+    if(!fileExists("maps/" + g_mapdir + "stock/diffuse/floor.bmp")) {  
+        path = "stock/stock/diffuse/" + textureDirectory;
+        if(!filesystem::exists(path)) {
+            M("Theme " + path + "not found");
+            return;
+        }
+    }    
+
+   
     for (const auto & entry : filesystem::directory_iterator(path)) {
 
         texstrs.push_back(entry.path().u8string());
@@ -708,6 +736,12 @@ bool mapeditor_save_map(string word) {
     std::filesystem::create_directories("maps/" + g_mapdir);
     word = "maps/" + g_mapdir  + "/" + word + ".map";
     
+    //make folders for custom assets
+    vector<string> dirs = {"ai","attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "textures", "weapons", "masks", "heightmaps", "backgrounds", "ui"};
+    for(auto x : dirs) {
+        std::filesystem::create_directories("maps/" + g_mapdir + "/" + x);
+    }
+
     ofile.open(word);
 
     //write enemies and budget
@@ -834,18 +868,18 @@ bool mapeditor_save_map(string word) {
 
 //called on init if map_editing is true
 void init_map_writing(SDL_Renderer* renderer) {
-    selection = new tile(renderer, "textures/engine/marker.bmp", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
-    marker = new tile(renderer, "textures/engine/marker.bmp", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
-    markerz = new tile(renderer, "textures/engine/marker.bmp", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
-    worldsoundIcon = new tile(renderer, "textures/engine/speaker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    listenerIcon = new tile(renderer, "textures/engine/listener.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    navNodeIcon = new tile(renderer, "textures/engine/walker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    musicIcon = new tile(renderer, "textures/engine/music.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    cueIcon = new tile(renderer, "textures/engine/cue.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    waypointIcon = new tile(renderer, "textures/engine/waypoint.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    poiIcon = new tile(renderer, "textures/engine/pointofinterest.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    doorIcon = new tile(renderer, "textures/engine/door.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-    triggerIcon = new tile(renderer, "textures/engine/trigger.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    selection = new tile(renderer, "engine/marker.bmp", "&", 0, 0, 0, 0, 1, 1, 1, 0, 0);
+    marker = new tile(renderer, "engine/marker.bmp", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
+    markerz = new tile(renderer, "engine/marker.bmp", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
+    worldsoundIcon = new tile(renderer, "engine/speaker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    listenerIcon = new tile(renderer, "engine/listener.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    navNodeIcon = new tile(renderer, "engine/walker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    musicIcon = new tile(renderer, "engine/music.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    cueIcon = new tile(renderer, "engine/cue.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    waypointIcon = new tile(renderer, "engine/waypoint.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    poiIcon = new tile(renderer, "engine/poi.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    doorIcon = new tile(renderer, "engine/door.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+    triggerIcon = new tile(renderer, "engine/trigger.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
 
     selection->software = 1;
     marker->software = 1;
@@ -865,7 +899,7 @@ void init_map_writing(SDL_Renderer* renderer) {
     captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
 
     texstrs.clear();
-    string path = "textures/diffuse/" + textureDirectory;
+    string path = "stock/diffuse/" + textureDirectory;
     for (const auto & entry : filesystem::directory_iterator(path)) {
         texstrs.push_back(entry.path().u8string());
     }
@@ -1005,7 +1039,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/trigger.bmp");
+        selection->image = IMG_Load("engine/trigger.bmp");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
         selection->wraptexture = 0;
@@ -1063,7 +1097,7 @@ void write_map(entity* mapent) {
                 t->wraptexture = tiling;
 
                 //check for heightmap
-                string heightmap_fileaddress = "textures/heightmaps/" + floortex.substr(17);
+                string heightmap_fileaddress = "stock/heightmaps/" + floortex.substr(17);
                 D(heightmap_fileaddress);
                 if(fileExists(heightmap_fileaddress)) {
                     //check if we already have a heightmap with the same bindings
@@ -1101,7 +1135,7 @@ void write_map(entity* mapent) {
             lx = px;
             ly = py;
             makingbox = 1;
-            selection->image = IMG_Load("textures/engine/wall.bmp");
+            selection->image = IMG_Load("engine/wall.bmp");
             selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
             SDL_FreeSurface(selection->image);
         }
@@ -1120,7 +1154,7 @@ void write_map(entity* mapent) {
                 box* c = 0;
 
                 //spawn related objects
-                //string loadstr = "textures/wall.bmp";
+                //string loadstr = "stock/wall.bmp";
                 if(makeboxs) {
                     for (int i = wallstart/64; i < wallheight / 64; i++) {
                         bool fcap = (!(i + 1 < wallheight/64));//&& autoMakeWallcaps;
@@ -1150,53 +1184,53 @@ void write_map(entity* mapent) {
 
                 if(shine == 1) {
                     //front
-                    //mapObject* f = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp",  "&", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
+                    //mapObject* f = new mapObject(renderer, "engine/SMOOTHSHADING.bmp",  "&", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
                     
                     
 
                     //back
-                    //f = new mapObject(renderer, "textures/lighting/SMOOTHSHADING.bmp",  "&", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
+                    //f = new mapObject(renderer, "engine/SMOOTHSHADING.bmp",  "&", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
                     
                 }
 
                 if(shine == 2) {
-                    mapObject* f = new mapObject(renderer, "textures/lighting/SHARPSHADING.bmp",  "&", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "engine/SHARPSHADING.bmp",  "&", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
                     (void)f;
                 }
 
                 if(shine == 3) { 
-                    mapObject* f = new mapObject(renderer, "textures/lighting/SHARPBRIGHTSHADING.bmp",  "&", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
+                    mapObject* f = new mapObject(renderer, "engine/SHARPBRIGHTSHADING.bmp",  "&", selection->x, selection->y + selection->height - wallheight + marker->height/2, 0, selection->width, marker->height);
                     (void)f;
                 }
 
                 if(occlusion) {
                     //front shading
-                    mapObject* e = new mapObject(renderer, "textures/lighting/OCCLUSION.bmp",  "&", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
+                    mapObject* e = new mapObject(renderer, "engine/OCCLUSION.bmp",  "&", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
                     c->children.push_back(e);
                     //left
                     int step = g_platformResolution;
                     for (int i = 0; i < selection->height; i+=step) {
-                        mapObject* e = new mapObject(renderer, "textures/lighting/h-OCCLUSION.bmp",  "&", selection->x - 19, selection->y + i + g_platformResolution, 0, 55/2, step);
+                        mapObject* e = new mapObject(renderer, "engine/h-OCCLUSION.bmp",  "&", selection->x - 19, selection->y + i + g_platformResolution, 0, 55/2, step);
                         c->children.push_back(e);
                     }
                     for (int i = 0; i < selection->height; i+=step) {
-                        mapObject* e = new mapObject(renderer, "textures/lighting/h-OCCLUSION.bmp",  "&", selection->x + selection->width, selection->y + i + g_platformResolution, 0, 55/2, step);
+                        mapObject* e = new mapObject(renderer, "engine/h-OCCLUSION.bmp",  "&", selection->x + selection->width, selection->y + i + g_platformResolution, 0, 55/2, step);
                         c->children.push_back(e);
                     }
                     
                     
                     
                     //corner a
-                    e = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", selection->x - (38 - 19), selection->y, 0, 32, 19, 0, 0);
+                    e = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", selection->x - (38 - 19), selection->y, 0, 32, 19, 0, 0);
                     c->children.push_back(e);
                     //corner b
-                    e = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", selection->x + selection->width, selection->y, 0, 32, 19, 0, 0);
+                    e = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", selection->x + selection->width, selection->y, 0, 32, 19, 0, 0);
                     c->children.push_back(e);
                     //corner c
-                    e = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", selection->x - (38 - 19), selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0);
+                    e = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", selection->x - (38 - 19), selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0);
                     c->children.push_back(e);
                     //corner d
-                    e = new mapObject(renderer, "textures/lighting/x-OCCLUSION.bmp", "&", selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0);
+                    e = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0);
                     c->children.push_back(e);
                 }                
             }
@@ -1209,7 +1243,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/invisiblewall.bmp");
+        selection->image = IMG_Load("engine/invisiblewall.bmp");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
         
@@ -1221,7 +1255,7 @@ void write_map(entity* mapent) {
                 box* c = 0;
 
                 
-                string sthwall = "textures/engine/seethru.bmp";
+                string sthwall = "engine/seethru.bmp";
                 if(makeboxs) {
                     for (int i = wallstart/64; i < wallheight / 64; i++) {
                         bool fcap = (!(i + 1 < wallheight/64));//&& autoMakeWallcaps;
@@ -1256,7 +1290,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/navmesh.bmp");
+        selection->image = IMG_Load("engine/navmesh.bmp");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
     } else {
@@ -1366,6 +1400,8 @@ void write_map(entity* mapent) {
                 bool deleteflag = 1;
                 for(auto n : g_entities) {
                     if(n == protag) {continue;}
+                    if(n->persistentHidden) {continue;}
+                    if(n->persistentGeneral) {continue;}
                     if(RectOverlap(n->getMovedBounds(), marker->getMovedBounds()) && !n->inParty && n->tangible && n != protag) {
                         delete n;
                         deleteflag = 0;
@@ -1432,17 +1468,18 @@ void write_map(entity* mapent) {
                 }
 
                 //delete navmesh
-                for(auto x : g_navNodes) {
-                    rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
-                    rect b = {x->x - 10, x->y - 10, 20, 20};
+                if(drawhitboxes) {
+                    for(auto x : g_navNodes) {
+                        rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
+                        rect b = {x->x - 10, x->y - 10, 20, 20};
 
-                    if(RectOverlap(markerrect, b)) {
-                        RecursiveNavNodeDelete(x);
-                        deleteflag = 0;
-                        break;
+                        if(RectOverlap(markerrect, b)) {
+                            RecursiveNavNodeDelete(x);
+                            deleteflag = 0;
+                            break;
+                        }
                     }
                 }
-                D(markerz->z);
                 for(auto x: g_triggers) {
                     rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
                     rect b = {x->x, x->y, x->width, x->height};
@@ -1469,6 +1506,16 @@ void write_map(entity* mapent) {
                 }
 
                 if(wallheight == 64 && deleteflag){
+                    //musicnodes
+                    for(auto x : g_musicNodes) {
+                        rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
+                        rect b = {(int)x->x, (int)x->y, 60, 40};
+                        if(RectOverlap(markerrect, b)) {
+                            delete x;
+                            // !!! Technically this is unsafe, the data should be handled better
+                        }
+                    }
+
                     //rect markerrect = {marker->x, marker->y, marker->width, marker->height};
                     for(long long unsigned int i = 0; i < g_tiles.size(); i++) {
                         //M(g_tiles[i]->width);
@@ -1487,7 +1534,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingdoor = 1;
-        selection->image = IMG_Load("textures/engine/door.bmp");
+        selection->image = IMG_Load("engine/door.bmp");
         selection->wraptexture = 0;
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
@@ -1821,7 +1868,7 @@ void write_map(entity* mapent) {
                             if((int)i == g_layers) { continue; }
                             for(auto n : g_boxs[i+1]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
+                                if(n->walltexture == "engine/seethru.bmp") {continue;}
                                 if(RectOverlap(inneighbor, n->bounds)) {
                                     b->capped = false;
                                 }
@@ -1835,7 +1882,7 @@ void write_map(entity* mapent) {
                             rect a = {((b->x1 + b->x2) /2) - 4, ((b->y1 + b->y2) / 2) - 4, 8, 8};
                             for(auto n : g_triangles[i+1]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
+                                if(n->walltexture == "engine/seethru.bmp") {continue;}
                                 if(TriRectOverlap(n, a)) {
                                     b->capped = false;
                                 }
@@ -1857,7 +1904,7 @@ void write_map(entity* mapent) {
                             b->shineBot = true;
 
                             //don't calculate lighting for invisible walls
-                            if(b->walltexture == "textures/engine/seethru.bmp") {
+                            if(b->walltexture == "engine/seethru.bmp") {
                                 b->shineTop = 0;
                                 b->shineBot = 0;
                                 continue;
@@ -1866,7 +1913,7 @@ void write_map(entity* mapent) {
                             //check for overlap with all other boxes
                             for(auto n : g_boxs[i]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
+                                if(n->walltexture == "engine/seethru.bmp") {continue;}
                                 if(n == b) {continue;}
                                 
                                 if(RectOverlap(n->bounds, uneighbor)) {
@@ -1927,7 +1974,7 @@ void write_map(entity* mapent) {
                                 for(auto n: g_boxs[0]) {
                                     if(n == b) {continue;}
                                     //don't calculate lighting by invisible walls
-                                    if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
+                                    if(n->walltexture == "engine/seethru.bmp") {continue;}
                                     if(RectOverlap(n->bounds, uneighbor)) {
                                         b->shadeTop = false;
                                     }
@@ -1961,7 +2008,7 @@ void write_map(entity* mapent) {
                             if(i > 0){
                                 for(auto n: g_boxs[i-1]) {
                                     //don't calculate lighting by invisible walls
-                                    if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
+                                    if(n->walltexture == "engine/seethru.bmp") {continue;}
                                     if(!n->capped) {continue;}
                                     
                                     if(RectOverlap(n->bounds, uneighbor)) {
@@ -1995,7 +2042,7 @@ void write_map(entity* mapent) {
                                 
                                 
                             }
-                            if(b->walltexture == "textures/engine/seethru.bmp") {
+                            if(b->walltexture == "engine/seethru.bmp") {
                                 b->shineTop = 0;
                                 b->shineBot = 0;
                                 //continue;
@@ -2018,7 +2065,7 @@ void write_map(entity* mapent) {
                             } else {
                                 for(auto b : g_boxs[i-1]) {
                                     //don't calculate lighting by invisible walls
-                                    if(b->walltexture == "textures/engine/seethru.bmp") {continue;}
+                                    if(b->walltexture == "engine/seethru.bmp") {continue;}
                                     if(TriRectOverlap(tri, b->bounds.x + 2, b->bounds.y + 2,b->bounds.width - 4, b->bounds.height - 4)) {
                                         tri->shaded = 1;
                                     }
@@ -2289,7 +2336,7 @@ void write_map(entity* mapent) {
                             if((int)i == g_layers) { continue; }
                             for(auto n : g_boxs[i+1]) {
                                 //don't calculate lighting by invisible walls
-                                if(n->walltexture == "textures/engine/seethru.bmp") {continue;}
+                                if(n->walltexture == "engine/seethru.bmp") {continue;}
                                 if(RectOverlap(inneighbor, n->bounds)) {
                                     b->capped = false;
                                 }
@@ -2594,6 +2641,28 @@ void write_map(entity* mapent) {
                         if(line >> b) {
                             g_fogofwarEnabled = b;
                         }
+                        if(g_fogofwarEnabled) {
+                            for(auto x : g_fogslates) {
+                                x->tangible = 1;
+                            }
+                            for(auto x : g_fogslatesA) {
+                                x->tangible = 1;
+                            }
+                            for(auto x : g_fogslatesB) {
+                                x->tangible = 1;
+                            }
+
+                        } else {
+                            for(auto x : g_fogslates) {
+                                x->tangible = 0;
+                            }
+                            for(auto x : g_fogslatesA) {
+                                x->tangible = 0;
+                            }
+                            for(auto x : g_fogslatesB) {
+                                x->tangible = 0;
+                            }
+                        }
                     }
                     if(word == "budget") {
                         int a;
@@ -2630,7 +2699,7 @@ void write_map(entity* mapent) {
                         if(g_backgroundLoaded) {
                             SDL_DestroyTexture(background);
                         }
-                        SDL_Surface* bs = IMG_Load(("textures/backgrounds/" + backgroundstr + ".bmp").c_str());
+                        SDL_Surface* bs = IMG_Load(("stock/backgrounds/" + backgroundstr + ".bmp").c_str());
                         background = SDL_CreateTextureFromSurface(renderer, bs);
                         g_backgroundLoaded = 1;
                         SDL_FreeSurface(bs);
@@ -2701,25 +2770,25 @@ void write_map(entity* mapent) {
                     }
                     if(word == "wall" || word == "w") {
                         line >> walltex;
-                        walltex = "textures/diffuse/" + textureDirectory + walltex + ".bmp";
+                        walltex = "stock/diffuse/" + textureDirectory + walltex + ".bmp";
 
                         break;
                     }
                     if(word == "floor" || word == "f") {
                         line >> floortex;
                         D(textureDirectory);
-                        floortex = "textures/diffuse/" + textureDirectory + floortex + ".bmp";
+                        floortex = "stock/diffuse/" + textureDirectory + floortex + ".bmp";
                         D(floortex);
                         break;
                     }
                     if(word == "cap" || word == "c") {
                         line >> captex;
-                        captex = "textures/diffuse/" + textureDirectory + captex + ".bmp";
+                        captex = "stock/diffuse/" + textureDirectory + captex + ".bmp";
                         break;
                     }
                     if(word == "mask" || word == "m") {
                         line >> masktex;
-                        masktex = "textures/masks/" + masktex + ".bmp";
+                        masktex = "stock/masks/" + masktex + ".bmp";
                         break;
                     }
                     if(word == "layer") {
@@ -2828,6 +2897,22 @@ void write_map(entity* mapent) {
                         hopeful->agrod = 1;
                     }
                 } 
+                
+                //roam zombie 0 -> make zombie roam poi 0
+                if(word == "roam") {
+                    line >> word;
+                    int p0;
+                    line >> p0;
+                    entity* hopeful = searchEntities(word);
+                    if(hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0) {
+                        hopeful->agrod = 0;
+                        hopeful->target = nullptr;
+                        hopeful->myTravelstyle = roam;
+                        hopeful->poiIndex = p0;
+                        hopeful->traveling = 1;
+                        hopeful->readyForNextTravelInstruction = 1;
+                    }
+                }
 
                 if(word == "adj" || word == "adjust") {
                     //adjust
@@ -2895,7 +2980,7 @@ void write_map(entity* mapent) {
                         textureDirectory = "mapeditor/";
                         //re-populate the array of textures that we rotate thru for creating floors, walls, and caps
                         texstrs.clear();
-                        string path = "textures/diffuse/" + textureDirectory;
+                        string path = "stock/diffuse/" + textureDirectory;
                         if(!filesystem::exists(path)) {
                             M("Theme " + path + "not found");
                             break;
@@ -2917,9 +3002,9 @@ void write_map(entity* mapent) {
                         delete captexDisplay;
                         captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
                         
-                        captex = "textures/diffuse/mapeditor/a.bmp"; 
-                        walltex = "textures/diffuse/mapeditor/c.bmp"; 
-                        floortex = "textures/diffuse/mapeditor/b.bmp"; 
+                        captex = "stock/diffuse/mapeditor/a.bmp"; 
+                        walltex = "stock/diffuse/mapeditor/c.bmp"; 
+                        floortex = "stock/diffuse/mapeditor/b.bmp"; 
                         break;
                     }
                     if(word == "grid") {
@@ -3222,7 +3307,7 @@ void write_map(entity* mapent) {
         if(autoMakeWallcaps) {
             int step = g_platformResolution;
             for (int i = 0; i < 55; i+=step) {
-                mapObject* e = new mapObject(renderer, captex, "textures/engine/a.bmp", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                mapObject* e = new mapObject(renderer, captex, "engine/a.bmp", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
                 n->children.push_back(e);
             }
             
@@ -3234,7 +3319,7 @@ void write_map(entity* mapent) {
         if(autoMakeWalls){
             //a tile on the floor to help with the edge of the diagonal wall pieces
             //this tile won't be saved, because it uses an engine mask
-            //tile* t = new tile(renderer, walltex.c_str(), "textures/engine/a.bmp", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
+            //tile* t = new tile(renderer, walltex.c_str(), "engine/a.bmp", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
             for (int j = wallstart; j < wallheight; j+=vstep) {
                 for (int i = 0; i < 64; i+=step) {
                     mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (i * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, (i * XtoY));
@@ -3255,14 +3340,14 @@ void write_map(entity* mapent) {
         if(autoMakeWallcaps) {
             int step = g_platformResolution;
             for (int i = 0; i < 55; i+=step) {
-                mapObject* e = new mapObject(renderer, captex, "textures/engine/b.bmp", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                mapObject* e = new mapObject(renderer, captex, "engine/b.bmp", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
                 n->children.push_back(e);
             }
             
         }
 
         //a tile on the floor to help with the edge of the diagonal wall pieces
-        //tile* t = new tile(renderer, walltex.c_str(), "textures/engine/b.bmp", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
+        //tile* t = new tile(renderer, walltex.c_str(), "engine/b.bmp", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
 
         int step = 2;
         int vstep = 64;
@@ -3285,7 +3370,7 @@ void write_map(entity* mapent) {
         }
         int step = g_platformResolution;
         for (int i = 0; i < 55; i+=step) {
-            mapObject* child = new mapObject(renderer, n->captexture, "textures/engine/c.bmp", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+            mapObject* child = new mapObject(renderer, n->captexture, "engine/c.bmp", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
             n->children.push_back(child);
         }
     }
@@ -3298,7 +3383,7 @@ void write_map(entity* mapent) {
         }
         int step = g_platformResolution;
         for (int i = 0; i < 55; i+=step) {
-            mapObject* child = new mapObject(renderer, n->captexture, "textures/engine/d.bmp", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+            mapObject* child = new mapObject(renderer, n->captexture, "engine/d.bmp", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
             n->children.push_back(child);
         }
         
@@ -3364,7 +3449,7 @@ void write_map(entity* mapent) {
         lx = px;
         ly = py;
         makingbox = 1;
-        selection->image = IMG_Load("textures/engine/collisionzone.bmp");
+        selection->image = IMG_Load("engine/collisionzone.bmp");
         selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
         SDL_FreeSurface(selection->image);
         
@@ -3489,7 +3574,7 @@ void adventureUI::hideInventoryUI() {
 }
 
 adventureUI::adventureUI(SDL_Renderer* renderer) {
-    talkingBox = new ui(renderer, "textures/ui/menu9patchblack.bmp", 0, 0.65, 1, 0.35, 0);
+    talkingBox = new ui(renderer, "stock/ui/menu9patchblack.bmp", 0, 0.65, 1, 0.35, 0);
     talkingBox->patchwidth = 213;
     talkingBox->patchscale = 0.4;
     talkingBox->is9patch = true;
@@ -3512,13 +3597,13 @@ adventureUI::adventureUI(SDL_Renderer* renderer) {
     responseText->worldspace = 1;
     responseText->align = 2; //center-align
     
-    inventoryA = new ui(renderer, "textures/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 -0.01, 1);
+    inventoryA = new ui(renderer, "stock/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 -0.01, 1);
     inventoryA->is9patch = true;
     inventoryA->patchwidth = 213;
     inventoryA->patchscale = 0.4;
     inventoryA->persistent = true;
     
-    inventoryB = new ui(renderer, "textures/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
+    inventoryB = new ui(renderer, "stock/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
     inventoryB->is9patch = true;
     inventoryB->patchwidth = 213;
     inventoryB->patchscale = 0.4;
