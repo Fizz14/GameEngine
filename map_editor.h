@@ -737,7 +737,7 @@ bool mapeditor_save_map(string word) {
     word = "maps/" + g_mapdir  + "/" + word + ".map";
     
     //make folders for custom assets
-    vector<string> dirs = {"ai","attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "diffuse", "weapons", "masks", "heightmaps", "backgrounds", "ui"};
+    vector<string> dirs = {"ai","attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "diffuse", "weapons", "masks", "heightmaps", "backgrounds", "ui", "effects"};
     for(auto x : dirs) {
         std::filesystem::create_directories("maps/" + g_mapdir + "/" + x);
     }

@@ -240,6 +240,7 @@ int WinMain() {
 	//hide mouse
 	//
 
+
 	//apply fullscreen
 	if(g_fullscreen) {
 		SDL_GetCurrentDisplayMode(0, &DM);
@@ -438,6 +439,11 @@ int WinMain() {
 	SDL_DestroyTexture(s->texture);
 	
 
+	//test new particle system
+
+	smokeEffect = new effectIndex("default", renderer);
+	
+				
 
 	SDL_SetRenderDrawColor(renderer, 0,0,0,0);
 	SDL_RenderPresent(renderer);
@@ -454,8 +460,10 @@ int WinMain() {
 	for(auto x : g_fogslates) {
 		x->texture = TextureC;
 	}
-	while (!quit) {
 
+	I("Begining mainloop");
+	while (!quit) {
+		
 		//some event handling
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -549,7 +557,7 @@ int WinMain() {
 
 		//INPUT
 		getInput(elapsed);
-
+		
 		//spring
 		if((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move)) {
 			protag->zaccel = 180;
@@ -674,7 +682,7 @@ int WinMain() {
 			}	
 		}
 		
-			
+		
 
 		//update camera
 		SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
@@ -746,6 +754,19 @@ int WinMain() {
 
 
 		SDL_Rect FoWrect;
+
+		//update particles
+		for(auto x : g_particles) {
+			x->update(elapsed, g_camera);
+		}
+
+		//delete old particles
+		for(int i = 0; i < g_particles.size(); i++) {
+			if(g_particles[i]->lifetime < 0) {
+				delete g_particles[i];
+				i--;
+			}
+		}
 
 		//sort		
 		sort_by_y(g_actors);
@@ -1179,7 +1200,7 @@ int WinMain() {
 			adventureUIManager->healthText->show = 0;
 			
 		}
-
+		
 		//move the healthbar properly to the protagonist
 		rect obj; // = {( , (((protag->y - ((protag->height))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom, (protag->width * g_camera.zoom), (protag->height * g_camera.zoom))};		
 		obj.x = ((protag->x -g_camera.x) * g_camera.zoom);
@@ -1456,8 +1477,7 @@ int WinMain() {
 			}
         
    	 	}
-		
-		SDL_RenderPresent(renderer);
+	
 		
 		//update music
 		if(musicUpdateTimer > 500) {		
@@ -1551,6 +1571,8 @@ int WinMain() {
 		if(adventureUIManager->sleepflag) {
 			adventureUIManager->continueDialogue();
 		}
+
+		SDL_RenderPresent(renderer);
 	}
 
 
@@ -2269,6 +2291,11 @@ void getInput(float &elapsed) {
 		//make navnode box
 		devinput[20] = 1;
 	}
+
+	//for testing particles
+	if(keystate[SDL_SCANCODE_Y] && devMode) {
+		smokeEffect->happen(g_focus->getOriginX(), g_focus->getOriginY(), g_focus->z);
+	} 
 
 	if(keystate[SDL_SCANCODE_PERIOD] && devMode) {
 		//make navnode box

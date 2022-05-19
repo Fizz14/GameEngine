@@ -124,6 +124,8 @@ vector<navNode*> g_navNodes;
 
 vector<vector<pointOfInterest*>> g_setsOfInterest;
 
+vector<effectIndex*> g_effectIndexes;
+
 
 struct cmpCoord {
     bool operator()(const pair<int, int> a, const pair<int, int> b) const {
@@ -784,5 +786,7 @@ int yesNoPrompt(string msg) {
 
 //TUDO:
 //set minimum window width and height to prevent crashes wenn the window is very small
+
+effectIndex* smokeEffect;
 
 #endif

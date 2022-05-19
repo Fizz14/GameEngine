@@ -5,6 +5,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_mixer.h>
+
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -1304,6 +1305,207 @@ int compare_ent (actor* a, actor* b) {
 void sort_by_y(vector<actor*> &g_entities) {
     stable_sort(g_entities.begin(), g_entities.end(), compare_ent);
 }
+
+
+class effectIndex {
+public:
+	string texname = "default";
+	bool OwnsTexture = 1;
+ 	SDL_Texture* texture;
+ 	int spawnNumber = 12;
+	int spawnRadius = 1;
+ 	int plifetime = 5;
+ 	int pwidth = 50;
+ 	int pheight = 50;
+	float pvelocityx = 0;
+	float pvelocityy = 0;
+	float paccelerationx = 0;
+	float paccelerationy = 0;
+	float pdeltasizex = -10;
+	float pdeltasizey = 10;
+
+ 	effectIndex(string filename, SDL_Renderer* renderer);
+
+ 	//given coordinates, spawn particles in the leve
+ 	void happen(int fx, int fy, int fz);
+
+ 	~effectIndex();
+
+};
+
+
+
+class particle : public actor {
+public:
+ 	int lifetime = 0;
+	float velocityx = 0;
+	float velocityy = 0;
+	float accelerationx = 0;
+	float accelerationy = 0;
+	float deltasizex = 0;
+	float deltasizey = 0;
+	SDL_Texture* texture;
+
+ 	particle(effectIndex* type) {
+ 		g_particles.push_back(this);
+		lifetime = type->plifetime;
+		width = type->pwidth;
+		height = type->pheight;
+		velocityx = type->pvelocityx;
+		velocityy = type->pvelocityy;
+		accelerationx = type->paccelerationx;
+		accelerationy = type->paccelerationy;
+		deltasizex = type->pdeltasizex;
+		deltasizey = type->pdeltasizey;
+		texture = type->texture;
+ 	}
+	
+ 	~particle() {
+ 		g_particles.erase(remove(g_particles.begin(), g_particles.end(), this), g_particles.end());
+ 	}
+
+ 	void update(int elapsed, camera fcamera) {
+ 		lifetime -= elapsed;
+		
+ 		
+		x += velocityx * elapsed;
+		y += velocityy * elapsed;
+		velocityx += accelerationx * elapsed;
+		velocityy += accelerationy * elapsed;
+		width += deltasizex * elapsed;
+		height += deltasizey * elapsed;
+		float zero = 0;
+		width = max(zero,width);
+		height = max(zero,height);
+ 	}
+
+	void render(SDL_Renderer* renderer, camera fcamera) {
+
+ 		SDL_FRect dstrect = { (x -fcamera.x -(width/2))* fcamera.zoom, (y-fcamera.y-(height/2)) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};	
+	 	SDL_RenderCopyF(renderer, texture, NULL, &dstrect);	
+		
+	}
+
+};
+
+effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
+	string existSTR;
+	existSTR = "maps/" + g_mapdir + "/effects/" + filename + ".eft";
+	if(!fileExists(existSTR)) {
+		existSTR = "stock/effects" + filename + ".eft";
+		if(!fileExists(existSTR)) {
+			existSTR = "stock/effects/default.eft";
+		}
+	}
+	ifstream file;
+	file.open(existSTR);		
+	string line;
+
+	//name of texture
+	file >> line;
+	file >> line;
+	texname = line;
+
+	//has anyone already loaded this texture?
+	//for(auto x : g_effectIndexes) {
+		//if(x->texname == this->texname) {
+			//this->OwnsTexture = 0;
+			//this->texture = x->texture;
+			//break;
+		//}
+	//}
+
+	
+
+	if(1) {
+		existSTR = "maps/" + g_mapdir + "/effects/" + texname + ".bmp";
+		if(!fileExists(existSTR)) {
+			existSTR = "stock/effects/	" + texname + ".bmp";
+			if(!fileExists(existSTR)) {
+				existSTR = "stock/effects/default.bmp";
+			}
+		}
+		
+		SDL_Surface* image = IMG_Load(existSTR.c_str());
+		if(image == NULL) {
+			E("Couldn't load surface for effect");
+		}
+		
+		texture = SDL_CreateTextureFromSurface(renderer, image);
+		if(texture == NULL) {
+			E("Couldn't load texture for effect");
+		}
+		SDL_FreeSurface(image);
+	}
+
+	//spawnNumber
+	file >> line;
+	file >> spawnNumber;
+
+	//spawnRadius
+	file >> line;
+	file >> spawnRadius;
+	spawnRadius *= 64;
+
+	//plifetime
+	file >> line;
+	file >> plifetime;
+	plifetime *= 1000;
+
+	//pwidth
+	file >> line;
+	file >> pwidth;
+
+	//pheight
+	file >> line;
+	file >> pheight;
+
+	//pvelocityx
+	file >> line;
+	file >> pvelocityx;
+
+	//pvelocityy
+	file >> line;
+	file >> pvelocityy;
+
+	//paccelerationx
+	file >> line;
+	file >> paccelerationx;
+
+	//paccelerationy
+	file >> line;
+	file >> paccelerationy;
+
+	//pdeltasizex
+	file >> line;
+	file >> pdeltasizex;
+
+	//pdeltasizey
+	file >> line;
+	file >> pdeltasizey;
+
+	g_effectIndexes.push_back(this);
+
+}
+
+//given coordinates, spawn particles in the level
+void effectIndex::happen(int fx, int fy, int fz) {
+	for(int i = 0; i < spawnNumber; i++) {
+		particle* a = new particle(this);
+		a->x = fx + (spawnRadius/2 - (rand() % spawnRadius));
+		a->y = fy + (spawnRadius/2 - (rand() % spawnRadius));
+		a->z = fz + (spawnRadius/2 - (rand() % spawnRadius));
+	}
+}
+
+effectIndex::~effectIndex() {
+	if(OwnsTexture) {
+		SDL_DestroyTexture(texture);
+	}
+
+	g_effectIndexes.erase(remove(g_effectIndexes.begin(), g_effectIndexes.end(), this), g_effectIndexes.end());
+}
+
 
 class cshadow:public actor {
 public:
@@ -6011,23 +6213,30 @@ void clear_map(camera& cameraToReset) {
 		delete g_listeners[0];
 	}
 
-	// size = g_attacks.size();
-	// bool contflag = 0;
-	// for(int i = 0; i < size; i++) {
-	// 	for(auto x : protag->hisweapon->attacks) {
-	// 		if(x == g_attacks[0]) {
-	// 			swap(g_attacks[0], g_attacks[g_attacks.size()-1]);
-	// 			contflag = 1;
-	// 			break;
+	size = (int)g_effectIndexes.size();
+	for(int i = 0; i < size; i++) {
+		delete g_effectIndexes[i];
+	}
+
+	g_particles.clear();
+
+	size = g_attacks.size();
+	bool contflag = 0;
+	for(int i = 0; i < size; i++) {
+		for(auto x : protag->hisweapon->attacks) {
+			if(x == g_attacks[0]) {
+				swap(g_attacks[0], g_attacks[g_attacks.size()-1]);
+				contflag = 1;
+				break;
 
 				
-	// 		}
+			}
 			
-	// 	}
-	// 	if(!contflag) {
-	// 		delete g_attacks[0];
-	// 	}
-	// }
+		}
+		if(!contflag) {
+			delete g_attacks[0];
+		}
+	}
 
 	vector<weapon*> persistentweapons;
 	size = (int)g_weapons.size();
@@ -6142,64 +6351,9 @@ public:
 	}
 };
 
-//data for the "cookies" of illumination subtracted from
-//the darkness of the world to represent player vision
-class lightcookie {
-	
 
-};
 
-// class particle: public actor{};
 
-// //originally made for smoke
-// class effectIndex {
-// public:
-// 	SDL_Texture* texture;
-// 	int spawnNumber = 12;
-// 	int plifetime = 5;
-// 	int pwidth = 50;
-// 	int pheight = 50;
-// 	effectIndex(string filename) {
-// 		string fileaddress = "textures/sprites/" + filename + ".png";
-// 		SDL_Surface* image = IMG_Load(fileaddress.c_str());
-// 		texture = SDL_CreateTextureFromSurface(renderer, image);
-// 		SDL_FreeSurface(image);
-// 	}
-// 	//given coordinates, spawn particles in the level
-// 	void happen(int fx, int fy, int fz, int radius) {
-// 		for(int i = 0; i < spawnNumber; i++) {
-// 			particle* a = new particle(this);
-// 			a->x = fx + (radius/2 - (rand() % radius));
-// 			a->y = fy + (radius/2 - (rand() % radius));
-// 			a->z = fz + (radius/2 - (rand() % radius));
-// 			a->lifetime = plifetime;
-// 			a->width = pwidth;
-// 			a->height = pheight; 
-// 		}
-// 	}
-// 	~effectIndex() {
-// 		SDL_DestroyTexture(texture);
-// 	}
-// };
-
-// class particle : public actor {
-// public:
-// 	int lifetime = 0;
-// 	particle(effectIndex* type) {
-// 		g_particles.push_back(this);
-// 	}
-// 	~particle() {
-// 		g_particles.erase(remove(g_particles.begin(), g_particles.end(), this), g_particles.end());
-// 	}
-// 	void update(int elapsed, camera fcamera) {
-// 		lifetime -= elapsed;
-// 		if(lifetime <= 0) {
-// 			delete this;
-// 		}
-// 		SDL_FRect dstrect = { (x -fcamera.x)* fcamera.zoom, (y-fcamera.y) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};
-// 		SDL_RenderCopyF(renderer, texture, NULL, &dstrect);	
-// 	}
-// };
 
 
 #endif
