@@ -42,9 +42,9 @@ float mapeditorNavNodeTraceRadius = 100;  //for choosing the radius of the trace
 vector<string> consolehistory;
 int consolehistoryindex = 0;
 
-string captex = "stock/diffuse/mapeditor/cap.bmp"; 
-string walltex = "stock/diffuse/mapeditor/wall.bmp"; 
-string floortex = "stock/diffuse/mapeditor/floor.bmp"; 
+string captex = "static/diffuse/mapeditor/cap.bmp"; 
+string walltex = "static/diffuse/mapeditor/wall.bmp"; 
+string floortex = "static/diffuse/mapeditor/floor.bmp"; 
 string masktex = "&";
 //vector of strings to be filled with each texture in the user's texture directory, for easier selection 
 vector<string> texstrs;
@@ -188,7 +188,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
         }
         if(word == "bg" && g_useBackgrounds) {
             iss >> s0 >> backgroundstr;
-            SDL_Surface* bs = IMG_Load(("stock/backgrounds/" + backgroundstr + ".bmp").c_str());
+            SDL_Surface* bs = IMG_Load(("static/backgrounds/" + backgroundstr + ".bmp").c_str());
 	        background = SDL_CreateTextureFromSurface(renderer, bs);
             g_backgroundLoaded = 1;
             SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
@@ -660,32 +660,37 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 
 void changeTheme(string str) { 
     textureDirectory = str + "/";
-    //update bg          
-    backgroundstr = str;
     
-    if(g_backgroundLoaded) {
-        SDL_DestroyTexture(background);
-    }
-    SDL_Surface* bs = IMG_Load(("stock/backgrounds/" + backgroundstr + ".bmp").c_str());
-    background = SDL_CreateTextureFromSurface(renderer, bs);
-    g_backgroundLoaded = 1;
-    SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
-    SDL_FreeSurface(bs);
+    //update bg          
+    // backgroundstr = str;
+    
+    // if(g_backgroundLoaded) {
+    //     SDL_DestroyTexture(background);
+    // }
+    // SDL_Surface* bs = IMG_Load(("static/backgrounds/" + backgroundstr + ".bmp").c_str());
+    // background = SDL_CreateTextureFromSurface(renderer, bs);
+    // g_backgroundLoaded = 1;
+    // SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
+    // SDL_FreeSurface(bs);
     
     //proceed
+
 
     //re-populate the array of textures that we rotate thru for creating floors, walls, and caps
     texstrs.clear();
     //check local folder first
     string path;
-    path = "maps/" + g_mapdir + "stock/diffuse/";
-    if(!fileExists("maps/" + g_mapdir + "stock/diffuse/floor.bmp")) {  
-        path = "stock/stock/diffuse/" + textureDirectory;
-        if(!filesystem::exists(path)) {
-            M("Theme " + path + "not found");
-            return;
-        }
-    }    
+    if(str == "custom" || str == "map") {
+        path = "maps/" + g_mapdir + "/diffuse/";
+    } else {
+        path = "static/diffuse/" + textureDirectory;
+    }
+    D(path);
+    
+    if(!filesystem::exists(path)) {
+        M("Theme " + path + "not found");
+        return;
+    }
 
    
     for (const auto & entry : filesystem::directory_iterator(path)) {
@@ -899,9 +904,11 @@ void init_map_writing(SDL_Renderer* renderer) {
     captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
 
     texstrs.clear();
-    string path = "stock/diffuse/" + textureDirectory;
-    for (const auto & entry : filesystem::directory_iterator(path)) {
-        texstrs.push_back(entry.path().u8string());
+    string path = "static/diffuse/" + textureDirectory;
+    if(fileExists(path + "/floor.bmp")) {
+        for (const auto & entry : filesystem::directory_iterator(path)) {
+            texstrs.push_back(entry.path().u8string());
+        }
     }
 }
 
@@ -1097,7 +1104,7 @@ void write_map(entity* mapent) {
                 t->wraptexture = tiling;
 
                 //check for heightmap
-                string heightmap_fileaddress = "stock/heightmaps/" + floortex.substr(17);
+                string heightmap_fileaddress = "static/heightmaps/" + floortex.substr(17);
                 D(heightmap_fileaddress);
                 if(fileExists(heightmap_fileaddress)) {
                     //check if we already have a heightmap with the same bindings
@@ -1154,7 +1161,7 @@ void write_map(entity* mapent) {
                 box* c = 0;
 
                 //spawn related objects
-                //string loadstr = "stock/wall.bmp";
+                //string loadstr = "static/wall.bmp";
                 if(makeboxs) {
                     for (int i = wallstart/64; i < wallheight / 64; i++) {
                         bool fcap = (!(i + 1 < wallheight/64));//&& autoMakeWallcaps;
@@ -2717,7 +2724,7 @@ void write_map(entity* mapent) {
                         if(g_backgroundLoaded) {
                             SDL_DestroyTexture(background);
                         }
-                        SDL_Surface* bs = IMG_Load(("stock/backgrounds/" + backgroundstr + ".bmp").c_str());
+                        SDL_Surface* bs = IMG_Load(("static/backgrounds/" + backgroundstr + ".bmp").c_str());
                         background = SDL_CreateTextureFromSurface(renderer, bs);
                         g_backgroundLoaded = 1;
                         SDL_FreeSurface(bs);
@@ -2788,25 +2795,25 @@ void write_map(entity* mapent) {
                     }
                     if(word == "wall" || word == "w") {
                         line >> walltex;
-                        walltex = "stock/diffuse/" + textureDirectory + walltex + ".bmp";
+                        walltex = "static/diffuse/" + textureDirectory + walltex + ".bmp";
 
                         break;
                     }
                     if(word == "floor" || word == "f") {
                         line >> floortex;
                         D(textureDirectory);
-                        floortex = "stock/diffuse/" + textureDirectory + floortex + ".bmp";
+                        floortex = "static/diffuse/" + textureDirectory + floortex + ".bmp";
                         D(floortex);
                         break;
                     }
                     if(word == "cap" || word == "c") {
                         line >> captex;
-                        captex = "stock/diffuse/" + textureDirectory + captex + ".bmp";
+                        captex = "static/diffuse/" + textureDirectory + captex + ".bmp";
                         break;
                     }
                     if(word == "mask" || word == "m") {
                         line >> masktex;
-                        masktex = "stock/masks/" + masktex + ".bmp";
+                        masktex = "static/masks/" + masktex + ".bmp";
                         break;
                     }
                     if(word == "layer") {
@@ -2998,7 +3005,7 @@ void write_map(entity* mapent) {
                         textureDirectory = "mapeditor/";
                         //re-populate the array of textures that we rotate thru for creating floors, walls, and caps
                         texstrs.clear();
-                        string path = "stock/diffuse/" + textureDirectory;
+                        string path = "static/diffuse/" + textureDirectory;
                         if(!filesystem::exists(path)) {
                             M("Theme " + path + "not found");
                             break;
@@ -3020,9 +3027,9 @@ void write_map(entity* mapent) {
                         delete captexDisplay;
                         captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
                         
-                        captex = "stock/diffuse/mapeditor/a.bmp"; 
-                        walltex = "stock/diffuse/mapeditor/c.bmp"; 
-                        floortex = "stock/diffuse/mapeditor/b.bmp"; 
+                        captex = "static/diffuse/mapeditor/a.bmp"; 
+                        walltex = "static/diffuse/mapeditor/c.bmp"; 
+                        floortex = "static/diffuse/mapeditor/b.bmp"; 
                         break;
                     }
                     if(word == "grid") {
@@ -3592,7 +3599,7 @@ void adventureUI::hideInventoryUI() {
 }
 
 adventureUI::adventureUI(SDL_Renderer* renderer) {
-    talkingBox = new ui(renderer, "stock/ui/menu9patchblack.bmp", 0, 0.65, 1, 0.35, 0);
+    talkingBox = new ui(renderer, "static/ui/menu9patchblack.bmp", 0, 0.65, 1, 0.35, 0);
     talkingBox->patchwidth = 213;
     talkingBox->patchscale = 0.4;
     talkingBox->is9patch = true;
@@ -3615,13 +3622,13 @@ adventureUI::adventureUI(SDL_Renderer* renderer) {
     responseText->worldspace = 1;
     responseText->align = 2; //center-align
     
-    inventoryA = new ui(renderer, "stock/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 -0.01, 1);
+    inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 -0.01, 1);
     inventoryA->is9patch = true;
     inventoryA->patchwidth = 213;
     inventoryA->patchscale = 0.4;
     inventoryA->persistent = true;
     
-    inventoryB = new ui(renderer, "stock/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
+    inventoryB = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
     inventoryB->is9patch = true;
     inventoryB->patchwidth = 213;
     inventoryB->patchscale = 0.4;

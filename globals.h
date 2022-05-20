@@ -277,8 +277,8 @@ float g_elapsed_accumulator = 0;
 // 2 is okay - g_TiltResolution actually doesn't affect loading
 // but it will effect CPU usage, particularly when the triangles are onscreen
 // 2 or 4 for large maps, seems okay 1 is more detail than I think anyone needs.
-int g_platformResolution = 11; // a factor of 55. 11 is fine.
-float g_TiltResolution = 4; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64
+int g_platformResolution = 11; // a factor of 55. 11 is fine. USE 11
+float g_TiltResolution = 4; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64 USE 4
 bool g_protagHasBeenDrawnThisFrame = 0;
 bool g_loadingATM = 0; //are we loading a new map atm?
 SDL_Texture* g_shadowTexture;
@@ -565,7 +565,9 @@ void playSound(int channel, Mix_Chunk* sound, int loops) {
 SDL_Texture* MaskTexture(SDL_Renderer* renderer, SDL_Texture* mask, SDL_Texture* diffuse) {
 	int w, h;
 	SDL_QueryTexture(diffuse, NULL, NULL, &w, &h);
+
 	SDL_Texture* result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+
 	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderTarget(renderer, result);
 

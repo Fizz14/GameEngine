@@ -1093,7 +1093,7 @@ public:
 		
 		if (!file.is_open()) {
 			//load from global folder
-			loadstr = "stock/attacks/" + filename + ".atk";
+			loadstr = "static/attacks/" + filename + ".atk";
 			//D(loadstr);
 			const char* plik = loadstr.c_str();
 			
@@ -1101,7 +1101,7 @@ public:
 			
 			if (!file.is_open()) {
 				//just make a default entity
-				string newfile = "stock/attacks/default.atk";
+				string newfile = "static/attacks/default.atk";
 				//D(loadstr);
 				file.open(newfile);
 			}
@@ -1112,9 +1112,9 @@ public:
 		string temp;
 		temp = "maps/" + g_mapdir + "/sprites/" + spritename + ".bmp";
 		if(!fileExists(temp)) {
-			temp = "stock/sprites/" + spritename + ".bmp";
+			temp = "static/sprites/" + spritename + ".bmp";
 			if(!fileExists(temp)) {
-				temp = "stock/sprites/default.bmp";
+				temp = "static/sprites/default.bmp";
 			}
 		}
 
@@ -1214,9 +1214,9 @@ public:
 		//local
 		address = "maps/" + g_mapdir + "/weapons/" + name + ".wep";
 		if(!fileExists(address)) {
-			address = "stock/weapons/" + name + ".wep";
+			address = "static/weapons/" + name + ".wep";
 			if(!fileExists(address)) {
-				address = "stock/weapons/" + name + ".wep";
+				address = "static/weapons/" + name + ".wep";
 			}
 		}
 
@@ -1319,8 +1319,10 @@ public:
  	int pheight = 50;
 	float pvelocityx = 0;
 	float pvelocityy = 0;
+	float pvelocityz = 0;
 	float paccelerationx = 0;
 	float paccelerationy = 0;
+	float paccelerationz = 0;
 	float pdeltasizex = -10;
 	float pdeltasizey = 10;
 
@@ -1340,8 +1342,10 @@ public:
  	int lifetime = 0;
 	float velocityx = 0;
 	float velocityy = 0;
+	float velocityz = 0;
 	float accelerationx = 0;
 	float accelerationy = 0;
+	float accelerationz = 0;
 	float deltasizex = 0;
 	float deltasizey = 0;
 	SDL_Texture* texture;
@@ -1353,8 +1357,10 @@ public:
 		height = type->pheight;
 		velocityx = type->pvelocityx;
 		velocityy = type->pvelocityy;
+		velocityz = type->pvelocityz;
 		accelerationx = type->paccelerationx;
 		accelerationy = type->paccelerationy;
+		accelerationz = type->paccelerationz;
 		deltasizex = type->pdeltasizex;
 		deltasizey = type->pdeltasizey;
 		texture = type->texture;
@@ -1370,31 +1376,33 @@ public:
  		
 		x += velocityx * elapsed;
 		y += velocityy * elapsed;
+		z += velocityz * elapsed;
 		velocityx += accelerationx * elapsed;
 		velocityy += accelerationy * elapsed;
+		velocityz += accelerationz * elapsed;
 		width += deltasizex * elapsed;
 		height += deltasizey * elapsed;
 		float zero = 0;
 		width = max(zero,width);
 		height = max(zero,height);
+		z = max(zero,z);
  	}
 
 	void render(SDL_Renderer* renderer, camera fcamera) {
 
- 		SDL_FRect dstrect = { (x -fcamera.x -(width/2))* fcamera.zoom, (y-fcamera.y-(height/2)) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};	
+ 		SDL_FRect dstrect = { (x -fcamera.x -(width/2))* fcamera.zoom, (y-(z* XtoZ) - fcamera.y-(height/2)) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};	
 	 	SDL_RenderCopyF(renderer, texture, NULL, &dstrect);	
 		
 	}
-
 };
 
 effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 	string existSTR;
 	existSTR = "maps/" + g_mapdir + "/effects/" + filename + ".eft";
 	if(!fileExists(existSTR)) {
-		existSTR = "stock/effects" + filename + ".eft";
+		existSTR = "static/effects" + filename + ".eft";
 		if(!fileExists(existSTR)) {
-			existSTR = "stock/effects/default.eft";
+			existSTR = "static/effects/default.eft";
 		}
 	}
 	ifstream file;
@@ -1420,9 +1428,9 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 	if(1) {
 		existSTR = "maps/" + g_mapdir + "/effects/" + texname + ".bmp";
 		if(!fileExists(existSTR)) {
-			existSTR = "stock/effects/	" + texname + ".bmp";
+			existSTR = "static/effects/	" + texname + ".bmp";
 			if(!fileExists(existSTR)) {
-				existSTR = "stock/effects/default.bmp";
+				existSTR = "static/effects/default.bmp";
 			}
 		}
 		
@@ -1468,6 +1476,9 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 	file >> line;
 	file >> pvelocityy;
 
+	file >> line;
+	file >> pvelocityz;
+
 	//paccelerationx
 	file >> line;
 	file >> paccelerationx;
@@ -1475,6 +1486,10 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 	//paccelerationy
 	file >> line;
 	file >> paccelerationy;
+
+	//paccelerationz
+	file >> line;
+	file >> paccelerationz;
 
 	//pdeltasizex
 	file >> line;
@@ -1799,6 +1814,86 @@ public:
 		
 	}
 
+	//There was a problem when I ported to windows, where mapobjects which used masks for their textures (e.g. the tops of triangular walls)
+	//would lose their textures. This function exists to reload them after the windowsize has been changed.
+	void reloadTexture() {
+		if(asset_sharer) {
+						
+		} else {
+			//delete our existing texture
+			SDL_DestroyTexture(texture);
+			SDL_DestroyTexture(alternative);
+
+			const char* plik = name.c_str();
+			SDL_Surface* image = IMG_Load(plik);
+			texture = SDL_CreateTextureFromSurface(renderer, image);
+			alternative = SDL_CreateTextureFromSurface(renderer, image);
+			
+
+			if(mask_fileaddress[0] != '&') {
+				
+				//the SDL_SetHint() changes a flag from 3 to 0 to 3 again. 
+				//this effects texture interpolation, and for masked entities such as wallcaps, it should
+				//be off.
+
+				SDL_DestroyTexture(texture);
+				SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+				SDL_Surface* smask = IMG_Load(mask_fileaddress.c_str());
+				SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
+				SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
+				//SDL_SetTextureColorMod(diffuse, -65, -65, -65);
+				texture = MaskTexture(renderer, diffuse, mask);
+				SDL_FreeSurface(smask);
+				SDL_DestroyTexture(mask);
+				SDL_DestroyTexture(diffuse);
+				SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+			}
+			SDL_FreeSurface(image);
+
+			if(wall) {
+				SDL_SetTextureColorMod(texture, -g_walldarkness, -g_walldarkness, -g_walldarkness);
+			} else {
+				SDL_SetTextureColorMod(alternative, -g_walldarkness, -g_walldarkness, -g_walldarkness);
+			}
+			if(name.find("SHADING") != string::npos) {
+				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
+				//SDL_SetTextureAlphaMod(texture, 150);
+			}
+			if(name.find("OCCLUSION") != string::npos) {
+				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
+			}
+			//SDL_QueryTexture(texture, NULL, NULL, &this->framewidth, &this->frameheight);
+		}
+	}
+
+	//this is used with reloadTexture for any mapObjects which are asset-sharers
+	void reassignTexture() {
+		if(asset_sharer) {
+			if(g_mapObjects.size()  > 1) {
+			for(unsigned int i=g_mapObjects.size() - 1; i > 0; i--){
+				if(g_mapObjects[i]->mask_fileaddress == this->mask_fileaddress && g_mapObjects[i]->name == this->name && !g_mapObjects[i]->asset_sharer) {
+					if(g_mapObjects[i]->wall == this->wall) {
+						this->texture = g_mapObjects[i]->texture;
+						this->alternative =g_mapObjects[i]->alternative;
+						this->asset_sharer = 1;
+						this->framewidth = g_mapObjects[i]->framewidth;
+						this->frameheight = g_mapObjects[i]->frameheight;
+						break;
+					} else {
+						this->texture = g_mapObjects[i]->alternative;
+						this->alternative = g_mapObjects[i]->texture;
+						
+						this->asset_sharer = 1;
+						this->framewidth = g_mapObjects[i]->framewidth;
+						this->frameheight = g_mapObjects[i]->frameheight;
+						break;
+					}
+				}
+			}
+		}
+		}
+	}
+
 	~mapObject() {
 		if(!asset_sharer) {
 			SDL_DestroyTexture(alternative);
@@ -1966,15 +2061,15 @@ public:
 			lstr = "maps/" + g_mapdir + "/items/" + fname + "-inv.bmp";
 		} else if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".bmp")){
 			lstr = "maps/" + g_mapdir + "/items/" + fname + ".bmp";
-		} else if(fileExists("stock/sprites/items/" + fname + "-inv.bmp")) {
-			lstr = "stock/sprites/items/" + fname + "-inv.bmp";
+		} else if(fileExists("static/sprites/items/" + fname + "-inv.bmp")) {
+			lstr = "static/sprites/items/" + fname + "-inv.bmp";
 		} else {
-			if(fileExists("stock/sprites/items/" + fname + ".bmp")) {
-				lstr = "stock/sprites/items/" + fname + ".bmp";
+			if(fileExists("static/sprites/items/" + fname + ".bmp")) {
+				lstr = "static/sprites/items/" + fname + ".bmp";
 				
 			} else {
 				//failsafe - load an image we know we have
-				lstr = "stock/sprites/default.bmp";
+				lstr = "static/sprites/default.bmp";
 			}
 		}
 		
@@ -2053,7 +2148,7 @@ public:
 		stream.open(plik);
 		
 		if (!stream.is_open()) {
-			stream.open("stock/scripts/" + binding + ".txt");
+			stream.open("static/scripts/" + binding + ".txt");
 		}
 		string line;
 
@@ -2375,7 +2470,7 @@ public:
 		
 		if (!file.is_open()) {
 			//load from global folder
-			loadstr = "stock/entities/" + filename + ".ent";
+			loadstr = "static/entities/" + filename + ".ent";
 			const char* plik = loadstr.c_str();
 			
 			file.open(plik);
@@ -2383,7 +2478,7 @@ public:
 			if (!file.is_open()) {
 				//just make a default entity
 				//using_default = 1;
-				string newfile = "stock/entities/default.ent";
+				string newfile = "static/entities/default.ent";
 				file.open(newfile);
 			}
 		}
@@ -2394,7 +2489,7 @@ public:
 		if(temp.substr(0,3) == "sp-") {
 			spritefilevar = "engine/" + temp + ".bmp";
 		} else {
-			spritefilevar = "stock/sprites/" + temp + ".bmp";
+			spritefilevar = "static/sprites/" + temp + ".bmp";
 		}
 
 		//check local folder
@@ -2565,13 +2660,13 @@ public:
 		if (fileExists("maps/" + g_mapdir + "/scripts/" + filename + ".txt")) {
 			txtfilename = "maps/" + g_mapdir + "/scripts/" + filename + ".txt";
 		} else {
-			txtfilename = "stock/scripts/" + filename + ".txt";
+			txtfilename = "static/scripts/" + filename + ".txt";
 		}
 		ifstream nfile(txtfilename);
 		string line;
 
 		//load voice
-		string voiceSTR = "stock/sounds/voice-normal.wav";
+		string voiceSTR = "static/sounds/voice-normal.wav";
 		voice = Mix_LoadWAV(voiceSTR.c_str());
 
 		int overflowprotect = 5000;
@@ -2682,7 +2777,7 @@ public:
 		if(musicname != "0") {
 			fileExistsSTR = "maps/" + g_mapdir + "/music/" + musicname + ".ogg";
 			if(!fileExists(musicname)) {	
-				fileExistsSTR = "stock/music/" + musicname + ".ogg";
+				fileExistsSTR = "static/music/" + musicname + ".ogg";
 			}
 			this->theme = Mix_LoadMUS(fileExistsSTR.c_str());
 			g_musicalEntities.push_back(this);
@@ -2697,9 +2792,9 @@ public:
 		if(fileExists("maps/" + g_mapdir + "/ai/" + filename + ".ai")) {
 			this->isAI = 1;
 			AIloadstr = "maps/" + g_mapdir + "/ai/" + filename + ".ai";
-		} else if(fileExists("stock/ai/"+filename + ".ai")) {
+		} else if(fileExists("static/ai/"+filename + ".ai")) {
 			this->isAI = 1;
-			AIloadstr = "stock/ai/" + filename + ".ai";
+			AIloadstr = "static/ai/" + filename + ".ai";
 		}
 		if(this->isAI) {
 			
@@ -2802,7 +2897,7 @@ public:
 		string spritefilevar;
 		
 
-		spritefilevar = "stock/sprites/items/" + texturename + ".bmp";
+		spritefilevar = "static/sprites/items/" + texturename + ".bmp";
 		SDL_Surface* image = IMG_Load(spritefilevar.c_str());
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		M(spritefilevar );
@@ -5479,13 +5574,13 @@ public:
 		file.open(plik);
 		
 		if (!file.is_open()) {
-			loadstr = "stock/worldsounds/" + filename + ".ws";
+			loadstr = "static/worldsounds/" + filename + ".ws";
 			const char* plik = loadstr.c_str();
 			
 			file.open(plik);
 			
 			if (!file.is_open()) {
-				string newfile = "stock/worldsounds/default.ws";
+				string newfile = "static/worldsounds/default.ws";
 				file.open(newfile);
 			}
 		}
@@ -5496,9 +5591,9 @@ public:
 		existSTR = "maps/" + g_mapdir + "/sounds/" + temp + ".wav";
 		D(existSTR);
 		if(!fileExists(existSTR)) {
-			existSTR = "stock/sounds/" + temp + ".wav";
+			existSTR = "static/sounds/" + temp + ".wav";
 			if(!fileExists(existSTR)) {
-				existSTR = "stock/sounds/default.wav";
+				existSTR = "static/sounds/default.wav";
 			}
 		}
 		
@@ -5569,7 +5664,7 @@ public:
 		
 		string temp = "maps/" + g_mapdir + "/music/" + fileaddress + ".ogg";
 		if(!fileExists(temp)) {
-			temp = "stock/music/" + fileaddress + ".ogg";
+			temp = "static/music/" + fileaddress + ".ogg";
 		}
 
 		
@@ -5598,9 +5693,9 @@ public:
 		string existSTR;
 		existSTR = "maps/" + g_mapdir + "/sounds/" + fileaddress + ".wav"; 
 		if(!fileExists(existSTR)) {
-			existSTR = "stock/sounds/" + fileaddress + ".wav";
+			existSTR = "static/sounds/" + fileaddress + ".wav";
 			if(!fileExists(existSTR)) {
-				existSTR = "stock/sounds/defaults.wav";
+				existSTR = "static/sounds/defaults.wav";
 			}
 		}
 		blip = Mix_LoadWAV(existSTR.c_str());

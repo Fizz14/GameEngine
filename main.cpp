@@ -95,13 +95,13 @@ int WinMain() {
 
 
 	//protag healthbar
-	ui* protagHealthbarA = new ui(renderer, "stock/ui/healthbarA.png", 0,0, 0.05, 0.02, -3);
+	ui* protagHealthbarA = new ui(renderer, "static/ui/healthbarA.png", 0,0, 0.05, 0.02, -3);
 	protagHealthbarA->persistent = 1;
-	ui* protagHealthbarB = new ui(renderer, "stock/ui/healthbarB.png", 0,0, 0.05, 0.02, -2);
+	ui* protagHealthbarB = new ui(renderer, "static/ui/healthbarB.png", 0,0, 0.05, 0.02, -2);
 	protagHealthbarB->persistent = 1;
 	protagHealthbarB->shrinkPixels = 1;
 	
-	ui* protagHealthbarC = new ui(renderer, "stock/ui/healthbarC.png", 0,0, 0.05, 0.02, -1);
+	ui* protagHealthbarC = new ui(renderer, "static/ui/healthbarC.png", 0,0, 0.05, 0.02, -1);
 	protagHealthbarC->persistent = 1;
 	protagHealthbarC->shrinkPixels = 1;
 
@@ -286,18 +286,7 @@ int WinMain() {
 	g_menu_close_sound = Mix_LoadWAV("audio/sounds/close-menu.wav");
 	g_ui_voice = Mix_LoadWAV("audio/sounds/voice-normal.wav");
 	g_menu_manip_sound = Mix_LoadWAV("audio/sounds/manip-menu.wav");
-
 	
-	//scripts can play sounds completely randomly - e.g. crate gives a random item 
-	//this might not be the best way to do it, but it seems fine now
-	// std::ifstream infile("staticresources.txt");
-	// string soundname = "";
-	// while(infile >> soundname) {
-	// 	string loadme = "audio/sounds/" + soundname;
-	// 	Mix_Chunk* a = Mix_LoadWAV(loadme.c_str());
-	// 	static
-
-	// }
 
 	srand(time(NULL));
 	if(devMode) {
@@ -338,7 +327,7 @@ int WinMain() {
 	}
 
 
-	ui* inventoryMarker = new ui(renderer, "stock/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
+	ui* inventoryMarker = new ui(renderer, "static/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
 	inventoryMarker->show = 0;
 	inventoryMarker->persistent = 1;
 
@@ -461,12 +450,32 @@ int WinMain() {
 		x->texture = TextureC;
 	}
 
-	I("Begining mainloop");
 	while (!quit) {
 		
 		//some event handling
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
+				case SDL_WINDOWEVENT:
+					switch (event.window.event) {
+						case SDL_WINDOWEVENT_RESIZED:
+							//we need to reload some (all?) textures
+							for(auto x : g_mapObjects) {
+								if(x->mask_fileaddress != "&") {
+									x->reloadTexture();
+									I("reloaded a texture of mask");
+									I(x->mask_fileaddress);
+								}
+							}
+
+							//reassign textures for asset-sharers
+							for(auto x : g_mapObjects) {
+								if(x->mask_fileaddress != "&") {
+									x->reassignTexture();
+								}
+							}
+							break;
+					}
+					break;
 				case SDL_KEYDOWN:
 					switch( event.key.keysym.sym ){
                     	case SDLK_TAB:
@@ -700,7 +709,12 @@ int WinMain() {
 			}
 			SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
+
+
 		}
+
+	
+
 		old_WIN_WIDTH = WIN_WIDTH;
 
 		WIN_WIDTH /= scalex;
@@ -729,7 +743,6 @@ int WinMain() {
 			
 			g_camera.update_movement(elapsed, g_focus->getOriginX() - zoomoffsetx + (g_cameraAimingOffsetX * g_cameraShove), ((g_focus->getOriginY() - XtoZ * g_focus->z) - zoomoffsety - (g_cameraAimingOffsetY * g_cameraShove)));
 		}
-		// g_camera.zoom = scalex;
 
 		//update ui
 		curTextWait += elapsed * text_speed_up;
@@ -1573,6 +1586,7 @@ int WinMain() {
 		}
 
 		SDL_RenderPresent(renderer);
+		
 	}
 
 
@@ -2366,8 +2380,23 @@ void getInput(float &elapsed) {
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);	
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 
-			if(devMode) {
+
+			if(!devMode) {
 				SDL_ShowCursor(0);
+			}
+
+			//we need to reload some (all?) textures
+			for(auto x : g_mapObjects) {
+				if(x->mask_fileaddress != "&") {
+					x->reloadTexture();
+					I("reloaded a texture of mask");
+					I(x->mask_fileaddress);
+				}
+			}
+
+			//reassign textures for asset-sharers
+			for(auto x : g_mapObjects) {
+				x->reassignTexture();
 			}
 
 		} else {
@@ -2379,8 +2408,22 @@ void getInput(float &elapsed) {
 			SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 			SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 			
-			if(devMode) { 
+			if(!devMode) { 
 				SDL_ShowCursor(1);
+			}
+
+			//we need to reload some (all?) textures
+			for(auto x : g_mapObjects) {
+				if(x->mask_fileaddress != "&") {
+					x->reloadTexture();
+					I("reloaded a texture of mask");
+					I(x->mask_fileaddress);
+				}
+			}
+
+			//reassign textures for asset-sharers
+			for(auto x : g_mapObjects) {
+				x->reassignTexture();
 			}
 		}
 	}
