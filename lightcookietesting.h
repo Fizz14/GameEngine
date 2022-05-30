@@ -7,14 +7,30 @@
 #include <vector>
 using namespace std;
 
-inline SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogcookies, SDL_Texture* &illuminateMe, SDL_Texture* &lightspot, int widthOfIlluminateMe, int heightOfIlluminateMe, int paddingx, int paddingy) {
+inline SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogcookies, SDL_Texture* &illuminateMe, SDL_Texture* &lightspot, int widthOfIlluminateMe, int heightOfIlluminateMe, int paddingx, int paddingy, int layer) {
 	SDL_SetRenderTarget(renderer, illuminateMe);
 	SDL_RenderClear(renderer);
 	paddingy = paddingx * (heightOfIlluminateMe / widthOfIlluminateMe);
+	SDL_Texture* usingThisTexture = lightspot;
 
 	for(long long unsigned int i = 0; i < fogcookies.size(); i++) {
 		for(long long unsigned int j = 0; j < fogcookies[0].size(); j++) {
 			if(fogcookies[i][j]) {
+				usingThisTexture = lightspot;
+
+				if(layer) {
+					if(g_shc[i][j] == 0) {
+						usingThisTexture = lightc;
+					} else if(g_shc[i][j] == 1) {
+						usingThisTexture = lightb;
+					} else if(g_shc[i][j] == 2) {
+						usingThisTexture = lighta;
+					} else if(g_shc[i][j] == 3) {
+						usingThisTexture = lightd;
+					}
+				}
+
+
 				//render the lightspot
 				SDL_Rect dstrect = {(int)(i * ( (widthOfIlluminateMe ) / fogcookies.size())),
 				 					(int)(j * ( (heightOfIlluminateMe) /fogcookies[0].size())), 
@@ -23,10 +39,10 @@ inline SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogc
 
 
 				if(g_graphicsquality != 0) {
-					SDL_SetTextureAlphaMod(lightspot, fogcookies[i][j]);
+					SDL_SetTextureAlphaMod(usingThisTexture, fogcookies[i][j]);
 				}
 
-				SDL_RenderCopy(renderer, lightspot, NULL, &dstrect);
+				SDL_RenderCopy(renderer, usingThisTexture, NULL, &dstrect);
 
 				
 			}

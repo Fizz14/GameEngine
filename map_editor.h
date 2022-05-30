@@ -788,7 +788,7 @@ bool mapeditor_save_map(string word) {
     }
     for (long long unsigned int i = 0; i < g_tiles.size(); i++) {
         //dont save map graphics
-        if(g_tiles[i]->fileaddress.find("engine") != string::npos ) { continue; }
+        if(g_tiles[i]->fileaddress.find("engine") != string::npos && g_tiles[i]->fileaddress != "engine/black-diffuse.bmp") { continue; }
         //sheared tiles are made on map loading, so dont save em
         if(g_tiles[i]->mask_fileaddress.find("engine") != string::npos ) { continue; }
         //lighting, but not occlusion is also generated on map load
@@ -2138,10 +2138,14 @@ void write_map(entity* mapent) {
                                                                 for(auto child:him->children) {
                                                                     delete child;
                                                                 }
-                                                                breakpoint();
-                                                                //SDL_Delay(1000);
+                                                                
+                                                                
+                                                                //breakpoint();
+                                                                
+                                                                //its this line
                                                                 delete him; 
-                                                                //SDL_Delay(1000);
+                                                                
+
                                                                 for(auto child:other->children) {
                                                                     
                                                                     delete child;
@@ -2650,6 +2654,7 @@ void write_map(entity* mapent) {
                         entity* hopeful = searchEntities(word);
                         if(hopeful != nullptr) {
                             g_focus = hopeful;
+                            
                         }
                         break;
                     }
@@ -2801,9 +2806,12 @@ void write_map(entity* mapent) {
                     }
                     if(word == "floor" || word == "f") {
                         line >> floortex;
-                        D(textureDirectory);
-                        floortex = "static/diffuse/" + textureDirectory + floortex + ".bmp";
-                        D(floortex);
+
+                        if(floortex == "black") {
+                            floortex = "engine/black-diffuse.bmp";
+                        } else {
+                            floortex = "static/diffuse/" + textureDirectory + floortex + ".bmp";
+                        }
                         break;
                     }
                     if(word == "cap" || word == "c") {
@@ -4294,6 +4302,17 @@ void adventureUI::continueDialogue() {
         
         entity* hopeful = searchEntities(name);
         if(hopeful != nullptr) {
+
+            for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+                for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+                    g_fogcookies[i][j] = 0;
+                    g_sc[i][j] = 0;
+                    g_fc[i][j] = 0;
+
+                }
+            }
+            g_force_cookies_update = 1;
+
             g_focus = hopeful;
             cout << "set focus properly" << endl;
             if(transitionspeed != 0) {
@@ -4317,7 +4336,7 @@ void adventureUI::continueDialogue() {
     }
 
     //change cameratarget
-    // /lookat ward 0 0
+    // /lookatall ward 0 0
     if(talker->sayings.at(talker->dialogue_index + 1).substr(0,10) == "/lookatall") {
         string s = talker->sayings.at(talker->dialogue_index + 1);
         s.erase(0, 11);
@@ -4329,6 +4348,16 @@ void adventureUI::continueDialogue() {
         vector<entity*> hopefuls = gatherEntities(name);
         if(hopefuls.size() != 0) {
             g_focus = hopefuls[countEntities];
+            for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+                for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+                    g_fogcookies[i][j] = 0;
+                    g_sc[i][j] = 0;
+                    g_fc[i][j] = 0;
+
+                }
+            }
+            g_force_cookies_update = 1;
+
             if(transitionspeed != 0) {
                 //This check means that if the camera is already moving, don't reset
                 //it's velocity, because that would be jarring

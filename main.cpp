@@ -26,7 +26,7 @@ int WinMain() {
 	TTF_Init();
 	
 	window = SDL_CreateWindow("Game",
-	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_ALWAYS_ON_TOP*/);
+	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
 	renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_SetWindowMinimumSize(window, 100, 100);
@@ -274,19 +274,21 @@ int WinMain() {
 	
 
 	//init static resources
-	g_bulletdestroySound = Mix_LoadWAV("audio/sounds/step.wav");
-	g_playerdamage = Mix_LoadWAV("audio/sounds/playerdamage.wav");
-	g_enemydamage = Mix_LoadWAV("audio/sounds/enemydamage.wav");
-	g_npcdamage = Mix_LoadWAV("audio/sounds/npcdamage.wav");
-	g_s_playerdeath = Mix_LoadWAV("audio/sounds/playerdeath.wav");
-	g_land = Mix_LoadWAV("audio/sounds/step2.wav");
-	g_footstep_a = Mix_LoadWAV("audio/sounds/protag-step-1.wav");
-	g_footstep_b = Mix_LoadWAV("audio/sounds/protag-step-1.wav");
-	g_menu_open_sound = Mix_LoadWAV("audio/sounds/open-menu.wav");
-	g_menu_close_sound = Mix_LoadWAV("audio/sounds/close-menu.wav");
-	g_ui_voice = Mix_LoadWAV("audio/sounds/voice-normal.wav");
-	g_menu_manip_sound = Mix_LoadWAV("audio/sounds/manip-menu.wav");
+	g_bulletdestroySound = Mix_LoadWAV("static/sounds/step.wav");
+	g_playerdamage = Mix_LoadWAV("static/sounds/playerdamage.wav");
+	g_enemydamage = Mix_LoadWAV("static/sounds/enemydamage.wav");
+	g_npcdamage = Mix_LoadWAV("static/sounds/npcdamage.wav");
+	g_s_playerdeath = Mix_LoadWAV("static/sounds/playerdeath.wav");
+	g_land = Mix_LoadWAV("static/sounds/step2.wav");
+	g_footstep_a = Mix_LoadWAV("static/sounds/protag-step-1.wav");
+	g_footstep_b = Mix_LoadWAV("static/sounds/protag-step-1.wav");
+	g_menu_open_sound = Mix_LoadWAV("static/sounds/open-menu.wav");
+	g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
+	g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
+	g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
 	
+
+
 
 	srand(time(NULL));
 	if(devMode) {
@@ -389,7 +391,7 @@ int WinMain() {
 		s->framewidth = 500;
 		s->shadow->width = 0;
 		s->dynamic = 0;
-		s->sortingOffset = -35;
+		s->sortingOffset = 100; // -35
 	}
 
 	for (size_t i = 0; i < 19; i++) {
@@ -406,7 +408,7 @@ int WinMain() {
 		s->framewidth = 500;
 		s->shadow->width = 0;
 		s->dynamic = 0;
-		s->sortingOffset = -65; //55
+		s->sortingOffset = 100; // -65 55
 	}
 
 	for (size_t i = 0; i < 19; i++) {
@@ -446,6 +448,22 @@ int WinMain() {
 	light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 	SDL_FreeSurface(lightSurface);
 
+	SDL_Surface* lightAS = IMG_Load("engine/lighta.bmp");
+	lighta = SDL_CreateTextureFromSurface(renderer, lightAS);
+	SDL_FreeSurface(lightAS);
+
+	SDL_Surface* lightBS = IMG_Load("engine/lightb.bmp");
+	lightb = SDL_CreateTextureFromSurface(renderer, lightBS);
+	SDL_FreeSurface(lightBS);
+
+	SDL_Surface* lightCS = IMG_Load("engine/lightc.bmp");
+	lightc = SDL_CreateTextureFromSurface(renderer, lightCS);
+	SDL_FreeSurface(lightCS);
+
+	SDL_Surface* lightDS = IMG_Load("engine/lightd.bmp");
+	lightd = SDL_CreateTextureFromSurface(renderer, lightDS);
+	SDL_FreeSurface(lightDS);
+
 	for(auto x : g_fogslates) {
 		x->texture = TextureC;
 	}
@@ -472,6 +490,18 @@ int WinMain() {
 								if(x->mask_fileaddress != "&") {
 									x->reassignTexture();
 								}
+							}
+
+							//the same must be done for masked tiles
+							for(auto t : g_tiles) {
+								if(t->mask_fileaddress != "&") {
+									t->reloadTexture();
+								}
+							}
+
+							//reassign textures for any asset-sharers
+							for(auto x : g_tiles) {
+								x->reassignTexture();
 							}
 							break;
 					}
@@ -995,7 +1025,7 @@ int WinMain() {
 					}
 				}
 			} else {
-				if(1/*functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY*/) {
+				if(1) {
 					
 					
 					if(functionalX != g_lastFunctionalX) {
@@ -1020,13 +1050,16 @@ int WinMain() {
 					}
 
 					if(g_force_cookies_update) {
-						if(functionalX == g_lastFunctionalX) {xtileshift = 0;}
-						if(functionalY == g_lastFunctionalY) {ytileshift = 0;}
+						g_lastFunctionalX = functionalX;
+						g_lastFunctionalY = functionalY;
 						
 					}
 					
 					//to make old tiles fade out, when we move set the tiles opacity to their "old" tile
 					if(functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY || g_force_cookies_update) {
+						
+						g_force_cookies_update = 0;
+
 						//copy the vector
 						auto fogcopy = g_fogcookies;
 						auto fccopy = g_fc;
@@ -1057,7 +1090,7 @@ int WinMain() {
 
 							int xpos_fc = ((i - 10) * 64) + functionalX;
 							int ypos_fc = ((j - 9) * 55) + functionalY;
-							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
+							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 6, 0, 15, 1)) {
 							
 								g_fogcookies[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
 								//g_fogcookies[i][j] = 0;
@@ -1102,10 +1135,36 @@ int WinMain() {
 					if(j+1 < g_fogcookies.size() && g_fc[i][j+1] > 0) {
 
 						if(!LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1) || !LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1)) {
+							// !!!
 							g_fc[i][j] += g_tile_fade_speed*2; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 	
 							g_fc[i][j] = 255;
 						}
 					}
+				}
+			}
+
+			//if a cookie is light, and it is intersecting a triangle, not that in g_shc
+			for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+				for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+					g_shc[i][j] = -1;
+					int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
+					int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
+					rect r = {xpos-10, ypos-10, 20, 20};
+					if(1) {
+						for(auto t : g_triangles[1]) {
+							if(TriRectOverlap(t, r)) {
+								if(g_fogcookies[i][j]) {
+									g_shc[i][j] = t->type;
+									g_fc[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fc[i][j] >255) {g_fc[i][j] = 255;} g_fc[i][j] = 255;
+								}
+								
+								//g_fc[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 
+								//g_sc[i][j] -= g_tile_fade_speed * (elapsed/60); if (g_sc[i][j] < 0) {g_sc[i][j] = 0;} 
+								break;
+							}
+						}
+					}
+
 				}
 			}
 			
@@ -1138,7 +1197,7 @@ int WinMain() {
 			//px = 64 - px - 64;
 			//py = 55 - py - 55;
 			// 50 50
-			addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250);
+			addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250, 0);
 			
 			TextureC = IlluminateTexture(renderer, TextureD, canvas, result_c);
 			
@@ -1169,7 +1228,7 @@ int WinMain() {
 			}
 
 			
-			addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250);
+			addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250, 1);
 
 
 			TextureB = IlluminateTexture(renderer, TextureA, canvas, result);
@@ -1265,7 +1324,6 @@ int WinMain() {
 				
 				
 				SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth};
-				D(mainProtag->inventory.size());
 				if(it->second > 0) {
 					SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
 				}
@@ -2389,13 +2447,23 @@ void getInput(float &elapsed) {
 			for(auto x : g_mapObjects) {
 				if(x->mask_fileaddress != "&") {
 					x->reloadTexture();
-					I("reloaded a texture of mask");
-					I(x->mask_fileaddress);
 				}
 			}
 
 			//reassign textures for asset-sharers
 			for(auto x : g_mapObjects) {
+				x->reassignTexture();
+			}
+
+			//the same must be done for masked tiles
+			for(auto t : g_tiles) {
+				if(t->mask_fileaddress != "&") {
+					t->reloadTexture();
+				}
+			}
+
+			//reassign textures for any asset-sharers
+			for(auto x : g_tiles) {
 				x->reassignTexture();
 			}
 
@@ -2423,6 +2491,18 @@ void getInput(float &elapsed) {
 
 			//reassign textures for asset-sharers
 			for(auto x : g_mapObjects) {
+				x->reassignTexture();
+			}
+
+			//the same must be done for masked tiles
+			for(auto t : g_tiles) {
+				if(t->mask_fileaddress != "&") {
+					t->reloadTexture();
+				}
+			}
+
+			//reassign textures for any asset-sharers
+			for(auto x : g_tiles) {
 				x->reassignTexture();
 			}
 		}

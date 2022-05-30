@@ -348,11 +348,10 @@ public:
 	virtual ~mapCollision() {
 		M("~mapCollision()");
 
-		//this can crash on windows
+		
 		g_mapCollisions.erase(remove(g_mapCollisions.begin(), g_mapCollisions.end(), this), g_mapCollisions.end());
 		
-
-		children.clear();
+		//children.clear();
 	}
 	
 };
@@ -670,8 +669,61 @@ public:
 		shadeRight = (shading[3] == '1');
 		g_boxs[layer].push_back(this);
 	}
+
+	// //copy constructor
+	// box(const box& other) {
+	// 	bounds.x = other.bounds.x;
+	// 	bounds.y = other.bounds.y;
+	// 	bounds.z = other.bounds.z;
+	// 	bounds.width = other.bounds.width;
+	// 	bounds.height = other.bounds.height;
+	// 	bounds.zeight = other.bounds.zeight;
+	// 	layer = other.layer;
+	// 	walltexture = other.walltexture;
+	// 	captexture = other.captexture;
+	// 	capped = other.capped;
+	// 	shineTop = other.shineTop;
+	// 	shineBot = other.shineBot;
+	// 	shadeTop = other.shadeTop;
+	// 	shadeBot = other.shadeBot;
+		
+	// 	shadeLeft = other.shadeLeft;
+	// 	shadeRight = other.shadeRight;
+	// 	g_boxs[layer].push_back(this);
+	// }
+
+	// //swap function
+	// void swapBoxes(box& first, box& second) {
+	// 	using std::swap;
+	// 	swap(first.bounds.x, second.bounds.x);
+	// 	swap(first.bounds.y, second.bounds.y);
+	// 	swap(first.bounds.z, second.bounds.z);
+	// 	swap(first.bounds.width, second.bounds.width);
+	// 	swap(first.bounds.height, second.bounds.height);
+	// 	swap(first.bounds.zeight, second.bounds.zeight);
+	// 	swap(first.layer, second.layer);
+	// 	swap(first.walltexture, second.walltexture);
+	// 	swap(first.captexture, second.captexture);
+	// 	swap(first.capped, second.capped);
+	// 	swap(first.shineTop, second.shineTop);
+	// 	swap(first.shineBot, second.shineBot);
+	// 	swap(first.shadeTop, second.shadeTop);
+	// 	swap(first.shadeBot, second.shadeBot);
+	// 	swap(first.shadeLeft, second.shadeLeft);
+	// 	swap(first.shadeRight, second.shadeRight);
+	// }
+
+	// //copy-assignment-operator
+    // box& operator=(box& other) {
+	// 	swapBoxes(*this, other);
+	// 	g_boxs[layer].push_back(this);
+
+	// 	return *this;
+	// }
+
 	~box() {
 		M("~box()");
+		//this line crashes during easybake
 		g_boxs[layer].erase(remove(g_boxs[layer].begin(), g_boxs[layer].end(), this), g_boxs[layer].end());
 	}
 };
@@ -862,13 +914,11 @@ public:
 				SDL_Surface* smask = IMG_Load(mask_filename);
 				SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
 				SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
-				
-				//SDL_SetTextureColorMod(diffuse, -20, -20, -20);
+
 				texture = MaskTexture(renderer, diffuse, mask);
 				SDL_FreeSurface(smask);
 				SDL_DestroyTexture(mask);
 				SDL_DestroyTexture(diffuse);
-				//SDL_SetTextureColorMod(texture, 0, 0, 0);
 			}
 		}
 
@@ -890,6 +940,59 @@ public:
 			SDL_DestroyTexture(texture);
 		}
 		
+	}
+
+	void reloadTexture() {
+		if(asset_sharer) {
+						
+		} else {
+			image = IMG_Load(fileaddress.c_str());
+			texture = SDL_CreateTextureFromSurface(renderer, image);
+			if(wall) {
+				//make walls a bit darker
+				SDL_SetTextureColorMod(texture, -65, -65, -65);
+			} else {
+				//SDL_SetTextureColorMod(texture, -20, -20, -20);
+			}
+			
+			SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
+			if(fileaddress.find("OCCLUSION") != string::npos) {
+				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
+				
+			}
+			if(mask_fileaddress[0] != '&') {
+				SDL_DestroyTexture(texture);				
+		
+				SDL_Surface* smask = IMG_Load(mask_fileaddress.c_str());
+				SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
+				SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
+
+				texture = MaskTexture(renderer, diffuse, mask);
+				SDL_FreeSurface(smask);
+				SDL_DestroyTexture(mask);
+				SDL_DestroyTexture(diffuse);
+			}
+			SDL_FreeSurface(image);
+		}
+	}
+	
+	void reassignTexture() {
+		if(asset_sharer) {
+			if(g_tiles.size() > 1) {
+				for(unsigned int i=g_tiles.size() - 1; i > 0; i--){
+					if(g_tiles[i]->mask_fileaddress == this->mask_fileaddress && g_tiles[i]->fileaddress == this->fileaddress && !g_tiles[i]->asset_sharer) {
+
+						this->texture = g_tiles[i]->texture;
+
+						this->asset_sharer = 1;
+						this->texwidth = g_tiles[i]->texwidth;
+						this->texheight = g_tiles[i]->texheight;
+						break;
+						
+					}
+				}
+			}
+		}
 	}
 
 	rect getMovedBounds() {
@@ -1771,10 +1874,12 @@ public:
 			}
 			if(name.find("SHADING") != string::npos) {
 				SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
+				diffuse = 0;
 				//SDL_SetTextureAlphaMod(texture, 150);
 			}
 			if(name.find("OCCLUSION") != string::npos) {
 				//SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
+				diffuse = 0;
 			}
 			SDL_QueryTexture(texture, NULL, NULL, &this->framewidth, &this->frameheight);
 		}
@@ -1941,7 +2046,10 @@ public:
 				// } else {
 				// 	SDL_SetTextureAlphaMod(texture, 255);
 				// }
+				
 			}
+			
+
 			
 			
 			SDL_Rect srcrect;
@@ -2019,7 +2127,10 @@ public:
 				//}
 
 				
-				
+				// if(!this->wall && this->diffuse) {
+ 				// 	SDL_SetTextureAlphaMod(texture, 160);
+				// 	SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+				// }
 
 				SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &nowt, SDL_FLIP_NONE );
 				xpos += srcrect.w;
@@ -2061,12 +2172,11 @@ public:
 			lstr = "maps/" + g_mapdir + "/items/" + fname + "-inv.bmp";
 		} else if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".bmp")){
 			lstr = "maps/" + g_mapdir + "/items/" + fname + ".bmp";
-		} else if(fileExists("static/sprites/items/" + fname + "-inv.bmp")) {
-			lstr = "static/sprites/items/" + fname + "-inv.bmp";
+		} else if(fileExists("static/items/" + fname + "-inv.bmp")) {
+			lstr = "static/items/" + fname + "-inv.bmp";
 		} else {
-			if(fileExists("static/sprites/items/" + fname + ".bmp")) {
-				lstr = "static/sprites/items/" + fname + ".bmp";
-				
+			if(fileExists("static/items/" + fname + ".bmp")) {
+				lstr = "static/items/" + fname + ".bmp";
 			} else {
 				//failsafe - load an image we know we have
 				lstr = "static/sprites/default.bmp";
@@ -2090,7 +2200,13 @@ public:
 
 		//script
 		ifstream stream;
-		string loadstr = "scripts/items/" + fname + ".txt";
+
+		//check local dir
+		string loadstr = "static/items/" + fname + ".txt";
+		if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".txt")) {
+			loadstr = "maps/" + g_mapdir + "/items/" + fname + ".txt";
+		}
+
 		const char* plik = loadstr.c_str();
 		stream.open(plik);
 		string line;
@@ -2099,6 +2215,7 @@ public:
 		}
 		
 		parseScriptForLabels(script);
+		I(script.size());
 	}
 
 	~indexItem() {
@@ -2222,7 +2339,91 @@ public:
 	void continueDialogue();
 };
 
+class worldsound {
+public:
+	//a playable sound in the world, with a position
+	Mix_Chunk* blip;
+	float volumeFactor = 1;
+	float maxDistance = 1200; //distance at which you can no longer hear the sound
+	float minWait = 1;
+	float maxWait = 5;
 
+	string name;
+	int x = 0;
+	int y = 0;
+	float cooldown = 0;
+
+	entity* owner = nullptr;
+	
+	worldsound(string filename, int fx, int fy) {
+		name = filename;
+		M("worldsound()" );
+		
+		ifstream file;
+
+		string loadstr;
+		//try to open from local map folder first
+		
+		loadstr = "maps/" + g_mapdir + "/worldsounds/" + filename + ".ws";
+		D(loadstr);
+		const char* plik = loadstr.c_str();
+		
+		file.open(plik);
+		
+		if (!file.is_open()) {
+			loadstr = "static/worldsounds/" + filename + ".ws";
+			const char* plik = loadstr.c_str();
+			
+			file.open(plik);
+			
+			if (!file.is_open()) {
+				string newfile = "static/worldsounds/default.ws";
+				file.open(newfile);
+			}
+		}
+		
+		string temp;
+		file >> temp;
+		string existSTR;
+		existSTR = "maps/" + g_mapdir + "/sounds/" + temp + ".wav";
+		D(existSTR);
+		if(!fileExists(existSTR)) {
+			existSTR = "static/sounds/" + temp + ".wav";
+			if(!fileExists(existSTR)) {
+				existSTR = "static/sounds/default.wav";
+			}
+		}
+		
+		
+		blip = Mix_LoadWAV(existSTR.c_str());
+		
+		x = fx;
+		y = fy;
+
+		float tempFloat;
+		file >> tempFloat;
+		volumeFactor = tempFloat;
+
+		file >> tempFloat;
+		maxDistance = tempFloat;
+
+		file >> tempFloat;
+		minWait = tempFloat * 1000;
+		
+		file >> tempFloat;
+		maxWait = tempFloat * 1000;
+		//D(tempFloat);
+		g_worldsounds.push_back(this);
+	}
+
+	~worldsound() {
+		M("~worldsound()" );
+		Mix_FreeChunk(blip);
+		g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), this), g_worldsounds.end());
+	}
+
+	void update(float elapsed);
+};
 
 class entity :public actor {
 public:
@@ -2234,6 +2435,9 @@ public:
 	Mix_Chunk* footstep;
 	Mix_Chunk* footstep2;
 	Mix_Chunk* voice;
+
+	//a set of sounds that are attached to this entity
+	vector<worldsound*> mobilesounds;
 	
 	//for musical entities
 	Mix_Music* theme = 0;
@@ -2787,6 +2991,22 @@ public:
 		//convert blocks to worldpixels
 		musicRadius *= 64;
 
+		//worldsound
+		file >> comment;
+		//spawn everything on spawnlist
+		overflow = 100;
+		for(;;) {
+
+			string line;
+			file >> line;
+			if(line == "}" || line == "") {break;};
+			overflow--;
+			if(overflow < 0) {E("Bad soundlist."); break;}
+			worldsound* a = new worldsound(line, 0, 0);
+			this->mobilesounds.push_back(a);
+			a->owner = this;
+		}
+
 		//load ai-data 
 		string AIloadstr;
 		if(fileExists("maps/" + g_mapdir + "/ai/" + filename + ".ai")) {
@@ -2897,7 +3117,7 @@ public:
 		string spritefilevar;
 		
 
-		spritefilevar = "static/sprites/items/" + texturename + ".bmp";
+		spritefilevar = "static/items/" + texturename + ".bmp";
 		SDL_Surface* image = IMG_Load(spritefilevar.c_str());
 		texture = SDL_CreateTextureFromSurface(renderer, image);
 		M(spritefilevar );
@@ -3067,6 +3287,10 @@ public:
 
 		if(myScriptCaller!= nullptr){
 			delete myScriptCaller;
+		}
+
+		for(auto ws : mobilesounds) {
+			delete ws;
 		}
 
 		//delete hisweapon;
@@ -3323,6 +3547,10 @@ public:
 	//returns a pointer to a door that the player used
 	virtual door* update(vector<door*> doors, float elapsed) {
 		if(!tangible) {return nullptr;}
+		for(auto t : mobilesounds) {
+			t->x = getOriginX();
+			t->y = getOriginY();
+		}
 		if(isOrbital) {
 			this->z = parent->z -10 - (parent->height - parent->curheight);
 			
@@ -4416,7 +4644,7 @@ public:
 			//recalcAngle = 1
 			if(Distance(0,0,xaccel, yaccel) > 0.95 * xmaxspeed) {recalcAngle = 1;}
 			recalcAngle+= elapsed;
-			if(recalcAngle>0) {
+			if(recalcAngle>0 && xvel > 0 || yvel > 0) {
 				recalcAngle = -1000;
 				float angle = atan2(yvector, xvector);
 				flip = SDL_FLIP_NONE;
@@ -5543,113 +5771,31 @@ public:
 };
 
 
-
-class worldsound {
-public:
-	//a playable sound in the world, with a position
-	Mix_Chunk* blip;
-	float volumeFactor = 1;
-	float maxDistance = 1200; //distance at which you can no longer hear the sound
-	float minWait = 1;
-	float maxWait = 5;
-
-	string name;
-	int x = 0;
-	int y = 0;
-	float cooldown = 0;
+void worldsound::update(float elapsed) {
+	//!!! you can update this with the middle of the camera instead of the focused actor
+	float dist = Distance(x, y, g_focus->getOriginX(), g_focus->getOriginY());
+	//linear
+	float cur_volume = ((maxDistance - dist)/maxDistance) * volumeFactor * 128;
 	
-	worldsound(string filename, int fx, int fy) {
-		name = filename;
-		M("worldsound()" );
-		
-		ifstream file;
+	//logarithmic
+	//float cur_volume = volume * 128 * (-log(pow(dist, 1/max_distance) + 2.718));
+	//float cur_volume = (volume / (dist / max_distance)) * 128;
+	
 
-		string loadstr;
-		//try to open from local map folder first
-		
-		loadstr = "maps/" + g_mapdir + "/worldsounds/" + filename + ".ws";
-		D(loadstr);
-		const char* plik = loadstr.c_str();
-		
-		file.open(plik);
-		
-		if (!file.is_open()) {
-			loadstr = "static/worldsounds/" + filename + ".ws";
-			const char* plik = loadstr.c_str();
-			
-			file.open(plik);
-			
-			if (!file.is_open()) {
-				string newfile = "static/worldsounds/default.ws";
-				file.open(newfile);
-			}
-		}
-		
-		string temp;
-		file >> temp;
-		string existSTR;
-		existSTR = "maps/" + g_mapdir + "/sounds/" + temp + ".wav";
-		D(existSTR);
-		if(!fileExists(existSTR)) {
-			existSTR = "static/sounds/" + temp + ".wav";
-			if(!fileExists(existSTR)) {
-				existSTR = "static/sounds/default.wav";
-			}
-		}
-		
-		
-		blip = Mix_LoadWAV(existSTR.c_str());
-		
-		x = fx;
-		y = fy;
-
-		float tempFloat;
-		file >> tempFloat;
-		volumeFactor = tempFloat;
-
-		file >> tempFloat;
-		maxDistance = tempFloat;
-
-		file >> tempFloat;
-		minWait = tempFloat * 1000;
-		
-		file >> tempFloat;
-		maxWait = tempFloat * 1000;
-		//D(tempFloat);
-		g_worldsounds.push_back(this);
+	if(cur_volume < 0) {
+		cur_volume = 0;
 	}
-
-	~worldsound() {
-		M("~worldsound()" );
-		Mix_FreeChunk(blip);
-		g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), this), g_worldsounds.end());
+	Mix_VolumeChunk(blip, cur_volume);
+	
+	if(cooldown < 0) {
+		//change volume
+		playSound(-1, blip, 0);
+		cooldown = rand() % (int)maxWait + minWait;
+	} else {
+		cooldown -= elapsed;
 	}
+}
 
-	void update(float elapsed) {
-		//!!! you can update this with the middle of the camera instead of the focused actor
-		float dist = Distance(x, y, g_focus->getOriginX(), g_focus->getOriginY());
-		//linear
-		float cur_volume = ((maxDistance - dist)/maxDistance) * volumeFactor * 128;
-		
-		//logarithmic
-		//float cur_volume = volume * 128 * (-log(pow(dist, 1/max_distance) + 2.718));
-		//float cur_volume = (volume / (dist / max_distance)) * 128;
-		
-
-		if(cur_volume < 0) {
-			cur_volume = 0;
-		}
-		Mix_VolumeChunk(blip, cur_volume);
-		
-		if(cooldown < 0) {
-			//change volume
-			playSound(-1, blip, 0);
-			cooldown = rand() % (int)maxWait + minWait;
-		} else {
-			cooldown -= elapsed;
-		}
-	}
-};
 
 class musicNode {
 public:
@@ -6051,7 +6197,7 @@ void clear_map(camera& cameraToReset) {
 				//py = 55 - py - 55;
 				// 50 50
 				SDL_SetRenderTarget(renderer, NULL);
-				addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250);
+				addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250, 0);
 
 
 				TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
@@ -6067,7 +6213,7 @@ void clear_map(camera& cameraToReset) {
 				
 
 				SDL_SetRenderTarget(renderer, NULL);
-				addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250);
+				addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250, 1);
 
 
 				TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
@@ -6268,9 +6414,16 @@ void clear_map(camera& cameraToReset) {
 		delete g_navNodes[0];
 	}
 
+	vector<worldsound*> savedSounds;
+
 	size = (int)g_worldsounds.size();
 	for(int i = 0; i < size; i++) {
-		delete g_worldsounds[0];
+		if(g_worldsounds[0]->owner == nullptr) {
+			delete g_worldsounds[0];
+		} else {
+			savedSounds.push_back(g_worldsounds[0]);
+			g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), g_worldsounds[0]), g_worldsounds.end());
+		}
 	}
 
 	size = (int)g_musicNodes.size();

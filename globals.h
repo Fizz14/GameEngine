@@ -227,6 +227,12 @@ SDL_Texture* result_c;
 SDL_Texture* canvas;
 SDL_Texture* canvas_fc;
 SDL_Texture* light;
+
+SDL_Texture* lighta;
+SDL_Texture* lightb;
+SDL_Texture* lightc;
+SDL_Texture* lightd;
+
 SDL_Texture* TextureA;
 SDL_Texture* TextureB;
 SDL_Texture* TextureC;
@@ -242,7 +248,7 @@ int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
 int g_fogMiddleX = 10;
 int g_fogMiddleY = 9;
-float g_viewdist = 310; //240, 310 is casual, 340 could be from an upgrade.
+float g_viewdist = 310; //240, 310 is casual, 340 could be from an upgrade.   it was 310
 int g_tile_fade_speed = 50; //40
 int xtileshift = 0;
 int ytileshift = 0;
@@ -257,6 +263,7 @@ std::vector<std::vector<int> > g_savedcookies( g_fogwidth, std::vector<int>(g_fo
 //data for two passes of cookies
 std::vector<std::vector<int> > g_fc( g_fogwidth, std::vector<int>(g_fogheight));
 std::vector<std::vector<int> > g_sc( g_fogwidth, std::vector<int>(g_fogheight));
+std::vector<std::vector<int> > g_shc( g_fogwidth, std::vector<int>(g_fogheight));
 
 //fogslates - 19 x 2 = 38 actors.
 std::vector<entity*> g_fogslates;
