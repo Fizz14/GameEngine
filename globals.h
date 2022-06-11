@@ -248,7 +248,7 @@ int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
 int g_fogMiddleX = 10;
 int g_fogMiddleY = 9;
-float g_viewdist = 310; //240, 310 is casual, 340 could be from an upgrade.   it was 310
+float g_viewdist = 310; //240, 310 is casual, 340 could be from an upgrade.   it was 310 500 is max
 int g_tile_fade_speed = 50; //40
 int xtileshift = 0;
 int ytileshift = 0;
@@ -421,6 +421,8 @@ float min_scale = 0.1;
 float max_scale = 2;
 
 entity* g_focus;
+entity* g_objective = 0;
+entity* narrarator;
 vector<entity*> party;
 float g_max_framerate = 120;
 float g_min_frametime = 1/g_max_framerate * 1000;
@@ -718,6 +720,14 @@ vector<string> splitString (string s, char delimiter) {
 
     ret.push_back (s.substr (start));
     return ret;
+}
+
+bool replaceString(std::string& str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.find(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
 }
 
 int yesNoPrompt(string msg) {

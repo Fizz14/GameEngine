@@ -68,7 +68,6 @@ int WinMain() {
 	SDL_FreeSurface(image);
 
 	//narrarator holds scripts caused by things like triggers
-	entity* narrarator;
 	// !!! reduce first launch overhead by 
 	// making the narrarator use a sprite with 1 pixel
 	narrarator = new entity(renderer, "sp-joseph");
@@ -468,8 +467,9 @@ int WinMain() {
 		x->texture = TextureC;
 	}
 
+	g_loadingATM = 0;
+
 	while (!quit) {
-		
 		//some event handling
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -480,8 +480,6 @@ int WinMain() {
 							for(auto x : g_mapObjects) {
 								if(x->mask_fileaddress != "&") {
 									x->reloadTexture();
-									I("reloaded a texture of mask");
-									I(x->mask_fileaddress);
 								}
 							}
 
@@ -601,6 +599,7 @@ int WinMain() {
 		if((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move)) {
 			protag->zaccel = 180;
 			storedJump = 0;
+			breakpoint();
 		} else { 
 			if(input[8] && !oldinput[8] && !protag->grounded) {
 				storedJump = 1;
@@ -780,7 +779,54 @@ int WinMain() {
 			adventureUIManager->updateText();
 			curTextWait = 0;
 		}
-		
+
+		{
+			if(g_objective != 0) {
+
+				if(!g_objective->tangible) {
+					g_objective = 0;
+				}
+
+				//update crosshair to current objective
+				rect objectiverect = {g_objective->getOriginX(), g_objective->getOriginY() - (XtoZ * ((g_objective->bounds.zeight / 2) + g_objective->z) ), 1, 1};
+				objectiverect = transformRect(objectiverect);
+				//is the x offscreen? let's adjust it somewhat
+				const float margin = 0.1;
+
+				float crossx = (float)objectiverect.x / (float)WIN_WIDTH;
+				float crossy = (float)objectiverect.y / (float)WIN_HEIGHT;
+
+				//make vector from the middle of the screen to the position of the obj
+				float vx = crossx - 0.5;
+				float vy = crossy - 0.5;
+
+				D(vx);
+				D(vy);
+
+
+				float vectorlen = pow( pow(vx, 2) + pow(vy, 2), 0.5 );
+				if( vectorlen * 2.2 > 1) {
+					vx /= vectorlen * 2.2;
+					vy /= vectorlen * 2.2;
+					//vy /= WIN_WIDTH/ WIN_HEIGHT;
+					
+				}
+				crossx = vx + 0.5;
+				crossy = vy + 0.5;
+
+				//hide crosshair if we are close
+				if(vectorlen < 0.17) {
+					crossx =5;
+					crossy =5;
+				}
+
+
+
+				adventureUIManager->crosshair->x = crossx - adventureUIManager->crosshair->width/2;
+
+				adventureUIManager->crosshair->y = crossy - adventureUIManager->crosshair->height/2;
+			}
+		}
 		
 		//tiles
 		for(long long unsigned int i=0; i < g_tiles.size(); i++){
@@ -1210,7 +1256,7 @@ int WinMain() {
 			}
 
 			for (size_t i = 0; i < g_fogslates.size(); i++) {
-				g_fogslates[i]->x = (int)g_focus->getOriginX() + px - 658; //655
+				g_fogslates[i]->x = (int)g_focus->getOriginX() + px - 657; //658
 				g_fogslates[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
 			}
 			
@@ -1300,6 +1346,7 @@ int WinMain() {
 
 		//draw pause screen
 		if(inPauseMenu) {
+			adventureUIManager->crosshair->show = 0;
 			
 			//iterate thru inventory and draw items on screen
 			float defaultX = WIN_WIDTH * 0.05;
@@ -1379,6 +1426,7 @@ int WinMain() {
 		} else {
 			inventoryMarker->show = 0;
 			inventoryText->show = 0;
+			adventureUIManager->crosshair->show = 1;
 		}
 
 		//sines for item bouncing

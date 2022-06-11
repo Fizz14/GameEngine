@@ -747,6 +747,11 @@ bool mapeditor_save_map(string word) {
         std::filesystem::create_directories("maps/" + g_mapdir + "/" + x);
     }
 
+    //make INIT.txt
+    ofstream file(g_mapdir + "/scripts/INIT.txt");
+
+    file.close();
+
     ofile.open(word);
 
     //write enemies and budget
@@ -865,7 +870,34 @@ bool mapeditor_save_map(string word) {
     for (auto x : g_collisionZones) {
         ofile << "collisionZone " << x->bounds.x << " " << x->bounds.y << " " << x->bounds.width << " " << x->bounds.height << endl;
     }
-    
+
+    //run script on load
+    if(fileExists("maps/" + g_mapdir + "/scripts/INIT.txt")) {
+        
+		string loadstr = "maps/" + g_mapdir + "/scripts/INIT.txt";
+		const char* plik = loadstr.c_str();
+		ifstream stream;
+		stream.open(plik);
+		
+        vector<string> script;
+
+		string line;
+
+		getline(stream, line);
+
+		while (getline(stream, line)) {
+			script.push_back(line);
+		}
+		
+		parseScriptForLabels(script);
+
+        narrarator->sayings = script;
+        narrarator->myScriptCaller->executingScript = 1;
+        narrarator->dialogue_index = -1;	
+        narrarator->myScriptCaller->talker = narrarator;
+        narrarator->myScriptCaller->continueDialogue();
+    }
+
     
     ofile.close();
     return 0;
@@ -2649,6 +2681,19 @@ void write_map(entity* mapent) {
                         }
                         break;
                     }
+
+                    if(word == "objective" || word == "obj") {
+                        line >> word;
+                        if(word != "") {
+                            entity* hopeful = searchEntities(word);
+                            if(hopeful != 0) {
+                                g_objective = hopeful;
+                                adventureUIManager->crosshair->show = 1;
+                            }
+                        }
+                        break;
+                    }
+
                     if(word == "focus") {
                         line >> word;
                         entity* hopeful = searchEntities(word);
@@ -2862,6 +2907,13 @@ void write_map(entity* mapent) {
                             }
                             break;
                         }
+                        if(word == "dynamic" || word == "dynamicness") {
+                            bool b0;
+                            if(line >> b0) {
+                                mapent->dynamic = b0;
+                            }
+                            break;
+                        }
                         if(word == "z") {
                             float z;
                             if(line >> z) {
@@ -2989,6 +3041,7 @@ void write_map(entity* mapent) {
                     M(px);
                     M(py);
                 }
+
                 if(word == "possess") {
                     line >> word;
                     if(word != "") {
@@ -2996,11 +3049,24 @@ void write_map(entity* mapent) {
                         if(hopeful != 0) {
                             protag = hopeful;
                             g_focus = hopeful;
+
                             
                         }
                     }
                     break;
                 }
+
+                if(word == "setobjective" || word == "setobj") {
+                    line >> word;
+                    if(word != "") {
+                        entity* hopeful = searchEntities(word);
+                        if(hopeful != 0) {
+                            g_objective = hopeful;
+                            adventureUIManager->crosshair->show = 1;
+                        }
+                    }
+                }
+                
                 if(word == "reset"  || word == "rs") {
                     line >> word;
 
@@ -3099,6 +3165,75 @@ void write_map(entity* mapent) {
                     mapent->y = y;
                     break;
                 }
+                if(word == "nudge" || word == "n") {
+                    int x, y;
+                    line >> x >> y;
+                    mapent->x += x;
+                    mapent->y += y;
+                    break;
+                }
+
+                if(word == "textureswap" || word == "texswap") {
+                    string tex1, tex2;
+                    tex1 = "";
+                    tex2 = "";
+                    line >> tex1 >> tex2;
+                    if(tex1 != "" && tex2 != "") {
+                        //swap textures for walls
+                        for(auto y : g_boxs) {
+                            for(auto x : y) {
+                                if(x->walltexture == tex1) {
+                                    x->walltexture = tex2;
+                                }
+                                if(x->captexture == tex1) {
+                                    x->captexture = tex2;
+                                }
+                            }
+                        }
+                        for(auto l : g_triangles) {
+                            for(auto t : l) {
+                                if(t->walltexture == tex1) {
+                                    t->walltexture = tex2;
+                                }
+                                if(t->captexture == tex1) {
+                                    t->captexture = tex2;
+                                }
+                            }
+                        }
+                        for(auto x : g_tiles) {
+                            if(x->fileaddress == tex1) {
+                                x->fileaddress = tex2;
+                            }
+                        }
+                    }
+                }
+
+                if(word == "themeswap" || word == "tswap") {
+                    string tex1, tex2;
+                    tex1 = "";
+                    tex2 = "";
+                    line >> tex1 >> tex2;
+                    if(tex1 != "" && tex2 != "") {
+                        //swap themes
+                        for(auto y : g_boxs) {
+                            for(auto x : y) {
+                                replaceString(x->walltexture, tex1, tex2);
+                                replaceString(x->captexture, tex1, tex2);
+                                
+                            }
+                        }
+                        for(auto l : g_triangles) {
+                            for(auto x : l) {
+                               replaceString(x->walltexture, tex1, tex2);
+                                replaceString(x->captexture, tex1, tex2);
+                            }
+                        }
+                        for(auto x : g_tiles) {
+                            replaceString(x->fileaddress, tex1, tex2);
+                        }
+                    }
+                }
+
                 if(word == "solidify") {
                     line >> entstring;
 
@@ -3118,6 +3253,7 @@ void write_map(entity* mapent) {
                     }
                 }
                 if(word == "entity" || word == "ent") {
+                    
                     line >> entstring;
                     //actually spawn the entity in the world
                     //string loadstr = "entities/" + entstring + ".ent";
@@ -3131,6 +3267,7 @@ void write_map(entity* mapent) {
                     e->z = wallstart;
                     e->shadow->x = e->x + e->shadow->xoffset;
                     e->shadow->y = e->y + e->shadow->yoffset;
+                    breakpoint();
                     break;
                 }
                 if(word == "item") {
@@ -3642,6 +3779,11 @@ adventureUI::adventureUI(SDL_Renderer* renderer) {
     inventoryB->patchscale = 0.4;
     inventoryB->persistent = true;
     inventoryB->priority = -4;
+
+    crosshair = new ui(renderer, "engine/crosshair.bmp", 0, 0,0.05, 0.05, -5000 );
+    crosshair->persistent = 1;
+    crosshair->heightFromWidthFactor = 1;
+    crosshair->show = 0;
 
     healthText = new textbox(renderer, "blem blem", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
     healthText->boxWidth = 0.95;
@@ -4289,6 +4431,34 @@ void adventureUI::continueDialogue() {
         return;
     }
     
+    //change objective
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,14) == "/setobjective ") {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 14);
+        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+        D(name);
+
+        entity* hopeful = searchEntities(name);
+        if(hopeful != nullptr) {
+            g_objective = hopeful;
+        }
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //clear objective
+    if(talker->sayings.at(talker->dialogue_index + 1).substr(0,15) == "/clearobjective") {
+        
+        g_objective = 0;
+        adventureUIManager->crosshair->show = 0;
+        
+        
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
 
     //change cameratarget
     // /lookat ward 0 0
@@ -4311,10 +4481,18 @@ void adventureUI::continueDialogue() {
 
                 }
             }
-            g_force_cookies_update = 1;
+           
 
             g_focus = hopeful;
-            cout << "set focus properly" << endl;
+
+            g_force_cookies_update = 1;
+
+            int px = -(int)g_focus->getOriginX() % 64;
+            for (size_t i = 0; i < g_fogslates.size(); i++) {
+				g_fogslates[i]->x = (int)g_focus->getOriginX() + px - 658; //655
+				g_fogslates[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
+			}
+
             if(transitionspeed != 0) {
                 //This check means that if the camera is already moving, don't reset
                 //it's velocity, because that would be jarring
@@ -4356,7 +4534,13 @@ void adventureUI::continueDialogue() {
 
                 }
             }
+
             g_force_cookies_update = 1;
+            int px = -(int)g_focus->getOriginX() % 64;
+            for (size_t i = 0; i < g_fogslates.size(); i++) {
+				g_fogslates[i]->x = (int)g_focus->getOriginX() + px - 658; //655
+				g_fogslates[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
+			}
 
             if(transitionspeed != 0) {
                 //This check means that if the camera is already moving, don't reset

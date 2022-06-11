@@ -2316,6 +2316,8 @@ public:
     ui* inventoryA = 0; //big box, which has all of the items that the player has
     ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
 
+	ui* crosshair = 0; //for guiding player to objectives
+
     textbox* healthText = 0;
 
     int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
@@ -2950,6 +2952,12 @@ public:
 					framespots.push_back(a);
 				}
 			}
+
+			//if we don't have the frames just set anim to 0
+			if(!(yframes > 3) ) {
+				animation = 0;
+				defaultAnimation = 0;
+			}
 		}
 
 		//disabled nodes underneath if we are set to (e.g. doors)
@@ -3575,6 +3583,9 @@ public:
 			} else {
 				this->flip = parent->flip;
 				this->animation = parent->animation;
+				if(yframes == 1) {
+					this->animation = 0;
+				}
 			}
 			
 			//update shadow
@@ -4401,7 +4412,7 @@ public:
 
 							I(this->name + " used " + x.name + " at " + target->name + ".");
 							
-							this->dialogue_index = 0;
+							//this->dialogue_index = 1;
 							this->sayings = x.script;
 							this->myScriptCaller->executingScript = 1;
 							this->dialogue_index = -1;	
@@ -5645,6 +5656,8 @@ public:
 	int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
 
 	int shrinkPixels = 0; //used for shrinking a ui element by an amount of pixels, usually in combination with some other element intended as a border
+	
+	float heightFromWidthFactor = 0; //set this to 0.5 or 1 and the height of the element will be held to that ratio of the width, even if the screen's ratio changes.
 
 	ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float fwidth, float fheight, int fpriority) {
 		M("ui()" );
@@ -5738,8 +5751,13 @@ public:
 				}
 				
 			} else {
-				SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex), y * WIN_HEIGHT + (shrinkPixels / scalex), width * WIN_WIDTH - (shrinkPixels / scalex) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2};
-				SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+				if(heightFromWidthFactor != 0) {
+					SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex), y * WIN_HEIGHT + (shrinkPixels / scalex), width * WIN_WIDTH - (shrinkPixels / scalex) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2) };
+					SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+				} else {
+					SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex), y * WIN_HEIGHT + (shrinkPixels / scalex), width * WIN_WIDTH - (shrinkPixels / scalex) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2};
+					SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+				}
 			}
 		}
 	}
@@ -6047,6 +6065,8 @@ void clear_map(camera& cameraToReset) {
 	enemiesMap.clear();
 	g_musicalEntities.clear();
 	Mix_FadeOutMusic(1000);
+	g_objective = 0;
+	adventureUIManager->crosshair->show = 0;
 	{
 		
 		//SDL_GL_SetSwapInterval(0);
