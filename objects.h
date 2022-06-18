@@ -298,6 +298,7 @@ public:
 	string walltexture;
 	string captexture;
 	bool capped = false;
+	bool hidden = 0; // 1 when this object is hidden behind something and doesn't need to be drawn. used for triangular walls
 
 	//tiles created from the mapCollision, to be appropriately deleted
 	vector<mapObject*> children;
@@ -366,6 +367,11 @@ public:
 	int layer = 0;
 	bool shaded = 0;
 
+	int x;
+	int y;
+	int width;
+	int height;
+
 	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool fshaded) {
 		M("tri()");
 		x1=fx1; y1=fy1;
@@ -389,6 +395,12 @@ public:
 		walltexture = fwallt;
 		captexture = fcapt;
 		capped = fcapped;
+
+		x = min(x1, x2);
+		y = min(y1, y2);
+		width = abs(x1 - x2);
+		height = abs(y1 - y2);
+
 		g_triangles[layer].push_back(this);
 	}
 
@@ -398,7 +410,7 @@ public:
 	}
 
 	void render(SDL_Renderer* renderer) {
-		
+
 		int tx1 = g_camera.zoom * (x1-g_camera.x);
 		int tx2 = g_camera.zoom * (x2-g_camera.x);
 		
@@ -414,6 +426,12 @@ public:
 		
 	}
 };
+
+//sortingfunction for optimizing fog and triangular walls
+//sort based on x and y
+inline int trisort(tri* one, tri* two) {
+	return one->x < two->x || (one->x==two->x && one->y < two->y);
+}
 
 class ramp : public mapCollision {
 public:
@@ -1401,7 +1419,7 @@ public:
 	}
 };
 
-int compare_ent (actor* a, actor* b) {
+inline int compare_ent (actor* a, actor* b) {
   	return a->y + a->z + a->sortingOffset < b->y + b->z + b->sortingOffset;
 }
 
@@ -1796,6 +1814,7 @@ public:
 	bool diffuse = 1; //is this mapobject used for things such as walls or floors, as opposed to props or lighting
 	string mask_fileaddress = "&"; //unset value
 	SDL_Texture* alternative = nullptr; //representing the texture tinted as if it were the opposite of the texture in terms of shading
+	mapCollision* parent = nullptr;
 
 	mapObject(SDL_Renderer * renderer, string imageadress, const char* mask_filename, float fx, float fy, float fz, float fwidth, float fheight, bool fwall = 0, float extrayoffset = 0) {
 		//M("mapObject() fake");
@@ -2011,6 +2030,8 @@ public:
 	}
 
 	void render(SDL_Renderer * renderer, camera fcamera) {
+	
+
 		SDL_FPoint nowt = {0, 0};
 
 		SDL_FRect obj; // = {(floor((x -fcamera.x)* fcamera.zoom) , floor((y-fcamera.y - height - XtoZ * z) * fcamera.zoom), ceil(width * fcamera.zoom), ceil(height * fcamera.zoom))};
@@ -2457,6 +2478,10 @@ public:
 	float xvel = 0;
 	float yvel = 0;
 	float zvel = 0;
+
+	//this is for making entities point where they are trying to walk
+	float walkingxaccel = 0;
+	float walkingyaccel = 0;
 
 	
 	int layer = 0; //related to z, used for boxs
@@ -3098,6 +3123,8 @@ public:
 			stream.close();
 
 		}
+		
+
 		file.close();
 	}
 
@@ -4369,6 +4396,7 @@ public:
 						if(XYWorldDistance(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY()) < this->autoAgroRadius * 64) {
 							
 							if(LineTrace(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)) {
+								this->traveling = 0;
 								this->target = x;
 								this->agrod = 1;
 							}
@@ -4564,14 +4592,16 @@ public:
 						recalcAngle = 1;
 					} else {
 						//set vectors from velocity
-						xvector = -xvel;
-						yvector = -yvel;
+						xvector = -walkingxaccel;
+						yvector = -walkingyaccel;
+						walkingxaccel = 0;
+						walkingxaccel = 0;
 						//if he's not traveling very fast it looks natural to not change angle
-						recalcAngle+= elapsed;
+						//recalcAngle+= elapsed;
 						//if(Distance(0,0,xaccel, yaccel) > this->xmaxspeed * 0.8) {recalcAngle = 1;}
 					}
 					
-					if(recalcAngle > 0) {
+					if(Distance(0,0,xvector, yvector) > 0) {
 						recalcAngle = -1000; //update every second
 						float angle = atan2(yvector, xvector);
 					
@@ -4649,13 +4679,12 @@ public:
 			//combatrange is higher than shooting range because sometimes that range is broken while a fight is still happening, so he shouldnt turn away
 			
 			//set vectors from velocity
-			float xvector = -xaccel;
-			float yvector = -yaccel;
+			float xvector = -walkingxaccel;
+			float yvector = -walkingyaccel;
+
 			//if he's not traveling very fast it looks natural to not change angle
 			//recalcAngle = 1
-			if(Distance(0,0,xaccel, yaccel) > 0.95 * xmaxspeed) {recalcAngle = 1;}
-			recalcAngle+= elapsed;
-			if(recalcAngle>0 && xvel > 0 || yvel > 0) {
+			if(Distance(0,0,xvector, yvector) > 0) {
 				recalcAngle = -1000;
 				float angle = atan2(yvector, xvector);
 				flip = SDL_FLIP_NONE;
@@ -4720,7 +4749,7 @@ public:
 					}
 				} else {
 					//should we be ready for our next travel-instruction?
-					if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 64) {
+					if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 128) {
 						readyForNextTravelInstruction = 1;
 					}
 				}
@@ -4935,14 +4964,17 @@ public:
 			
 		if(dest->x > getOriginX()) {
 			xaccel = this->xagil * xdist;
+			walkingxaccel = xaccel;
 		} else {
 			xaccel = -this->xagil * xdist;
+			walkingxaccel = xaccel;
 		}
 		if(dest->y > getOriginY()) {
 			yaccel = this->xagil * ydist;
+			walkingyaccel = yaccel;
 		} else {
 			yaccel = -this->xagil * ydist;
-			
+			walkingyaccel = yaccel;
 		}
 		//spring to get over obstacles
 		if(dest->z > this->z + 32 && this->grounded) {

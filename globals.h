@@ -286,6 +286,16 @@ float g_elapsed_accumulator = 0;
 // 2 or 4 for large maps, seems okay 1 is more detail than I think anyone needs.
 int g_platformResolution = 11; // a factor of 55. 11 is fine. USE 11
 float g_TiltResolution = 4; //1, 2, 4, 16 //what size step to use for triangular walls, 2 is almost unnoticable. must be a factor of 64 USE 4
+
+//triangular walls are the most expensive things to draw, so here s an idea:
+//when this variable is set to 1, hide triangular walls which are behind fogofwar.
+// !!! this feature is incomplete
+bool g_trifog_optimize = 0;
+
+//these are nonparticular values for drawing the blackbars
+SDL_Rect FoWrect;
+int px;
+
 bool g_protagHasBeenDrawnThisFrame = 0;
 bool g_loadingATM = 0; //are we loading a new map atm?
 SDL_Texture* g_shadowTexture;
@@ -561,7 +571,7 @@ bool fileExists (const std::string& name) {
 
 //combat
 enum Status { none, stunned, slowed, buffed, marked };
-float g_earshot = 1000; //how close do entities need to be to join their friends in battle
+float g_earshot = 4 * 64; //how close do entities need to be to join their friends in battle
 
 void playSound(int channel, Mix_Chunk* sound, int loops) {
 	//M("play sound");
@@ -807,5 +817,8 @@ int yesNoPrompt(string msg) {
 //set minimum window width and height to prevent crashes wenn the window is very small
 
 effectIndex* smokeEffect;
+
+
+
 
 #endif

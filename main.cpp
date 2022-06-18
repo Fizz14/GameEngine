@@ -470,6 +470,16 @@ int WinMain() {
 	g_loadingATM = 0;
 
 	while (!quit) {
+		
+		for(auto x  :g_entities) {
+			if(x->name =="zombie") {
+				D(x->currentPoiForPatrolling);
+				D(x->myTravelstyle);
+				D(g_setsOfInterest[0].size()-1)
+			}
+		}
+
+
 		//some event handling
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -780,235 +790,7 @@ int WinMain() {
 			curTextWait = 0;
 		}
 
-		{
-			if(g_objective != 0) {
-
-				if(!g_objective->tangible) {
-					g_objective = 0;
-				}
-
-				//update crosshair to current objective
-				rect objectiverect = {g_objective->getOriginX(), g_objective->getOriginY() - (XtoZ * ((g_objective->bounds.zeight / 2) + g_objective->z) ), 1, 1};
-				objectiverect = transformRect(objectiverect);
-				//is the x offscreen? let's adjust it somewhat
-				const float margin = 0.1;
-
-				float crossx = (float)objectiverect.x / (float)WIN_WIDTH;
-				float crossy = (float)objectiverect.y / (float)WIN_HEIGHT;
-
-				//make vector from the middle of the screen to the position of the obj
-				float vx = crossx - 0.5;
-				float vy = crossy - 0.5;
-
-				D(vx);
-				D(vy);
-
-
-				float vectorlen = pow( pow(vx, 2) + pow(vy, 2), 0.5 );
-				if( vectorlen * 2.2 > 1) {
-					vx /= vectorlen * 2.2;
-					vy /= vectorlen * 2.2;
-					//vy /= WIN_WIDTH/ WIN_HEIGHT;
-					
-				}
-				crossx = vx + 0.5;
-				crossy = vy + 0.5;
-
-				//hide crosshair if we are close
-				if(vectorlen < 0.17) {
-					crossx =5;
-					crossy =5;
-				}
-
-
-
-				adventureUIManager->crosshair->x = crossx - adventureUIManager->crosshair->width/2;
-
-				adventureUIManager->crosshair->y = crossy - adventureUIManager->crosshair->height/2;
-			}
-		}
-		
-		//tiles
-		for(long long unsigned int i=0; i < g_tiles.size(); i++){
-			if(g_tiles[i]->z ==0) {
-				g_tiles[i]->render(renderer, g_camera);
-			}
-		}
-
-		for(long long unsigned int i=0; i < g_tiles.size(); i++){
-			if(g_tiles[i]->z ==1) {
-				g_tiles[i]->render(renderer, g_camera);
-			}
-		}
-
-
-		SDL_Rect FoWrect;
-
-		//update particles
-		for(auto x : g_particles) {
-			x->update(elapsed, g_camera);
-		}
-
-		//delete old particles
-		for(int i = 0; i < g_particles.size(); i++) {
-			if(g_particles[i]->lifetime < 0) {
-				delete g_particles[i];
-				i--;
-			}
-		}
-
-		//sort		
-		sort_by_y(g_actors);
-		for(long long unsigned int i=0; i < g_actors.size(); i++){
-			g_actors[i]->render(renderer, g_camera);
-		}
-
-		for(long long unsigned int i=0; i < g_tiles.size(); i++){
-			if(g_tiles[i]->z == 2) {
-				g_tiles[i]->render(renderer, g_camera);
-			}
-		}
-
-
-		//map editing
-		if(devMode) {
-				
-			nodeInfoText->textcolor = {0, 0, 0};
-
-			//draw nodes
-			for (long long unsigned int i = 0; i < g_worldsounds.size(); i++) {
-				SDL_Rect obj = {(int)((g_worldsounds[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-				SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
-
-				SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
-				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-
-				SDL_FreeSurface(textsurface);
-				SDL_DestroyTexture(texttexture);
-
-
-				nodeInfoText->x = obj.x;
-				nodeInfoText->y = obj.y - 20;
-				nodeInfoText->updateText(g_worldsounds[i]->name, 15, 15);
-				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-			}
-
-			for (long long unsigned int i = 0; i < g_musicNodes.size(); i++) {
-				SDL_Rect obj = {(int)((g_musicNodes[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-				SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
-
-				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
-				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-
-				SDL_FreeSurface(textsurface);
-				SDL_DestroyTexture(texttexture);
-
-			}
-
-			for (long long unsigned int i = 0; i < g_cueSounds.size(); i++) {
-				SDL_Rect obj = { (int)((g_cueSounds[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-				SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
-				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
-				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-
-				SDL_FreeSurface(textsurface);
-				SDL_DestroyTexture(texttexture);
-
-			}
-
-			for (long long unsigned int i = 0; i < g_waypoints.size(); i++) {
-				SDL_Rect obj = {(int)((g_waypoints[i]->x -g_camera.x - 20)* g_camera.zoom ), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-				SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
-				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
-				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-
-				SDL_FreeSurface(textsurface);
-				SDL_DestroyTexture(texttexture);
-			}
-			
-
-			for(auto x : g_setsOfInterest) {
-				for(auto y : x) {
-					SDL_Rect obj = {(int)((y->x - g_camera.x - 20) * g_camera.zoom ), (int)((y->y - g_camera.y - 20) * g_camera.zoom ), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-					SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
-					
-					SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-					SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
-					SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-					SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-
-					SDL_FreeSurface(textsurface);
-					SDL_DestroyTexture(texttexture);
-				}
-			}
-
-			//doors
-			for (long long unsigned int i = 0; i < g_doors.size(); i++) {
-				SDL_Rect obj = {(int)((g_doors[i]->x -g_camera.x)* g_camera.zoom) , (int)(((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
-				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
-				//the wall
-				SDL_Rect obj2 = {(int)((g_doors[i]->x -g_camera.x)* g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(( (g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
-				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
-				nodeInfoText->x = obj.x + 25;
-				nodeInfoText->y = obj.y + 25;
-				nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, 15, 15);
-				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-			}
-
-			for (long long unsigned int i = 0; i < g_triggers.size(); i++) {
-				SDL_Rect obj = {(int)((g_triggers[i]->x -g_camera.x)* g_camera.zoom) , (int)(((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
-				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
-				//the wall
-				SDL_Rect obj2 = {(int)((g_triggers[i]->x -g_camera.x)* g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(( (g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
-				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
-
-				nodeInfoText->x = obj.x + 25;
-				nodeInfoText->y = obj.y + 25;
-				nodeInfoText->updateText(g_triggers[i]->binding, 15, 15);
-				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-			}
-
-			//listeners
-			for (long long unsigned int i = 0; i < g_listeners.size(); i++) {
-				SDL_Rect obj = {(int)((g_listeners[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
-				SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
-				nodeInfoText->x = obj.x;
-				nodeInfoText->y = obj.y - 20;
-				nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, 15, 15);
-				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-			}
-
-			write_map(protag);
-			for(int i =0; i < 50; i++) {
-				devinput[i]=0;
-			}
-
-		}
-
-		//old Fogofwar
+				//old Fogofwar
 		if(g_fogofwarEnabled && !devMode) {
 
 			//this is the worst functional code I've written, with no exceptions
@@ -1225,7 +1007,7 @@ int WinMain() {
 			// g_fogcookies[0][17] = 1;
 			// g_fogcookies[10][9] = 1; 
 
-			int px = -(int)g_focus->getOriginX() % 64;
+			px = -(int)g_focus->getOriginX() % 64;
 			
 			//offset us to the protag's location
 			//int yoffset =  ((g_focus->y- (g_focus->z + g_focus->zeight) * XtoZ)) * g_camera.zoom;
@@ -1296,7 +1078,295 @@ int WinMain() {
 			//render graphics
 			FoWrect.y -= 67 * XtoZ;
 			//SDL_RenderCopy(renderer, TextureB, NULL, &FoWrect);
+		}
+
+		//don't render triangles hidden behind fogofwar
+		if(g_fogofwarEnabled && g_trifog_optimize) {
+			//make a list of the triangular walls on the screen
+			vector<tri*> onscreentris;
+
+			SDL_FRect obj; // = {(floor((x -fcamera.x)* fcamera.zoom) , floor((y-fcamera.y - height - XtoZ * z) * fcamera.zoom), ceil(width * fcamera.zoom), ceil(height * fcamera.zoom))};
+			//obj.x = (x -fcamera.x)* fcamera.zoom;
+			//obj.y = (y-fcamera.y - height - XtoZ * z) * fcamera.zoom;
+			//obj.w = width * fcamera.zoom;
+			//obj.h = height * fcamera.zoom;
+
+			SDL_FRect cam;
+			cam.x = 0;
+			cam.y = 0;
+			cam.w = g_camera.width;
+			cam.h = g_camera.height;
+
+			//only checking for layer 0. come back and hide all triangles above hidden triangles
+			for(auto t : g_triangles[0]) {
+				obj.x = t->x;
+				obj.y = t->y;
+				obj.w = t->width;
+				obj.h = t->height;
+
+				obj = transformRect(obj);
+
+				// !!! save the result of this check to not redo it later for the same frame?
+				if(RectOverlap(obj, cam)) {
+					onscreentris.push_back(t);
+				}
+			}
+
+			//sort the cookies based on x and y
+			sort(onscreentris.begin(), onscreentris.end(), trisort);
+
+			//see if it works
+			M("Debug information here:");
+			for(auto t : onscreentris) {
+				D(t->x);
+				D(t->y);
+				M("------");
+			}
+			//SDL_Delay(1000);
+			//decide which cookie each one falls under. 
+			for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+				for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+
+				}
+			}
+
+			//if that cookie, and the adjacent cookies, are all turned off, don't render the traingle
+
+			//check which of them are completely hidden behind fog
+			for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+				for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+
+				}
+			}
+		}
+
+		{
+			if(g_objective != 0) {
+
+				if(!g_objective->tangible) {
+					g_objective = 0;
+				}
+
+				//update crosshair to current objective
+				rect objectiverect = {g_objective->getOriginX(), g_objective->getOriginY() - (XtoZ * ((g_objective->bounds.zeight / 2) + g_objective->z) ), 1, 1};
+				objectiverect = transformRect(objectiverect);
+				//is the x offscreen? let's adjust it somewhat
+				const float margin = 0.1;
+
+				float crossx = (float)objectiverect.x / (float)WIN_WIDTH;
+				float crossy = (float)objectiverect.y / (float)WIN_HEIGHT;
+
+				//make vector from the middle of the screen to the position of the obj
+				float vx = crossx - 0.5;
+				float vy = crossy - 0.5;
+
+				float vectorlen = pow( pow(vx, 2) + pow(vy, 2), 0.5 );
+				if( vectorlen * 2.2 > 1) {
+					vx /= vectorlen * 2.2;
+					vy /= vectorlen * 2.2;
+					//vy /= WIN_WIDTH/ WIN_HEIGHT;
+					
+				}
+				crossx = vx + 0.5;
+				crossy = vy + 0.5;
+
+				//hide crosshair if we are close
+				if(vectorlen < 0.17) {
+					crossx =5;
+					crossy =5;
+				}
+
+
+
+				adventureUIManager->crosshair->x = crossx - adventureUIManager->crosshair->width/2;
+
+				adventureUIManager->crosshair->y = crossy - adventureUIManager->crosshair->height/2;
+			}
+		}
 		
+		//tiles
+		for(long long unsigned int i=0; i < g_tiles.size(); i++){
+			if(g_tiles[i]->z ==0) {
+				g_tiles[i]->render(renderer, g_camera);
+			}
+		}
+
+		for(long long unsigned int i=0; i < g_tiles.size(); i++){
+			if(g_tiles[i]->z ==1) {
+				g_tiles[i]->render(renderer, g_camera);
+			}
+		}
+
+
+		//SDL_Rect FoWrect;
+
+		//update particles
+		for(auto x : g_particles) {
+			x->update(elapsed, g_camera);
+		}
+
+		//delete old particles
+		for(int i = 0; i < g_particles.size(); i++) {
+			if(g_particles[i]->lifetime < 0) {
+				delete g_particles[i];
+				i--;
+			}
+		}
+
+		//sort		
+		sort_by_y(g_actors);
+		for(long long unsigned int i=0; i < g_actors.size(); i++){
+			g_actors[i]->render(renderer, g_camera);
+		}
+
+		for(long long unsigned int i=0; i < g_tiles.size(); i++){
+			if(g_tiles[i]->z == 2) {
+				g_tiles[i]->render(renderer, g_camera);
+			}
+		}
+
+
+		//map editing
+		if(devMode) {
+				
+			nodeInfoText->textcolor = {0, 0, 0};
+
+			//draw nodes
+			for (long long unsigned int i = 0; i < g_worldsounds.size(); i++) {
+				SDL_Rect obj = {(int)((g_worldsounds[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+				SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
+
+				SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+
+
+				nodeInfoText->x = obj.x;
+				nodeInfoText->y = obj.y - 20;
+				nodeInfoText->updateText(g_worldsounds[i]->name, 15, 15);
+				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+			}
+
+			for (long long unsigned int i = 0; i < g_musicNodes.size(); i++) {
+				SDL_Rect obj = {(int)((g_musicNodes[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+				SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
+
+				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+
+			}
+
+			for (long long unsigned int i = 0; i < g_cueSounds.size(); i++) {
+				SDL_Rect obj = { (int)((g_cueSounds[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)(((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+				SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
+				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+
+			}
+
+			for (long long unsigned int i = 0; i < g_waypoints.size(); i++) {
+				SDL_Rect obj = {(int)((g_waypoints[i]->x -g_camera.x - 20)* g_camera.zoom ), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+				SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
+				SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+				SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+				SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+				SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+				SDL_FreeSurface(textsurface);
+				SDL_DestroyTexture(texttexture);
+			}
+			
+
+			for(auto x : g_setsOfInterest) {
+				for(auto y : x) {
+					SDL_Rect obj = {(int)((y->x - g_camera.x - 20) * g_camera.zoom ), (int)((y->y - g_camera.y - 20) * g_camera.zoom ), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+					SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
+					
+					SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+					SDL_Surface* textsurface =  TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), { 15, 15, 15 }, 1 * WIN_WIDTH);
+					SDL_Texture* texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+					SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+
+					SDL_FreeSurface(textsurface);
+					SDL_DestroyTexture(texttexture);
+				}
+			}
+
+			//doors
+			for (long long unsigned int i = 0; i < g_doors.size(); i++) {
+				SDL_Rect obj = {(int)((g_doors[i]->x -g_camera.x)* g_camera.zoom) , (int)(((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
+				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
+				//the wall
+				SDL_Rect obj2 = {(int)((g_doors[i]->x -g_camera.x)* g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - ( g_doors[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(( (g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
+				SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
+				nodeInfoText->x = obj.x + 25;
+				nodeInfoText->y = obj.y + 25;
+				nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, 15, 15);
+				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+			}
+
+			for (long long unsigned int i = 0; i < g_triggers.size(); i++) {
+				SDL_Rect obj = {(int)((g_triggers[i]->x -g_camera.x)* g_camera.zoom) , (int)(((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
+				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
+				//the wall
+				SDL_Rect obj2 = {(int)((g_triggers[i]->x -g_camera.x)* g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - ( g_triggers[i]->zeight ) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(( (g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
+				SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
+
+				nodeInfoText->x = obj.x + 25;
+				nodeInfoText->y = obj.y + 25;
+				nodeInfoText->updateText(g_triggers[i]->binding, 15, 15);
+				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+			}
+
+			//listeners
+			for (long long unsigned int i = 0; i < g_listeners.size(); i++) {
+				SDL_Rect obj = {(int)((g_listeners[i]->x -g_camera.x - 20)* g_camera.zoom) , (int)((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
+				SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
+				nodeInfoText->x = obj.x;
+				nodeInfoText->y = obj.y - 20;
+				nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, 15, 15);
+				nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+			}
+
+			write_map(protag);
+			for(int i =0; i < 50; i++) {
+				devinput[i]=0;
+			}
+
+		}
+
+
+
+		if(g_fogofwarEnabled && !devMode) {
 			//black bars 
 			SDL_Rect topbar = {px, FoWrect.y - 5000, 1500, 5020};
 			SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
@@ -1346,7 +1416,7 @@ int WinMain() {
 
 		//draw pause screen
 		if(inPauseMenu) {
-			adventureUIManager->crosshair->show = 0;
+			adventureUIManager->crosshair->x = 5;
 			
 			//iterate thru inventory and draw items on screen
 			float defaultX = WIN_WIDTH * 0.05;
@@ -1426,7 +1496,6 @@ int WinMain() {
 		} else {
 			inventoryMarker->show = 0;
 			inventoryText->show = 0;
-			adventureUIManager->crosshair->show = 1;
 		}
 
 		//sines for item bouncing
@@ -1954,6 +2023,28 @@ void getInput(float &elapsed) {
 			g_update_zoom = 1;
 			marker->x = -1000;
 			markerz-> x = -1000;
+				if(g_fogofwarEnabled && !devMode) {
+                    for(auto x : g_fogslates) {
+                        x->tangible = 1;
+                    }
+                    for(auto x : g_fogslatesA) {
+                        x->tangible = 1;
+                    }
+                    for(auto x : g_fogslatesB) {
+                        x->tangible = 1;
+                    }
+
+                } else {
+                    for(auto x : g_fogslates) {
+                        x->tangible = 0;
+                    }
+                    for(auto x : g_fogslatesA) {
+                        x->tangible = 0;
+                    }
+                    for(auto x : g_fogslatesB) {
+                        x->tangible = 0;
+                    }
+                }
 		}
 		if(devMode) {
 			floortexDisplay->show = 1;

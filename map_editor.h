@@ -380,6 +380,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
             for(box* box : g_boxs[i]) {
                 //handle rect
                 child = new mapObject(renderer, box->walltexture, "&", box->bounds.x, box->bounds.y + box->bounds.height, i * 64, box->bounds.width, 55, 1);
+                child->parent = box;
                 box->children.push_back(child);
                 //if there's no box above, make a cap
                 if(box->capped) {
@@ -388,6 +389,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     int step = g_platformResolution;
                     for (int i = 0; i < box->bounds.height; i+=step) {
                         child = new mapObject(renderer, box->captexture, "&", box->bounds.x, box->bounds.y + i + step, box->layer * 64 + 64, box->bounds.width, step, 0);
+                        child->parent = box;
                         box->children.push_back(child);
                     }
                     // child = new mapObject(renderer, box->captexture, "&", box->bounds.x, box->bounds.y + box->bounds.height, box->layer * 64 + 64, box->bounds.width, box->bounds.height, 0);
@@ -398,12 +400,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         //shine
                         child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 54/2,  box->layer * 64 + 64, box->bounds.width, 54);
                         child->sortingOffset = -26;
+                        child->parent = box;
                         
                         box->children.push_back(child);
                     }
                     if(box->shineTop){
                         //back
                         child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp",  "&", box->bounds.x, box->bounds.y + 54/2, box->layer * 64 + 64, box->bounds.width, 54/2);
+                        child->parent = box;
                         box->children.push_back(child);
                     }
                     
@@ -413,6 +417,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     //front shading
                     if(box->shadeBot == 1) {
                         child = new mapObject(renderer, "engine/OCCLUSION.bmp",  "&", box->bounds.x, box->bounds.y + box->bounds.height + 19 + 2, 64 * box->layer + 2, box->bounds.width, 55);
+                        child->parent = box;
                         box->children.push_back(child);
                     }
                     //left
@@ -420,12 +425,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     if(box->shadeLeft) {
                         for (int i = 0; i < box->bounds.height; i+=step) {
                             child = new mapObject(renderer, "engine/h-OCCLUSION.bmp",  "&", box->bounds.x - 27, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55/2, step);
+                            child->parent = box;
                             box->children.push_back(child);
                         }
                     }
                     if(box->shadeRight) {
                         for (int i = 0; i < box->bounds.height; i+=step) { //5, 8   
                             child = new mapObject(renderer, "engine/h-OCCLUSION.bmp",  "&", box->bounds.x + box->bounds.width, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55/2, step);
+                            child->parent = box;
                             box->children.push_back(child);
                         }
                     }
@@ -435,21 +442,25 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     //corner a
                     if(box->shadeLeft && box->shadeTop) {
                         child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x - (38 - 19), box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
+                        child->parent = box;
                         box->children.push_back(child);
                     }
                     //corner b
                     if(box->shadeRight && box->shadeTop) {
                         child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x + box->bounds.width, box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
+                        child->parent = box;
                         box->children.push_back(child);
                     }
                     //corner c
                     if(box->shadeLeft && (box->shadeBot == 1)){
                         child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x - (38 - 19), box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
+                        child->parent = box;
                         box->children.push_back(child);
                     }
                     //corner d
                     if(box->shadeRight && (box->shadeBot == 1)) {
                         child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", box->bounds.x + box->bounds.width, box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
+                        child->parent = box;
                         box->children.push_back(child);
                     }
                 
@@ -464,6 +475,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     if(triangle->capped) {
                         for (int i = 0; i < 55; i+=step) {
                             child = new mapObject(renderer, triangle->captexture, "engine/a.bmp", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                            child->parent = triangle;
                             triangle->children.push_back(child);
                         }
                         //diagonal shine
@@ -471,6 +483,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         for (int i = 0; i < 64; i+=step) {
                             child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, (i * XtoY) + 0);
                             child->sortingOffset = -25;
+                            child->parent = triangle;
                             triangle->children.push_back(child);
                         }
 
@@ -481,6 +494,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j+=vstep) {
                         for (float i = 0; i < 64; i+=step) {
                             child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - (i * XtoY) - 1, j, step,  32, 1, (i * XtoY));
+                            child->parent = triangle;
                             triangle->children.push_back(child);
                         }
                     }
@@ -490,6 +504,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         for (int i = 0; i < 64; i+=step) {
                             
                             child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - (i * XtoY) - 1, triangle->layer * 64, step,  50, 0, (i * XtoY) + 0);
+                            child->parent = triangle;
                             triangle->children.push_back(child);
                             
                         }
@@ -502,12 +517,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         if(triangle->capped) {
                             for (int i = 0; i < 55; i+=step) {
                                 child = new mapObject(renderer, triangle->captexture, "engine/b.bmp", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                child->parent = triangle;
                                 triangle->children.push_back(child);
                             }
                             step = g_TiltResolution;
                             for (int i = 0; i < 64; i+=step) {
                                 child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step,  55, 0, ((64 - i) * XtoY));
                                 child->sortingOffset = -25;
+                                child->parent = triangle;
                                 triangle->children.push_back(child);
                             }
                         
@@ -518,6 +535,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j+=vstep) {
                             for (float i = 0; i < 64; i+=step) {
                                 child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - i) * XtoY) - 1, j, step,  32, 1, ((64 - i) * XtoY));
+                                child->parent = triangle;
                                 triangle->children.push_back(child);
                             }
                         }
@@ -528,6 +546,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                             for (int i = 0; i < 64; i+=step) {
                                 
                                 child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - step) - i) * XtoY) - 1, 64 * triangle->layer, step,  50, 0, ((64 - i) * XtoY));
+                                child->parent = triangle;
                                 triangle->children.push_back(child);
                                 
                             }
@@ -538,11 +557,13 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                                 int step = g_platformResolution;
                                 for (int i = 0; i < 55; i+=step) {
                                     child = new mapObject(renderer, triangle->captexture, "engine/c.bmp", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                    child->parent = triangle;
                                     triangle->children.push_back(child);
                                 }
                                  step = g_TiltResolution;
                                 for (int i = 0; i < 64; i+=step) {
                                     child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (i * XtoY) + 0);
+                                    child->parent = triangle;
                                     triangle->children.push_back(child);
                                 }
                             }
@@ -554,11 +575,13 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                                 int step = g_platformResolution;
                                 for (int i = 0; i < 55; i+=step) {
                                     child = new mapObject(renderer, triangle->captexture, "engine/d.bmp", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                    child->parent = triangle;
                                     triangle->children.push_back(child);
                                 }
                                 step = g_TiltResolution;
                                 for (int i = 0; i < 64; i+=step) {
                                     child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step,  34, 0, ((64 - i) * XtoY));
+                                    child->parent = triangle;
                                     triangle->children.push_back(child);
                                 }
                             }
@@ -574,6 +597,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                     for (int i = 0; i < 64; i+= tiltstep) {
                         //make a strip of captex
                         child = new mapObject(renderer, r->captexture, "&", r->x, r->y - ((float)i * 55.0/64.0) + 55, r->layer * 64 + i, 64, tiltstep + 2, 0, 0);
+                        child->parent = r;
                         r->children.push_back(child);
                     }
                     
@@ -582,28 +606,34 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         for (int i = 0; i < 64; i+= tiltstep) {
                             //make a strip of captex
                             child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y+ 55, r->layer * 64 + i, tiltstep, 55, 0, 0);
+                            child->parent = r;
                             r->children.push_back(child);
                         }
                         //wall
                         child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+                        child->parent = r;
                         r->children.push_back(child);
                     } else {
                         if(r->type == 2) {
                             for (int i = 0; i < 55; i+= tiltstep) {
                                 //make a strip of captex
                                 child = new mapObject(renderer, r->captexture, "&", r->x, r->y - i+ 55, r->layer * 64 + (64 -(i * (64/55))), 64, tiltstep, 0, 0);
+                                child->parent = r;   
                                 r->children.push_back(child);
                             }
                             //wall
                             child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+                            child->parent = r;
                             r->children.push_back(child);
                         } else {
                             for (int i = 0; i < 64; i+= tiltstep) {
                                 //make a strip of captex
                                 child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y+ 55, r->layer * 64 + (64 - i), tiltstep, 55, 0, 0);
+                                child->parent = r;
                                 r->children.push_back(child);
                             }
                             child = new mapObject(renderer, r->walltexture, "&", r->x, r->y+ 55, r->layer * 64, 64, 32, 1, 0);
+                            child->parent = r;
                             r->children.push_back(child);
                         }
                     }
@@ -654,6 +684,55 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
 	g_camera.y = ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height/(2 * g_camera.zoom)));
 	g_camera.oldx = g_camera.x;
 	g_camera.oldy = g_camera.y;
+
+    M("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
+
+    //call map's init-script
+    //seemingly crashes the game sometimes
+    if(fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt")) {    
+		string loadstr = "maps/" + g_mapdir + "/scripts/INIT-"+ g_map +".txt";
+        D(loadstr);
+		const char* plik = loadstr.c_str();
+		ifstream stream;
+		stream.open(plik);
+		
+        vector<string> script;
+
+		string line;
+
+		while (getline(stream, line)) {
+			script.push_back(line);
+		}
+		
+		parseScriptForLabels(script);
+
+        if(narrarator->myScriptCaller == nullptr) {
+            narrarator->myScriptCaller = new adventureUI(renderer);
+            narrarator->myScriptCaller->playersUI = 0;
+            narrarator->myScriptCaller->talker = narrarator;
+        }
+       
+        
+        narrarator->sayings = script;
+        narrarator->myScriptCaller->executingScript = 1;
+        narrarator->dialogue_index = -1;	
+        narrarator->myScriptCaller->talker = narrarator;
+        adventureUIManager->sayings = &narrarator->sayings;
+        adventureUIManager->talker = narrarator;
+        adventureUIManager->talker->dialogue_index = -1;
+
+        D(narrarator->sayings.size());
+        for(int i =0; i < adventureUIManager->sayings->size(); i++) {
+            D(adventureUIManager->sayings->at(i));
+        }
+
+        if(narrarator->sayings.size() > 0) {
+            narrarator->myScriptCaller->continueDialogue();
+        }
+    } else {
+        M("MAPINIT NOT FOUND");
+    }
+
 
     g_loadingATM = 0;
 } 
@@ -739,6 +818,7 @@ bool mapeditor_save_map(string word) {
     }
     
     std::filesystem::create_directories("maps/" + g_mapdir);
+    string local_v_mapdir = word;
     word = "maps/" + g_mapdir  + "/" + word + ".map";
     
     //make folders for custom assets
@@ -748,9 +828,11 @@ bool mapeditor_save_map(string word) {
     }
 
     //make INIT.txt
-    ofstream file(g_mapdir + "/scripts/INIT.txt");
+    if(!fileExists("maps/" + g_mapdir + "/scripts/" + "INIT-" + local_v_mapdir + ".txt")) {
+        ofstream file("maps/" + g_mapdir + "/scripts/" + "INIT-" + local_v_mapdir + ".txt");
 
-    file.close();
+        file.close();
+    }
 
     ofile.open(word);
 
@@ -871,33 +953,21 @@ bool mapeditor_save_map(string word) {
         ofile << "collisionZone " << x->bounds.x << " " << x->bounds.y << " " << x->bounds.width << " " << x->bounds.height << endl;
     }
 
-    //run script on load
-    if(fileExists("maps/" + g_mapdir + "/scripts/INIT.txt")) {
         
-		string loadstr = "maps/" + g_mapdir + "/scripts/INIT.txt";
-		const char* plik = loadstr.c_str();
-		ifstream stream;
-		stream.open(plik);
-		
-        vector<string> script;
+    D("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
+    //run script on load
 
-		string line;
-
-		getline(stream, line);
-
-		while (getline(stream, line)) {
-			script.push_back(line);
-		}
-		
-		parseScriptForLabels(script);
-
-        narrarator->sayings = script;
-        narrarator->myScriptCaller->executingScript = 1;
-        narrarator->dialogue_index = -1;	
+    if(narrarator->myScriptCaller == nullptr) {
+        M("Must make scriptcaller");
+        narrarator->myScriptCaller = new adventureUI(renderer);
+        narrarator->myScriptCaller->playersUI = 0;
         narrarator->myScriptCaller->talker = narrarator;
-        narrarator->myScriptCaller->continueDialogue();
-    }
 
+        M("made scriptcaller");
+    }
+       
+
+    M("Done with recent code");
     
     ofile.close();
     return 0;
@@ -2956,7 +3026,14 @@ void write_map(entity* mapent) {
                         if(num == 1) {
                             Mix_HaltMusic();
                         }
+
                         break;
+                    }
+                }
+                if(word == "mute") {
+                    g_mute = !g_mute;
+                    if(g_mute) {
+                        Mix_HaltMusic();
                     }
                 }
                 
@@ -2998,6 +3075,22 @@ void write_map(entity* mapent) {
                         hopeful->readyForNextTravelInstruction = 1;
                     }
                 }
+
+                if(word == "patrol") {
+                    line >> word;
+                    int p0;
+                    line >> p0;
+                    entity* hopeful = searchEntities(word);
+                    if(hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0) {
+                        hopeful->agrod = 0;
+                        hopeful->target = nullptr;
+                        hopeful->myTravelstyle = patrol;
+                        hopeful->poiIndex = p0;
+                        hopeful->traveling = 1;
+                        hopeful->readyForNextTravelInstruction = 1;
+                    }
+                }
+
 
                 if(word == "adj" || word == "adjust") {
                     //adjust
@@ -4434,13 +4527,13 @@ void adventureUI::continueDialogue() {
     //change objective
     if(talker->sayings.at(talker->dialogue_index + 1).substr(0,14) == "/setobjective ") {
         string s = talker->sayings.at(talker->dialogue_index + 1);
-        s.erase(0, 14);
-        string name = s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-        D(name);
+        vector<string> x = splitString(s, ' ');
+        string name = x[1];
 
         entity* hopeful = searchEntities(name);
         if(hopeful != nullptr) {
             g_objective = hopeful;
+            adventureUIManager->crosshair->show = 1;
         }
         
         talker->dialogue_index++;
