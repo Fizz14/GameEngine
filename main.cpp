@@ -407,7 +407,7 @@ int WinMain() {
 		s->framewidth = 500;
 		s->shadow->width = 0;
 		s->dynamic = 0;
-		s->sortingOffset = 100; // -65 55
+		s->sortingOffset = 165; // -65 55
 	}
 
 	for (size_t i = 0; i < 19; i++) {
@@ -423,7 +423,7 @@ int WinMain() {
 		s->framewidth = 500;
 		s->shadow->width = 0;
 		s->dynamic = 0;
-		s->sortingOffset = 4500; // !!! might need to be bigger
+		s->sortingOffset = 45000; // !!! might need to be bigger
 	}
 
 	SDL_DestroyTexture(s->texture);
@@ -471,14 +471,6 @@ int WinMain() {
 
 	while (!quit) {
 		
-		for(auto x  :g_entities) {
-			if(x->name =="zombie") {
-				D(x->currentPoiForPatrolling);
-				D(x->myTravelstyle);
-				D(g_setsOfInterest[0].size()-1)
-			}
-		}
-
 
 		//some event handling
 		while(SDL_PollEvent(&event)) {

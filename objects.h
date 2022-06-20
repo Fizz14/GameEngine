@@ -40,13 +40,10 @@ void parseScriptForLabels(vector<string> &sayings) {
 		int pos = sayings[i].find(":");
 		if(pos != (int)string::npos) {
 			for(auto y: symboltable) {
-				D(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)));
 				if(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)) == y.first) {
 					
-					D(sayings[i]);
 					//sayings[i].erase(pos, sayings[i].length() - pos - 1);
 					sayings[i].replace(pos, y.first.length() + 1, ":" + to_string(y.second + 3) );
-					D(sayings[i]);
 				}
 			}
 		}
@@ -149,7 +146,6 @@ public:
 	
 	~navNode() {
 		//M("~navNode()");
-		//D(this);
 		for (auto x : friends) {
 			x->friends.erase(remove(x->friends.begin(), x->friends.end(), this), x->friends.end());
 		}
@@ -1207,7 +1203,6 @@ public:
 		
 		loadstr = "maps/" + g_mapdir + "/attacks/" + filename + ".atk";
 
-		D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
@@ -1215,7 +1210,6 @@ public:
 		if (!file.is_open()) {
 			//load from global folder
 			loadstr = "static/attacks/" + filename + ".atk";
-			//D(loadstr);
 			const char* plik = loadstr.c_str();
 			
 			file.open(plik);
@@ -1223,7 +1217,6 @@ public:
 			if (!file.is_open()) {
 				//just make a default entity
 				string newfile = "static/attacks/default.atk";
-				//D(loadstr);
 				file.open(newfile);
 			}
 		}
@@ -2280,7 +2273,6 @@ public:
 		//try to open from local map folder first
 		
 		loadstr = "maps/" + g_mapdir + "/scripts/" + binding + ".txt";
-		//D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		stream.open(plik);
@@ -2388,7 +2380,6 @@ public:
 		//try to open from local map folder first
 		
 		loadstr = "maps/" + g_mapdir + "/worldsounds/" + filename + ".ws";
-		D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		file.open(plik);
@@ -2409,7 +2400,6 @@ public:
 		file >> temp;
 		string existSTR;
 		existSTR = "maps/" + g_mapdir + "/sounds/" + temp + ".wav";
-		D(existSTR);
 		if(!fileExists(existSTR)) {
 			existSTR = "static/sounds/" + temp + ".wav";
 			if(!fileExists(existSTR)) {
@@ -2435,7 +2425,6 @@ public:
 		
 		file >> tempFloat;
 		maxWait = tempFloat * 1000;
-		//D(tempFloat);
 		g_worldsounds.push_back(this);
 	}
 
@@ -3783,7 +3772,6 @@ public:
 		bool xcollide = 0;
 		
 
-		
 
 		//turn off boxs if using the map-editor
 		if(boxsenabled) {
@@ -4046,7 +4034,7 @@ public:
 					for (int j = 0; j < (int)g_heightmaps.size(); j++) {
 						//M("looking for a heightmap");
 						//D(g_heightmaps[j]->name);
-						//D(g_tiles[i]->fileaddress);
+						//e(g_tiles[i]->fileaddress);
 						if(g_heightmaps[j]->name == g_tiles[i]->fileaddress) {
 							//M("found it");
 							heightmap_index = j;
@@ -4057,8 +4045,6 @@ public:
 							break;
 						}
 					}
-					if(breakflag) {break;} //we found it, leave
-
 					//current texture has no mask, keep looking
 				}
 			}
@@ -4461,25 +4447,23 @@ public:
 			}
 		}
 
-		//re-evaluate target
-		if(agrod && target == nullptr && targetFaction != faction) {
-			//find a nearby target
-			//!!! inefficient
-			for(auto x : g_entities) {
-				if(x->faction == this->targetFaction && XYWorldDistance(this->x, this->y, x->x, x->y) < g_earshot) {
-					this->target = x;
-				}
-			}
-
-		} 
+		
+		
+		//!!! inefficient	
+		//	for(auto x : g_entities) {
+		//		if(x->faction == this->targetFaction && XYWorldDistance(this->x, this->y, x->x, x->y) < g_earshot) {
+		//			this->target = x;
+		//		}
+		//	}
+		//} 
 
 
 		//de-agro
-		if(agrod && target != nullptr) {
-			if(XYWorldDistance(this->x, this->y, target->x, target->y) > g_earshot * 1.5) {
-				this->target = nullptr;
-			}
-		}
+		//if(agrod && target != nullptr) {
+		//	if(XYWorldDistance(this->x, this->y, target->x, target->y) > g_earshot * 1.5) {
+		//		this->target = nullptr;
+		//	}
+		//}
 
 		//apply statuseffect
 
@@ -4498,8 +4482,7 @@ public:
 			return nullptr;
 		}
 
-
-
+		
 		//push him away from close entities
 		//if we're even slightly stuck, don't bother
 		if(stuckTime < 2 && this->dynamic) {
@@ -4594,17 +4577,17 @@ public:
 						//set vectors from velocity
 						xvector = -walkingxaccel;
 						yvector = -walkingyaccel;
-						walkingxaccel = 0;
-						walkingxaccel = 0;
+						
 						//if he's not traveling very fast it looks natural to not change angle
 						//recalcAngle+= elapsed;
 						//if(Distance(0,0,xaccel, yaccel) > this->xmaxspeed * 0.8) {recalcAngle = 1;}
+						recalcAngle = (Distance(0,0,xvector, yvector) > 0);
+
 					}
 					
-					if(Distance(0,0,xvector, yvector) > 0) {
+					if(recalcAngle) {
 						recalcAngle = -1000; //update every second
 						float angle = atan2(yvector, xvector);
-					
 						flip = SDL_FLIP_NONE;
 						up = 0; down = 0; left = 0; right = 0;
 						if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
@@ -4749,7 +4732,7 @@ public:
 					}
 				} else {
 					//should we be ready for our next travel-instruction?
-					if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 128) {
+					if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 32) {
 						readyForNextTravelInstruction = 1;
 					}
 				}
@@ -4887,13 +4870,11 @@ public:
 							//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
 							
 							Destination = getNodeByPosition(ret[0], ret[1]);
-						
 						} else {
 							//Can't get our full range, so use the values in LineTraceX and LineTraceY
 							extern int lineTraceX, lineTraceY;
 							//Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
 							Destination = getNodeByPosition(lineTraceX, lineTraceY);
-						
 						}
 					}
 				}
@@ -4910,13 +4891,11 @@ public:
 			if(stuckTime > maxStuckTime) {
 				//spring to get over obstacles
 				//this->zaccel = 350;
-
+				stuckTime = 0;
 				current = Get_Closest_Node(g_navNodes);
 				if(current != nullptr) {
 					int c = rand() % current->friends.size();
 					Destination = current->friends[c];
-					dest = Destination;
-					stuckTime = 0;
 				}
 			}
 		} else {
@@ -5001,7 +4980,6 @@ public:
 		}
 		
 		if(timeSinceLastDijkstra < 0) {
-			//M("Starting Dijkstra");
 			if(dest != nullptr) {
 				current = dest;
 			}
@@ -5115,7 +5093,6 @@ public:
 
 			
 			dest = path.at(path.size() - 1);
-			//M("Finished Dikjstra");
 		} else {
 			timeSinceLastDijkstra -= elapsed;
 		}
@@ -5149,14 +5126,11 @@ public:
 				} else {
 
 					for(auto y : inventory) {
-						D(y.first->name);
 					}
 					delete x.first;
 					x.second = 0;
 					
-					D(inventory.size());
 					inventory.erase(remove(inventory.begin(), inventory.end(), x), inventory.end());
-					D(inventory.size());
 					return 0;
 				}
 			}
@@ -5209,7 +5183,6 @@ int loadSave() {
 	string line;
 	
 	string address = "user/saves/" + g_saveName + ".txt";
-	//D(address);
 	const char* plik = address.c_str();
 	file.open(plik);
 	
@@ -5223,7 +5196,6 @@ int loadSave() {
 		field = line.substr(0, line.find(' '));
 		value = line.substr(line.find(" "), line.length()-1);
 		
-		//D(value + "->" + field);
 		try {
 			g_save.insert( pair<string, int>(field, stoi(value)) );
 		} catch(...) {
@@ -5993,7 +5965,6 @@ public:
 		//try to open from local map folder first
 		
 		loadstr = "maps/" + g_mapdir + "/" + fbinding + ".txt";
-		//D(loadstr);
 		const char* plik = loadstr.c_str();
 		
 		stream.open(plik);
@@ -6011,7 +5982,6 @@ public:
 		
 		parseScriptForLabels(script);
 		// for(auto x : script) {
-		// 	//D(x);
 		// }
 	}
 
@@ -6061,9 +6031,6 @@ public:
 		}
 		parseScriptForLabels(script);
 		M("Check item script");
-		for(auto x : script) {
-			D(x);
-		}
 		
 		//build listenList from current entities
 		for(auto x : g_entities) {
@@ -6407,7 +6374,6 @@ void clear_map(camera& cameraToReset) {
 	//copy protag to a pointer, clear the array, and re-add protag
 	entity* hold_narra = nullptr;
 	vector<entity*> persistentEnts;
-	//D(protag->inParty);
 	for(int i=0; i< size; i++) {
 		if(g_entities[0]->inParty) {
 			//remove from array without deleting
