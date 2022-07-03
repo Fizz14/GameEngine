@@ -3543,15 +3543,20 @@ public:
 		hadInput = 1;
 	}
 
-	// !!! horrible implementation, if you have problems with pathfinding efficiency try making this not O(n) (lol)
+	// !!! horrible implementation, if you have problems with pathfinding efficiency try making this not O(n)
 	template <class T>
-	T* Get_Closest_Node(vector<T*> array) {
+	T* Get_Closest_Node(vector<T*> array, int useVelocity = 0) {
 		float min_dist = 0;
 		T* ret = nullptr;
 		bool flag = 1;
 
 		int cacheX = getOriginX();
 		int cacheY = getOriginY();
+
+		if(useVelocity) {
+			cacheX += xaccel * 3;
+			cacheY += yaccel * 3;
+		}
 
 		//todo check for boxs
 		if(array.size() == 0) {return nullptr;}
@@ -4745,10 +4750,52 @@ public:
 				}
 			}
 		}
-	
+		
 		//navigate
-		if(Destination != nullptr) {
-			BasicNavigate(Destination);
+		if(target !=  nullptr && target->tangible && LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) {
+			//just walk towards the target	
+			float ydist = 0;
+			float xdist = 0;
+
+			xdist = abs(target->getOriginX() - getOriginX());
+			ydist = abs(target->getOriginY() - getOriginY());
+
+			float vect = pow((pow(xdist,2)  + pow(ydist,2)), 0.5);
+			float factor = 1;
+
+			if(vect != 0) {
+				factor = 1 / vect;
+			}
+
+			xdist *= factor;
+			ydist *= factor;
+			
+			if(target->getOriginX() > getOriginX()) {
+				xaccel = this->xagil * xdist;
+				walkingxaccel = xaccel;
+			} else {
+				xaccel = -this->xagil * xdist;
+				walkingxaccel = xaccel;
+			}
+			if(target->getOriginY() > getOriginY()) {
+				yaccel = this->xagil * ydist;
+				walkingyaccel = yaccel;
+			} else {
+				yaccel = -this->xagil * ydist;
+				walkingyaccel = yaccel;
+			}
+			
+			//spring to get over obstacles
+			//if(target->z > this->z + 32 && target->grounded && this->grounded) {
+				//this->zaccel = 200;
+			//}
+
+			//recalculate current when we lose los
+			current = nullptr;
+		} else {
+			if(Destination != nullptr) {
+				BasicNavigate(Destination);
+			}
 		}
 
 		//walking ai
@@ -4812,29 +4859,6 @@ public:
 							index = 4;
 							break;
 					} 
-
-					//do we have line of sicht to this destination? if not, lets just run at the player.
-					// for (int i = 0; i < 8; i++) {
-					// 	//show all cardinalpoints
-					// 	vector<int> ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 200, i);
-					// 	SDL_FRect rend;
-					// 	int size = 20; 
-					// 	rend.x = ret[0] - size/2;
-					// 	rend.y = ret[1] - size/2;
-					// 	rend.w = size;
-					// 	rend.h = size;
-					// 	M(ret[0]);
-					// 	M(ret[1]);
-					// 	M("thats all");
-					// 	//SDL_Delay(600);
-					// 	rend = transformRect(rend);
-					// 	SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-					// 	SDL_RenderDrawRectF(renderer, &rend);
-					// 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-						
-					// }
-					// SDL_RenderPresent(renderer);
-					// SDL_Delay(10);
 
 					//use this code for strafing
 					//rotate clockwise
@@ -4924,7 +4948,7 @@ public:
 	void BasicNavigate(navNode* ultimateTargetNode) {
 		if(g_navNodes.size() < 1) {return;}
 		if(current == nullptr) {
-			current = Get_Closest_Node(g_navNodes);
+			current = Get_Closest_Node(g_navNodes, 1);
 			dest = current;
 		}
 		

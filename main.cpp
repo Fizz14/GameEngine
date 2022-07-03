@@ -18,9 +18,8 @@ void getInput(float& elapsed);
 
 int WinMain() {
 
-	devMode = 0; canSwitchOffDevMode = 0;
-	//devMode = 1; canSwitchOffDevMode = 1;
-
+	//devMode = 0; canSwitchOffDevMode = 0;
+	devMode = 1; canSwitchOffDevMode = 1;
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	IMG_Init(IMG_INIT_JPG|IMG_INIT_PNG);
