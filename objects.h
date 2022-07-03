@@ -3694,7 +3694,7 @@ public:
 			curwidth = (curwidth * 0.8 + width * 0.2) * ((sin(animtime*animspeed))   + (1/animlimit)) * (animlimit);
 			curheight = (curheight * 0.8 + height* 0.2) * ((sin(animtime*animspeed + PI))+ (1/animlimit)) * (animlimit);
 			animtime += elapsed;
-			if(this == protag && ( pow( pow(xvel,2) + pow(yvel, 2), 0.5) > 40 ) && (1 - sin(animtime * animspeed) < 0.01 || 1 - sin(animtime * animspeed + PI) < 0.01)) {
+			if(this == protag && ( pow( pow(xvel,2) + pow(yvel, 2), 0.5) > 30 ) && (1 - sin(animtime * animspeed) < 0.01 || 1 - sin(animtime * animspeed + PI) < 0.01)) {
 				if(footstep_reset && grounded) {
 					footstep_reset = 0;
 					if(1 - sin(animtime * animspeed) < 0.04) {
@@ -3771,6 +3771,8 @@ public:
 		bool ycollide = 0;
 		bool xcollide = 0;
 		
+		int oxvel = xvel;
+		int oyvel = yvel;
 
 
 		//turn off boxs if using the map-editor
@@ -3979,7 +3981,9 @@ public:
 		}
 		
 
-
+		if((xcollide || ycollide) && ( pow( pow(oxvel,2) + pow(oyvel, 2), 0.5) > 30 )) {
+			playSound(-1, g_bonk, 0);	
+		}
 
 		if(!ycollide && !transition) { 
 			y+= yvel * ((double) elapsed / 256.0);
@@ -3990,6 +3994,9 @@ public:
 		if(!xcollide && !transition) { 
 			x+= xvel * ((double) elapsed / 256.0);
 		}
+
+		
+
 		if(slowSeconds > 0) {
 			slowSeconds -= elapsed/1000;
 			friction = baseFriction * slowPercent;

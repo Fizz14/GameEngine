@@ -18,7 +18,8 @@ void getInput(float& elapsed);
 
 int WinMain() {
 
-	devMode = 1; canSwitchOffDevMode = 1;
+	devMode = 0; canSwitchOffDevMode = 0;
+	//devMode = 1; canSwitchOffDevMode = 1;
 
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -281,6 +282,7 @@ int WinMain() {
 	g_land = Mix_LoadWAV("static/sounds/step2.wav");
 	g_footstep_a = Mix_LoadWAV("static/sounds/protag-step-1.wav");
 	g_footstep_b = Mix_LoadWAV("static/sounds/protag-step-1.wav");
+	g_bonk = Mix_LoadWAV("static/sounds/bonk.wav");	
 	g_menu_open_sound = Mix_LoadWAV("static/sounds/open-menu.wav");
 	g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
 	g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
@@ -303,29 +305,11 @@ int WinMain() {
 		
 		
 	} else {
-		//load the titlescreen
-		//we need a dummy protag
-		// entity* dummy = new entity(renderer, "sp-joseph");
-		// protag = dummy;
-
-		entity* fomm;
-		cout << "about to make fomm" << endl;
-		fomm = new entity(renderer, "sp-joseph"); 
-		
-
-
-		fomm->inParty = 1;
-		party.push_back(fomm);
-		protag = fomm;
-		g_focus = protag;
-		fomm->name = "sp-dummy";
-
-		g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
-
-
-		load_map(renderer, "maps/sp-title/sp-title.map", "a");
-		//srand(time(NULL));
+		loadSave();
+		g_mapdir = "first";
+		load_map(renderer, g_first_map, "a");
 	}
+ 
 
 
 	ui* inventoryMarker = new ui(renderer, "static/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
@@ -376,12 +360,13 @@ int WinMain() {
 	//init fogslates
 	
 	entity* s;
-	
 	for (size_t i = 0; i < 19; i++) {
 		s = new entity(renderer, "sp-fogslate");
 		g_fogslates.push_back(s);
 		s->height = 56;
 		s->width = g_fogwidth * 64 + 50;
+		s->curheight = s->height -1;
+		s->curwidth = s->width;
 		s->xframes = 1;
 		s->yframes = 19;
 		s->animation = i;
@@ -399,6 +384,8 @@ int WinMain() {
 		s->z = 64;
 		s->height = 56;
 		s->width = g_fogwidth * 64 + 50;
+		s->curheight = s->height -1;
+		s->curwidth = s->width;
 		s->xframes = 1;
 		s->yframes = 19;
 		s->animation = i;
@@ -415,6 +402,8 @@ int WinMain() {
 		g_fogslatesB.push_back(s);
 		s->height = 56;
 		s->width = g_fogwidth * 64 + 50;
+		s->curheight = s->height -1;
+		s->curwidth = s->width;
 		s->xframes = 1;
 		s->yframes = 19;
 		s->animation = i;
@@ -470,7 +459,6 @@ int WinMain() {
 	g_loadingATM = 0;
 
 	while (!quit) {
-		
 
 		//some event handling
 		while(SDL_PollEvent(&event)) {
@@ -782,7 +770,7 @@ int WinMain() {
 			curTextWait = 0;
 		}
 
-				//old Fogofwar
+		//old Fogofwar
 		if(g_fogofwarEnabled && !devMode) {
 
 			//this is the worst functional code I've written, with no exceptions
@@ -2252,12 +2240,11 @@ void getInput(float &elapsed) {
 		g_cameraAimingOffsetXTarget = 0;
 		g_cameraAimingOffsetYTarget = 0;
 		
-
+		D(adventureUIManager->response_index);
 		if(keystate[bindings[2]] && !left_ui_refresh) {
 			if(adventureUIManager->askingQuestion) {
-				adventureUIManager->response_index--;
-				if(adventureUIManager->response_index < 0) {
-					adventureUIManager->response_index++;
+				if(adventureUIManager->response_index > 0) {
+					adventureUIManager->response_index--;
 				}
 			}
 			left_ui_refresh = 1;

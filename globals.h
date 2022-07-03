@@ -483,6 +483,7 @@ Mix_Chunk* g_menu_manip_sound;
 Mix_Chunk* g_land;
 Mix_Chunk* g_footstep_a;
 Mix_Chunk* g_footstep_b;
+Mix_Chunk* g_bonk;
 
 Mix_Chunk* g_deathsound;
 musicNode* closestMusicNode;
@@ -523,8 +524,8 @@ string g_lifecycle = "Alpha";
 
 //world
 int g_layers = 12; //max blocks in world
-
 int g_numberOfInterestSets = 50; // number of individual sets of pointsOfInterest available for entities to use
+string g_first_map = "maps/first/1.map";
 
 //map editing, mapeditor, map-editor
 bool g_mousemode = 1;
