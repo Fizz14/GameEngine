@@ -268,7 +268,7 @@ public:
 	}
 };
 
-bool LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer, int resolution, bool visibility);
+int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer, int resolution, bool visibility);
 
 class pointOfInterest {
 public:
@@ -2308,6 +2308,8 @@ public:
 	bool executingScript = 0;
 
 	ui* talkingBox = 0;
+	ui* talkingBoxTexture = 0;
+
 	textbox* talkingText = 0;
     textbox* responseText = 0;
     textbox* escText = 0;
@@ -2647,7 +2649,13 @@ public:
 	//inventory
 	//std::map<indexItem*, int> inventory = {};
 	std::vector<std::pair<indexItem*, int> > inventory;
-	
+
+	//will it be pushed away from semisolid entities.
+	int pushable = 0;
+
+	//used for atomically lighting large entities, e.g stalkers
+	bool large = 0;
+
 	//worlditem
 	bool isWorlditem = 0;
 
@@ -2802,7 +2810,18 @@ public:
 		}
 
 		file >> comment;
+		file >> pushable;
+
+		file >> comment;
 		file >> navblock;
+
+		file >> comment;
+		file >> large;
+
+		if(large) {
+			g_large_entities.push_back(this);
+		}
+
 		if(solidifyHim) {
 			this->solidify();
 			this->canBeSolid = 1;        
@@ -3305,6 +3324,7 @@ public:
 		if (!wallcap) {
 			delete shadow;
 		}
+
 		if(!asset_sharer) {
 			SDL_DestroyTexture(texture);
 		}
@@ -3326,6 +3346,10 @@ public:
 
 		if(solid) {
 			g_solid_entities.erase(remove(g_solid_entities.begin(), g_solid_entities.end(), this), g_solid_entities.end());
+		}
+
+		if(large) {
+			g_large_entities.erase(remove(g_large_entities.begin(), g_large_entities.end(), this), g_large_entities.end());
 		}
 
 		for(auto x : this->children) {
@@ -3987,7 +4011,7 @@ public:
 		
 
 		if((xcollide || ycollide) && ( pow( pow(oxvel,2) + pow(oyvel, 2), 0.5) > 30 )) {
-			playSound(-1, g_bonk, 0);	
+			//playSound(-1, g_bonk, 0);	
 		}
 
 		if(!ycollide && !transition) { 
@@ -4490,14 +4514,12 @@ public:
 
 
 
-		if(!canFight) {
-			return nullptr;
-		}
+
 
 		
 		//push him away from close entities
 		//if we're even slightly stuck, don't bother
-		if(stuckTime < 2 && this->dynamic) {
+		if(this->dynamic && this->pushable) {
 			
 			for(auto x : g_entities) {
 				if(this == x) {continue;} 
@@ -4505,12 +4527,15 @@ public:
 				
 				//entities with a semisolid value of 2 are only solid to the player
 				bool solidfits = 0;
+
+				//this is not a silly check
 				if(this == protag) {
 					solidfits = x->semisolid;
 				} else {
 					solidfits = (x->semisolid == 1);
 				}
-				if(solidfits && x->tangible && m) {		
+
+				if(solidfits && x->tangible && m) {
 					//push this one slightly away from x
 					float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
 					float mag =  30000/r;
@@ -4528,8 +4553,13 @@ public:
 				}
 			}
 		}
+
 		flashingMS -= elapsed;
 		if(this->inParty) {
+			return nullptr;
+		}
+
+		if(!canFight) {
 			return nullptr;
 		}
 
@@ -4931,12 +4961,12 @@ public:
 			}
 		} else {
 			//patroling/idling/wandering behavior would go here
-			if(Destination == nullptr) {
-				xvel = 0;
-				yvel = 0;
-				stop_hori();
-				stop_verti();
-			}
+			//if(Destination == nullptr) {
+			//	xvel = 0;
+			//	yvel = 0;
+			//	stop_hori();
+			//	stop_verti();
+			//}
 		}
 
 		
@@ -5509,7 +5539,7 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 
 //returns true if there was no hit
 //visibility is 1 to check for just navblock (very solid) entities
-bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0, int resolution = 10, bool visibility = 0) {
+int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0, int resolution = 10, bool visibility = 0) {
 	//float resolution = 10;
 	
 	if(display) {
@@ -5525,6 +5555,16 @@ bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, 
 		if(display) {
 			SDL_RenderDrawRect(renderer, &b);
 		}	
+        
+
+		for(auto x : g_large_entities) {	
+			
+			if(RectOverlap(a, x->getMovedBounds())) {
+				lineTraceX = a.x + a.width/2;
+				lineTraceY = a.y + a.height/2;
+				return -1;
+			}
+		}
 		
 		
 		for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++) {
@@ -5534,6 +5574,7 @@ bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, 
 				return false;
 			}
 		}
+
 		for(auto x : g_solid_entities) {
 			if(visibility) {
 				if(!x->navblock) {continue;}
@@ -5544,6 +5585,14 @@ bool LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, 
 				return false;
 			}
 		}
+
+
+
+
+
+
+		//check for large entities
+
 	}
 	return true;
 }
@@ -5552,7 +5601,7 @@ class textbox {
 public:
 	SDL_Surface* textsurface = 0;
 	SDL_Texture* texttexture = 0;
-	SDL_Color textcolor = { 245, 245, 245 };
+	SDL_Color textcolor = { 155, 115, 115 };
 	SDL_FRect thisrect = {0, 0, 50, 50};
 	string content = "Default text.";
 	TTF_Font* font = 0;
@@ -5590,6 +5639,7 @@ public:
 		x = fx;
 		y = fy;
 		SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+		SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
 		this->width = texW;
 		this->height = texH;
 		thisrect = { fx, fy, (float)texW, (float)texH };
@@ -5648,6 +5698,7 @@ public:
 		int texW = 0;
 		int texH = 0;
 		SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+		SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
 		width = texW;
 		thisrect = { (float)x, (float)y, (float)texW, (float)texH };
 		

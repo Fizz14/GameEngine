@@ -98,6 +98,8 @@ vector<entity*> g_entities;
 
 vector<entity*> g_solid_entities;
 
+vector<entity*> g_large_entities;
+
 vector<tile*> g_tiles;
 
 vector<door*> g_doors;
@@ -203,6 +205,8 @@ void breakpoint() {
 
 //for visuals
 float p_ratio = 1.151;
+float g_brightness_setting = 0; //from -1 to 1, 0 is what is normal to me
+float g_brightness_map_factor = 0; //this is meant to be set in the mapeditor so some maps can be darker
 bool g_vsync = true;
 float g_background_darkness = 0; //0 - show bg, 1 - show black
 SDL_Texture* background = 0;

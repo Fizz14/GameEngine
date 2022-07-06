@@ -18,8 +18,8 @@ void getInput(float& elapsed);
 
 int WinMain() {
 
-	//devMode = 0; canSwitchOffDevMode = 0;
-	devMode = 1; canSwitchOffDevMode = 1;
+	devMode = 0; canSwitchOffDevMode = 0;
+	//devMode = 1; canSwitchOffDevMode = 1;
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	IMG_Init(IMG_INIT_JPG|IMG_INIT_PNG);
@@ -52,6 +52,17 @@ int WinMain() {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	
 	SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
+
+	//for brightness
+	//reuse texture for transition, cuz why not
+	SDL_Surface* brightness_a_s = IMG_Load("engine/transition.bmp");
+	SDL_Texture* brightness_a = SDL_CreateTextureFromSurface(renderer, brightness_a_s);
+	SDL_FreeSurface(brightness_a_s);
+
+	SDL_Surface* brightness_b_s = IMG_Load("engine/black-diffuse.bmp");
+	SDL_Texture* brightness_b = SDL_CreateTextureFromSurface(renderer, brightness_b_s);
+	SDL_FreeSurface(brightness_b_s);
+
 	//SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
 
 	//entities will be made here so have them set as created during loadingtime and not arbitrarily during play
@@ -280,7 +291,7 @@ int WinMain() {
 	g_s_playerdeath = Mix_LoadWAV("static/sounds/playerdeath.wav");
 	g_land = Mix_LoadWAV("static/sounds/step2.wav");
 	g_footstep_a = Mix_LoadWAV("static/sounds/protag-step-1.wav");
-	g_footstep_b = Mix_LoadWAV("static/sounds/protag-step-1.wav");
+	g_footstep_b = Mix_LoadWAV("static/sounds/protag-step-2.wav");
 	g_bonk = Mix_LoadWAV("static/sounds/bonk.wav");	
 	g_menu_open_sound = Mix_LoadWAV("static/sounds/open-menu.wav");
 	g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
@@ -876,12 +887,9 @@ int WinMain() {
 							for(long long unsigned j = 0; j < g_fogcookies.size(); j++) {
 								//check if there was an "old" cookie
 								if((i + xtileshift >= 0 && i + xtileshift < g_fogcookies.size()) && (j + ytileshift >= 0 && j + ytileshift < g_fogcookies.size()-2)){
-								
 									g_fogcookies[i][j] = fogcopy[i + xtileshift][j + ytileshift];
 									g_fc[i][j] = fccopy[i + xtileshift][j + ytileshift];
-									
 									g_sc[i][j] = sccopy[i + xtileshift][j + ytileshift];
-									
 								} 
 								
 							}
@@ -897,6 +905,7 @@ int WinMain() {
 
 							int xpos_fc = ((i - 10) * 64) + functionalX;
 							int ypos_fc = ((j - 9) * 55) + functionalY;
+
 							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 6, 0, 15, 1)) {
 							
 								g_fogcookies[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
@@ -940,15 +949,62 @@ int WinMain() {
 					int ypos = ((j - 9) * 55) + functionalY;
 					//is this cookie in a wall? or behind a wall
 					if(j+1 < g_fogcookies.size() && g_fc[i][j+1] > 0) {
-
-						if(!LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1) || !LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1)) {
-							// !!!
-							g_fc[i][j] += g_tile_fade_speed*2; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 	
-							g_fc[i][j] = 255;
-						}
+						bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1);
+						bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1);
+						//for large entities
+						//if(firsttrace == -1) {
+						//	g_fc[i][j] = 255;
+						//	g_sc[i][j] = 255;
+						//} else {
+							if(!firsttrace || !secondtrace) {
+								// !!!
+								//g_fc[i][j] += g_tile_fade_speed*2; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 	
+								g_fc[i][j] = 255;
+							}
+						//}
 					}
 				}
 			}
+
+			//this is meant to prevent nasty clipping of shadows and large entities
+			for(auto x : g_large_entities) {
+				//if(XYWorldDistance(functionalX, functionalY, x->getOriginX(), x->getOriginY()) < g_viewdist) {
+					for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+						for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+							int xpos = ((i - 10) * 64) + functionalX;
+							int ypos = ((j - 9) * 55) + functionalY;
+							rect a = {xpos, ypos, 1, 1};
+
+							if(RectOverlap(a, x->getMovedBounds())) {
+								if(j > 0) {
+									g_fc[i][j-1] = 255;
+								}
+								g_fc[i][j] = 255;
+								//g_sc[i][j] = 255;
+							}	
+						}
+					}
+				//}
+			}
+
+			//if a cookie intercepts a large entity, dont darken it
+			//for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {
+			//	for(long long unsigned j = 0; j < g_fogcookies[0].size(); j++) {
+			//		int xpos = ((i - 10) * 64) + functionalX;
+			//		int ypos = ((j - 9) * 55) + functionalY;
+			//		//is this cookie in a wall? or behind a wall
+
+			//		bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 0);
+			//		bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 0);
+			//		//for large entities
+			//		if(firsttrace == -1) {
+			//			g_fc[i][j] = 255;
+			//			g_sc[i][j] = 255;
+			//			cout << "why is this not triggering" << endl;
+			//		}
+			//		
+			//	}
+			//}
 
 			//if a cookie is light, and it is intersecting a triangle, not that in g_shc
 			for(long long unsigned i = 0; i < g_fogcookies.size(); i++) {

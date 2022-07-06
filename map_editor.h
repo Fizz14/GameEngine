@@ -3809,14 +3809,17 @@ void close_map_writing() {
 void adventureUI::showTalkingUI() {
     //M("showTalkingUI()");
     talkingBox->show = 1;
+    //talkingBoxTexture->show = 1;
     talkingText->show = 1;
     talkingText->updateText("",34, 34);
     responseText->show = 1;
+    
 }
 
 void adventureUI::hideTalkingUI() {
     //M("hideTalkingUI()");
     talkingBox->show = 0;
+    //talkingBoxTexture->show = 0;
     talkingText->show = 0;
     responseText->show = 0;
     responseText->updateText("",34, 34);
@@ -3842,6 +3845,10 @@ adventureUI::adventureUI(SDL_Renderer* renderer) {
     talkingBox->patchscale = 0.4;
     talkingBox->is9patch = true;
     talkingBox->persistent = true;
+    
+    //talkingBoxTexture = new ui(renderer, "static/ui/ui-background.bmp", 0.1, 0.45, 0.9, 0.25, 0);
+    //talkingBoxTexture->persistent = true;
+    ///SDL_SetTextureBlendMode(talkingBoxTexture->texture, SDL_BLENDMODE_ADD);
 
     talkingText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH *g_fontsize, 0, 0, 0.9);
     talkingText->boxWidth = 0.95;
@@ -3914,6 +3921,7 @@ adventureUI::~adventureUI() {
     }
 
     delete talkingBox;
+    //delete talkingBoxTexture;
     delete talkingText;
     delete inventoryA;
     delete inventoryB;
