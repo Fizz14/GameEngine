@@ -2476,6 +2476,7 @@ public:
 
 	
 	int layer = 0; //related to z, used for boxs
+	int stableLayer = 0; //layer, but only if it's been held for some ms
 	bool grounded = 1; //is standing on ground
 	float xmaxspeed = 0;
 	float ymaxspeed = 0;
@@ -3637,6 +3638,7 @@ public:
 			float heightfloor = 0;
 			layer = max(z /64, 0.0f);
 			layer = min(layer, (int)g_boxs.size() - 1);
+			
 			//should we fall?
 			//bool should_fall = 1;
 			float floor = 0;
@@ -4037,6 +4039,7 @@ public:
 		if(grounded) {
 			yvel *= pow(friction, ((double) elapsed / 256.0));
 			xvel *= pow(friction, ((double) elapsed / 256.0));
+			stableLayer = layer;
 		} else {
 			yvel *= pow(friction*this->currentAirBoost, ((double) elapsed / 256.0));
 			xvel *= pow(friction*this->currentAirBoost, ((double) elapsed / 256.0));

@@ -18,7 +18,7 @@ void getInput(float& elapsed);
 
 int WinMain() {
 
-	devMode = 0; canSwitchOffDevMode = 0;
+	devMode = 1; canSwitchOffDevMode = 1;
 	//devMode = 1; canSwitchOffDevMode = 1;
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -385,7 +385,7 @@ int WinMain() {
 		s->framewidth = 500;
 		s->shadow->width = 0;
 		s->dynamic = 0;
-		s->sortingOffset = 100; // -35
+		s->sortingOffset = 130; // -35
 	}
 
 	for (size_t i = 0; i < 19; i++) {
@@ -822,7 +822,7 @@ int WinMain() {
 								//g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) g_sc[i][j] = 0; 
 								g_sc[i][j] = 0;
 
-							} else if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, 0, 15, 1)) {
+							} else if(LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, g_focus->stableLayer, 15, 1)) {
 								g_fogcookies[i][j] = 255;
 								g_fc[i][j] = 255;
 
@@ -906,7 +906,7 @@ int WinMain() {
 							int xpos_fc = ((i - 10) * 64) + functionalX;
 							int ypos_fc = ((j - 9) * 55) + functionalY;
 
-							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 6, 0, 15, 1)) {
+							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 6, g_focus->stableLayer + 1, 15, 1)) {
 							
 								g_fogcookies[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
 								//g_fogcookies[i][j] = 0;
@@ -949,8 +949,8 @@ int WinMain() {
 					int ypos = ((j - 9) * 55) + functionalY;
 					//is this cookie in a wall? or behind a wall
 					if(j+1 < g_fogcookies.size() && g_fc[i][j+1] > 0) {
-						bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, 0, 2, 1);
-						bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, 0, 2, 1);
+						bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, g_focus->stableLayer + 1, 2, 1);
+						bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, g_focus->stableLayer + 1, 2, 1);
 						//for large entities
 						//if(firsttrace == -1) {
 						//	g_fc[i][j] = 255;
@@ -1014,7 +1014,7 @@ int WinMain() {
 					int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
 					rect r = {xpos-10, ypos-10, 20, 20};
 					if(1) {
-						for(auto t : g_triangles[1]) {
+						for(auto t : g_triangles[g_focus->stableLayer + 1]) {
 							if(TriRectOverlap(t, r)) {
 								if(g_fogcookies[i][j]) {
 									g_shc[i][j] = t->type;
@@ -1062,6 +1062,7 @@ int WinMain() {
 			// 50 50
 			addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250, 0);
 			
+		
 			TextureC = IlluminateTexture(renderer, TextureD, canvas, result_c);
 			
 			//render graphics
@@ -1075,6 +1076,7 @@ int WinMain() {
 			for (size_t i = 0; i < g_fogslates.size(); i++) {
 				g_fogslates[i]->x = (int)g_focus->getOriginX() + px - 657; //658
 				g_fogslates[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
+				g_fogslates[i]->z = g_focus->stableLayer * 64;
 			}
 			
 
@@ -1088,6 +1090,7 @@ int WinMain() {
 			for (size_t i = 0; i < g_fogslatesA.size(); i++) {
 				g_fogslatesA[i]->x = (int)g_focus->getOriginX() + px - 658; //655
 				g_fogslatesA[i]->y = (int)g_focus->getOriginY() - ((int)g_focus->getOriginY()%55) + 55*i - 453;	//449
+				g_fogslatesA[i]->z = g_focus->stableLayer * 64 + 64;
 			}
 
 			
@@ -1098,7 +1101,7 @@ int WinMain() {
 			
 			for(auto x : g_fogslatesB) {
 				x->texture = TextureB;
-				x->z = 128;
+				x->z = g_focus->stableLayer * 64 + 128;
 				
 			}
 
