@@ -462,6 +462,22 @@ int WinMain() {
 	lightd = SDL_CreateTextureFromSurface(renderer, lightDS);
 	SDL_FreeSurface(lightDS);
 
+	SDL_Surface* lightASro = IMG_Load("engine/lightaro.bmp");
+	lightaro = SDL_CreateTextureFromSurface(renderer, lightAS);
+	SDL_FreeSurface(lightASro);
+
+	SDL_Surface* lightBSro = IMG_Load("engine/lightbro.bmp");
+	lightbro = SDL_CreateTextureFromSurface(renderer, lightBS);
+	SDL_FreeSurface(lightBSro);
+
+	SDL_Surface* lightCSro = IMG_Load("engine/lightcro.bmp");
+	lightcro = SDL_CreateTextureFromSurface(renderer, lightCS);
+	SDL_FreeSurface(lightCSro);
+
+	SDL_Surface* lightDSro = IMG_Load("engine/lightdro.bmp");
+	lightdro = SDL_CreateTextureFromSurface(renderer, lightDS);
+	SDL_FreeSurface(lightDSro);
+
 	for(auto x : g_fogslates) {
 		x->texture = TextureC;
 	}
@@ -1019,6 +1035,7 @@ int WinMain() {
 								if(g_fogcookies[i][j]) {
 									g_shc[i][j] = t->type;
 									g_fc[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fc[i][j] >255) {g_fc[i][j] = 255;} g_fc[i][j] = 255;
+									g_shc[i][j] += 4 * t->style;
 								}
 								
 								//g_fc[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 
@@ -2522,6 +2539,19 @@ void getInput(float &elapsed) {
 	}
 	if(keystate[SDL_SCANCODE_KP_4] && devMode) {
 		devinput[25] = 1;
+	}
+
+	if(keystate[SDL_SCANCODE_KP_7] && devMode) {
+		devinput[26] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_9] && devMode) {
+		devinput[27] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_3] && devMode) {
+		devinput[28] = 1;
+	}
+	if(keystate[SDL_SCANCODE_KP_1] && devMode) {
+		devinput[29] = 1;
 	}
 
 	if(keystate[SDL_SCANCODE_RETURN] && devMode) {

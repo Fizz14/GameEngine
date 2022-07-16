@@ -357,7 +357,8 @@ class tri:public mapCollision {
 public:
 	int x1; int y1;
 	int x2; int y2;
-	int type;
+	int type; //orientation
+	int style = 0; // 0 - plain 1 - outround
 	float m; //slope
 	int b; //offset
 	int layer = 0;
@@ -368,12 +369,13 @@ public:
 	int width;
 	int height;
 
-	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool fshaded) {
+	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool fshaded, bool fstyle = 0) {
 		M("tri()");
 		x1=fx1; y1=fy1;
 		x2=fx2; y2=fy2;
 		layer = flayer;
 		shaded = fshaded;
+		style = fstyle;
 		if(x2 < x1 && y2 > y1) {
 			type = 0; //  :'
 		}

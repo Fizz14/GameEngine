@@ -237,6 +237,11 @@ SDL_Texture* lightb;
 SDL_Texture* lightc;
 SDL_Texture* lightd;
 
+SDL_Texture* lightaro;
+SDL_Texture* lightbro;
+SDL_Texture* lightcro;
+SDL_Texture* lightdro;
+
 SDL_Texture* TextureA;
 SDL_Texture* TextureB;
 SDL_Texture* TextureC;
