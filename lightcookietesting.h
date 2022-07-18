@@ -35,6 +35,14 @@ inline SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogc
 						usingThisTexture = lightaro;
 					} else if(g_shc[i][j] == 7) {
 						usingThisTexture = lightdro;
+					} else if(g_shc[i][j] == 8) {
+						usingThisTexture = lightcri;
+					} else if(g_shc[i][j] == 9) {
+						usingThisTexture = lightbri;
+					} else if(g_shc[i][j] == 10) {
+						usingThisTexture = lightari;
+					} else if(g_shc[i][j] == 11) {
+						usingThisTexture = lightdri;
 					}
 				}
 

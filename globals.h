@@ -242,6 +242,11 @@ SDL_Texture* lightbro;
 SDL_Texture* lightcro;
 SDL_Texture* lightdro;
 
+SDL_Texture* lightari;
+SDL_Texture* lightbri;
+SDL_Texture* lightcri;
+SDL_Texture* lightdri;
+
 SDL_Texture* TextureA;
 SDL_Texture* TextureB;
 SDL_Texture* TextureC;
@@ -249,15 +254,14 @@ SDL_Texture* TextureD;
 SDL_Texture* blackbarTexture;
 
 
-
-//industry standard needs greater fogheight 
-int g_fogheight = 19;  //was 18, want 19
+int g_fogheight = 19;
 int g_fogwidth = 21;
 int g_lastFunctionalX = 0; //for optimizing the FoW calcs
 int g_lastFunctionalY = 0;
 int g_fogMiddleX = 10;
 int g_fogMiddleY = 9;
 float g_viewdist = 310; //240, 310 is casual, 340 could be from an upgrade.   it was 310 500 is max
+bool g_fogIgnoresLOS = 0;
 int g_tile_fade_speed = 50; //40
 int xtileshift = 0;
 int ytileshift = 0;

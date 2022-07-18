@@ -611,7 +611,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         int vstep = 64;
                         for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j+=vstep) {
                             for (float i = 0; i < 64; i+=step) {
-                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY), j, step,  32, 1, ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY));
+                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY)-1, j, step,  32, 1, ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY));
                                 child->sortingOffset = 15;
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
@@ -710,14 +710,14 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         int step = g_platformResolution;
                         if(triangle->capped) {
                             for (int i = 0; i < 55; i+=step) {
-                                child = new mapObject(renderer, triangle->captexture, "engine/aro.bmp", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                child = new mapObject(renderer, triangle->captexture, "engine/ari.bmp", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
                             }
                             //diagonal shine
                             step = g_TiltResolution;
                             for (int i = 0; i < 64; i+=step) {
-                                child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY) + 0);
+                                child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 35 + ((64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, -((64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY) + 0);
                                 child->sortingOffset = -25;
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
@@ -727,7 +727,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         int vstep = 64;
                         for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j+=vstep) {
                             for (float i = 0; i < 64; i+=step) {
-                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY), j, step,  32, 1, ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY));
+                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + ((64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY) -1, j, step,  32, 1, -((64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY));
                                 child->sortingOffset = 15;
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
@@ -737,7 +737,7 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                         if(triangle->shaded) {
                             for (int i = 0; i < 64; i+=step) {
                             
-                                child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY) - 1, triangle->layer * 64, step,  50, 0, ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY) + 0);
+                                child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", triangle->x2 + i, triangle->y1 + 30 + ((64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY) - 1, triangle->layer * 64, step,  50, 0, -((64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY) + 0);
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
                             
@@ -748,13 +748,13 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                             int step = g_platformResolution;
                             if(triangle->capped) {
                                 for (int i = 0; i < 55; i+=step) {
-                                    child = new mapObject(renderer, triangle->captexture, "engine/bro.bmp", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                    child = new mapObject(renderer, triangle->captexture, "engine/bri.bmp", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                     child->parent = triangle;
                                     triangle->children.push_back(child);
                                 }
                                 step = g_TiltResolution;
                                 for (int i = 0; i < 64; i+=step) {
-                                    child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - (64-pow(pow(64,2)-pow(i,2),0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step,  55, 0, ((64 - i) * XtoY));
+                                    child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - (64-pow(pow(64,2)-pow(i,2),0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step,  55, 0, -(64-pow(pow(64,2)-pow(i,2),0.5)));
                                     child->sortingOffset = -25;
                                     child->parent = triangle;
                                     triangle->children.push_back(child);
@@ -788,13 +788,13 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                                 if(triangle->capped) {
                                     int step = g_platformResolution;
                                     for (int i = 0; i < 55; i+=step) {
-                                        child = new mapObject(renderer, triangle->captexture, "engine/cro.bmp", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                        child = new mapObject(renderer, triangle->captexture, "engine/cri.bmp", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                         child->parent = triangle;
                                         triangle->children.push_back(child);
                                     }
                                     step = g_TiltResolution;
                                     for (int i = 0; i < 64; i+=step) {
-                                        child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (i * XtoY) + 0);
+                                        child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i - 64, triangle->y1 + 35 - ( (64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, ( (64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY));
                                         child->parent = triangle;
                                         triangle->children.push_back(child);
                                     }
@@ -806,13 +806,13 @@ void load_map(SDL_Renderer* renderer, string filename, string destWaypointName) 
                                 if(triangle->capped) {
                                     int step = g_platformResolution;
                                     for (int i = 0; i < 55; i+=step) {
-                                        child = new mapObject(renderer, triangle->captexture, "engine/dro.bmp", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+                                        child = new mapObject(renderer, triangle->captexture, "engine/dri.bmp", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
                                         child->parent = triangle;
                                         triangle->children.push_back(child);
                                     }
                                     step = g_TiltResolution;
                                     for (int i = 0; i < 64; i+=step) {
-                                        child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step,  34, 0, ((64 - i) * XtoY));
+                                        child = new mapObject(renderer, "engine/SMOOTHSHADING.bmp", "&", triangle->x2 + i, triangle->y1 + 35 - ( (64- pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step,  34, 0, ( (64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY));
                                         child->parent = triangle;
                                         triangle->children.push_back(child);
                                     }
@@ -1935,6 +1935,75 @@ void write_map(entity* mapent) {
     if(devinput[10] && !olddevinput[10]) {
         if(g_holdingCTRL) {
             //pop this triangle out
+            //check for triangles at mouse
+            vector<tri*> deleteMe;
+            //rect markerrect = {marker->x, marker->y, marker->width, marker->height };
+            for (int i = wallstart/64; i < wallheight/64; i++) {
+                for(auto n : g_triangles[i]) {
+                    if(TriRectOverlap(n, marker->x + 6, marker->y + 6, marker->width - 12, marker->height - 12)) {
+                        deleteMe.push_back(n);
+                    }
+                }
+            }
+            if(deleteMe.size() != 0) {
+                int type = deleteMe[0]->type;
+                int style = deleteMe[0]->style;
+                for (auto n:deleteMe) {
+                    for(auto child:n->children) {
+                        delete child;
+                    }
+                    delete n;
+                    }
+                //make a new triangle with a different type and current wallheight
+                if(style == 0) {
+                    switch(type) {
+                        case 0:
+                            devinput[26] = 1;
+                            break;
+                        case 1:
+                            devinput[29] = 1;
+                            break;
+                        case 2:
+                            devinput[28] = 1;
+                            break;
+                        case 3:
+                            devinput[27] = 1;
+                            break;
+                    }
+                }
+                if(style == 1) {
+                    switch(type) {
+                        case 0:
+                            devinput[30] = 1;
+                            break;
+                        case 1:
+                            devinput[33] = 1;
+                            break;
+                        case 2:
+                            devinput[32] = 1;
+                            break;
+                        case 3:
+                            devinput[31] = 1;
+                            break;
+                    }
+                }
+                if(style == 2) {
+                    switch(type) {
+                        case 0:
+                            devinput[12] = 1;
+                            break;
+                        case 1:
+                            devinput[15] = 1;
+                            break;
+                        case 2:
+                            devinput[14] = 1;
+                            break;
+                        case 3:
+                            devinput[13] = 1;
+                            break;
+                    }
+                }
+            }
         } else {
             //check for triangles at mouse
             vector<tri*> deleteMe;
@@ -1948,6 +2017,7 @@ void write_map(entity* mapent) {
             }
             if(deleteMe.size() != 0) {
                 int type = deleteMe[0]->type;
+                int style = deleteMe[0]->style;
                 for (auto n:deleteMe) {
                     for(auto child:n->children) {
                         delete child;
@@ -1955,19 +2025,54 @@ void write_map(entity* mapent) {
                     delete n;
                 }
                 //make a new triangle with a different type and current wallheight
-                switch(type) {
-                    case 0:
-                        devinput[15] = 1;
-                        break;
-                    case 1:
-                        devinput[14] = 1;
-                        break;
-                    case 2:
-                        devinput[13] = 1;
-                        break;
-                    case 3:
-                        devinput[12] = 1;
-                        break;
+                
+                if(style == 0) {
+                    switch(type) {
+                        case 0:
+                            devinput[15] = 1;
+                            break;
+                        case 1:
+                            devinput[14] = 1;
+                            break;
+                        case 2:
+                            devinput[13] = 1;
+                            break;
+                        case 3:
+                            devinput[12] = 1;
+                            break;
+                    }
+                }
+                if(style == 1) {
+                    switch(type) {
+                        case 0:
+                            devinput[29] = 1;
+                            break;
+                        case 1:
+                            devinput[28] = 1;
+                            break;
+                        case 2:
+                            devinput[27] = 1;
+                            break;
+                        case 3:
+                            devinput[26] = 1;
+                            break;
+                    }
+                }
+                if(style == 2) {
+                    switch(type) {
+                        case 0:
+                            devinput[33] = 1;
+                            break;
+                        case 1:
+                            devinput[32] = 1;
+                            break;
+                        case 2:
+                            devinput[31] = 1;
+                            break;
+                        case 3:
+                            devinput[30] = 1;
+                            break;
+                    }
                 }
             } else {
                 //we looked and didnt find anything, lets make one
@@ -3976,7 +4081,99 @@ void write_map(entity* mapent) {
             mapObject* child = new mapObject(renderer, n->captexture, "engine/dro.bmp", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
             n->children.push_back(child);
         }
+    }
+
+        //make rounded triangles
+    if(devinput[30] && !olddevinput[30]) {
+        //make triangle
+        tri* n = 0;
+        for(int i = wallstart/64; i < wallheight / 64; i++){
+            bool fcap = (!(i + 1 < wallheight/64));
+            n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap, 0, 2);
+            
+        }
+        if(autoMakeWallcaps) {
+            int step = g_platformResolution;
+            for (int i = 0; i < 55; i+=step) {
+                mapObject* e = new mapObject(renderer, captex, "engine/ari.bmp", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                n->children.push_back(e);
+            }
+        }
+
+
+        int step = 2;
+        int vstep = 64;
+        if(autoMakeWalls){
+            //a tile on the floor to help with the edge of the diagonal wall pieces
+            //this tile won't be saved, because it uses an engine mask
+            //tile* t = new tile(renderer, walltex.c_str(), "engine/a.bmp", marker->x, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);    
+            for (int j = wallstart; j < wallheight; j+=vstep) {
+                for (int i = 0; i < 64; i+=step) {
+                    mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + ((64-pow(pow(64,2)-pow(64-i,2),0.5)) * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, ((64-pow(pow(64,2)-pow(i,2),0.5)) * XtoY));
+                    n->children.push_back(e);
+                }
+            }
+        }
+
         
+    }
+    if(devinput[31] && !olddevinput[31]) {
+        tri* n = 0;
+        //make triangle
+        for(int i = wallstart/64; i < wallheight / 64; i++){
+            bool fcap = (!(i + 1 < wallheight/64));
+            n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap, 0, 2);
+        }
+        if(autoMakeWallcaps) {
+            int step = g_platformResolution;
+            for (int i = 0; i < 55; i+=step) {
+                mapObject* e = new mapObject(renderer, captex, "engine/bri.bmp", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+                n->children.push_back(e);
+            }
+            
+        }
+
+        //a tile on the floor to help with the edge of the diagonal wall pieces
+        //tile* t = new tile(renderer, walltex.c_str(), "engine/b.bmp", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
+
+        int step = 2;
+        int vstep = 64;
+        if(autoMakeWalls){
+            for (int j = wallstart; j < wallheight; j+=vstep) {
+                for (int i = 0; i < 64; i+=step) {
+                    mapObject* e = new mapObject(renderer, walltex, "&", marker->x + i, marker->y + marker->height - (((64 - step) - (64-pow(pow(64,2)-pow(i,2),0.5))) * XtoY) - 1, j, step,  ceil(64 * XtoZ) + 1, 1, ((64 - i) * XtoY));
+                    n->children.push_back(e);
+                }
+            }
+        }    
+    }
+
+    if(devinput[32] && !olddevinput[32]) {
+        tri* n = 0;
+        //make triangle
+        for(int i = wallstart/64; i < wallheight / 64; i++){
+            bool fcap = (!(i + 1 < wallheight/64));
+            n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap, 0, 2); 
+        }
+        int step = g_platformResolution;
+        for (int i = 0; i < 55; i+=step) {
+            mapObject* child = new mapObject(renderer, n->captexture, "engine/cri.bmp", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+            n->children.push_back(child);
+        }
+    }
+    
+    if(devinput[33] && !olddevinput[33]) {
+        tri* n = 0;
+        //make triangle
+        for(int i = wallstart/64; i < wallheight / 64; i++){
+            bool fcap = (!(i + 1 < wallheight/64));
+            n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap, 0, 2); 
+        }
+        int step = g_platformResolution;
+        for (int i = 0; i < 55; i+=step) {
+            mapObject* child = new mapObject(renderer, n->captexture, "engine/dri.bmp", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+            n->children.push_back(child);
+        }
     }
 
     //change wall, cap, and floor textures

@@ -369,7 +369,7 @@ public:
 	int width;
 	int height;
 
-	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool fshaded, bool fstyle = 0) {
+	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool fshaded, int fstyle = 0) {
 		M("tri()");
 		x1=fx1; y1=fy1;
 		x2=fx2; y2=fy2;
@@ -2025,8 +2025,6 @@ public:
 	}
 
 	void render(SDL_Renderer * renderer, camera fcamera) {
-	
-
 		SDL_FPoint nowt = {0, 0};
 
 		SDL_FRect obj; // = {(floor((x -fcamera.x)* fcamera.zoom) , floor((y-fcamera.y - height - XtoZ * z) * fcamera.zoom), ceil(width * fcamera.zoom), ceil(height * fcamera.zoom))};
@@ -2042,34 +2040,8 @@ public:
 		cam.h = fcamera.height;
 		
 		if(RectOverlap(obj, cam)) {
-			
-			//if its a wall, check if it is covering the player
-			if(this->wall && protag != nullptr) {
-				
-				// //make obj one block higher for the wallcap
-				// //obj.height -= 45;
-				// //obj.y += 45;
-				// bool blocking = 0;
-				
-				// if(!g_protagHasBeenDrawnThisFrame && RectOverlap( transformRect(protag->getMovedBounds() ), transformRect( this->getMovedBounds() ) ) ) {
-				// 	//objects are draw on top of each other
-				// 	blocking = 1;
-				// 	M("blocking protag");
-				// }
-				// M("did it block?");
-				// if(blocking) {
-				// 	SDL_SetTextureAlphaMod(texture, 160);
-				// } else {
-				// 	SDL_SetTextureAlphaMod(texture, 255);
-				// }
-				
-			}
-			
-
-			
-			
 			SDL_Rect srcrect;
-			SDL_FRect dstrect;
+			SDL_Rect dstrect;
 			int ypos = 0;
 			int xpos = 0;
 			srcrect.x = xoffset;
@@ -2084,7 +2056,6 @@ public:
 						dstrect.w = framewidth;
 					}
 					if(srcrect.y == yoffset) {
-						
 						srcrect.h = frameheight - yoffset;
 						dstrect.h = frameheight - yoffset;
 					} else {
@@ -2105,13 +2076,6 @@ public:
 						dstrect.w = framewidth - srcrect.x;
 					}
 					srcrect.w = dstrect.w;
-					//seems to cause seams, seemingly.
-					//lets add one to the dstrect.w
-					//although ceiling it might be better
-					//all of the numbers above are ints
-					//so rounding shouldnt be a problem
-					//dstrect.w++;
-					//fucks with shadows
 				}
 				if(ypos + dstrect.h > this->height ) {
 					
@@ -2123,32 +2087,12 @@ public:
 					//dstrect.h ++;
 				}
 
-				
-				
-				
-				
+				dstrect.x = ((dstrect.x - fcamera.x)* fcamera.zoom);
+				dstrect.y = ((dstrect.y - fcamera.y - height)* fcamera.zoom);
+				dstrect.w = (dstrect.w * fcamera.zoom);
+				dstrect.h = (dstrect.h * fcamera.zoom);
 
-
-				//transform
-				//if(diffuse) {
-					// dstrect.x = floor((dstrect.x - fcamera.x)* fcamera.zoom);
-					// dstrect.y = floor((dstrect.y - fcamera.y - height)* fcamera.zoom);
-					// dstrect.w = floor(dstrect.w * fcamera.zoom);
-					// dstrect.h = floor(dstrect.h * fcamera.zoom);
-				//} else {
-					dstrect.x = ((dstrect.x - fcamera.x)* fcamera.zoom);
-					dstrect.y = ((dstrect.y - fcamera.y - height)* fcamera.zoom);
-					dstrect.w = (dstrect.w * fcamera.zoom);
-					dstrect.h = (dstrect.h * fcamera.zoom);
-				//}
-
-				
-				// if(!this->wall && this->diffuse) {
- 				// 	SDL_SetTextureAlphaMod(texture, 160);
-				// 	SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-				// }
-
-				SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &nowt, SDL_FLIP_NONE );
+				SDL_RenderCopy(renderer, texture, &srcrect, &dstrect);
 				xpos += srcrect.w;
 				srcrect.x = 0;
 				

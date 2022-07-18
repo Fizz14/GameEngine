@@ -18,7 +18,7 @@ void getInput(float& elapsed);
 
 int WinMain() {
 
-	devMode = 1; canSwitchOffDevMode = 1;
+	devMode = 0; canSwitchOffDevMode = 0;
 	//devMode = 1; canSwitchOffDevMode = 1;
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -463,20 +463,37 @@ int WinMain() {
 	SDL_FreeSurface(lightDS);
 
 	SDL_Surface* lightASro = IMG_Load("engine/lightaro.bmp");
-	lightaro = SDL_CreateTextureFromSurface(renderer, lightAS);
+	lightaro = SDL_CreateTextureFromSurface(renderer, lightASro);
 	SDL_FreeSurface(lightASro);
 
 	SDL_Surface* lightBSro = IMG_Load("engine/lightbro.bmp");
-	lightbro = SDL_CreateTextureFromSurface(renderer, lightBS);
+	lightbro = SDL_CreateTextureFromSurface(renderer, lightBSro);
 	SDL_FreeSurface(lightBSro);
 
 	SDL_Surface* lightCSro = IMG_Load("engine/lightcro.bmp");
-	lightcro = SDL_CreateTextureFromSurface(renderer, lightCS);
+	lightcro = SDL_CreateTextureFromSurface(renderer, lightCSro);
 	SDL_FreeSurface(lightCSro);
 
 	SDL_Surface* lightDSro = IMG_Load("engine/lightdro.bmp");
-	lightdro = SDL_CreateTextureFromSurface(renderer, lightDS);
+	lightdro = SDL_CreateTextureFromSurface(renderer, lightDSro);
 	SDL_FreeSurface(lightDSro);
+
+	SDL_Surface* lightASri = IMG_Load("engine/lightari.bmp");
+	lightari = SDL_CreateTextureFromSurface(renderer, lightASri);
+	SDL_FreeSurface(lightASri);
+
+	SDL_Surface* lightBSri = IMG_Load("engine/lightbri.bmp");
+	lightbri = SDL_CreateTextureFromSurface(renderer, lightBSri);
+	SDL_FreeSurface(lightBSri);
+
+	SDL_Surface* lightCSri = IMG_Load("engine/lightcri.bmp");
+	lightcri = SDL_CreateTextureFromSurface(renderer, lightCSri);
+	SDL_FreeSurface(lightCSri);
+
+	SDL_Surface* lightDSri = IMG_Load("engine/lightdri.bmp");
+	lightdri = SDL_CreateTextureFromSurface(renderer, lightDSri);
+	SDL_FreeSurface(lightDSri);
+
 
 	for(auto x : g_fogslates) {
 		x->texture = TextureC;
@@ -922,7 +939,13 @@ int WinMain() {
 							int xpos_fc = ((i - 10) * 64) + functionalX;
 							int ypos_fc = ((j - 9) * 55) + functionalY;
 
-							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 6, g_focus->stableLayer + 1, 15, 1)) {
+							bool blocked = 1;
+							if(g_fogIgnoresLOS) {
+								blocked = LineTrace(xpos, ypos, xpos, ypos, 0, 6, g_focus->stableLayer + 1, 15, 1);
+							} else {
+								blocked = LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 1, g_focus->stableLayer + 1, 15, 1);
+							}
+							if( !(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && blocked) {
 							
 								g_fogcookies[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fogcookies[i][j] >255) {g_fogcookies[i][j] = 255;} 
 								//g_fogcookies[i][j] = 0;
@@ -964,15 +987,19 @@ int WinMain() {
 					int xpos = ((i - 10) * 64) + functionalX;
 					int ypos = ((j - 9) * 55) + functionalY;
 					//is this cookie in a wall? or behind a wall
+
+					if(g_focus->stableLayer > g_layers) {break;}
 					if(j+1 < g_fogcookies.size() && g_fc[i][j+1] > 0) {
 						bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, g_focus->stableLayer + 1, 2, 1);
 						bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos +55, 0, 15, g_focus->stableLayer + 1, 2, 1);
+						rect a = {xpos, ypos, 5, 5};
+
 						//for large entities
 						//if(firsttrace == -1) {
 						//	g_fc[i][j] = 255;
 						//	g_sc[i][j] = 255;
 						//} else {
-							if(!firsttrace || !secondtrace) {
+							if( (!firsttrace || !secondtrace)) {
 								// !!!
 								//g_fc[i][j] += g_tile_fade_speed*2; if (g_fc[i][j] >255) {g_fc[i][j] = 255;} 	
 								g_fc[i][j] = 255;
@@ -2539,19 +2566,6 @@ void getInput(float &elapsed) {
 	}
 	if(keystate[SDL_SCANCODE_KP_4] && devMode) {
 		devinput[25] = 1;
-	}
-
-	if(keystate[SDL_SCANCODE_KP_7] && devMode) {
-		devinput[26] = 1;
-	}
-	if(keystate[SDL_SCANCODE_KP_9] && devMode) {
-		devinput[27] = 1;
-	}
-	if(keystate[SDL_SCANCODE_KP_3] && devMode) {
-		devinput[28] = 1;
-	}
-	if(keystate[SDL_SCANCODE_KP_1] && devMode) {
-		devinput[29] = 1;
 	}
 
 	if(keystate[SDL_SCANCODE_RETURN] && devMode) {
