@@ -116,7 +116,7 @@ public:
 	bool enabled = 1; //closing doors can disable navNodes, so that entities will try to find another way
 
 	navNode(int fx, int fy, int fz) {
-		M("navNode()" );
+		//M("navNode()" );
 		x = fx;
 		y = fy;
 		z = fz;
@@ -216,7 +216,7 @@ void RecursiveNavNodeDelete(navNode* a) {
 }
 
 void Update_NavNode_Costs(vector<navNode*> fnodes) {
-	M("Update_NavNode_Costs()" );
+	//M("Update_NavNode_Costs()" );
 	for (int i = 0; i < (int)fnodes.size(); i++) {
 		fnodes[i]->Update_Costs();
 	}
@@ -302,7 +302,7 @@ public:
 	//tri and boxes which are part of the map are pushed back on 
 	//an array of mapCollisions to be kept track of for deletion/undoing
 	mapCollision() {
-		M("mapCollision()");
+		//M("mapCollision()");
 		g_mapCollisions.push_back(this);
 	}
 
@@ -343,7 +343,7 @@ public:
 	// }
 
 	virtual ~mapCollision() {
-		M("~mapCollision()");
+		//M("~mapCollision()");
 
 		
 		g_mapCollisions.erase(remove(g_mapCollisions.begin(), g_mapCollisions.end(), this), g_mapCollisions.end());
@@ -370,7 +370,7 @@ public:
 	int height;
 
 	tri(int fx1, int fy1, int fx2, int fy2, int flayer, string fwallt, string fcapt, bool fcapped, bool fshaded, int fstyle = 0) {
-		M("tri()");
+		//M("tri()");
 		x1=fx1; y1=fy1;
 		x2=fx2; y2=fy2;
 		layer = flayer;
@@ -403,7 +403,7 @@ public:
 	}
 
 	~tri() {
-		M("~tri()");
+		//M("~tri()");
 		g_triangles[layer].erase(remove(g_triangles[layer].begin(), g_triangles[layer].end(), this), g_triangles[layer].end());
 	}
 
@@ -654,7 +654,7 @@ public:
 
 
 	box(int x1f, int y1f, int x2f, int y2f, int flayer, string &fwallt, string &fcapt, bool fcapped, bool fshineTop, bool fshineBot, const char* shading) {
-		M("box()");
+		//M("box()");
 		bounds.x = x1f;
 		bounds.y = y1f;
 		bounds.z = flayer * 32;
@@ -738,7 +738,7 @@ public:
 	// }
 
 	~box() {
-		M("~box()");
+		//M("~box()");
 		//this line crashes during easybake
 		g_boxs[layer].erase(remove(g_boxs[layer].begin(), g_boxs[layer].end(), this), g_boxs[layer].end());
 	}
@@ -824,7 +824,7 @@ public:
 	
 
 	door(SDL_Renderer * renderer, const char* fmap, string fto_point,  int fx, int fy, int fz, int fwidth, int fheight, int fzeight) {		
-		M("door()");
+		//M("door()");
 		this->x = fx;
 		this->y = fy;
 		this->z = fz;
@@ -950,7 +950,7 @@ public:
 	}
 
 	~tile() {
-		M("~tile()" );
+		//M("~tile()" );
 		g_tiles.erase(remove(g_tiles.begin(), g_tiles.end(), this), g_tiles.end());
 		if(!asset_sharer) {
 			SDL_DestroyTexture(texture);
@@ -1197,7 +1197,7 @@ public:
 	//can try to share attack graphics
 	//but not entities that could possibly join the party
 	attack(string filename, bool tryToShareTextures) {
-		M("attack()");
+		//M("attack()");
 		this->name = filename;
 		ifstream file;
 		string loadstr;
@@ -1266,7 +1266,7 @@ public:
 		xframes = width / framewidth;
 		yframes = height / frameheight;
 		
-	
+		D(yframes);
 
 		for (int j = 0; j < height; j+=frameheight) {
 			for (int i = 0; i < width; i+= framewidth) {
@@ -2257,39 +2257,39 @@ public:
 	ui* talkingBoxTexture = 0;
 
 	textbox* talkingText = 0;
-    textbox* responseText = 0;
-    textbox* escText = 0;
+  textbox* responseText = 0;
+  textbox* escText = 0;
 	string pushedText; //holds what will be the total contents of the messagebox. 
 	string curText; //holds what the user currently sees; e.g. half of the message because it hasnt been typed out yet
 	bool typing = false; //true if text is currently being typed out to the window.
 	Mix_Chunk* blip =  Mix_LoadWAV( "sounds/voice-bogged.wav" );
-    Mix_Chunk* confirm_noise = Mix_LoadWAV( "sounds/peg.wav" );
+  Mix_Chunk* confirm_noise = Mix_LoadWAV( "sounds/peg.wav" );
 	vector<string>* sayings;
 	entity* talker = 0;
 	bool askingQuestion = false; //set if current cue is a question
-    string response = "tired"; //contains the last response the player gave to a question
-    vector<string> responses; //contains each possible response to a question
-    long long unsigned int response_index = 0; //number of response from array responses
-    int sleepingMS = 0; //MS to sleep cutscene/script
-    bool sleepflag = 0; //true for one frame after starting a sleep
-    bool mobilize = 0; //used to allow the player to move during /sleep calls
+  string response = "tired"; //contains the last response the player gave to a question
+  vector<string> responses; //contains each possible response to a question
+  long long unsigned int response_index = 0; //number of response from array responses
+  int sleepingMS = 0; //MS to sleep cutscene/script
+  bool sleepflag = 0; //true for one frame after starting a sleep
+  bool mobilize = 0; //used to allow the player to move during /sleep calls
 
-    ui* inventoryA = 0; //big box, which has all of the items that the player has
-    ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
-
+  ui* inventoryA = 0; //big box, which has all of the items that the player has
+  ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
+		
 	ui* crosshair = 0; //for guiding player to objectives
 
-    textbox* healthText = 0;
+  textbox* healthText = 0;
 
-    int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
+  int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
 
 	void showTalkingUI();
 	void hideTalkingUI();
     
 
-    void showInventoryUI();
+  void showInventoryUI();
 
-    void hideInventoryUI();
+  void hideInventoryUI();
 
 	adventureUI(SDL_Renderer* renderer);
 	
@@ -2320,7 +2320,7 @@ public:
 	
 	worldsound(string filename, int fx, int fy) {
 		name = filename;
-		M("worldsound()" );
+		//M("worldsound()" );
 		
 		ifstream file;
 
@@ -2377,7 +2377,7 @@ public:
 	}
 
 	~worldsound() {
-		M("~worldsound()" );
+		//M("~worldsound()" );
 		Mix_FreeChunk(blip);
 		g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), this), g_worldsounds.end());
 	}
@@ -2629,7 +2629,7 @@ public:
 	};
 
 	entity(SDL_Renderer * renderer, string filename, float sizeForDefaults = 1) {
-		M("entity()");
+		//M("entity()");
 
 		ifstream file;
 		//bool using_default = 0;
@@ -2918,26 +2918,24 @@ public:
 			curheight = height;
 		}
 
-		if(1) {
 			xframes = w / framewidth;
 			yframes = h / frameheight;
 		
 	
 
-			for (int j = 0; j < h; j+=frameheight) {
-				for (int i = 0; i < w; i+= framewidth) {
-					coord a;
-					a.x = i;
-					a.y = j;
-					framespots.push_back(a);
-				}
+		for (int j = 0; j < h; j+=frameheight) {
+			for (int i = 0; i < w; i+= framewidth) {
+				coord a;
+				a.x = i;
+				a.y = j;
+				framespots.push_back(a);
 			}
+		}
 
-			//if we don't have the frames just set anim to 0
-			if(!(yframes > 3) ) {
-				animation = 0;
-				defaultAnimation = 0;
-			}
+		//if we don't have the frames just set anim to 0
+		if(!(yframes > 3) ) {
+			animation = 0;
+			defaultAnimation = 0;
 		}
 
 		//disabled nodes underneath if we are set to (e.g. doors)
@@ -3085,7 +3083,7 @@ public:
 
 	//for worlditems, load the ent file but use a texture by name
 	entity(SDL_Renderer * renderer, int idk,  string texturename) {
-		M("entity()");
+		//M("entity()");
 		sortingOffset = 16;
 		ifstream file;
 		//bool using_default = 0;
@@ -3110,7 +3108,7 @@ public:
 		spritefilevar = "static/items/" + texturename + ".bmp";
 		SDL_Surface* image = IMG_Load(spritefilevar.c_str());
 		texture = SDL_CreateTextureFromSurface(renderer, image);
-		M(spritefilevar );
+		//M(spritefilevar );
 
 		
 		string comment;
@@ -3267,7 +3265,7 @@ public:
 
 
 	~entity() {
-		M("~entity()" );
+		//M("~entity()" );
 		if (!wallcap) {
 			delete shadow;
 		}
@@ -3340,50 +3338,77 @@ public:
 		if(this == protag) { g_protagHasBeenDrawnThisFrame = 1; }
 		//if its a wallcap, tile the image just like a maptile
 			
-			
-
-		//SDL_FPoint nowt = {0, 0};
-		
 		rect obj(((floor(x) -fcamera.x + (width-floor(curwidth))/2)* 1) , (((floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y) * 1), (floor(curwidth) * 1), (floor(curheight) * 1));		
 		rect cam(0, 0, fcamera.width, fcamera.height);
 		
 		if(RectOverlap(obj, cam)) {
+
+			
 			//set frame from animation
 			// animation is y, frameInAnimation is x
 			if(hadInput) {
-				if(up) {
-					if(left) {
-						animation = 1;
-						flip = SDL_FLIP_NONE;
-					} else if (right) {
-						animation = 1;
-						flip = SDL_FLIP_HORIZONTAL;
+				if(yframes >= 8) {
+					flip = SDL_FLIP_NONE;
+					if(up) {
+						if(left) {
+							animation = 1;
+						} else if (right) {
+							animation = 7;
+						} else {
+							animation = 0;
+						}
+					} else if (down) {
+						if(left) {
+							animation = 3;
+						} else if (right) {
+							animation = 5;
+						} else {
+							animation = 4;
+						}
 					} else {
-						animation = 0;
-						flip = SDL_FLIP_NONE;
-					}
-				} else if (down) {
-					if(left) {
-						animation = 3;
-						flip = SDL_FLIP_NONE;
-					} else if (right) {
-						animation = 3;
-						flip = SDL_FLIP_HORIZONTAL;
-					} else {
-						animation = 4;
-						flip = SDL_FLIP_NONE;
+						if(left) {
+							animation = 2;
+						} else if (right) {
+							animation = 6;
+						} else {
+							animation = 4;
+						}
 					}
 				} else {
-					if(left) {
-						animation = 2;
-						flip = SDL_FLIP_NONE;
-					} else if (right) {
-						animation = 2;
-						flip = SDL_FLIP_HORIZONTAL;
+					if(up) {
+						if(left) {
+							animation = 1;
+							flip = SDL_FLIP_NONE;
+						} else if (right) {
+							animation = 1;
+							flip = SDL_FLIP_HORIZONTAL;
+						} else {
+							animation = 0;
+							flip = SDL_FLIP_NONE;
+						}
+					} else if (down) {
+						if(left) {
+							animation = 3;
+							flip = SDL_FLIP_NONE;
+						} else if (right) {
+							animation = 3;
+							flip = SDL_FLIP_HORIZONTAL;
+						} else {
+							animation = 4;
+							flip = SDL_FLIP_NONE;
+						}
 					} else {
-						//default
-						animation = 4;
-						flip = SDL_FLIP_NONE;
+						if(left) {
+							animation = 2;
+							flip = SDL_FLIP_NONE;
+						} else if (right) {
+							animation = 2;
+							flip = SDL_FLIP_HORIZONTAL;
+						} else {
+							//default
+							animation = 4;
+							flip = SDL_FLIP_NONE;
+						}
 					}
 				}
 			}
@@ -4173,7 +4198,6 @@ public:
 						//the y axis
 						float push = (55 - abs((((float)movedBounds.y - (float)r->y ))))/55;
 						
-						M(push);
 						float possiblefloor = r->layer * 64 + 64 * push; 
 						if( abs(this->z - possiblefloor ) < 15) {
 							floor = possiblefloor; 
@@ -4582,44 +4606,48 @@ public:
 						flip = SDL_FLIP_NONE;
 						up = 0; down = 0; left = 0; right = 0;
 						if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
-							animation = 2;
-							flip = SDL_FLIP_HORIZONTAL;
+							if(yframes >= 8) {
+								animation = 6;
+							} else {
+								animation = 2;
+								flip = SDL_FLIP_HORIZONTAL;
+							}
 							right = 1;
-							//M("A");
 						} else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
-							animation = 1;
-							flip = SDL_FLIP_HORIZONTAL;
+							if(yframes >= 8) {
+								animation = 7;
+							} else {
+							  animation = 1;
+							  flip = SDL_FLIP_HORIZONTAL;
+							}
 							right = 1;
 							up = 1;
-							//M("B");
 						} else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
 							animation = 0;
 							up = 1;
-							//M("C");
 						} else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
 							animation = 1;
 							up = 1;
 							left = 1;
-							//M("D");
 						} else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
 							animation = 2;
 							left = 1;
-							//M("E");
 						} else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
 							animation = 3;
 							left = 1;
 							down = 1;
-							//M("F");
 						} else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
 							animation = 4;
 							down = 1;
-							//M("G");
 						} else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
-							flip = SDL_FLIP_HORIZONTAL;
-							animation = 3;
+							if(yframes >= 8) {
+								animation = 5;
+							} else {
+								flip = SDL_FLIP_HORIZONTAL;
+								animation = 3;
+							}
 							right = 1;
 							down = 1;
-							//M("H");
 						}
 					}
 
@@ -4657,51 +4685,56 @@ public:
 			float yvector = -walkingyaccel;
 
 			//if he's not traveling very fast it looks natural to not change angle
-			//recalcAngle = 1
-			if(Distance(0,0,xvector, yvector) > 0) {
-				recalcAngle = -1000;
+			//recalcAngle = 1;
+			if(recalcAngle) {
+				recalcAngle = -1000; //update every second
+
 				float angle = atan2(yvector, xvector);
 				flip = SDL_FLIP_NONE;
 				up = 0; down = 0; left = 0; right = 0;
 				if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
-					animation = 2;
-					flip = SDL_FLIP_HORIZONTAL;
+					if(yframes >= 8) {
+						animation = 6;
+					} else {
+						animation = 2;
+						flip = SDL_FLIP_HORIZONTAL;
+					}
 					right = 1;
-					//M("A");
 				} else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
-					animation = 1;
-					flip = SDL_FLIP_HORIZONTAL;
+					if(yframes >= 8) {
+						animation = 7;
+					} else {
+					  animation = 1;
+					  flip = SDL_FLIP_HORIZONTAL;
+					}
 					right = 1;
 					up = 1;
-					//M("B");
 				} else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
 					animation = 0;
 					up = 1;
-					//M("C");
 				} else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
 					animation = 1;
 					up = 1;
 					left = 1;
-					//M("D");
 				} else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
 					animation = 2;
 					left = 1;
-					//M("E");
 				} else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
 					animation = 3;
 					left = 1;
 					down = 1;
-					//M("F");
 				} else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
 					animation = 4;
 					down = 1;
-					//M("G");
 				} else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
-					flip = SDL_FLIP_HORIZONTAL;
-					animation = 3;
+					if(yframes >= 8) {
+						animation = 5;
+					} else {
+						flip = SDL_FLIP_HORIZONTAL;
+						animation = 3;
+					}
 					right = 1;
 					down = 1;
-					//M("H");
 				}
 			}
 
@@ -4876,7 +4909,6 @@ public:
 						
 
 						if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
-							//M("There's a good position, keeping my distance");
 							//vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
 							
 							Destination = getNodeByPosition(ret[0], ret[1]);
@@ -5126,10 +5158,8 @@ public:
 
 	//returns 0 if the transaction was successful, and 1 otherwise
 	int loseItem(indexItem* a, int count) {
-		M("loseItem()");
 		for(auto& x : inventory) {
 			if(x.first->name == a->name) {
-				M("found a match");
 				if(x.second > count) {
 					x.second-=count;	
 					return 0;
@@ -5199,7 +5229,6 @@ int loadSave() {
 	string field = "";
 	string value = "";
 
-	M("time to load a save");
 	//load fields
 	while(getline(file, line)) {
 		if(line == "&") { break;}
@@ -5209,12 +5238,11 @@ int loadSave() {
 		try {
 			g_save.insert( pair<string, int>(field, stoi(value)) );
 		} catch(...) {
-			M("Error writing");
+			E("Error writing save.");
 			return -1;
 		}
 		
 	}
-	M("time to load the map");
 	file >> g_mapOfLastSave >> g_waypointOfLastSave;
 	getline(file,line);
 	getline(file,line);
@@ -5222,18 +5250,17 @@ int loadSave() {
 	//delete current party
 	//int repetitions = (int) party.size();
 	// for(auto x : party) {
-	// 	M("about to delete someone from the old party");
 	// 	//possibly unsafe
 	// 	//delete x;
 	// }
 	party.clear();
 
-	M("Lets load the party");
+	//M("Lets load the party");
 	
 	bool setMainProtag = 0;
 	//load party
 	while(getline(file, line)) {
-		if(line == "&") {M("Thats it!"); break;}
+		if(line == "&") {break;}
 		
 		auto tokens = splitString(line, ' ');
 		string name = tokens[0];
@@ -5573,7 +5600,7 @@ public:
 	bool worldspace = false; //use worldspace or screenspace;
 
 	textbox(SDL_Renderer* renderer, const char* fcontent, float size, float fx, float fy, float fwidth) {
-		M("textbox()" );
+		//M("textbox()" );
 		if(font != NULL) {
 			TTF_CloseFont(font);
 		}
@@ -5596,7 +5623,7 @@ public:
 		g_textboxes.push_back(this);
 	}
 	~textbox() {
-		M("~textbox()" );
+		//M("~textbox()" );
 		g_textboxes.erase(remove(g_textboxes.begin(), g_textboxes.end(), this), g_textboxes.end());
 		TTF_CloseFont(font); 
 		SDL_DestroyTexture(texttexture);
@@ -5695,7 +5722,7 @@ public:
 	float heightFromWidthFactor = 0; //set this to 0.5 or 1 and the height of the element will be held to that ratio of the width, even if the screen's ratio changes.
 
 	ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float fwidth, float fheight, int fpriority) {
-		M("ui()" );
+		//M("ui()" );
 		filename = ffilename;
 		image = IMG_Load(filename.c_str());
 		
@@ -5710,7 +5737,7 @@ public:
 	}
 
 	virtual ~ui() {
-		M("~ui()" );
+		//M("~ui()" );
 		SDL_DestroyTexture(texture);
 		
 		g_ui.erase(remove(g_ui.begin(), g_ui.end(), this), g_ui.end());
@@ -5928,7 +5955,7 @@ void playSoundByName(string fname, float xpos, float ypos) {
 	const float maxDistance = 1200; //a few screens away
 	float cur_volume = (maxDistance - dist)/maxDistance * 128;
 	if(cur_volume < 0) {cur_volume = 0;}
-	M(cur_volume);
+	//M(cur_volume);
 	Mix_VolumeChunk(sound, cur_volume);
 	if(!g_mute && sound != NULL) {
 		Mix_PlayChannel(0, sound,0);
@@ -6061,7 +6088,7 @@ public:
 			script.push_back(line);
 		}
 		parseScriptForLabels(script);
-		M("Check item script");
+		//M("Check item script");
 		
 		//build listenList from current entities
 		for(auto x : g_entities) {
@@ -6273,12 +6300,13 @@ void clear_map(camera& cameraToReset) {
 				FoWrect.y -= 67 * XtoZ;
 				SDL_RenderCopy(renderer, TextureC, NULL, &FoWrect);
 			
-				//black bars :/
+				//black bars
 				SDL_Rect topbar = {px, FoWrect.y - 5000, 1500, 5000};
 				SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
 				
 				SDL_Rect botbar = {px, FoWrect.y +  g_fogheight * 55 + 12, 1500, 5000};
 				SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+		    SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 				SDL_RenderPresent(renderer);
 
 			}
@@ -6607,7 +6635,7 @@ void clear_map(camera& cameraToReset) {
 		g_ramps[i].clear();
 	}
 	if(g_backgroundLoaded && background != 0) {
-		M("deleted background");
+		//M("deleted background");
 		SDL_DestroyTexture(background);
 		extern string backgroundstr;
 		backgroundstr = "";

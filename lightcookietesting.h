@@ -7,70 +7,96 @@
 #include <vector>
 using namespace std;
 
-inline SDL_Texture* addTextures(SDL_Renderer* renderer, vector<vector<int>> fogcookies, SDL_Texture* &illuminateMe, SDL_Texture* &lightspot, int widthOfIlluminateMe, int heightOfIlluminateMe, int paddingx, int paddingy, int layer) {
+inline SDL_Texture *addTextures(SDL_Renderer *renderer, vector<vector<int>> fogcookies, SDL_Texture *&illuminateMe, SDL_Texture *&lightspot, int widthOfIlluminateMe, int heightOfIlluminateMe, int paddingx, int paddingy, int layer)
+{
 	SDL_SetRenderTarget(renderer, illuminateMe);
 	SDL_RenderClear(renderer);
 	paddingy = paddingx * (heightOfIlluminateMe / widthOfIlluminateMe);
-	SDL_Texture* usingThisTexture = lightspot;
+	SDL_Texture *usingThisTexture = lightspot;
 
-	for(long long unsigned int i = 0; i < fogcookies.size(); i++) {
-		for(long long unsigned int j = 0; j < fogcookies[0].size(); j++) {
-			if(fogcookies[i][j]) {
+	for (long long unsigned int i = 0; i < fogcookies.size(); i++)
+	{
+		for (long long unsigned int j = 0; j < fogcookies[0].size(); j++)
+		{
+			if (fogcookies[i][j])
+			{
 				usingThisTexture = lightspot;
 
-				if(layer) {
-					if(g_shc[i][j] == 0) {
+				if (layer)
+				{
+					if (g_shc[i][j] == 0)
+					{
 						usingThisTexture = lightc;
-					} else if(g_shc[i][j] == 1) {
+					}
+					else if (g_shc[i][j] == 1)
+					{
 						usingThisTexture = lightb;
-					} else if(g_shc[i][j] == 2) {
+					}
+					else if (g_shc[i][j] == 2)
+					{
 						usingThisTexture = lighta;
-					} else if(g_shc[i][j] == 3) {
+					}
+					else if (g_shc[i][j] == 3)
+					{
 						usingThisTexture = lightd;
-					} else if(g_shc[i][j] == 4) {
+					}
+					else if (g_shc[i][j] == 4)
+					{
 						usingThisTexture = lightcro;
-					} else if(g_shc[i][j] == 5) {
+					}
+					else if (g_shc[i][j] == 5)
+					{
 						usingThisTexture = lightbro;
-					} else if(g_shc[i][j] == 6) {
+					}
+					else if (g_shc[i][j] == 6)
+					{
 						usingThisTexture = lightaro;
-					} else if(g_shc[i][j] == 7) {
+					}
+					else if (g_shc[i][j] == 7)
+					{
 						usingThisTexture = lightdro;
-					} else if(g_shc[i][j] == 8) {
+					}
+					else if (g_shc[i][j] == 8)
+					{
 						usingThisTexture = lightcri;
-					} else if(g_shc[i][j] == 9) {
+					}
+					else if (g_shc[i][j] == 9)
+					{
 						usingThisTexture = lightbri;
-					} else if(g_shc[i][j] == 10) {
+					}
+					else if (g_shc[i][j] == 10)
+					{
 						usingThisTexture = lightari;
-					} else if(g_shc[i][j] == 11) {
+					}
+					else if (g_shc[i][j] == 11)
+					{
 						usingThisTexture = lightdri;
 					}
 				}
 
+				// render the lightspot
+				SDL_Rect dstrect = {(int)(i * ((widthOfIlluminateMe) / fogcookies.size())),
+														(int)(j * ((heightOfIlluminateMe) / fogcookies[0].size())),
+														(int)((widthOfIlluminateMe + paddingx) / fogcookies.size()),
+														(int)((heightOfIlluminateMe + paddingy) / fogcookies[0].size())};
 
-				//render the lightspot
-				SDL_Rect dstrect = {(int)(i * ( (widthOfIlluminateMe ) / fogcookies.size())),
-				 					(int)(j * ( (heightOfIlluminateMe) /fogcookies[0].size())), 
-				 					(int)((widthOfIlluminateMe + paddingx)/fogcookies.size()), 
-				 					(int)((heightOfIlluminateMe + paddingy)/fogcookies[0].size())};
-
-
-				if(g_graphicsquality != 0) {
+				if (g_graphicsquality != 0)
+				{
 					SDL_SetTextureAlphaMod(usingThisTexture, fogcookies[i][j]);
 				}
 
 				SDL_RenderCopy(renderer, usingThisTexture, NULL, &dstrect);
-
-				
 			}
-		} 
+		}
 	}
-	
-	//illuminateMe is properly lit
+
+	// illuminateMe is properly lit
 	SDL_SetRenderTarget(renderer, NULL);
 	return illuminateMe;
 }
 
-inline SDL_Texture* IlluminateTexture(SDL_Renderer* renderer, SDL_Texture* &mask, SDL_Texture* &diffuse, SDL_Texture* &result) {
+inline SDL_Texture *IlluminateTexture(SDL_Renderer *renderer, SDL_Texture *&mask, SDL_Texture *&diffuse, SDL_Texture *&result)
+{
 	SDL_SetRenderTarget(renderer, result);
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, diffuse, NULL, NULL);
@@ -85,10 +111,10 @@ inline SDL_Texture* IlluminateTexture(SDL_Renderer* renderer, SDL_Texture* &mask
 //     SDL_Window* window = SDL_CreateWindow("Texture Blending",
 // 	SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 300, 300, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 // 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1,  SDL_RENDERER_ACCELERATED);
-	
+
 //     SDL_Surface* SurfaceA = IMG_Load("misc/a.png");
 // 	SDL_Surface* SurfaceB = IMG_Load("misc/b.png");
-	
+
 // 	SDL_Texture* TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 // 	SDL_Texture* TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
 
@@ -116,29 +142,25 @@ inline SDL_Texture* IlluminateTexture(SDL_Renderer* renderer, SDL_Texture* &mask
 // 	SDL_Texture* light = SDL_CreateTextureFromSurface(renderer, lightSurface);
 // 	SDL_FreeSurface(lightSurface);
 
-
 // 	vector<int> column1 = {1, 1, 1, 1, 1, 1, 1, 1};
 // 	vector<int> column2 = {1, 1, 1, 1, 1, 1, 1, 1};
 // 	vector<int> column3 = {1, 1, 1, 1, 1, 1, 1, 1};
 // 	vector<int> column4 = {1, 1, 1, 1, 1, 1, 1, 1};
 // 	vector<int> column5 = {1, 1, 1, 1, 1, 1, 1, 1};
-	
+
 // 	g_fogcookies.push_back(column1);
 // 	g_fogcookies.push_back(column2);
 // 	g_fogcookies.push_back(column3);
 // 	g_fogcookies.push_back(column4);
 // 	g_fogcookies.push_back(column5);
 
-
-
-
-//     while (!quit) { 
+//     while (!quit) {
 //         while( SDL_PollEvent( &event ) ){
 //             switch(event.type) {
 
 // 				case SDL_KEYDOWN:
 // 					switch(event.key.keysym.sym) {
-// 					case SDLK_ESCAPE: 
+// 					case SDLK_ESCAPE:
 // 						quit = true;
 // 						break;
 // 					case SDLK_LEFT:
@@ -157,20 +179,17 @@ inline SDL_Texture* IlluminateTexture(SDL_Renderer* renderer, SDL_Texture* &mask
 // 					}
 // 					break;
 // 				// cases for other events
-				
 
-				
 // 				case SDL_QUIT:
 //                     quit = 1;
 //                     break;
 //             }
 //         }
-	
+
 // 		addTextures(renderer, g_fogcookies, canvas, light, 300, 300, 20, 20);
 
-
 // 		SDL_Texture* TextureC = IlluminateTexture(renderer, TextureA, canvas, result);
-			
+
 // 		//render graphics
 // 		SDL_RenderClear(renderer);
 // 		SDL_RenderCopy(renderer, TextureC, NULL, NULL);
