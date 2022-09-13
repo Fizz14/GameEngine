@@ -1266,8 +1266,6 @@ public:
 		xframes = width / framewidth;
 		yframes = height / frameheight;
 		
-		D(yframes);
-
 		for (int j = 0; j < height; j+=frameheight) {
 			for (int i = 0; i < width; i+= framewidth) {
 				coord a; 
@@ -2229,7 +2227,8 @@ public:
 		string line;
 
 		getline(stream, line);
-
+    
+		M("Lines of ability");
 		while (getline(stream, line)) {
 			script.push_back(line);
 		}
@@ -2240,10 +2239,8 @@ public:
 
 };
 
+entity* searchEntities(string fname, entity* caller);
 entity* searchEntities(string fname);
-
-//this is a testament to how bad I am at programming
-//dont as I have done
 
 class adventureUI {
 public:
@@ -2280,6 +2277,7 @@ public:
 	ui* crosshair = 0; //for guiding player to objectives
 
   textbox* healthText = 0;
+	bool light = 0;
 
   int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
 
@@ -2291,7 +2289,7 @@ public:
 
   void hideInventoryUI();
 
-	adventureUI(SDL_Renderer* renderer);
+	adventureUI(SDL_Renderer* renderer, bool plight = 0);
 	
 	~adventureUI();
 
@@ -2385,10 +2383,100 @@ public:
 	void update(float elapsed);
 };
 
+//manage an entities statuseffects
+class statusComponent {
+public:
+	class status {
+	public:
+    float lifetime = 0;
+		float factor = 1;
+		float currentProckWaitMS = 0; //timer for when to prock
+		bool prockThisFrame = 0;
+	};
+
+	class statusSet {
+  public:
+    bool complex = 0;
+		bool active = 0;
+
+		float maxProckWaitMS = 0;
+		float resistence = 0;
+		bool immunity = 0;
+		bool integerbound = 0;
+
+		vector<status> statuses;
+
+		void addStatus(float ptime, float pfactor) {
+			if(immunity) {return;}
+			if(complex) 
+			{
+        status newStatus;
+				newStatus.lifetime = ptime * (1 - resistence);
+				newStatus.factor = pfactor;
+				statuses.push_back(newStatus);
+			}
+			else 
+			{
+				if(statuses.size() > 0) {
+					if(statuses.at(0).lifetime < ptime * (1-resistence)) {
+						statuses.at(0).lifetime = ptime * (1-resistence);
+					}
+				} else {
+					status newStatus;
+					newStatus.lifetime = ptime * (1-resistence);
+					statuses.push_back(newStatus);
+				}
+			}
+		}
+
+		void clearStatuses() {
+			statuses.clear();
+		}
+
+		float updateStatuses(float elapsedMS) {
+			float totalFactor = 0;
+			for(int i = 0; i< statuses.size(); i++) {
+				statuses.at(i).currentProckWaitMS += elapsedMS;
+				statuses.at(i).lifetime -= elapsedMS;
+				if(statuses.at(i).currentProckWaitMS > this->maxProckWaitMS) {
+					statuses.at(i).currentProckWaitMS = 0;
+					totalFactor += statuses.at(i).factor;
+				}
+			}
+			return totalFactor;
+		}
+
+		void cleanUpStatuses() {
+			for(int i = 0; i < statuses.size(); i++) {
+				if(statuses.at(i).lifetime < 0) {statuses.erase(statuses.begin() + i); i--;}
+			}
+		}
+	};
+
+	statusSet stunned; 
+	statusSet marked;
+	statusSet disabled;
+	statusSet enraged;
+	statusSet poisoned; 
+	statusSet slown; 
+	statusSet healen; 
+	statusSet buffed;
+  
+	statusComponent() {
+	  poisoned.complex = 1; 
+	  poisoned.maxProckWaitMS = 1000;
+	  buffed.complex = 1;
+	  healen.complex = 1;
+	  healen.maxProckWaitMS = 1000;
+	  slown.complex = 1;
+	}
+
+};
+
 class entity :public actor {
 public:
 	//dialogue
-	vector<string> sayings;
+	
 	int dialogue_index = 0;
 
 	//sounds
@@ -2482,12 +2570,14 @@ public:
 	
 	//object-related design
 	bool dynamic = true; //true for things such as wallcaps. movement/box is not calculated if this is false
+	vector<string> sayings;
 	bool inParty = false;
 	bool talks = false;
 	bool wallcap = false; //used for wallcaps
 	cshadow * shadow = 0;
 	bool rectangularshadow = 0;
 	bool isAI = 0;	
+	statusComponent hisStatusComponent;
 
 
 	//stuff for orbitals
@@ -2521,7 +2611,18 @@ public:
 	bool invincible = 0;
 	//float invincibleMS = 0; //ms before setting invincible to 0
 	bool agrod = 0; //are they fighting a target?
+	bool stunned = 0;
+	bool marked = 0;
+	bool disabled = 0;
+	bool enraged = 0;
+	bool buffed = 0;
+	bool poisoned = 0;
+	bool healen = 0;
+	float statusSlownPercent = 0;
 	
+  //for making a character flash when taking damage from poison
+	int poisonFlickerFrames = 0;
+
 	//these two values are for having enemies travel 
 	int poiIndex = 0;
 	bool traveling = 0;   
@@ -2549,6 +2650,16 @@ public:
 	//without worrying about being interupted by the player
 	//just don't have them use the dialog-box
 	adventureUI* myScriptCaller = nullptr;
+
+	//for fields
+	bool usesContactScript = 0;
+	int contactScriptWaitMS = 0;
+	int curContactScriptWaitMS = 0;
+	bool contactReadyToProc = 0;
+	vector<string> contactScript;
+
+	//adventureUI* myFieldScriptCaller = nullptr;
+
 	vector<ability> myAbilities;
 	float autoAgroRadius = -1;
 	float enrageSpeedbuff = 0;
@@ -2561,7 +2672,7 @@ public:
 	float damagemultiplier = 0.2; // how much damage do you gain per level
 	float maxhp = 2;
 	float hp = 2;
-
+  
 
 	float dhpMS = 0; //how long to apply dhp (dot, healing)
 	float dhp = 0;
@@ -2569,7 +2680,6 @@ public:
 	int cost = 1000; //cost to spawn in map and then xp granted to killer
 	float cooldown = 0;  //anything about the usage of attacks needs to be moved here since the attack object
 
-	Status status = none;
 	float statusMS = 0; //how long to apply status before it becomes "none"
 	float statusMag = 0; //magnitude of status
 
@@ -2782,7 +2892,7 @@ public:
 
 		file >> comment;
 		file >> this->faction;
-		if(faction != 0) {
+		if(faction != -1) {
 			canFight = 1;
 		}
 		
@@ -2865,7 +2975,6 @@ public:
 			}	
 			i++;
 		}
-	
 
 		parseScriptForLabels(sayings);
 
@@ -2947,7 +3056,6 @@ public:
 		//spawn everything on spawnlist
 		int overflow = 100;
 		for(;;) {
-
 			string line;
 			file >> line;
 			if(line == "}" || line == "") {break;};
@@ -2979,7 +3087,7 @@ public:
 
 		//worldsound
 		file >> comment;
-		//spawn everything on spawnlist
+		//add worldsounds
 		overflow = 100;
 		for(;;) {
 
@@ -2992,6 +3100,38 @@ public:
 			this->mobilesounds.push_back(a);
 			a->owner = this;
 		}
+
+		//script-on-contact
+		file >> comment;
+		M(comment);
+    string fieldScript = "0";
+		file >> fieldScript;
+		M(fieldScript); 
+
+		if(fieldScript != "0") {
+		  usesContactScript = 1;
+		  string txtfilename = "";
+		  if (fileExists("maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt")) {
+		  	txtfilename = "maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt";
+		  } else {
+		  	txtfilename = "static/scripts/" + fieldScript + ".txt";
+		  }
+			M(txtfilename);
+		  ifstream nfile(txtfilename);
+		  string line;
+
+		  while(getline(nfile, line)) {
+		  	contactScript.push_back(line);
+		  }
+		  parseScriptForLabels(contactScript);
+		}
+
+		
+		//script-on-contact-ms
+		file >> comment;
+		file >> contactScriptWaitMS;
+		if(this->name == "puddle") { D(contactScriptWaitMS);}
+
 
 		//load ai-data 
 		string AIloadstr;
@@ -3023,6 +3163,7 @@ public:
 				hasAtleastOneAbility = 1;
 				//line contains the name of an ability
 				ability newAbility = ability(line);
+				M("loading new ability called " + line);
 				
 				//they're stored as seconds in the configfile, but ms in the object
 				float seconds = 0;
@@ -3055,7 +3196,7 @@ public:
 			//give us a way to call scripts if we have an ability
 			if(hasAtleastOneAbility) {
 				// !!! make another constructor that doesn't have a dialogbox
-				myScriptCaller = new adventureUI(renderer);
+				myScriptCaller = new adventureUI(renderer, 1);
 				myScriptCaller->playersUI = 0;
 				myScriptCaller->talker = this;
 
@@ -3170,7 +3311,6 @@ public:
 		
 		file >> comment;
 		file >> this->framewidth;
-		file >> this->frameheight;
 		this->shadow->width = framewidth * fsize;
 		this->shadow->height = framewidth * fsize * (1/p_ratio);
 
@@ -3430,11 +3570,54 @@ public:
 					//change player frames to make a spin effect
 				}
 				
-			
+		   	
 				SDL_Rect srcrect = {framespots[framePlusSpinOffset].x,framespots[framePlusSpinOffset].y, framewidth, frameheight};
 				const SDL_FPoint center = {0 ,0};
+
+				//color for statuseffects
+        Uint8 rmod = 255; Uint8 gmod = 255; Uint8 bmod = 255; bool setColor = 0;
 				if(flashingMS > 0) {
-					SDL_SetTextureColorMod(texture, 255, 255 * (1-((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
+          gmod = 255 * (1-((float)flashingMS/g_flashtime));
+          bmod = 255 * (1-((float)flashingMS/g_flashtime));
+					//SDL_SetTextureColorMod(texture, 255, 255 * (1-((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
+				}
+
+        if(stunned && hisStatusComponent.stunned.statuses.size() > 0) {
+          //const float lifetime = hisStatusComponent.stunned.statuses.at(0).lifetime;
+					//if(lifetime >= g_flashtime) {
+						rmod *= 0.5;
+						gmod *= 0.5;
+						bmod *= 0.5;
+					//} else {
+					  //rmod *= 0.5 * (1-((float)lifetime/g_flashtime));
+					  //gmod *= 0.5 * (1-((float)lifetime/g_flashtime));
+					  //bmod *= 0.5 * (1-((float)lifetime/g_flashtime));
+					//}
+				}
+				
+				if(marked) {
+					rmod *= 0.9;
+					gmod *= 0.8;
+					bmod *= 1;
+				}
+
+				if(hisStatusComponent.poisoned.statuses.size() > 0) {
+					rmod *= 0.83;
+					gmod *= 1;
+					bmod *= 0.89;
+				}
+
+				if(poisoned || poisonFlickerFrames > 0) {
+					poisonFlickerFrames--;
+					rmod *= 0.71;
+					gmod *= 0.91;
+					bmod *= 0.81;
+				}
+
+				Uint8 crmod = 0; Uint8 cgmod = 0; Uint8 cbmod = 0;
+        SDL_GetTextureColorMod(texture, &crmod, &cgmod, &cbmod);
+        if(crmod != rmod || cgmod != gmod || cbmod != bmod) {
+				  SDL_SetTextureColorMod(texture, rmod, gmod, bmod);
 				}
 
 				if(texture != NULL) {
@@ -3459,8 +3642,9 @@ public:
 	}
 
 	void move_up() {
+		if(stunned) {return;}
 		//y-=xagil;
-		yaccel = -1* xagil;
+		yaccel = -1* (xagil * (100 - statusSlownPercent));
 		if(shooting) { return;}
 		up = true;
 		down = false;
@@ -3475,8 +3659,9 @@ public:
 	}
 
 	void move_down() {
+		if(stunned) {return;}
 		//y+=xagil;
-		yaccel = xagil;
+		yaccel = (xagil * (100 - statusSlownPercent));
 		if(shooting) { return;}
 		down = true;
 		up = false;
@@ -3484,8 +3669,9 @@ public:
 	}
 
 	void move_left() {
+		if(stunned) {return;}
 		//x-=xagil;
-		xaccel = -1 * xagil;
+		xaccel = -1 * (xagil * (100 - statusSlownPercent));
 		//x -= 3;
 		if(shooting) { return;}
 		left = true;
@@ -3501,8 +3687,9 @@ public:
 	}
 	
 	void move_right() {
+		if(stunned) {return;}
 		//x+=xagil;
-		xaccel = xagil;
+		xaccel = (xagil * (100 - statusSlownPercent));
 		if(shooting) { return;}
 		right = true;
 		left = false;
@@ -3511,6 +3698,7 @@ public:
 	}
 
 	void shoot_up() {
+		if(stunned) {return;}
 		shooting = 1;
 		up = true;
 		down = false;
@@ -3518,6 +3706,7 @@ public:
 	}
 	
 	void shoot_down() {
+		if(stunned) {return;}
 		shooting = 1;
 		down = true;
 		up = false;
@@ -3525,6 +3714,7 @@ public:
 	}
 	
 	void shoot_left() {
+		if(stunned) {return;}
 		shooting = 1;
 		left = true;
 		right = false;
@@ -3532,8 +3722,9 @@ public:
 	}
 
 	void shoot_right() {
+		if(stunned) {return;}
 		shooting = 1;
-		xaccel = xagil;
+		//xaccel = xagil;
 		right = true;
 		left = false;
 		hadInput = 1;
@@ -3741,11 +3932,21 @@ public:
 			}
 		}
 		
+    if(this->usesContactScript) {
+		  this->curContactScriptWaitMS -= elapsed;
+      if(curContactScriptWaitMS <= 0) {
+        contactReadyToProc = 1;
+				curContactScriptWaitMS = contactScriptWaitMS;
+			} else {
+        contactReadyToProc = 0;
+			}
+	  }
+
 		if(!dynamic) { return nullptr; }
 
 
 		//normalize accel vector
-		float vectorlen = pow( pow(xaccel, 2) + pow(yaccel, 2), 0.5) / (xmaxspeed);
+		float vectorlen = pow( pow(xaccel, 2) + pow(yaccel, 2), 0.5) / (xmaxspeed * (1 - statusSlownPercent));
 		if(xaccel != 0) {
 			xaccel /=vectorlen;
 		}
@@ -4043,7 +4244,6 @@ public:
 				if(RectOverlap(tilerect, movedbounds)) {
 					for (int j = 0; j < (int)g_heightmaps.size(); j++) {
 						//M("looking for a heightmap");
-						//D(g_heightmaps[j]->name);
 						//e(g_tiles[i]->fileaddress);
 						if(g_heightmaps[j]->name == g_tiles[i]->fileaddress) {
 							//M("found it");
@@ -4299,6 +4499,7 @@ public:
 
 		//update combat
 		if(isWorlditem) {return nullptr;}
+		if(!canFight) {return nullptr;}
 
 		
 		hisweapon->comboResetMS+=elapsed;
@@ -4434,7 +4635,6 @@ public:
 						if( inRange && !myScriptCaller->executingScript) {
 
 							I(this->name + " used " + x.name + " at " + target->name + ".");
-							
 							//this->dialogue_index = 1;
 							this->sayings = x.script;
 							this->myScriptCaller->executingScript = 1;
@@ -4475,6 +4675,33 @@ public:
 		//}
 
 		//apply statuseffect
+    this->stunned = hisStatusComponent.stunned.updateStatuses(elapsed);
+		if(this->stunned) {stop_hori(); stop_verti();}
+		this->marked = hisStatusComponent.marked.updateStatuses(elapsed); 
+    this->disabled = hisStatusComponent.disabled.updateStatuses(elapsed);
+    this->enraged = hisStatusComponent.enraged.updateStatuses(elapsed);
+    this->buffed = hisStatusComponent.buffed.updateStatuses(elapsed);
+
+		int damageFromPoison = round(hisStatusComponent.poisoned.updateStatuses(elapsed)); 
+		this->poisoned = damageFromPoison;
+		if(this->poisoned) {poisonFlickerFrames = 6;}
+		this->hp -= damageFromPoison;
+
+		int healthFromHealen = round(hisStatusComponent.healen.updateStatuses(elapsed));
+		this->healen = healthFromHealen;
+		this->hp += healthFromHealen;
+		if(this->hp > this->maxhp) {this->hp = this->maxhp;}
+		this->statusSlownPercent =  hisStatusComponent.slown.updateStatuses(elapsed);
+		if(statusSlownPercent > 1) {statusSlownPercent = 1;} 
+
+    this->hisStatusComponent.stunned.cleanUpStatuses();
+    this->hisStatusComponent.marked.cleanUpStatuses();
+    this->hisStatusComponent.disabled.cleanUpStatuses();
+    this->hisStatusComponent.enraged.cleanUpStatuses();
+    this->hisStatusComponent.buffed.cleanUpStatuses();
+    this->hisStatusComponent.poisoned.cleanUpStatuses();
+    this->hisStatusComponent.healen.cleanUpStatuses();
+    this->hisStatusComponent.slown.cleanUpStatuses();
 
 		
 		//check if he has died
@@ -4523,6 +4750,17 @@ public:
 						yvel += normy * mag;
 					}
 
+				} else if(m && x->usesContactScript && x->contactReadyToProc) {
+          //make a scriptcaller
+					adventureUI scripter(renderer, 1);
+				  scripter.playersUI = 0;
+				  scripter.talker = x;
+					scripter.sayings = &x->contactScript;
+					x->dialogue_index = -1;
+					x->target = this;
+					x->sayings = x->contactScript;
+					scripter.continueDialogue();
+          
 				}
 			}
 		}
@@ -5193,6 +5431,25 @@ public:
 };
 
 //search entity by name
+entity* searchEntities(string fname, entity* caller) {
+	if(fname == "protag") {
+		return protag;
+	}
+	if(caller != 0 && fname == "target") {
+		if(caller->target != nullptr && caller->target->tangible);
+		return caller->target;
+	}
+	if(caller != 0 && fname ==  "this") {
+    return caller;
+	}
+	for(auto n : g_entities) {
+		if(n->name == fname && n->tangible) {
+			return n;
+		}
+	}
+	return nullptr;
+}
+
 entity* searchEntities(string fname) {
 	if(fname == "protag") {
 		return protag;
@@ -5228,8 +5485,6 @@ int loadSave() {
 	
 	string field = "";
 	string value = "";
-
-	//load fields
 	while(getline(file, line)) {
 		if(line == "&") { break;}
 		field = line.substr(0, line.find(' '));
@@ -6306,7 +6561,6 @@ void clear_map(camera& cameraToReset) {
 				
 				SDL_Rect botbar = {px, FoWrect.y +  g_fogheight * 55 + 12, 1500, 5000};
 				SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
-		    SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 				SDL_RenderPresent(renderer);
 
 			}
@@ -6348,7 +6602,8 @@ void clear_map(camera& cameraToReset) {
 			for(long long unsigned int i=0; i < g_textboxes.size(); i++){
 				g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
 			}	
-
+      
+		  SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 			//SDL_RenderPresent(renderer);
 		}
 		

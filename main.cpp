@@ -100,19 +100,20 @@ int WinMain()
 	// g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
 
 	// protag healthbar
-	ui *protagHealthbarA = new ui(renderer, "static/ui/healthbarA.png", 0, 0, 0.05, 0.02, -3);
+	ui *protagHealthbarA = new ui(renderer, "static/ui/healthbarA.bmp", 0, 0, 0.05, 0.02, -3);
 	protagHealthbarA->persistent = 1;
-	ui *protagHealthbarB = new ui(renderer, "static/ui/healthbarB.png", 0, 0, 0.05, 0.02, -2);
+	ui *protagHealthbarB = new ui(renderer, "static/ui/healthbarB.bmp", 0, 0, 0.05, 0.02, -2);
 	protagHealthbarB->persistent = 1;
 	protagHealthbarB->shrinkPixels = 1;
 
-	ui *protagHealthbarC = new ui(renderer, "static/ui/healthbarC.png", 0, 0, 0.05, 0.02, -1);
+	ui *protagHealthbarC = new ui(renderer, "static/ui/healthbarC.bmp", 0, 0, 0.05, 0.02, -1);
 	protagHealthbarC->persistent = 1;
 	protagHealthbarC->shrinkPixels = 1;
 
 	protagHealthbarA->show = g_showHealthbar;
 	protagHealthbarB->show = g_showHealthbar;
 	protagHealthbarC->show = g_showHealthbar;
+	
 
 	// for transition
 	SDL_Surface *transitionSurface = IMG_Load("engine/transition.bmp");
@@ -224,7 +225,7 @@ int WinMain()
 
 	SDL_Surface* shadesurface = IMG_Load("engine/black-diffuse.bmp");
 	g_shade = SDL_CreateTextureFromSurface(renderer, shadesurface);
-  SDL_SetTextureAlphaMod(g_shade, 255 - ( ( 0/100.0 ) * 255));
+  SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
 	SDL_FreeSurface(shadesurface);
 
 	switch (g_graphicsquality)
@@ -894,6 +895,7 @@ int WinMain()
 				// for low spec
 				if (functionalX != g_lastFunctionalX || functionalY != g_lastFunctionalY || g_force_cookies_update)
 				{
+
 					int xdiff = functionalX - g_lastFunctionalX;
 					int ydiff = functionalY - g_lastFunctionalY;
 
@@ -2659,7 +2661,6 @@ void getInput(float &elapsed)
 		g_cameraAimingOffsetXTarget = 0;
 		g_cameraAimingOffsetYTarget = 0;
 
-		D(adventureUIManager->response_index);
 		if (keystate[bindings[2]] && !left_ui_refresh)
 		{
 			if (adventureUIManager->askingQuestion)

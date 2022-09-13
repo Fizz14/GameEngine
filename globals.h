@@ -177,7 +177,7 @@ bool devMode = 0;
 bool canSwitchOffDevMode = 0;
 bool inputRefreshCanSwitchOffDevMode = 0;
 bool showDevMessages = 1;
-bool showErrorMessages = 0;
+bool showErrorMessages = 1;
 bool showImportantMessages = 1;
 
 // quick debug info
@@ -657,15 +657,6 @@ bool fileExists(const std::string &name)
 	}
 }
 
-// combat
-enum Status
-{
-	none,
-	stunned,
-	slowed,
-	buffed,
-	marked
-};
 float g_earshot = 4 * 64; // how close do entities need to be to join their friends in battle
 
 void playSound(int channel, Mix_Chunk *sound, int loops)

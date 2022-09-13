@@ -2632,7 +2632,6 @@ void write_map(entity *mapent)
 
         while (line >> word)
         {
-            M("You pressed enter in the console!");
             if (word == "sb")
             {
                 drawhitboxes = !drawhitboxes;
@@ -3895,6 +3894,43 @@ void write_map(entity *mapent)
             if (word == "ghost" || word == "geist")
             {
                 boxsenabled = !boxsenabled;
+                break;
+            }
+            if(word == "status") 
+            {
+                line >> word;
+                if(word == "slown")
+                {
+                    protag->hisStatusComponent.slown.addStatus(5000, 0.2);
+                }
+                if(word == "stunned")
+                {
+                    protag->hisStatusComponent.stunned.addStatus(5000, 1);
+                }
+                if(word == "poisoned")
+                {
+                    protag->hisStatusComponent.poisoned.addStatus(5000, 1);
+                }
+                if(word == "healen") 
+                {
+                    protag->hisStatusComponent.healen.addStatus(5000, 1);
+                }
+                if(word == "enraged")
+                {
+                    protag->hisStatusComponent.enraged.addStatus(5000, 1);
+                }
+                if(word == "marked")
+                {
+                    protag->hisStatusComponent.marked.addStatus(5000, 1);
+                }
+                if(word == "disabled")
+                {
+                    protag->hisStatusComponent.disabled.addStatus(5000, 1);
+                }
+                if(word == "buffed")
+                {
+                    protag->hisStatusComponent.disabled.addStatus(5000, 1);
+                }
                 break;
             }
             if (word == "set" || word == "s")
@@ -5407,96 +5443,102 @@ void adventureUI::hideTalkingUI()
 
 void adventureUI::showInventoryUI()
 {
-    inventoryA->show = 1;
-    inventoryB->show = 1;
-    escText->show = 1;
+    if(!light) {
+      inventoryA->show = 1;
+      inventoryB->show = 1;
+      escText->show = 1;
+		}
 }
 
 void adventureUI::hideInventoryUI()
 {
-    inventoryA->show = 0;
-    inventoryB->show = 0;
-    escText->show = 0;
+    if(!light) {
+      inventoryA->show = 0;
+      inventoryB->show = 0;
+      escText->show = 0;
+		}
 }
 
-adventureUI::adventureUI(SDL_Renderer *renderer)
+adventureUI::adventureUI(SDL_Renderer *renderer, bool plight)
 {
-    talkingBox = new ui(renderer, "static/ui/menu9patchblack.bmp", 0, 0.65, 1, 0.35, 0);
-    talkingBox->patchwidth = 213;
-    talkingBox->patchscale = 0.4;
-    talkingBox->is9patch = true;
-    talkingBox->persistent = true;
+    this->light = plight;
+    if(!light) {
+      talkingBox = new ui(renderer, "static/ui/menu9patchblack.bmp", 0, 0.65, 1, 0.35, 0);
+      talkingBox->patchwidth = 213;
+      talkingBox->patchscale = 0.4;
+      talkingBox->is9patch = true;
+      talkingBox->persistent = true;
+  
+      // talkingBoxTexture = new ui(renderer, "static/ui/ui-background.bmp", 0.1, 0.45, 0.9, 0.25, 0);
+      // talkingBoxTexture->persistent = true;
+      /// SDL_SetTextureBlendMode(talkingBoxTexture->texture, SDL_BLENDMODE_ADD);
+  
+      talkingText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
+      talkingText->boxWidth = 0.95;
+      talkingText->width = 0.95;
+      talkingText->boxHeight = 0.25;
+      talkingText->boxX = 0.05;
+      talkingText->boxY = 0.7;
+      talkingText->worldspace = 1;
+  
+      responseText = new textbox(renderer, "Yes", WIN_WIDTH * 0.5, 0, 0, 0.9);
+      responseText->boxWidth = 0.95;
+      responseText->width = 0.95;
+      responseText->boxHeight = 0.;
+      responseText->boxX = 0.15;
+      responseText->boxY = 0.87;
+      responseText->worldspace = 1;
+      responseText->align = 2; // center-align
+  
+      inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
+      inventoryA->is9patch = true;
+      inventoryA->patchwidth = 213;
+      inventoryA->patchscale = 0.4;
+      inventoryA->persistent = true;
+  
+      inventoryB = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
+      inventoryB->is9patch = true;
+      inventoryB->patchwidth = 213;
+      inventoryB->patchscale = 0.4;
+      inventoryB->persistent = true;
+      inventoryB->priority = -4;
+  
+      crosshair = new ui(renderer, "engine/crosshair.bmp", 0, 0, 0.05, 0.05, -15);
+      crosshair->persistent = 1;
+      crosshair->heightFromWidthFactor = 1;
+      crosshair->show = 0;
+  
+      healthText = new textbox(renderer, "blem blem", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
+      healthText->boxWidth = 0.95;
+      healthText->width = 0.95;
+      healthText->boxHeight = 0.25;
+      healthText->boxX = 0.1;
+      healthText->boxY = 0.015;
+      healthText->worldspace = 0;
+      healthText->show = 1;
+      healthText->align = 2;
+  
+      escText = new textbox(renderer, "", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
+  
+      escText->boxX = 0.5;
+      escText->boxY = 0.83;
+      escText->boxWidth = 0.98;
+      escText->boxHeight = 0.25 - 0.02;
+      escText->worldspace = 0;
+      escText->show = 1;
+      escText->align = 2;
 
-    // talkingBoxTexture = new ui(renderer, "static/ui/ui-background.bmp", 0.1, 0.45, 0.9, 0.25, 0);
-    // talkingBoxTexture->persistent = true;
-    /// SDL_SetTextureBlendMode(talkingBoxTexture->texture, SDL_BLENDMODE_ADD);
+      playersUI = 1;
 
-    talkingText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
-    talkingText->boxWidth = 0.95;
-    talkingText->width = 0.95;
-    talkingText->boxHeight = 0.25;
-    talkingText->boxX = 0.05;
-    talkingText->boxY = 0.7;
-    talkingText->worldspace = 1;
+      hideInventoryUI();
 
-    responseText = new textbox(renderer, "Yes", WIN_WIDTH * 0.5, 0, 0, 0.9);
-    responseText->boxWidth = 0.95;
-    responseText->width = 0.95;
-    responseText->boxHeight = 0.;
-    responseText->boxX = 0.15;
-    responseText->boxY = 0.87;
-    responseText->worldspace = 1;
-    responseText->align = 2; // center-align
+      hideTalkingUI();
+		}
 
-    inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
-    inventoryA->is9patch = true;
-    inventoryA->patchwidth = 213;
-    inventoryA->patchscale = 0.4;
-    inventoryA->persistent = true;
-
-    inventoryB = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
-    inventoryB->is9patch = true;
-    inventoryB->patchwidth = 213;
-    inventoryB->patchscale = 0.4;
-    inventoryB->persistent = true;
-    inventoryB->priority = -4;
-
-    crosshair = new ui(renderer, "engine/crosshair.bmp", 0, 0, 0.05, 0.05, -15);
-    crosshair->persistent = 1;
-    crosshair->heightFromWidthFactor = 1;
-    crosshair->show = 0;
-
-    healthText = new textbox(renderer, "blem blem", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
-    healthText->boxWidth = 0.95;
-    healthText->width = 0.95;
-    healthText->boxHeight = 0.25;
-    healthText->boxX = 0.1;
-    healthText->boxY = 0.015;
-    healthText->worldspace = 0;
-    healthText->show = 1;
-    healthText->align = 2;
-
-    escText = new textbox(renderer, "", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
-
-    escText->boxX = 0.5;
-    escText->boxY = 0.83;
-    escText->boxWidth = 0.98;
-    escText->boxHeight = 0.25 - 0.02;
-    escText->worldspace = 0;
-    escText->show = 1;
-    escText->align = 2;
-
-    playersUI = 1;
-
-    hideInventoryUI();
-
-    hideTalkingUI();
 }
 
 adventureUI::~adventureUI()
 {
-    M("~adventureUI()");
-
     if (this->playersUI)
     {
         Mix_FreeChunk(blip);
@@ -5516,6 +5558,8 @@ void adventureUI::pushText(entity *ftalker)
     adventureUIManager->hideInventoryUI();
     talker = ftalker;
     g_talker = ftalker;
+    D(talker->dialogue_index);
+    D(sayings->size());
     if (sayings->at(talker->dialogue_index).at(0) == '%')
     {
         pushedText = sayings->at(talker->dialogue_index).substr(1);
@@ -5587,7 +5631,6 @@ void adventureUI::updateText()
 void adventureUI::continueDialogue()
 {
     // has our entity died?
-    // M("A");
     if (g_forceEndDialogue && playersUI)
     {
         g_forceEndDialogue = 0;
@@ -5595,7 +5638,6 @@ void adventureUI::continueDialogue()
         adventureUIManager->hideTalkingUI();
         return;
     }
-    // M("B");
 
     if (sleepingMS > 1)
     {
@@ -5619,7 +5661,6 @@ void adventureUI::continueDialogue()
     }
     executingScript = 1;
 
-    // M("C");
 
     // showTalkingUI();
     // D(talker->dialogue_index);
@@ -6011,8 +6052,8 @@ void adventureUI::continueDialogue()
         for (long long unsigned int i = 0; i < g_entities.size(); i++)
         {
             if (g_entities[i]->inParty)
-            {
                 continue;
+            {
             }
             // SDL_Rect b = {g_entities[i]->x, g_entities[i]->y - g_entities[i]->height, g_entities[i]->width, g_entities[i]->height};
 
@@ -6027,6 +6068,25 @@ void adventureUI::continueDialogue()
         this->continueDialogue();
         return;
     }
+
+    // destroy oldest from type of entity, keeping x entities
+    // if it owns an asset, just make it intagible
+//    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 9) == "/keeponly")
+//    {
+//        string s = talker->sayings.at(talker->dialogue_index + 1);
+//        // erase '&'
+//        s.erase(0, 10);
+//        vector<string> splits = splitString(s, ' ');
+//        int numberOfEntsToKeep = stoi(s[0]);
+//        string entName = s[1]
+//        for(int i = 0; i < stoi(s); i++) {
+//          
+//        }
+//
+//        talker->dialogue_index++;
+//        this->continueDialogue();
+//        return;
+//    }
 
     // move entity
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 5) == "/move")
@@ -6175,6 +6235,7 @@ void adventureUI::continueDialogue()
     }
 
     // spawn entity at an entity
+    // /entspawn puddle zombie
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 9) == "/entspawn")
     {
         string s = talker->sayings.at(talker->dialogue_index + 1);
@@ -6193,6 +6254,65 @@ void adventureUI::continueDialogue()
             teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
             teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
         }
+
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+    }
+
+    //apply statuseffects
+    // /inflict [entity] [status] [duration, MS] [factor]
+    // /inflict target poisoned 5000 1
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 8) == "/inflict")
+    {
+        string s = talker->sayings.at(talker->dialogue_index + 1);
+        s.erase(0, 9);
+        vector<string> x = splitString(s, ' ');
+        string entSTR = x[0];
+        string statusSTR = x[1];
+        string durationSTR = x[2];
+        string factorSTR = x[3];
+
+        float durationFLOAT = 0; durationFLOAT = stof(durationSTR);
+        float factorFLOAT = 0; factorFLOAT = stof(factorSTR);
+        
+        entity *inflictMe = searchEntities(entSTR, talker);
+        if(inflictMe != nullptr)
+        {
+          if(statusSTR == "slown" || statusSTR == "slow")
+          {
+            inflictMe->hisStatusComponent.slown.addStatus(durationFLOAT, factorFLOAT);
+          } 
+          else if(statusSTR == "stunned" || statusSTR == "petrify")
+          {
+            inflictMe->hisStatusComponent.stunned.addStatus(durationFLOAT, factorFLOAT);
+          } 
+          else if (statusSTR == "poisoned" || statusSTR == "")
+          {
+            inflictMe->hisStatusComponent.marked.addStatus(durationFLOAT, factorFLOAT);
+          }
+          else if (statusSTR.substr(0,4) == "heal" || statusSTR == "mend")
+          {
+            inflictMe->hisStatusComponent.healen.addStatus(durationFLOAT, factorFLOAT);
+          }
+          else if (statusSTR == "enraged" || statusSTR == "angst")
+          {
+            inflictMe->hisStatusComponent.enraged.addStatus(durationFLOAT, factorFLOAT);
+          }
+          else if(statusSTR == "marked" || statusSTR == "deathly")
+          {
+            inflictMe->hisStatusComponent.marked.addStatus(durationFLOAT, factorFLOAT);
+          } 
+          else if(statusSTR == "disabled" || statusSTR == "kinderly")
+          {
+            inflictMe->hisStatusComponent.disabled.addStatus(durationFLOAT, factorFLOAT);
+          } 
+          else if(statusSTR == "buffed" || statusSTR == "meatcake")
+          {
+            inflictMe->hisStatusComponent.buffed.addStatus(durationFLOAT, factorFLOAT);
+          } 
+        }
+
 
         talker->dialogue_index++;
         this->continueDialogue();
@@ -6752,12 +6872,12 @@ void adventureUI::continueDialogue()
     }
 
     // play sound at an entity
-    //  /sound heavy-door-open doora
-    //  /sound croak protag
-    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 9) == "/entsound")
+    //  /entsound heavy-door-open doora
+    //  /entsound croak protag
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 8) == "/entsound")
     {
         string s = talker->sayings.at(talker->dialogue_index + 1);
-        s.erase(0, 10);
+        s.erase(0, 9);
         vector<string> split = splitString(s, ' ');
         string soundName = split[0];
         string entName = split[1];
@@ -6793,9 +6913,11 @@ void adventureUI::continueDialogue()
     // play a sound from the disk
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 14) == "/loadplaysound")
     {
+        M("This is the shriek");
         string s = talker->sayings.at(talker->dialogue_index + 1);
-        s.erase(0, 15);
-        string loadstring = "audio/sounds/" + s + ".wav";
+        vector<string> split = splitString(s, ' ');
+        D(split[1]);
+        string loadstring = "static/sounds/" + split[1] + ".wav";
         Mix_Chunk *a = Mix_LoadWAV(loadstring.c_str());
         if (!g_mute && a != nullptr)
         {
