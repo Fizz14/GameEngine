@@ -2440,7 +2440,8 @@ public:
 				statuses.at(i).lifetime -= elapsedMS;
 				if(statuses.at(i).currentProckWaitMS > this->maxProckWaitMS) {
 					statuses.at(i).currentProckWaitMS = 0;
-					totalFactor += statuses.at(i).factor;
+					//totalFactor += statuses.at(i).factor;
+					if(statuses.at(i).factor > totalFactor) {totalFactor = statuses.at(i).factor;}
 				}
 			}
 			return totalFactor;
@@ -3103,10 +3104,8 @@ public:
 
 		//script-on-contact
 		file >> comment;
-		M(comment);
     string fieldScript = "0";
 		file >> fieldScript;
-		M(fieldScript); 
 
 		if(fieldScript != "0") {
 		  usesContactScript = 1;
@@ -3116,7 +3115,6 @@ public:
 		  } else {
 		  	txtfilename = "static/scripts/" + fieldScript + ".txt";
 		  }
-			M(txtfilename);
 		  ifstream nfile(txtfilename);
 		  string line;
 

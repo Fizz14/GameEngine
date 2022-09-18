@@ -2815,7 +2815,8 @@ void getInput(float &elapsed)
 	{
 		// select item in pausemenu
 		// only if we arent running a script
-		if (protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script.size() > 0 && mainProtag->inventory.size() > 0)
+		D(mainProtag->inventory.size());
+		if (protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory.size() > 0 && mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script.size() > 0)
 		{
 			// call the item's script
 			// D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);

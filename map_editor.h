@@ -700,7 +700,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                         {
                             for (float i = 0; i < 64; i += step)
                             {
-                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) - 1, j, step, 32, 1, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY));
+                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY), j, step, 33, 1, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY));
                                 child->sortingOffset = 15;
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
@@ -716,6 +716,11 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
                             }
+														
+												  //This is to fill in a "gap" of shading between this corner and the block behind
+                          child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", triangle->x2 + 64, triangle->y1 + 19, 64 * triangle->layer, 19, 19, 0, 0);
+                          child->parent = triangle;
+                          triangle->children.push_back(child);
                         }
                     }
                     else
@@ -747,7 +752,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                             {
                                 for (float i = 0; i < 64; i += step)
                                 {
-                                    child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY), j, step, 32, 1, ((64 - i) * XtoY));
+                                    child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY), j, step, 33, 1, ((64 - i) * XtoY));
                                     child->parent = triangle;
                                     child->sortingOffset = 15;
                                     triangle->children.push_back(child);
@@ -764,6 +769,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                                     child->parent = triangle;
                                     triangle->children.push_back(child);
                                 }
+												        //This is to fill in a "gap" of shading between this corner and the block behind
+                                child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", triangle->x1 - 19, triangle->y1 + 19, 64 * triangle->layer, 19, 19, 0, 0);
+                                child->parent = triangle;
+                                triangle->children.push_back(child);
                             }
                         }
                         else
@@ -843,7 +852,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                         {
                             for (float i = 0; i < 64; i += step)
                             {
-                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, j, step, 32, 1, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY));
+                                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i - 1.5, triangle->y1 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY), j, step, 32, 1, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY));
                                 child->sortingOffset = 15;
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
@@ -858,7 +867,13 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                                 child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", triangle->x2 + i, triangle->y1 + 30 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64, step, 50, 0, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) + 0);
                                 child->parent = triangle;
                                 triangle->children.push_back(child);
+
                             }
+
+												    //This is to fill in a "gap" of shading between this corner and the block behind
+                            child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", triangle->x2, triangle->y1 + 55, 64 * triangle->layer, 19, 19, 0, 0);
+                            child->parent = triangle;
+                            triangle->children.push_back(child);
                         }
                     }
                     else
@@ -906,6 +921,11 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                                     child->parent = triangle;
                                     triangle->children.push_back(child);
                                 }
+
+												        //This is to fill in a "gap" of shading between this corner and the block behind
+                                child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", triangle->x2 - 19, triangle->y1 + 55, 64 * triangle->layer, 19, 19, 0, 0);
+                                child->parent = triangle;
+                                triangle->children.push_back(child);
                             }
                         }
                         else
@@ -6039,7 +6059,6 @@ void adventureUI::continueDialogue()
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 8) == "/destroy")
     {
         string s = talker->sayings.at(talker->dialogue_index + 1);
-        // erase '&'
         s.erase(0, 9);
         // s is the name of the entity to destroy
         if (talker->name == s)
