@@ -128,10 +128,10 @@ vector<effectIndex *> g_effectIndexes;
 
 struct cmpCoord
 {
-	bool operator()(const pair<int, int> a, const pair<int, int> b) const
-	{
-		return a.first + a.second < b.first + b.second;
-	}
+  bool operator()(const pair<int, int> a, const pair<int, int> b) const
+  {
+    return a.first + a.second < b.first + b.second;
+  }
 };
 
 map<pair<int, int>, navNode *, cmpCoord> navNodeMap;
@@ -182,53 +182,53 @@ bool showImportantMessages = 1;
 
 // quick debug info
 #define D(a)                                \
-	if (devMode && showDevMessages)           \
-	{                                         \
-		std::cout << #a << ": " << (a) << endl; \
-	}
+  if (devMode && showDevMessages)           \
+{                                         \
+  std::cout << #a << ": " << (a) << endl; \
+}
 
-template <typename T>
+  template <typename T>
 void M(T msg, bool disableNewline = 0)
 {
-	if (!devMode || !showDevMessages || 0)
-	{
-		return;
-	}
-	cout << msg;
-	if (!disableNewline)
-	{
-		cout << endl;
-	}
+  if (!devMode || !showDevMessages || 0)
+  {
+    return;
+  }
+  cout << msg;
+  if (!disableNewline)
+  {
+    cout << endl;
+  }
 }
 
 // particularly for errors
-template <typename T>
+  template <typename T>
 void E(T msg, bool disableNewline = 0)
 {
-	if (!devMode || !showErrorMessages || 0)
-	{
-		return;
-	}
-	cout << "ERROR: " << msg;
-	if (!disableNewline)
-	{
-		cout << endl;
-	}
+  if (!devMode || !showErrorMessages || 0)
+  {
+    return;
+  }
+  cout << "ERROR: " << msg;
+  if (!disableNewline)
+  {
+    cout << endl;
+  }
 }
 
 // Particularly important stuff, like loadtimes
-template <typename T>
+  template <typename T>
 void I(T msg, bool disableNewline = 0)
 {
-	if (!showImportantMessages)
-	{
-		return;
-	}
-	cout << "I: " << msg;
-	if (!disableNewline)
-	{
-		cout << endl;
-	}
+  if (!showImportantMessages)
+  {
+    return;
+  }
+  cout << "I: " << msg;
+  if (!disableNewline)
+  {
+    cout << endl;
+  }
 }
 
 // Temporary debugging statements- I won't allow myself to block these
@@ -236,16 +236,16 @@ void I(T msg, bool disableNewline = 0)
 
 void breakpoint()
 {
-	I("Have broken");
-	return;
+  I("Have broken");
+  return;
 }
 
-template<typename T>
+  template<typename T>
 T limit(T input, T min, T max)
 {
-	if(input > max) {return max;}
-	if(input < min) {return min;}
-	return input;
+  if(input > max) {return max;}
+  if(input < min) {return min;}
+  return input;
 }
 
 // for visuals
@@ -399,90 +399,90 @@ int lineTraceX, lineTraceY;
 
 class camera
 {
-public:
-	float oldx = 0;
-	float oldy = 0;
-	int x = 200;
-	int y = 200;
-	float width = 640;
-	float height = 480;
-	float lag = 0.0;
-	const float DEFAULTLAGACCEL = 0.01;
-	float lagaccel = 0.01; // how much faster the camera gets while lagging
-	float zoom = 1;
-	float zoommod = 1;
-	int lowerLimitX = 0;
-	int lowerLimitY = 0;
-	int upperLimitX = 3000;
-	int upperLimitY = 3000;
-	bool enforceLimits = 0;
+  public:
+    float oldx = 0;
+    float oldy = 0;
+    int x = 200;
+    int y = 200;
+    float width = 640;
+    float height = 480;
+    float lag = 0.0;
+    const float DEFAULTLAGACCEL = 0.01;
+    float lagaccel = 0.01; // how much faster the camera gets while lagging
+    float zoom = 1;
+    float zoommod = 1;
+    int lowerLimitX = 0;
+    int lowerLimitY = 0;
+    int upperLimitX = 3000;
+    int upperLimitY = 3000;
+    bool enforceLimits = 0;
 
-	camera(float fx, float fy)
-	{
-		fx = x;
-		fy = y;
-	}
-	void update_movement(float elapsed, float targetx, float targety)
-	{
-		if (!isfinite(targetx) || !isfinite(targety))
-		{
-			return;
-		}
+    camera(float fx, float fy)
+    {
+      fx = x;
+      fy = y;
+    }
+    void update_movement(float elapsed, float targetx, float targety)
+    {
+      if (!isfinite(targetx) || !isfinite(targety))
+      {
+        return;
+      }
 
-		if (lag == 0)
-		{
-			x = targetx;
-			y = targety;
-		}
-		else
-		{
-			x += (targetx - oldx) * (elapsed / 256) * lag;
-			y += (targety - oldy) * (elapsed / 256) * lag;
+      if (lag == 0)
+      {
+        x = targetx;
+        y = targety;
+      }
+      else
+      {
+        x += (targetx - oldx) * (elapsed / 256) * lag;
+        y += (targety - oldy) * (elapsed / 256) * lag;
 
-			oldx = x;
-			oldy = y;
-			// if we're there, within a pixel, set the lagResetTimer to nothing
-			if (abs(targetx - x) < 1.4 && abs(targety - y) < 1.4)
-			{
-				lag = 0;
-			}
-			else
-			{
-				// if not, consider increasing lag to catch up
-				lag += lagaccel;
-			}
-		}
+        oldx = x;
+        oldy = y;
+        // if we're there, within a pixel, set the lagResetTimer to nothing
+        if (abs(targetx - x) < 1.4 && abs(targety - y) < 1.4)
+        {
+          lag = 0;
+        }
+        else
+        {
+          // if not, consider increasing lag to catch up
+          lag += lagaccel;
+        }
+      }
 
-		if (enforceLimits)
-		{
-			if (x < lowerLimitX)
-			{
-				x = lowerLimitX;
-			}
-			if (y < lowerLimitY)
-			{
-				y = lowerLimitY;
-			}
+      if (enforceLimits)
+      {
+        if (x < lowerLimitX)
+        {
+          x = lowerLimitX;
+        }
+        if (y < lowerLimitY)
+        {
+          y = lowerLimitY;
+        }
 
-			if (x + width > upperLimitX)
-			{
-				x = upperLimitX - width;
-			}
-			if (y + height > upperLimitY)
-			{
-				y = upperLimitY - height;
-			}
-		}
-	}
+        if (x + width > upperLimitX)
+        {
+          x = upperLimitX - width;
+        }
+        if (y + height > upperLimitY)
+        {
+          y = upperLimitY - height;
+        }
+      }
+    }
 
-	void resetCamera()
-	{
-		enforceLimits = 0;
-		lowerLimitX = 0;
-		lowerLimitY = 0;
-		upperLimitX = 0;
-		upperLimitY = 0;
-	}
+    void resetCamera()
+    {
+      enforceLimits = 0;
+      lowerLimitX = 0;
+      lowerLimitY = 0;
+      upperLimitX = 0;
+      upperLimitY = 0;
+    }
 };
 
 // zoom is really g_defaultZoom when screenwidth is STANDARD_SCREENWIDTH
@@ -502,6 +502,7 @@ bool g_fullscreen = false;
 camera g_camera(0, 0);
 entity *protag;
 entity *mainProtag; // for letting other entities use this ones inventory; game ends when this one dies
+entity * g_hog=0;
 
 // zoom is planned to be 1.0 for a resolution of 1920 pixels across
 float g_defaultZoom = 0.85;
@@ -625,8 +626,8 @@ std::map<string, int> g_save = {};
 // AI
 enum travelstyle
 {
-	roam,
-	patrol
+  roam,
+  patrol
 };
 
 // movement
@@ -646,60 +647,60 @@ bool storedJump = 0;
 
 bool fileExists(const std::string &name)
 {
-	if (FILE *file = fopen(name.c_str(), "r"))
-	{
-		fclose(file);
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+  if (FILE *file = fopen(name.c_str(), "r"))
+  {
+    fclose(file);
+    return true;
+  }
+  else
+  {
+    return false;
+  }
 }
 
 float g_earshot = 4 * 64; // how close do entities need to be to join their friends in battle
 
 void playSound(int channel, Mix_Chunk *sound, int loops)
 {
-	// M("play sound");
-	if (!g_mute && sound != NULL)
-	{
-		Mix_Volume(channel, g_sfx_volume * 128);
-		Mix_PlayChannel(channel, sound, loops);
-	}
+  // M("play sound");
+  if (!g_mute && sound != NULL)
+  {
+    Mix_Volume(channel, g_sfx_volume * 128);
+    Mix_PlayChannel(channel, sound, loops);
+  }
 }
 
 SDL_Texture *MaskTexture(SDL_Renderer *renderer, SDL_Texture *mask, SDL_Texture *diffuse)
 {
-	int w, h;
-	SDL_QueryTexture(diffuse, NULL, NULL, &w, &h);
+  int w, h;
+  SDL_QueryTexture(diffuse, NULL, NULL, &w, &h);
 
-	SDL_Texture *result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+  SDL_Texture *result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
 
-	SDL_SetTextureBlendMode(result, SDL_BLENDMODE_BLEND);
-	SDL_SetRenderTarget(renderer, result);
+  SDL_SetTextureBlendMode(result, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderTarget(renderer, result);
 
-	SDL_SetTextureBlendMode(mask, SDL_BLENDMODE_MOD);
-	SDL_SetTextureBlendMode(diffuse, SDL_BLENDMODE_NONE);
+  SDL_SetTextureBlendMode(mask, SDL_BLENDMODE_MOD);
+  SDL_SetTextureBlendMode(diffuse, SDL_BLENDMODE_NONE);
 
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-	SDL_RenderClear(renderer);
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+  SDL_RenderClear(renderer);
 
-	SDL_RenderCopy(renderer, diffuse, NULL, NULL);
-	SDL_RenderCopy(renderer, mask, NULL, NULL);
+  SDL_RenderCopy(renderer, diffuse, NULL, NULL);
+  SDL_RenderCopy(renderer, mask, NULL, NULL);
 
-	SDL_SetRenderTarget(renderer, NULL);
-	return result;
+  SDL_SetRenderTarget(renderer, NULL);
+  return result;
 }
 
 float Distance(int x1, int y1, int x2, int y2)
 {
-	return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2), 0.5);
+  return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2), 0.5);
 }
 
 float XYDistance(int x1, int y1, int x2, int y2)
 {
-	return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2) * XtoY, 0.5);
+  return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2) * XtoY, 0.5);
 }
 
 // old crappy code
@@ -727,185 +728,185 @@ float XYDistance(int x1, int y1, int x2, int y2)
 //  0 is 12oclock, and 2 is 3oclock and so on
 vector<int> getCardinalPoint(int x, int y, float range, int index)
 {
-	float angle = 0;
-	switch (index)
-	{
-	case 6:
-		angle = 0;
-		break;
-	case 7:
-		angle = M_PI / 4;
-		break;
-	case 0:
-		angle = M_PI / 2;
-		break;
-	case 1:
-		angle = M_PI * (3.0 / 4.0);
-		break;
-	case 2:
-		angle = M_PI;
-		break;
-	case 3:
-		angle = M_PI * (5.0 / 4.0);
-		break;
-	case 4:
-		angle = M_PI * (3.0 / 2.0);
-		break;
-	case 5:
-		angle = M_PI * (7.0 / 4.0);
-		break;
-	}
-	vector<int> ret;
-	ret.push_back(x + (range * cos(angle)));
-	ret.push_back(y + (range * sin(angle) * XtoY));
-	return ret;
+  float angle = 0;
+  switch (index)
+  {
+    case 6:
+      angle = 0;
+      break;
+    case 7:
+      angle = M_PI / 4;
+      break;
+    case 0:
+      angle = M_PI / 2;
+      break;
+    case 1:
+      angle = M_PI * (3.0 / 4.0);
+      break;
+    case 2:
+      angle = M_PI;
+      break;
+    case 3:
+      angle = M_PI * (5.0 / 4.0);
+      break;
+    case 4:
+      angle = M_PI * (3.0 / 2.0);
+      break;
+    case 5:
+      angle = M_PI * (7.0 / 4.0);
+      break;
+  }
+  vector<int> ret;
+  ret.push_back(x + (range * cos(angle)));
+  ret.push_back(y + (range * sin(angle) * XtoY));
+  return ret;
 }
 
 // convert frame of sprite to angle
 float convertFrameToAngle(int frame, bool flipped)
 {
-	if (flipped)
-	{
-		if (frame == 0)
-		{
-			return M_PI / 2;
-		}
-		if (frame == 1)
-		{
-			return (M_PI * 3) / 4;
-		}
-		if (frame == 2)
-		{
-			return M_PI;
-		}
-		if (frame == 3)
-		{
-			return (M_PI * 5) / 4;
-		}
-		if (frame == 4)
-		{
-			return (M_PI * 6) / 4;
-		}
-	}
-	else
-	{
-		if (frame == 0)
-		{
-			return M_PI / 2;
-		}
-		if (frame == 1)
-		{
-			return (M_PI * 1) / 4;
-		}
-		if (frame == 2)
-		{
-			return 0;
-		}
-		if (frame == 3)
-		{
-			return (M_PI * 7) / 4;
-		}
-		if (frame == 4)
-		{
-			return (M_PI * 6) / 4;
-		}
-	}
+  if (flipped)
+  {
+    if (frame == 0)
+    {
+      return M_PI / 2;
+    }
+    if (frame == 1)
+    {
+      return (M_PI * 3) / 4;
+    }
+    if (frame == 2)
+    {
+      return M_PI;
+    }
+    if (frame == 3)
+    {
+      return (M_PI * 5) / 4;
+    }
+    if (frame == 4)
+    {
+      return (M_PI * 6) / 4;
+    }
+  }
+  else
+  {
+    if (frame == 0)
+    {
+      return M_PI / 2;
+    }
+    if (frame == 1)
+    {
+      return (M_PI * 1) / 4;
+    }
+    if (frame == 2)
+    {
+      return 0;
+    }
+    if (frame == 3)
+    {
+      return (M_PI * 7) / 4;
+    }
+    if (frame == 4)
+    {
+      return (M_PI * 6) / 4;
+    }
+  }
 
-	return 0;
+  return 0;
 }
 
 // convert an angle to a sprite's frame, for eight-frame sprites (arms)
 int convertAngleToFrame(float angle)
 {
-	vector<float> angles = {0, (M_PI * 1) / 4, M_PI / 2, (M_PI * 3) / 4, M_PI, (M_PI * 5) / 4, (M_PI * 6) / 4, (M_PI * 7) / 4, M_PI * 2};
-	for (long long unsigned int i = 0; i < angles.size(); i++)
-	{
-		if (angles[i] + M_PI / 8 > angle)
-		{
-			// this rather silly check is done to accomodate certain values of orbitOffset that would  push angle to not quite fit normally
-			// this change came with the ninth entry in the vector of angles
-			if (i == 8)
-			{
-				i = 0;
-			}
-			return 7 - i;
-		}
-	}
+  vector<float> angles = {0, (M_PI * 1) / 4, M_PI / 2, (M_PI * 3) / 4, M_PI, (M_PI * 5) / 4, (M_PI * 6) / 4, (M_PI * 7) / 4, M_PI * 2};
+  for (long long unsigned int i = 0; i < angles.size(); i++)
+  {
+    if (angles[i] + M_PI / 8 > angle)
+    {
+      // this rather silly check is done to accomodate certain values of orbitOffset that would  push angle to not quite fit normally
+      // this change came with the ninth entry in the vector of angles
+      if (i == 8)
+      {
+        i = 0;
+      }
+      return 7 - i;
+    }
+  }
 
-	return 0;
+  return 0;
 }
 
 // measures distance in the world, not by the screen.
 float XYWorldDistance(int x1, int y1, int x2, int y2)
 {
-	y1 *= 1 / XtoY;
-	y2 *= 1 / XtoY;
-	return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2), 0.5);
+  y1 *= 1 / XtoY;
+  y2 *= 1 / XtoY;
+  return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2), 0.5);
 }
 
 vector<string> splitString(string s, char delimiter)
 {
-	int start;
-	long long unsigned int end;
-	start = 0;
-	string token;
-	vector<string> ret;
-	end = s.find(delimiter, start);
-	while (end != string::npos)
-	{
-		token = s.substr(start, end - start);
-		start = end + 1;
-		ret.push_back(token);
-		end = s.find(delimiter, start);
-	}
+  int start;
+  long long unsigned int end;
+  start = 0;
+  string token;
+  vector<string> ret;
+  end = s.find(delimiter, start);
+  while (end != string::npos)
+  {
+    token = s.substr(start, end - start);
+    start = end + 1;
+    ret.push_back(token);
+    end = s.find(delimiter, start);
+  }
 
-	ret.push_back(s.substr(start));
-	return ret;
+  ret.push_back(s.substr(start));
+  return ret;
 }
 
 bool replaceString(std::string &str, const std::string &from, const std::string &to)
 {
-	size_t start_pos = str.find(from);
-	if (start_pos == std::string::npos)
-		return false;
-	str.replace(start_pos, from.length(), to);
-	return true;
+  size_t start_pos = str.find(from);
+  if (start_pos == std::string::npos)
+    return false;
+  str.replace(start_pos, from.length(), to);
+  return true;
 }
 
 int yesNoPrompt(string msg)
 {
-	// warn for file overwrite
-	const SDL_MessageBoxButtonData buttons[] = {
-			{/* .flags, .buttonid, .text */ 0, 0, "Yes"},
-			{SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "No"},
-	};
-	const SDL_MessageBoxColorScheme colorScheme = {
-			{/* .colors (.r, .g, .b) */
-			 /* [SDL_MESSAGEBOX_COLOR_BACKGROUND] */
-			 {0, 0, 0},
-			 /* [SDL_MESSAGEBOX_COLOR_TEXT] */
-			 {200, 200, 200},
-			 /* [SDL_MESSAGEBOX_COLOR_BUTTON_BORDER] */
-			 {180, 180, 180},
-			 /* [SDL_MESSAGEBOX_COLOR_BUTTON_BACKGROUND] */
-			 {0, 0, 0},
-			 /* [SDL_MESSAGEBOX_COLOR_BUTTON_SELECTED] */
-			 {255, 255, 255}}};
-	const SDL_MessageBoxData messageboxdata = {
-			SDL_MESSAGEBOX_INFORMATION, /* .flags */
-			NULL,												/* .window */
-			"",													/* .title */
-			msg.c_str(),								/* .message */
-			SDL_arraysize(buttons),			/* .numbuttons */
-			buttons,										/* .buttons */
-			&colorScheme								/* .colorScheme */
-	};
-	int buttonid;
-	if (SDL_ShowMessageBox(&messageboxdata, &buttonid) < 0)
-	{
-		SDL_Log("error displaying message box");
-	}
-	return buttonid;
+  // warn for file overwrite
+  const SDL_MessageBoxButtonData buttons[] = {
+    {/* .flags, .buttonid, .text */ 0, 0, "Yes"},
+    {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "No"},
+  };
+  const SDL_MessageBoxColorScheme colorScheme = {
+    {/* .colors (.r, .g, .b) */
+      /* [SDL_MESSAGEBOX_COLOR_BACKGROUND] */
+      {0, 0, 0},
+      /* [SDL_MESSAGEBOX_COLOR_TEXT] */
+      {200, 200, 200},
+      /* [SDL_MESSAGEBOX_COLOR_BUTTON_BORDER] */
+      {180, 180, 180},
+      /* [SDL_MESSAGEBOX_COLOR_BUTTON_BACKGROUND] */
+      {0, 0, 0},
+      /* [SDL_MESSAGEBOX_COLOR_BUTTON_SELECTED] */
+      {255, 255, 255}}};
+  const SDL_MessageBoxData messageboxdata = {
+    SDL_MESSAGEBOX_INFORMATION, /* .flags */
+    NULL,												/* .window */
+    "",													/* .title */
+    msg.c_str(),								/* .message */
+    SDL_arraysize(buttons),			/* .numbuttons */
+    buttons,										/* .buttons */
+    &colorScheme								/* .colorScheme */
+  };
+  int buttonid;
+  if (SDL_ShowMessageBox(&messageboxdata, &buttonid) < 0)
+  {
+    SDL_Log("error displaying message box");
+  }
+  return buttonid;
 }
 
 // string stringToHex(string input) {
