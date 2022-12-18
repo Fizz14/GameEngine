@@ -318,8 +318,11 @@ int WinMain()
     loadSave();
     cout << "finished loadSave()" << endl;
     // empty map or default map for map editing, perhaps a tutorial even
-    // load_map(renderer, "maps/sp-title/editordefault.map","a");
-    // g_map = "g";
+    load_map(renderer, "maps/g/g.map","a");
+    //cameraToReset.resetCamera(); //somehow, reseting the cam is needed for lightcookies (changed default values to zero)
+    //init_map_writing(renderer);
+    g_map = "g";
+    g_mapdir = "g";
     protag->x = 100000;
     protag->y = 100000;
   }
@@ -445,7 +448,7 @@ int WinMain()
 
   // textures for adding operation
   canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
-  canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
+  //canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500); seems to be unused
 
   SDL_Surface *lightSurface = IMG_Load("engine/light.bmp");
   light = SDL_CreateTextureFromSurface(renderer, lightSurface);
@@ -1014,6 +1017,8 @@ int WinMain()
           {
             for (long long unsigned j = 0; j < g_fogcookies[0].size(); j++)
             {
+              
+
               int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
               int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
 
@@ -1233,7 +1238,7 @@ int WinMain()
       // px = 64 - px - 64;
       // py = 55 - py - 55;
       //  50 50
-      addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250, 0);
+      addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250, 0); //g_fc is normal
 
       TextureC = IlluminateTexture(renderer, TextureD, canvas, result_c);
 
@@ -1268,7 +1273,7 @@ int WinMain()
         g_fogslatesA[i]->z = g_focus->stableLayer * 64 + 64;
       }
 
-      addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250, 1);
+      addTextures(renderer, g_sc, canvas, light, 500, 500, 250, 250, 1); //g_sc is normal
 
       TextureB = IlluminateTexture(renderer, TextureA, canvas, result);
 
@@ -1748,7 +1753,7 @@ int WinMain()
       g_elapsed_accumulator -= 1800;
     }
 
-    // ENTITY MOVEMENT
+    // ENTITY MOVEMENT (ENTITY UPDATE)
     // dont update movement while transitioning
     if (!transition)
     {
@@ -1772,6 +1777,8 @@ int WinMain()
           }
         }
         door *taken = g_entities[i]->update(g_doors, elapsed);
+        
+
         // added the !transition because if a player went into a map with a door located in the same place
         // as they are in the old map (before going to the waypoint) they would instantly take that door
         if (taken != nullptr && !transition)
@@ -1796,6 +1803,29 @@ int WinMain()
 
           break;
         }
+ 
+        if(g_entities[i]->usingTimeToLive) {
+
+          if(g_entities[i]->timeToLiveMs < 0) {
+            //change manner of death for ttl here (e.g. shrink, fade)
+            //ttl ents will just be deleted so that they don't accumulate
+            //if you wish for cheap textures, spawn another ent with that tex
+            //which doesn't get deleted until the map is deloaded
+            if(!g_entities[i]->asset_sharer) {
+              g_entities[i]->tangible = 0;
+              g_entities[i]->usingTimeToLive = 0;
+            } else {
+              delete g_entities[i];
+            }
+          } /*else if(g_entities[i]->timeToLiveMs < 500)  {
+            //shrink
+            g_entities[i]->width = 0;
+            g_entities[i]->height = 0;
+            g_entities[i]->animspeed = 0.001;
+          } */
+
+        }
+
       }
     }
 

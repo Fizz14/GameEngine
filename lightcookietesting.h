@@ -85,7 +85,7 @@ inline SDL_Texture *addTextures(SDL_Renderer *renderer, vector<vector<int>> fogc
 					SDL_SetTextureAlphaMod(usingThisTexture, fogcookies[i][j]);
 				}
 
-				SDL_RenderCopy(renderer, usingThisTexture, NULL, &dstrect);
+				SDL_RenderCopy(renderer, usingThisTexture, NULL, &dstrect); //no error
 			}
 		}
 	}

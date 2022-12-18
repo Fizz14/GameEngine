@@ -1153,7 +1153,7 @@ class attack {
     float damage = 1;
     float spread = 0;
     float randomspread = 0;
-    int range = 512; // max range, entities will try to be 0.8% of this to hit safely. in worldpixels
+    int range = 512; // max range, entities will try to be 8% of this to hit safely. in worldpixels
     float size = 0.1;
     float speed = 1;
     int numshots = 1;
@@ -1424,6 +1424,7 @@ void sort_by_y(vector<actor*> &g_entities) {
 class effectIndex {
   public:
     string texname = "default";
+    string name ="";
     bool OwnsTexture = 1;
     SDL_Texture* texture;
     int spawnNumber = 12;
@@ -1511,6 +1512,7 @@ class particle : public actor {
 };
 
 effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
+  name = filename;
   string existSTR;
   existSTR = "maps/" + g_mapdir + "/effects/" + filename + ".eft";
   if(!fileExists(existSTR)) {
@@ -2173,7 +2175,6 @@ class indexItem {
       }
 
       parseScriptForLabels(script);
-      I(script.size());
     }
 
     ~indexItem() {
@@ -2544,7 +2545,9 @@ class entity :public actor {
     float curwidth = 0;
     float curheight = 0;
     bool turnToFacePlayer = true; //face player when talking
+    bool useAnimForWalking = 0;
     SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
+    int animationconfig = 0;
 
     float floatheight = 0; //how far up to float, worlditems use this to bounce
     int bounceindex = 0;
@@ -2579,6 +2582,8 @@ class entity :public actor {
     bool rectangularshadow = 0;
     bool isAI = 0;
     statusComponent hisStatusComponent;
+    int timeToLiveMs = 0;  //or ttl, time updated and when <=0 ent is destroyed
+    bool usingTimeToLive = 0;
 
 
     //stuff for orbitals
@@ -3130,6 +3135,20 @@ class entity :public actor {
       file >> contactScriptWaitMS;
       if(this->name == "puddle") { D(contactScriptWaitMS);}
 
+      //animation config
+      file >> comment;
+      file >> animationconfig;
+
+      if(animationconfig == 0) {
+        useAnimForWalking = 1;
+      }
+      
+      if(animationconfig == 1) {
+        useAnimForWalking = 0;
+      }
+
+
+
 
       //load ai-data
       string AIloadstr;
@@ -3243,7 +3262,7 @@ class entity :public actor {
         file >> temp;
         string spritefilevar;
 
-
+        //!!! do something else if there's none, use a generic image or smt
         spritefilevar = "static/items/" + texturename + ".bmp";
         SDL_Surface* image = IMG_Load(spritefilevar.c_str());
         texture = SDL_CreateTextureFromSurface(renderer, image);
@@ -3309,6 +3328,7 @@ class entity :public actor {
 
         file >> comment;
         file >> this->framewidth;
+        file >> this->frameheight;
         this->shadow->width = framewidth * fsize;
         this->shadow->height = framewidth * fsize * (1/p_ratio);
 
@@ -3363,7 +3383,7 @@ class entity :public actor {
 
         file >> comment;
         file >> essential;
-
+         
         this->width = size * framewidth;
         this->height = size * frameheight;
 
@@ -3761,6 +3781,11 @@ class entity :public actor {
       //returns a pointer to a door that the player used
       virtual door* update(vector<door*> doors, float elapsed) {
         if(!tangible) {return nullptr;}
+
+        if(usingTimeToLive) {
+          timeToLiveMs -= elapsed;
+        }
+
         for(auto t : mobilesounds) {
           t->x = getOriginX();
           t->y = getOriginY();
@@ -3860,6 +3885,8 @@ class entity :public actor {
 
           return nullptr;
         }
+
+
         if(msPerFrame != 0) {
           msTilNextFrame += elapsed;
           if(msTilNextFrame > msPerFrame && xframes > 1) {
@@ -3907,18 +3934,20 @@ class entity :public actor {
 
 
         //should we animate?
-        if( (xaccel != 0 || yaccel != 0) || !grounded ) {
-          animate = 1;
-          if( (!scriptedAnimation) && grounded) {
-            msPerFrame = 100;
+        if(useAnimForWalking) {
+          if( (xaccel != 0 || yaccel != 0) || !grounded ) {
+            animate = 1;
+            if( (!scriptedAnimation) && grounded) {
+              msPerFrame = 100;
+            } else {
+              msPerFrame = 0;
+            }
           } else {
-            msPerFrame = 0;
-          }
-        } else {
-          animate = 0;
-          if(!scriptedAnimation) {
-            msPerFrame = 0;
-            frameInAnimation = 0;
+            animate = 0;
+            if(!scriptedAnimation && this->useAnimForWalking) {
+              msPerFrame = 0;
+              frameInAnimation = 0;
+            }
           }
         }
 
@@ -5072,7 +5101,7 @@ class entity :public actor {
         }
 
         //navigate
-        if(target !=  nullptr && target->tangible && LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) {
+        if(target !=  nullptr && target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) {
           //just walk towards the target
           float ydist = 0;
           float xdist = 0;
@@ -5114,6 +5143,8 @@ class entity :public actor {
           current = nullptr;
         } else {
           if(Destination != nullptr) {
+            //M("BasicNavigate()");
+            //T(Destination);
             BasicNavigate(Destination);
           }
         }
@@ -5221,11 +5252,20 @@ class entity :public actor {
                   //vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
 
                   Destination = getNodeByPosition(ret[0], ret[1]);
+                  T(ret[0]);
+                  T(ret[1]);
+                  T(target->x);
+                  T(target->y);
+                  T(Destination);
                 } else {
                   //Can't get our full range, so use the values in LineTraceX and LineTraceY
                   extern int lineTraceX, lineTraceY;
                   //Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
                   Destination = getNodeByPosition(lineTraceX, lineTraceY);
+                  T(lineTraceX);
+                  T(lineTraceY);
+                  T(target->x);
+                  T(target->y);
                 }
               }
             }
@@ -5502,7 +5542,7 @@ entity* searchEntities(string fname, entity* caller) {
     if(caller->target != nullptr && caller->target->tangible);
     return caller->target;
   }
-  if(caller != 0 && fname ==  "this") {
+  if(caller != 0 && (fname ==  "this" || fname == "me") ) {
     return caller;
   }
   for(auto n : g_entities) {
@@ -6467,7 +6507,6 @@ void clear_map(camera& cameraToReset) {
     int pitch;
 
     float offset = imageHeight;
-
 
     SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
     SDL_SetRenderTarget(renderer, frame);

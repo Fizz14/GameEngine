@@ -413,8 +413,8 @@ class camera
     float zoommod = 1;
     int lowerLimitX = 0;
     int lowerLimitY = 0;
-    int upperLimitX = 3000;
-    int upperLimitY = 3000;
+    int upperLimitX = 0;
+    int upperLimitY = 0;
     bool enforceLimits = 0;
 
     camera(float fx, float fy)

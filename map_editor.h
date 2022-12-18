@@ -1439,7 +1439,7 @@ bool mapeditor_save_map(string word)
 
   for (long long unsigned int i = 0; i < g_entities.size(); i++)
   {
-    if (!g_entities[i]->inParty && !g_entities[i]->persistentHidden && !g_entities[i]->persistentGeneral)
+    if (!g_entities[i]->inParty && !g_entities[i]->persistentHidden && !g_entities[i]->persistentGeneral && !g_entities[i]->isOrbital)
     {
       if (g_entities[i]->isWorlditem)
       {
@@ -6082,6 +6082,27 @@ void write_map(entity *mapent)
       return;
     }
 
+    // set entity's ttl in ms
+    // /setttl splatter 500
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 7) == "/setttl")
+    {
+      string s = talker->sayings.at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      string name = x[1];
+      string timestr = x[2];
+      int time = stoi(timestr);
+
+      entity* hopful = searchEntities(name);
+      if(hopful != nullptr) {
+        hopful->usingTimeToLive = 1;
+        hopful->timeToLiveMs = time;
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
     // destroy oldest from type of entity, keeping x entities
     // if it owns an asset, just make it intagible
     //    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 9) == "/keeponly")
@@ -6253,6 +6274,43 @@ void write_map(entity *mapent)
       return;
     }
 
+    //load/spawn particle effect
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 7) == "/effect")
+    {
+      
+      string s = talker->sayings.at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      //       /effect smoke zombie forwards_offset rightwards_offset (duration?)
+      if(x.size() >= 5) 
+      {
+        string effects_name = x[1];
+        string ents_name = x[2];
+        string forwards_offset = x[3];
+        string rightwards_offset = x[4];
+
+        entity *hopeful = searchEntities(effects_name);
+        effectIndex* hopeEffect;
+        if (hopeful != nullptr)
+        {
+          for(int i = 0; i < g_effectIndexes.size(); i++) {
+            if(g_effectIndexes[i]->name == effects_name) {
+              hopeEffect = g_effectIndexes[i];
+              
+            }
+
+          }
+
+        }
+      }
+
+      
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+    
+
     // teleport entity to another entity
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 12) == "/entteleport")
     {
@@ -6276,8 +6334,8 @@ void write_map(entity *mapent)
       return;
     }
 
-    // spawn entity at an entity
-    // /entspawn puddle zombie
+    // spawn entity at an entity with ttl (0 for no ttl)
+    // /entspawn puddle zombie 5000
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 9) == "/entspawn")
     {
       string s = talker->sayings.at(talker->dialogue_index + 1);
@@ -6285,8 +6343,10 @@ void write_map(entity *mapent)
       vector<string> x = splitString(s, ' ');
       string teleportMeSTR = x[0];
       string teleportToMeSTR = x[1];
+      string ttlSTR = "0"; ttlSTR = x[2];
       entity *teleportMe = new entity(renderer, teleportMeSTR.c_str());
       entity *teleportToMe = searchEntities(teleportToMeSTR);
+      int ttl = stoi(ttlSTR);
       if (teleportMe != nullptr && teleportToMe != nullptr)
       {
         teleportMe->setOriginX(teleportToMe->getOriginX());
@@ -6295,6 +6355,10 @@ void write_map(entity *mapent)
         teleportMe->yvel = 0;
         teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
         teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
+        if(ttl > 0) {
+          teleportMe->usingTimeToLive = 1;
+          teleportMe->timeToLiveMs = ttl;
+        }
       }
 
       talker->dialogue_index++;
@@ -6888,15 +6952,17 @@ void write_map(entity *mapent)
       return;
     }
 
+
     // change animation data
     // anim entity direction msPerFrame frameInAnimation LoopAnimation
     // set direction to -1 to not set the direction
     // set msperframe to 0 to not animate
-    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 5) == "/anim")
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 8) == "/animate")
     {
       string s = talker->sayings.at(talker->dialogue_index + 1);
-      s.erase(0, 6);
+      s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
+      I("Called /anim");
 
       entity *ent = 0;
       // if the entity we are talking to is the same as the one we want to animate, just animate talker
@@ -6906,7 +6972,7 @@ void write_map(entity *mapent)
       }
       else
       {
-        ent = searchEntities(split[0]);
+        ent = searchEntities(split[0], talker);
       }
       if (ent != 0)
       {
@@ -6919,7 +6985,9 @@ void write_map(entity *mapent)
         ent->frameInAnimation = stoi(split[3]);
         ent->loopAnimation = stoi(split[4]);
         ent->scriptedAnimation = 1;
-      }
+      } 
+
+      I("end call of /anim");
 
       talker->dialogue_index++;
       this->continueDialogue();
@@ -6968,7 +7036,6 @@ void write_map(entity *mapent)
     // play a sound from the disk
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 14) == "/loadplaysound")
     {
-      M("This is the shriek");
       string s = talker->sayings.at(talker->dialogue_index + 1);
       vector<string> split = splitString(s, ' ');
       D(split[1]);
@@ -7109,6 +7176,38 @@ void write_map(entity *mapent)
         if (hopeful->hp > hopeful->maxhp)
         {
           hopeful->hp = hopeful->maxhp;
+        }
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // /hurt entityname damage
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 5) == "/hurt")
+    {
+      string s = talker->sayings.at(talker->dialogue_index + 1);
+      s.erase(0, 6);
+      string name = s.substr(0, s.find(' '));
+      s.erase(0, s.find(' ') + 1);
+      string tangiblestatestr = "0";
+      tangiblestatestr = s; // s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
+      int tangiblestate = stof(tangiblestatestr);
+
+      entity *hopeful = searchEntities(name, talker);
+      if (hopeful != nullptr)
+      {
+        hopeful->hp -= tangiblestate;
+        hopeful->flashingMS = g_flashtime;
+        if(hopeful->faction != 0) {
+          playSound(1, g_enemydamage, 0);
+        } else {
+          if(hopeful == protag) {
+            playSound(2, g_playerdamage, 0);
+          } else {
+            playSound(3, g_npcdamage, 0);
+          }
         }
       }
 
