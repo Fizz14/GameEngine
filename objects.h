@@ -176,6 +176,7 @@ navNode* getNodeByPosition(int fx, int fy) {
   bool flag = 1;
 
   for(auto q = lowerbound; q != upperbound; q++) {
+    //this is segfaulting, q->second->x ,y are not valid memory locations
     float dist = Distance(fx, fy, q->second->x, q->second->y);
     if( (dist < min_dist || flag) && q->second->enabled) {
       min_dist = dist;
@@ -1219,6 +1220,7 @@ class attack {
         if (!file.is_open()) {
           //just make a default entity
           string newfile = "static/attacks/default.atk";
+          E("Couldn't find attack file for " + filename);
           file.open(newfile);
         }
       }
@@ -2515,7 +2517,7 @@ class entity :public actor {
     int stableLayer = 0; //layer, but only if it's been held for some ms
     bool grounded = 1; //is standing on ground
     float xmaxspeed = 0;
-    float ymaxspeed = 0;
+    //float ymaxspeed = 0;
     float friction = 0;
     float baseFriction = 0;
     int recalcAngle = 0; //a timer for when to draw sprites with diff angle
@@ -2934,8 +2936,11 @@ class entity :public actor {
           this->parent = hopeful;
           parent->children.push_back(this);
 
-          curwidth = width;
-          curheight = height;
+//          curwidth = width;
+//          curheight = height;
+
+
+
 
         }
       }
@@ -2993,9 +2998,12 @@ class entity :public actor {
         }
       }
       if(!asset_sharer) {
+
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
         SDL_Surface* image = IMG_Load(spritefile);
         texture = SDL_CreateTextureFromSurface(renderer, image);
         SDL_FreeSurface(image);
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
       }
 
 
@@ -3071,6 +3079,10 @@ class entity :public actor {
         if(a->parentName == this->name) {
           a->parent = this;
         }
+
+        //trying to fix orbitals not appearing for the first frame of mapload
+//        a->curheight = a->height;
+//        a->curwidth = a->width;
       }
 
       //music and radius
@@ -3133,7 +3145,6 @@ class entity :public actor {
       //script-on-contact-ms
       file >> comment;
       file >> contactScriptWaitMS;
-      if(this->name == "puddle") { D(contactScriptWaitMS);}
 
       //animation config
       file >> comment;
@@ -5102,36 +5113,46 @@ class entity :public actor {
 
         //navigate
         if(target !=  nullptr && target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) {
-          //just walk towards the target
-          float ydist = 0;
-          float xdist = 0;
+          //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
+          
+          if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
+            float ydist = 0;
+            float xdist = 0;
+  
+            xdist = abs(target->getOriginX() - getOriginX());
+            ydist = abs(target->getOriginY() - getOriginY());
+  
+            float vect = pow((pow(xdist,2)  + pow(ydist,2)), 0.5);
+            float factor = 1;
+  
+            if(vect != 0) {
+              factor = 1 / vect;
+            }
+  
+            xdist *= factor;
+            ydist *= factor;
+  
+            if(target->getOriginX() > getOriginX()) {
+              xaccel = this->xagil * xdist;
+              walkingxaccel = xaccel;
+            } else {
+              xaccel = -this->xagil * xdist;
+              walkingxaccel = xaccel;
+            }
+            if(target->getOriginY() > getOriginY()) {
+              yaccel = this->xagil * ydist;
+              walkingyaccel = yaccel;
+            } else {
+              yaccel = -this->xagil * ydist;
+              walkingyaccel = yaccel;
+            }
 
-          xdist = abs(target->getOriginX() - getOriginX());
-          ydist = abs(target->getOriginY() - getOriginY());
-
-          float vect = pow((pow(xdist,2)  + pow(ydist,2)), 0.5);
-          float factor = 1;
-
-          if(vect != 0) {
-            factor = 1 / vect;
-          }
-
-          xdist *= factor;
-          ydist *= factor;
-
-          if(target->getOriginX() > getOriginX()) {
-            xaccel = this->xagil * xdist;
-            walkingxaccel = xaccel;
           } else {
-            xaccel = -this->xagil * xdist;
-            walkingxaccel = xaccel;
-          }
-          if(target->getOriginY() > getOriginY()) {
-            yaccel = this->xagil * ydist;
-            walkingyaccel = yaccel;
-          } else {
-            yaccel = -this->xagil * ydist;
-            walkingyaccel = yaccel;
+            walkingyaccel = 0; walkingxaccel = 0;
+            
+            //stop if in range
+            yaccel = 0;
+            xaccel = 0;
           }
 
           //spring to get over obstacles
@@ -5242,6 +5263,7 @@ class entity :public actor {
               vector<int> ret;
               if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
                 ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
+               
                 Destination = getNodeByPosition(ret[0], ret[1]);
               } else {
                 ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
@@ -5300,7 +5322,14 @@ class entity :public actor {
     void BasicNavigate(navNode* ultimateTargetNode) {
       if(g_navNodes.size() < 1) {return;}
       if(current == nullptr) {
-        current = Get_Closest_Node(g_navNodes, 1);
+        
+        //around the time when I started getting organs to follow the player
+        //i noticed that sometimes entities would lose LOS and take the long
+        //way around to get to the player
+        //i suspect this line of code is the problem, so im changing the second
+        //parameter from 1 to 0
+
+        current = Get_Closest_Node(g_navNodes, 0);
         dest = current;
       }
 
@@ -6784,6 +6813,8 @@ void clear_map(camera& cameraToReset) {
 
   g_actors.clear();
 
+
+  navNodeMap.clear();
 
 
   //copy protag to a pointer, clear the array, and re-add protag

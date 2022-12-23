@@ -46,7 +46,10 @@ int WinMain()
 
   Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
   SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
-
+ 
+  //used to be set to 3, changed to 0 to allow "totems" (objects in the world
+  //made of several entities) to not have thin lines between their parts
+  //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
@@ -80,7 +83,7 @@ int WinMain()
   // narrarator holds scripts caused by things like triggers
   //  !!! reduce first launch overhead by
   //  making the narrarator use a sprite with 1 pixel
-  narrarator = new entity(renderer, "sp-joseph");
+  narrarator = new entity(renderer, "engine/sp-joseph");
   narrarator->tangible = 0;
   narrarator->persistentHidden = 1;
   // narrarator->name = "sp-narrarator";
@@ -380,7 +383,7 @@ int WinMain()
   entity *s;
   for (size_t i = 0; i < 19; i++)
   {
-    s = new entity(renderer, "sp-fogslate");
+    s = new entity(renderer, "engine/sp-fogslate");
     g_fogslates.push_back(s);
     s->height = 56;
     s->width = g_fogwidth * 64 + 50;
@@ -399,7 +402,7 @@ int WinMain()
 
   for (size_t i = 0; i < 19; i++)
   {
-    s = new entity(renderer, "sp-fogslate");
+    s = new entity(renderer, "engine/sp-fogslate");
     g_fogslatesA.push_back(s);
     s->z = 64;
     s->height = 56;
@@ -419,7 +422,7 @@ int WinMain()
 
   for (size_t i = 0; i < 19; i++)
   {
-    s = new entity(renderer, "sp-fogslate");
+    s = new entity(renderer, "engine/sp-fogslate");
     g_fogslatesB.push_back(s);
     s->height = 56;
     s->width = g_fogwidth * 64 + 50;
@@ -1970,7 +1973,7 @@ int WinMain()
       entity *listenToMe = nullptr;
       for (auto x : g_musicalEntities)
       {
-        if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius)
+        if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
         {
           // we should be playing his music
           // incorporate priority later
@@ -2918,18 +2921,18 @@ void getInput(float &elapsed)
 
   if (keystate[SDL_SCANCODE_LSHIFT] && devMode)
   {
-    protag->xmaxspeed = 145;
-    protag->ymaxspeed = 145;
+    protag->xmaxspeed = 100;
+    //protag->ymaxspeed = 145;
   }
   if (keystate[SDL_SCANCODE_LCTRL] && devMode)
   {
     protag->xmaxspeed = 20;
-    protag->ymaxspeed = 20;
+    //protag->ymaxspeed = 20;
   }
   if (keystate[SDL_SCANCODE_CAPSLOCK] && devMode)
   {
     protag->xmaxspeed = 750;
-    protag->ymaxspeed = 750;
+    //protag->ymaxspeed = 750;
   }
 
   if (keystate[SDL_SCANCODE_SLASH] && devMode)

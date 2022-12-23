@@ -269,6 +269,104 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         e->flip = SDL_FLIP_HORIZONTAL;
       }
 
+      
+      if(e->parent != nullptr) {
+
+          //position orbital properly
+//          {
+//          e->z = e->parent->z -10 - (e->parent->height - e->parent->curheight);
+//
+//
+//          float angle = convertFrameToAngle(e->parent->frame, e->parent->flip == SDL_FLIP_HORIZONTAL);
+//
+//
+//
+//          //orbitoffset is the number of frames, counter-clockwise from facing straight down
+//          float fangle = angle;
+//          fangle += (float)e->orbitOffset * (M_PI/4);
+//          fangle = fmod(fangle , (2* M_PI));
+//
+//          e->setOriginX(e->parent->getOriginX() + cos(fangle) * e->orbitRange);
+//          e->setOriginY(e->parent->getOriginY() + sin(fangle) * e->orbitRange);
+//
+//          e->sortingOffset = e->baseSortingOffset + sin(fangle) * 21 + 10 + (e->parent->height - e->parent->curheight);
+//
+//          if(e->yframes == 8) {
+//            e->animation = convertAngleToFrame(fangle);
+//            e->flip = SDL_FLIP_NONE;
+//          } else {
+//            e->flip = e->parent->flip;
+//            e->animation = e->parent->animation;
+//            if(e->yframes == 1) {
+//              e->animation = 0;
+//            }
+//          }
+//
+//          //update shadow
+//          float heightfloor = 0;
+//          e->layer = max(e->z /64, 0.0f);
+//          e->layer = min(layer, (int)g_boxs.size() - 1);
+//
+//          //should we fall?
+//          //bool should_fall = 1;
+//          float floor = 0;
+//          if(e->layer > 0) {
+//            //!!!
+//            rect eMovedBounds = rect(e->bounds.x + e->x + e->xvel * ((double) elapsed / 256.0), e->bounds.y + e->y + e->yvel * ((double) elapsed / 256.0), e->bounds.width, e->bounds.height);
+//            //rect eMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
+//            for (auto n : g_boxs[layer - 1]) {
+//              if(RectOverlap(n->bounds, eMovedBounds)) {
+//                floor = 64 * (layer);
+//                break;
+//              }
+//            }
+//            for (auto n : g_triangles[layer - 1]) {
+//              if(TriRectOverlap(n, eMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
+//                floor = 64 * (layer);
+//                break;
+//              }
+//
+//            }
+//
+//
+//            float shadowFloor = floor;
+//            floor = max(floor, heightfloor);
+//
+//            bool breakflag = 0;
+//            for(int i = layer - 1; i >= 0; i--) {
+//              for (auto n : g_boxs[i]) {
+//                if(RectOverlap(n->bounds, eMovedBounds)) {
+//                  shadowFloor = 64 * (i + 1);
+//                  breakflag = 1;
+//                  break;
+//                }
+//              }
+//              if(breakflag) {break;}
+//              for (auto n : g_triangles[i]) {
+//                if(TriRectOverlap(n, eMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
+//                  shadowFloor = 64 * (i + 1);
+//                  breakflag = 1;
+//                  break;
+//                }
+//
+//              }
+//              if(breakflag) {break;}
+//            }
+//            if(breakflag == 0) {
+//              //just use heightmap
+//              shadowFloor = floor;
+//            }
+//            e->shadow->z = shadowFloor;
+//          } else {
+//            e->shadow->z = heightfloor;
+//            floor = heightfloor;
+//          }
+//          shadow->x = x + shadow->xoffset;
+//          shadow->y = y + shadow->yoffset;
+//          }
+
+      }
+
       // if an entity has been set to navblock, disable overlapping nodes now that the position has been set
       if (e->navblock)
       {
@@ -3112,11 +3210,8 @@ void write_map(entity *mapent)
             }
           }
         }
-        I("<<<<<>>>>>");
-        // this crashes on windows
 
         ///////////////////
-        I("size of box array:" + to_string(g_boxs.size()));
         SDL_Delay(500);
         // combine box collisions where possible, likely after a split operation
         bool refresh = true; // wether to restart the operation
@@ -4225,7 +4320,7 @@ void write_map(entity *mapent)
             if (line >> speed)
             {
               mapent->xmaxspeed = speed;
-              mapent->ymaxspeed = speed;
+              //mapent->ymaxspeed = speed;
             }
             break;
           }
@@ -4541,7 +4636,7 @@ void write_map(entity *mapent)
           if (word == "speed")
           {
             mapent->xmaxspeed = 110;
-            mapent->ymaxspeed = 110;
+            //mapent->ymaxspeed = 110;
             break;
           }
           if (word == "agility")
@@ -4564,9 +4659,9 @@ void write_map(entity *mapent)
           if (word == "movement")
           {
             mapent->xmaxspeed = 110;
-            mapent->ymaxspeed = 110;
+            //mapent->ymaxspeed = 110;
             mapent->xagil = 100;
-            mapent->xagil = 100;
+            //mapent->xagil = 100;
             mapent->friction = 0.3;
             mapent->dynamic = 1;
           }
@@ -5861,6 +5956,73 @@ void write_map(entity *mapent)
       return;
     }
 
+
+    // Switch-statement by distance between two entities
+    // coditions are listed from least to greatest
+    // the first condition taken will be the one
+    // which is <= the measured distance
+    //  /distance protag zombie
+    //  *500:CLOSE
+    //  *1000:FAR
+    //  #
+    //  @CLOSE
+    //  You are close to me.
+    //  #
+    //  @FAR
+    //  You are far away.
+    //  #
+//    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 9) == "/distance")
+//    {
+////      I("Under /distance call");
+////      int j = 1;
+////      string s = talker->sayings.at(talker->dialogue_index + 1);
+//
+//      //auto x = splitString(s, ' ');
+//
+//      //I(x.size());
+//
+////      string fStr = x[1];
+////      string sStr = x[2];
+//      
+////      entity* firstEnt = searchEntities(fStr);
+////      entity* secondEnt = searchEntities(sStr);
+//      I("Got here");
+//
+//      //if(firstEnt != nullptr && secondEnt != nullptr) {
+//  
+//        I("But not here");
+////        int distance = XYWorldDistance(firstEnt->getOriginX(), firstEnt->getOriginY(), secondEnt->getOriginX(), secondEnt->getOriginY());
+////  
+////        string res = talker->sayings.at(talker->dialogue_index + 1 + j);
+////        while (res.find('*') != std::string::npos)
+////        {
+////          // parse option
+////          //  *15:29 -> if distance is less than 15, go to line 29
+////          string s = talker->sayings.at(talker->dialogue_index + 1 + j);
+////          I(s);
+////          s.erase(0, 1);
+////          int condition = stoi(s.substr(0, s.find(':')));
+////          I(condition);
+////          s.erase(0, s.find(':') + 1);
+////          int jump = stoi(s);
+////          I(jump);
+////          if (distance >= condition)
+////          {
+////            talker->dialogue_index = jump - 3;
+////            this->continueDialogue();
+////            return;
+////          }
+////          j++;
+////          res = talker->sayings.at(talker->dialogue_index + 1 + j);
+////        }
+//  
+//      //}
+//
+//      talker->dialogue_index++;
+//      this->continueDialogue();
+//      return;
+//    }
+
     // write selfdata 5->[4]
     if (regex_match(talker->sayings.at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
     {
@@ -6123,7 +6285,7 @@ void write_map(entity *mapent)
     //    }
 
     // move entity
-    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 5) == "/move")
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 6) == "/move ")
     {
       string s = talker->sayings.at(talker->dialogue_index + 1);
       s.erase(0, 6);
@@ -6876,6 +7038,79 @@ void write_map(entity *mapent)
           solidifyMe->unsolidify();
         }
       }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+    // semisolidify entity
+    //  /semisolidify door 1
+    //  /semisolidify wall 0
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 13) == "/semisolidify")
+    {
+      string s = talker->sayings.at(talker->dialogue_index + 1);
+      s.erase(0, 14);
+
+      entity *solidifyMe = 0;
+      auto parts = splitString(s, ' ');
+
+      solidifyMe = searchEntities(parts[0]);
+      bool solidifystate = (parts[1] == "1");
+      if (solidifyMe != 0)
+      {
+        if (solidifystate)
+        {
+          solidifyMe->semisolid = 1;
+        }
+        else
+        {
+          solidifyMe->semisolid = 0;
+        }
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //change an entity's agility, max speed, and slippiness
+    // /movement entity agility maxSpeed slippiness
+    if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 9) == "/movement")
+    {
+      string s = talker->sayings.at(talker->dialogue_index + 1);
+
+
+      entity *modifyMe = 0;
+      auto x = splitString(s, ' ');
+      
+      D("check params");
+      for(auto i : x) {
+        D(i);
+      }
+
+
+      if(x.size() >= 5) {
+        modifyMe = searchEntities(x[1]);
+        string agilitySTR = x[2];
+        string maxSpeedSTR = x[3];
+        string slippinessSTR = x[4];
+        int agility = stoi(agilitySTR);
+        int maxSpeed = stoi(maxSpeedSTR);
+        int slippiness = stoi(slippinessSTR);
+  
+        if(modifyMe != nullptr) {
+          modifyMe->xagil = agility;
+          modifyMe->xmaxspeed = maxSpeed;
+          modifyMe->friction = slippiness;
+        }
+      } else {
+        E("Not enough parameters for /movement call");
+      }
+      
+
+
 
       talker->dialogue_index++;
       this->continueDialogue();
