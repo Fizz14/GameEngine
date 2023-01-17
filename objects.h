@@ -653,6 +653,8 @@ class box:public mapCollision {
     bool shadeLeft = 0;
     bool shadeRight = 0;
 
+    int valid = 1; //to try and fix the infamous "heisenbug" upon calling EB in the console out of gdb
+
 
     box(int x1f, int y1f, int x2f, int y2f, int flayer, string &fwallt, string &fcapt, bool fcapped, bool fshineTop, bool fshineBot, const char* shading) {
       //M("box()");
@@ -2562,6 +2564,8 @@ class entity :public actor {
     int animation = 4; //current animation, or the column of the spritesheet
     int defaultAnimation = 4;
     bool scriptedAnimation = 0; //0 means the character is animated based on movement. 1 means the character is animated based on a script.
+    int reverseAnimation = 0; //step backwards with frames instead of forwards, and end
+                              //on first frame instead of last if not looping
 
     int framewidth = 120; //width of single frame
     int frameheight = 120; //height of frame
@@ -2673,6 +2677,8 @@ class entity :public actor {
     float enrageSpeedbuff = 0;
     //aiIndex is used for having AI use their own patrolPoints
     //and not someone-else's
+    //use -1 for things which call scripts but don't have targets (fleshpit)
+    //also used to support interactions between AI, so they know who is who
     int aiIndex = 0;
 
     //stats/leveling
@@ -3902,20 +3908,40 @@ class entity :public actor {
           msTilNextFrame += elapsed;
           if(msTilNextFrame > msPerFrame && xframes > 1) {
             msTilNextFrame = 0;
-            frameInAnimation++;
-            if(frameInAnimation == xframes) {
-              if(loopAnimation) {
-                if(scriptedAnimation) {
-                  frameInAnimation = 0;
+            if(reverseAnimation) {
+              frameInAnimation--;
+              if(frameInAnimation == 0) {
+                if(loopAnimation) {
+                  if(scriptedAnimation) {
+                    frameInAnimation = xframes - 1;
+                  } else {
+                    frameInAnimation = 1;
+                  }
                 } else {
-                  frameInAnimation = 1;
+                  frameInAnimation = 0;
+                  msPerFrame = 0;
+                  //!!! slightly ambiguous. open to review later
+                  scriptedAnimation = 0;
                 }
-              } else {
-                frameInAnimation = xframes - 1;
-                msPerFrame = 0;
-                //!!! slightly ambiguous. open to review later
-                scriptedAnimation = 0;
               }
+            } else {
+              frameInAnimation++;
+
+              if(frameInAnimation == xframes) {
+                if(loopAnimation) {
+                  if(scriptedAnimation) {
+                    frameInAnimation = 0;
+                  } else {
+                    frameInAnimation = 1;
+                  }
+                } else {
+                  frameInAnimation = xframes - 1;
+                  msPerFrame = 0;
+                  //!!! slightly ambiguous. open to review later
+                  scriptedAnimation = 0;
+                }
+              }
+
             }
           }
         }
@@ -4578,7 +4604,7 @@ class entity :public actor {
                 }
               }
 
-              if(this->weaponName == "unarmed") {break;}
+              //if(this->weaponName == "unarmed") {break;} //some entities should be able to target themselves (fleshpit)
 
               //under certain conditions, agro the entity hit and set his target to the shooter
               if(target == nullptr) {
@@ -4653,6 +4679,7 @@ class entity :public actor {
           //likely has abilities to use
           //are any abilities ready?
           for(auto &x : myAbilities) {
+            
             //accumulate-abilities will always decrease CD
             if(x.resetStableAccumulate == 2) {
               x.cooldownMS -= elapsed;
@@ -4702,6 +4729,23 @@ class entity :public actor {
                 //I("Set his cooldown to " + to_string(x.cooldownMS));
                 //I(x.upperCooldownBound);
                 //I(x.lowerCooldownBound);
+              } else if(this->aiIndex == -1 && !myScriptCaller->executingScript){
+
+                //don't worry if we don't have a target
+                I(this->name + " used " + x.name + " without a target.");
+                //this->dialogue_index = 1;
+                this->sayings = x.script;
+                this->myScriptCaller->executingScript = 1;
+                this->dialogue_index = -1;
+                this->myScriptCaller->talker = this;
+                this->myScriptCaller->continueDialogue();
+                if(x.upperCooldownBound - x.lowerCooldownBound <= 0) {
+                  x.cooldownMS = x.lowerCooldownBound;
+                } else {
+                  x.cooldownMS = ( fmod(rand(),  (x.upperCooldownBound - x.lowerCooldownBound)) ) + x.lowerCooldownBound;
+                }
+
+
               }
 
               //}
@@ -5267,27 +5311,27 @@ class entity :public actor {
                 Destination = getNodeByPosition(ret[0], ret[1]);
               } else {
                 ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
-                T(this->hisweapon->attacks[hisweapon->combo]->range);
+                //T(this->hisweapon->attacks[hisweapon->combo]->range);
 
 
                 if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
                   //vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
 
                   Destination = getNodeByPosition(ret[0], ret[1]);
-                  T(ret[0]);
-                  T(ret[1]);
-                  T(target->x);
-                  T(target->y);
-                  T(Destination);
+//                  T(ret[0]);
+//                  T(ret[1]);
+//                  T(target->x);
+//                  T(target->y);
+//                  T(Destination);
                 } else {
                   //Can't get our full range, so use the values in LineTraceX and LineTraceY
                   extern int lineTraceX, lineTraceY;
                   //Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
                   Destination = getNodeByPosition(lineTraceX, lineTraceY);
-                  T(lineTraceX);
-                  T(lineTraceY);
-                  T(target->x);
-                  T(target->y);
+//                T(lineTraceX);
+//                T(lineTraceY);
+//                T(target->x);
+//                T(target->y);
                 }
               }
             }

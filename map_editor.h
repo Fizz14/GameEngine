@@ -3222,11 +3222,17 @@ void write_map(entity *mapent)
           {
             for (auto him : g_boxs[i])
             {
+              if(!him->valid) {
+                continue;
+              }
               // is there a collision in the space one block to the right of this block, and at the top?
               //   * * x
               //   * *
               for (auto other : g_boxs[i])
               {
+                if(!other->valid) {
+                  continue;
+                }
                 if (RectOverlap(rect(him->bounds.x + him->bounds.width + 2, him->bounds.y + 2, 64 - 4, 55 - 4), other->bounds))
                 {
                   // does it have the same shineTop as him?
@@ -3283,22 +3289,24 @@ void write_map(entity *mapent)
                               }
                               box *b = new box(him->bounds.x, him->bounds.y, him->bounds.width + other->bounds.width, him->bounds.height, him->layer, him->walltexture, him->captexture, him->capped, him->shineTop, him->shineBot, shadestring.c_str());
                               (void)b;
-                              for (auto child : him->children)
-                              {
-                                delete child;
-                              }
+//                              for (auto child : him->children)
+//                              {
+//                                delete child;
+//                              }
 
                               // breakpoint();
 
                               // its this line
                               delete him;
+                              //him->valid = 0;
 
-                              for (auto child : other->children)
-                              {
-
-                                delete child;
-                              }
+//                              for (auto child : other->children)
+//                              {
+//
+//                                delete child;
+//                              }
                               delete other;
+                              //other->valid = 0;
                               refresh = true;
                             }
                           }
@@ -3312,7 +3320,22 @@ void write_map(entity *mapent)
           }
         }
 
-        I("CANNOT GET HERE");
+//        //clear all invalid boxes
+//        for (long long unsigned int i = 0; i < g_boxs.size(); i++)
+//        {
+//          for(auto x : g_boxs[i]) {
+//            if(!x->valid) {
+//
+//              for (auto child : x->children)
+//              {
+//                delete child;
+//              }
+//              delete x;
+//
+//            }
+//          }
+//        }
+
         // vertical pass
         refresh = true;
         while (refresh)
@@ -3322,12 +3345,18 @@ void write_map(entity *mapent)
           {
             for (auto him : g_boxs[i])
             {
+              if(!him->valid) {
+                continue;
+              }
               // is there a collision in the space directly below this block
               //   * *
               //   * *
               //   x
               for (auto other : g_boxs[i])
               {
+                if(!other->valid) {
+                  continue;
+                }
                 if (RectOverlap(rect(him->bounds.x + 2, him->bounds.y + him->bounds.height + 2, 64 - 4, 55 - 4), other->bounds))
                 {
                   // does it have the same width and x position as him?
@@ -3377,16 +3406,20 @@ void write_map(entity *mapent)
                           }
 
                           new box(him->bounds.x, him->bounds.y, him->bounds.width, him->bounds.height + other->bounds.height, him->layer, him->walltexture, him->captexture, him->capped, him->shineTop, other->shineBot, shadestring.c_str());
-                          for (auto child : him->children)
-                          {
-                            delete child;
-                          }
+//                          for (auto child : him->children)
+//                          {
+//                            delete child;
+//                          }
                           delete him;
-                          for (auto child : other->children)
-                          {
-                            delete child;
-                          }
+                          //him->valid = 0;
+
+//                          for (auto child : other->children)
+//                          {
+//                            delete child;
+//                          }
                           delete other;
+                          //other->valid = 0;
+
                           refresh = true;
                         }
                       }
@@ -3397,7 +3430,20 @@ void write_map(entity *mapent)
             }
           }
         }
-        I("Finished baking");
+        
+//        //clear all invalid boxes
+//        for (long long unsigned int i = 0; i < g_boxs.size(); i++)
+//        {
+//          for(auto x : g_boxs[i]) {
+//            if(!x->valid) {
+//              for (auto child : x->children)
+//              {
+//                delete child;
+//              }
+//              delete x;
+//            }
+//          }
+//        }
 
         ///////////////////////
         if (g_map != "")
@@ -6609,6 +6655,7 @@ void write_map(entity *mapent)
     }
 
     // change objective
+    // /setobjective heart
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 14) == "/setobjective ")
     {
       string s = talker->sayings.at(talker->dialogue_index + 1);
@@ -7189,9 +7236,11 @@ void write_map(entity *mapent)
 
 
     // change animation data
-    // anim entity direction msPerFrame frameInAnimation LoopAnimation
+    // anim entity direction msPerFrame frameInAnimation LoopAnimation reverse
     // set direction to -1 to not set the direction
     // set msperframe to 0 to not animate
+    // set frameInAnimation to -1 to not change
+    // set reverse to 1 to play backwards
     if (talker->sayings.at(talker->dialogue_index + 1).substr(0, 8) == "/animate")
     {
       string s = talker->sayings.at(talker->dialogue_index + 1);
@@ -7217,8 +7266,16 @@ void write_map(entity *mapent)
           ent->animation = stoi(split[1]);
         }
         ent->msPerFrame = stoi(split[2]);
-        ent->frameInAnimation = stoi(split[3]);
+
+        int frameset = stoi(split[3]);
+        if(frameset != -1) {
+          ent->frameInAnimation = stoi(split[3]);
+        }
+
         ent->loopAnimation = stoi(split[4]);
+        
+        ent->reverseAnimation = stoi(split[5]);
+
         ent->scriptedAnimation = 1;
       } 
 
