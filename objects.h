@@ -2254,6 +2254,17 @@ class adventureUI {
     //for talking, using items, etc?
 
     bool executingScript = 0;
+    
+    //Since the script interpreter system grew out of
+    //a simple dialogue system, it was impossible
+    //to have an entity which both ran abilities
+    //and could be interacted with.
+    //Now, when an entity uses an ability, she will
+    //set this flag to 1 and load the lines of the
+    //ability to ownScript
+    bool useOwnScriptInsteadOfTalkersScript = 0;
+    vector<string> ownScript;
+
 
     ui* talkingBox = 0;
     ui* talkingBoxTexture = 0;
@@ -2975,6 +2986,9 @@ class entity :public actor {
       } else {
         txtfilename = "static/scripts/" + filename + ".txt";
       }
+      
+      //M("Checking " + txtfilename + " for script for " + name);
+
       ifstream nfile(txtfilename);
       string line;
 
@@ -3910,12 +3924,12 @@ class entity :public actor {
             msTilNextFrame = 0;
             if(reverseAnimation) {
               frameInAnimation--;
-              if(frameInAnimation == 0) {
+              if(frameInAnimation < 0) {
                 if(loopAnimation) {
                   if(scriptedAnimation) {
                     frameInAnimation = xframes - 1;
                   } else {
-                    frameInAnimation = 1;
+                    frameInAnimation = 0;
                   }
                 } else {
                   frameInAnimation = 0;
@@ -4714,9 +4728,12 @@ class entity :public actor {
 
               if( inRange && !myScriptCaller->executingScript) {
 
-                I(this->name + " used " + x.name + ".");
+                //I(this->name + " used " + x.name + ".");
                 //this->dialogue_index = 1;
-                this->sayings = x.script;
+                //this->sayings = x.script;
+                this->myScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
+                this->myScriptCaller->ownScript = x.script;
+
                 this->myScriptCaller->executingScript = 1;
                 this->dialogue_index = -1;
                 this->myScriptCaller->talker = this;
@@ -4729,16 +4746,19 @@ class entity :public actor {
                 //I("Set his cooldown to " + to_string(x.cooldownMS));
                 //I(x.upperCooldownBound);
                 //I(x.lowerCooldownBound);
-              } else if(this->aiIndex == -1 && !myScriptCaller->executingScript){
+              } else if(this->aiIndex == -1 && !myScriptCaller->executingScript){ //use aiIndex of -1 for entities that don't agro on anything, but just run scripts passively
 
-                //don't worry if we don't have a target
-                I(this->name + " used " + x.name + " without a target.");
-                //this->dialogue_index = 1;
-                this->sayings = x.script;
+                //this->sayings = x.script; not doing this anymore, see "Since the script interpreter system..." in adventureUI class declaration
+
+                this->myScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
+                this->myScriptCaller->ownScript = x.script;
+                
+                
+
                 this->myScriptCaller->executingScript = 1;
                 this->dialogue_index = -1;
                 this->myScriptCaller->talker = this;
-                this->myScriptCaller->continueDialogue();
+                //this->myScriptCaller->continueDialogue();
                 if(x.upperCooldownBound - x.lowerCooldownBound <= 0) {
                   x.cooldownMS = x.lowerCooldownBound;
                 } else {

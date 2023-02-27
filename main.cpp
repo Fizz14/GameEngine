@@ -331,6 +331,7 @@ int WinMain()
   }
   else
   {
+    SDL_ShowCursor(0);
     loadSave();
     g_mapdir = "first";
     load_map(renderer, g_first_map, "a");
@@ -2336,6 +2337,7 @@ int interact(float elapsed, entity *protag)
         adventureUIManager->blip = g_entities[i]->voice;
         adventureUIManager->sayings = &g_entities[i]->sayings;
         adventureUIManager->talker = g_entities[i];
+        
         adventureUIManager->talker->dialogue_index = -1;
         g_forceEndDialogue = 0;
         adventureUIManager->continueDialogue();
@@ -3115,10 +3117,6 @@ void getInput(float &elapsed)
       SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
       SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 
-      if (!devMode)
-      {
-        SDL_ShowCursor(0);
-      }
 
       // we need to reload some (all?) textures
       for (auto x : g_mapObjects)
@@ -3159,11 +3157,6 @@ void getInput(float &elapsed)
       SDL_SetWindowSize(window, saved_WIN_WIDTH, saved_WIN_HEIGHT);
       SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
       SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-
-      if (!devMode)
-      {
-        SDL_ShowCursor(1);
-      }
 
       // we need to reload some (all?) textures
       for (auto x : g_mapObjects)
