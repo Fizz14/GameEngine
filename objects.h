@@ -2490,7 +2490,7 @@ class statusComponent {
 
 };
 
-class entity :public actor {
+class entity:public actor {
   public:
     //dialogue
 
@@ -2559,6 +2559,9 @@ class entity :public actor {
     float animlimit = 0.5; // the extent to the animation. 0.5 means halfway
     float curwidth = 0;
     float curheight = 0;
+    float originalWidth = 0; //for shrink effect
+    float originalHeight = 0; 
+    bool shrinking = 0; //used to animate entities shrinking away
     bool turnToFacePlayer = true; //face player when talking
     bool useAnimForWalking = 0;
     SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
@@ -2805,6 +2808,8 @@ class entity :public actor {
       //check local folder
       if(fileExists("maps/" + g_mapdir + "/sprites/" + filename + ".bmp")) {spritefilevar = "maps/" + g_mapdir + "/sprites/" + filename + ".bmp";}
 
+      D(spritefilevar);
+
       const char* spritefile = spritefilevar.c_str();
       float size;
       string comment;
@@ -3030,6 +3035,9 @@ class entity :public actor {
       this->width = size * framewidth;
       this->height = size * frameheight;
 
+      originalWidth = width;
+      originalHeight = height;
+
       //move shadow to feet
       shadow->xoffset += width/2 - shadow->width/2;
       shadow->yoffset += height - shadow->height/2;
@@ -3053,7 +3061,7 @@ class entity :public actor {
       SDL_QueryTexture(texture, NULL, NULL, &w, &h);
 
       //make entities pop in unless this is a mapload
-      if(!transition && !isOrbital) {
+      if(!transition) {
         curwidth = 0;
         curheight = 0;
       } else {
@@ -3082,6 +3090,7 @@ class entity :public actor {
       }
 
       //disabled nodes underneath if we are set to (e.g. doors)
+      
 
 
       g_entities.push_back(this);
@@ -3514,7 +3523,7 @@ class entity :public actor {
       }
 
       void unsolidify() {
-        this->solid = 0;
+          this->solid = 0;
         g_solid_entities.erase(remove(g_solid_entities.begin(), g_solid_entities.end(), this), g_solid_entities.end());
       }
 
@@ -3526,8 +3535,36 @@ class entity :public actor {
         if(!tangible) {return;}
         if(this == protag) { g_protagHasBeenDrawnThisFrame = 1; }
         //if its a wallcap, tile the image just like a maptile
+        
+        rect obj;
+        
+          
+        if(shrinking) {
+//          obj = rect(
+//              floor(x) -fcamera.x - ,
+//
+//              (floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
+//
+//              floor(curwidth),
+//
+//              floor(curheight) 
+//              );
+          obj = rect(
+              (floor(x) -fcamera.x + (originalWidth-floor(curwidth))/2)* 1 ,
+              (floor(y) - ((floor(curheight) * (XtoY) + (originalHeight * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
+              floor(curwidth),
+              floor(curheight)
+              );
+        } else {
+          obj = rect(
+              (floor(x) -fcamera.x + (width-floor(curwidth))/2)* 1 ,
+              (floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
+              floor(curwidth),
+              floor(curheight)
+              );
+        }
 
-        rect obj(((floor(x) -fcamera.x + (width-floor(curwidth))/2)* 1) , (((floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y) * 1), (floor(curwidth) * 1), (floor(curheight) * 1));
+
         rect cam(0, 0, fcamera.width, fcamera.height);
 
         if(RectOverlap(obj, cam)) {
@@ -3825,8 +3862,10 @@ class entity :public actor {
           this->z = parent->z -10 - (parent->height - parent->curheight);
 
 
-          float angle = convertFrameToAngle(parent->frame, parent->flip == SDL_FLIP_HORIZONTAL);
+          float angle = convertFrameToAngle(parent->animation, parent->flip == SDL_FLIP_HORIZONTAL);
 
+          M("Trying to use orbitRange for orbital");
+          D(angle);
 
 
           //orbitoffset is the number of frames, counter-clockwise from facing straight down
@@ -3834,8 +3873,8 @@ class entity :public actor {
           fangle += (float)orbitOffset * (M_PI/4);
           fangle = fmod(fangle , (2* M_PI));
 
-          this->setOriginX(parent->getOriginX() + cos(fangle) * orbitRange);
-          this->setOriginY(parent->getOriginY() + sin(fangle) * orbitRange);
+          this->setOriginX(parent->getOriginX() - cos(fangle) * orbitRange);
+          this->setOriginY(parent->getOriginY() - sin(fangle) * orbitRange);
 
           this->sortingOffset = baseSortingOffset + sin(fangle) * 21 + 10 + (parent->height - parent->curheight);
 
@@ -3914,7 +3953,9 @@ class entity :public actor {
 
 
 
-          return nullptr;
+          //return nullptr; 
+          //i commented this out
+          //to make biting work
         }
 
 
@@ -4728,7 +4769,7 @@ class entity :public actor {
 
               if( inRange && !myScriptCaller->executingScript) {
 
-                //I(this->name + " used " + x.name + ".");
+                I(this->name + " used " + x.name + ".");
                 //this->dialogue_index = 1;
                 //this->sayings = x.script;
                 this->myScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
@@ -5465,10 +5506,7 @@ class entity :public actor {
         navNode* targetNode = ultimateTargetNode;
         vector<navNode*> bag;
         for (int i = 0; i < (int)g_navNodes.size(); i++) {
-
           bag.push_back(g_navNodes[i]);
-
-
           g_navNodes[i]->costFromSource = numeric_limits<float>::max();
         }
 
@@ -5497,28 +5535,6 @@ class entity :public actor {
             }
           }
 
-          // if(!setU) {
-          // 	for(auto x : current->friends) {
-          // 		if(x->enabled && LineTrace(this->getOriginX(), this->getOriginY(), x->x, x->y)) {
-          // 			u = x;
-          // 			setU = 1;
-          // 			break;
-          // 		}
-
-          // 	}
-          // 	if(!setU){
-          // 		for(auto x : current->friends){
-          // 			for(auto y : x->friends) {
-          // 				if(y->enabled && LineTrace(this->getOriginX(), this->getOriginY(), y->x, y->y)){
-          // 					u = y;
-          // 					setU = 1;
-          // 					break;
-          // 				}
-          // 			}
-          // 		}
-          // 	}
-          // }
-
           if(!setU){
             //could issue an error msg
             break;
@@ -5532,7 +5548,7 @@ class entity :public actor {
               float alt = u->costFromSource + u->costs[i];
               if(alt < u->friends[i]->costFromSource && (u->friends[i]->z + 64 >= u->z)) {
                 if(u->friends[i]->enabled) {
-                  u->friends[i]->costFromSource = alt;
+                  u->friends[i]->costFromSource = alt; 
                   u->friends[i]->prev = u;
                 } else {
                   u->friends[i]->prev = nullptr;
@@ -5549,7 +5565,7 @@ class entity :public actor {
 
         while(targetNode != nullptr) {
           secondoverflow--;
-          if(secondoverflow < 0) { M("prevented a PF crash."); break;} //preventing this crash results in pathfinding problems
+          if(secondoverflow < 0) { /*M("prevented a PF crash.");*/ break;} //preventing this crash results in pathfinding problems
 
           path.push_back(targetNode);
 
@@ -5561,7 +5577,7 @@ class entity :public actor {
 
         for(auto x : path) {
           if(!x->enabled){
-            M("TRYING TO USE DISABLED NODE");
+            //M("TRYING TO USE DISABLED NODE");
             current = getNodeByPosition(getOriginX(), getOriginY());
             dest = current;
           }

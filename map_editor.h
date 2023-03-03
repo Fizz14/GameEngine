@@ -6559,7 +6559,8 @@ void write_map(entity *mapent)
     }
 
     // spawn entity at an entity with ttl (0 for no ttl)
-    // /entspawn puddle zombie 5000
+    // /entspawn spawnMe spawnAtMe ttlMs setDirection forwardsOffset
+    // /entspawn puddle zombie 5000 1
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/entspawn")
     {
       string s = scriptToUse->at(talker->dialogue_index + 1);
@@ -6568,9 +6569,11 @@ void write_map(entity *mapent)
       string teleportMeSTR = x[0];
       string teleportToMeSTR = x[1];
       string ttlSTR = "0"; ttlSTR = x[2];
+      string setDirectionSTR = "0"; setDirectionSTR = x[3];
       entity *teleportMe = new entity(renderer, teleportMeSTR.c_str());
       entity *teleportToMe = searchEntities(teleportToMeSTR);
       int ttl = stoi(ttlSTR);
+      int setDirection = stoi(setDirectionSTR);
       if (teleportMe != nullptr && teleportToMe != nullptr)
       {
         teleportMe->setOriginX(teleportToMe->getOriginX());
@@ -6582,6 +6585,12 @@ void write_map(entity *mapent)
         if(ttl > 0) {
           teleportMe->usingTimeToLive = 1;
           teleportMe->timeToLiveMs = ttl;
+        }
+
+        if(setDirection == 1) {
+          teleportMe->animation = teleportToMe->animation;
+          teleportMe->flip = teleportToMe->flip;
+
         }
       }
 
@@ -7252,7 +7261,7 @@ void write_map(entity *mapent)
 
 
     // change animation data
-    // anim entity direction msPerFrame frameInAnimation LoopAnimation reverse
+    // animate entity direction msPerFrame frameInAnimation LoopAnimation reverse
     // set direction to -1 to not set the direction
     // set msperframe to 0 to not animate
     // set frameInAnimation to -1 to not change
@@ -7262,7 +7271,8 @@ void write_map(entity *mapent)
       string s = scriptToUse->at(talker->dialogue_index + 1);
       s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
-      //I("Called /anim");
+
+      M("In /animate interpreter");
 
       entity *ent = 0;
       // if the entity we are talking to is the same as the one we want to animate, just animate talker
@@ -7273,6 +7283,8 @@ void write_map(entity *mapent)
       else
       {
         ent = searchEntities(split[0], talker);
+        M("Searched for ent");
+        D(ent->name);
       }
       if (ent != 0)
       {

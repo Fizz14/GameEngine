@@ -1815,18 +1815,26 @@ int WinMain()
             //ttl ents will just be deleted so that they don't accumulate
             //if you wish for cheap textures, spawn another ent with that tex
             //which doesn't get deleted until the map is deloaded
-            if(!g_entities[i]->asset_sharer) {
-              g_entities[i]->tangible = 0;
-              g_entities[i]->usingTimeToLive = 0;
-            } else {
-              delete g_entities[i];
-            }
-          } /*else if(g_entities[i]->timeToLiveMs < 500)  {
-            //shrink
-            g_entities[i]->width = 0;
+
+//            g_entities[i]->originalWeight = g_entities[i]->height;
+//            g_entities[i]->originalHeight = g_entities[i]->width;
+
             g_entities[i]->height = 0;
-            g_entities[i]->animspeed = 0.001;
-          } */
+            g_entities[i]->width = 0;
+
+            g_entities[i]->shrinking = 1;
+            //g_entities[i]->dynamic = 1; //playing with fire
+            //g_entities[i]->zvel = -40;
+
+            if(g_entities[i]->curheight < 1) {
+              if(!g_entities[i]->asset_sharer) {
+                g_entities[i]->tangible = 0;
+                g_entities[i]->usingTimeToLive = 0;
+              } else {
+                delete g_entities[i];
+              }
+            }
+          } 
 
         }
 
