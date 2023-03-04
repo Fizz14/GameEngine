@@ -6278,26 +6278,14 @@ void write_map(entity *mapent)
     {
       string s = scriptToUse->at(talker->dialogue_index + 1);
       s.erase(0, 9);
-      // s is the name of the entity to destroy
-      if (talker->name == s)
-      {
-        talker->tangible = 0;
-        talker->dialogue_index++;
-        this->continueDialogue();
-        return;
-      }
-      for (long long unsigned int i = 0; i < g_entities.size(); i++)
-      {
-        if (g_entities[i]->inParty)
-          continue;
-        {
-        }
-        // SDL_Rect b = {g_entities[i]->x, g_entities[i]->y - g_entities[i]->height, g_entities[i]->width, g_entities[i]->height};
 
-        if (g_entities[i]->name == s)
-        {
-          delete g_entities[i];
-          break;
+      entity* hopeful = searchEntities(s, talker);
+      if(hopeful != nullptr) {
+        if(hopeful->asset_sharer) {
+          hopeful->usingTimeToLive = 1;
+          hopeful->timeToLiveMs = -1;
+        } else {
+          hopeful->tangible = 0;
         }
       }
 
@@ -6572,6 +6560,7 @@ void write_map(entity *mapent)
       string setDirectionSTR = "0"; setDirectionSTR = x[3];
       entity *teleportMe = new entity(renderer, teleportMeSTR.c_str());
       entity *teleportToMe = searchEntities(teleportToMeSTR);
+      lastReferencedEntity = teleportMe;
       int ttl = stoi(ttlSTR);
       int setDirection = stoi(setDirectionSTR);
       if (teleportMe != nullptr && teleportToMe != nullptr)
@@ -6671,6 +6660,33 @@ void write_map(entity *mapent)
         {
           inflictMe->hisStatusComponent.buffed.addStatus(durationFLOAT, factorFLOAT);
         }
+      }
+
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // give an entity the ability to home onto another entity
+    // Doesn't pathfind
+    // this entity should not have an ai file
+    // /missle common/zombie-bolt fomm
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/missile") {
+
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      string missileMeSTR = x[1];
+      string targetMeSTR = x[2];
+      
+      entity *missileMe = searchEntities(missileMeSTR, talker);
+      entity *targetMe = searchEntities(targetMeSTR, talker);
+
+      if(missileMe != nullptr && targetMe != nullptr) {
+        missileMe->target = targetMe;
+        missileMe->dynamic = 1;
+        missileMe->missile = 1;
+        missileMe->fragileMovement = 1;
       }
 
 
@@ -7279,6 +7295,9 @@ void write_map(entity *mapent)
       if (talker->name == split[0])
       {
         ent = talker;
+      }
+      else if(lastReferencedEntity != 0 && lastReferencedEntity->name == split[0] && lastReferencedEntity->tangible) {
+        ent = lastReferencedEntity;
       }
       else
       {

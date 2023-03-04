@@ -2268,6 +2268,13 @@ class adventureUI {
 
     ui* talkingBox = 0;
     ui* talkingBoxTexture = 0;
+   
+    //scripts need a way to remember
+    //an entity so that we can spawn someone
+    //and then animate them
+    //without worrying if we are dealing with
+    //the same entity
+    entity* lastReferencedEntity = 0;
 
     textbox* talkingText = 0;
     textbox* responseText = 0;
@@ -2456,7 +2463,6 @@ class statusComponent {
             statuses.at(i).lifetime -= elapsedMS;
             if(statuses.at(i).currentProckWaitMS > this->maxProckWaitMS) {
               statuses.at(i).currentProckWaitMS = 0;
-              //totalFactor += statuses.at(i).factor;
               if(statuses.at(i).factor > totalFactor) {totalFactor = statuses.at(i).factor;}
             }
           }
@@ -2637,6 +2643,9 @@ class entity:public actor {
     bool invincible = 0;
     //float invincibleMS = 0; //ms before setting invincible to 0
     bool agrod = 0; //are they fighting a target?
+    bool missile = 0; //should we directly pursue an entity like a missle?
+    bool phasedMovement = 0; //do walls stop this ent?
+    bool fragileMovement = 0; //do walls destroy this ent?
     bool stunned = 0;
     bool marked = 0;
     bool disabled = 0;
@@ -2732,7 +2741,6 @@ class entity:public actor {
     int storedSemisolidValue = 0; //semisolid has to be stored for ents that start as not solid but can later have values of 1 or 2
 
     //inventory
-    //std::map<indexItem*, int> inventory = {};
     std::vector<std::pair<indexItem*, int> > inventory;
 
     //will it be pushed away from semisolid entities.
@@ -2764,7 +2772,7 @@ class entity:public actor {
     //default constructor is called automatically for children
     entity() {
       //M("entity()" );
-    };
+    }
 
     entity(SDL_Renderer * renderer, string filename, float sizeForDefaults = 1) {
       //M("entity()");
@@ -3101,7 +3109,7 @@ class entity:public actor {
       for(;;) {
         string line;
         file >> line;
-        if(line == "}" || line == "") {break;};
+        if(line == "}" || line == "") {break;}
         overflow--;
         if(overflow < 0) {E("Bad spawnlist."); break;}
         entity* a = new entity(renderer, line);
@@ -3140,7 +3148,7 @@ class entity:public actor {
 
         string line;
         file >> line;
-        if(line == "}" || line == "") {break;};
+        if(line == "}" || line == "") {break;}
         overflow--;
         if(overflow < 0) {E("Bad soundlist."); break;}
         worldsound* a = new worldsound(line, 0, 0);
@@ -3210,12 +3218,12 @@ class entity:public actor {
 
         stream >> comment; //abilities_and_radiuses_formate...
         stream >> comment; //abilities
-        stream >> comment; // {
+        stream >> comment; // open curly brace character
 
         //take in each ability
         bool hasAtleastOneAbility = 0;
         for(;;) {
-          if(! (stream >> line) ) {break;};
+          if(! (stream >> line) ) {break;}
           if(line[0] == '}') {break;}
           hasAtleastOneAbility = 1;
           //line contains the name of an ability
@@ -3463,7 +3471,7 @@ class entity:public actor {
 
 
       ~entity() {
-        //M("~entity()" );
+        M("~entity()" );
         if (!wallcap) {
           delete shadow;
         }
@@ -3540,15 +3548,6 @@ class entity:public actor {
         
           
         if(shrinking) {
-//          obj = rect(
-//              floor(x) -fcamera.x - ,
-//
-//              (floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
-//
-//              floor(curwidth),
-//
-//              floor(curheight) 
-//              );
           obj = rect(
               (floor(x) -fcamera.x + (originalWidth-floor(curwidth))/2)* 1 ,
               (floor(y) - ((floor(curheight) * (XtoY) + (originalHeight * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
@@ -3572,7 +3571,10 @@ class entity:public actor {
 
           //set frame from animation
           // animation is y, frameInAnimation is x
-          if(hadInput) {
+          if (yframes < 3) {
+            flip = SDL_FLIP_NONE;
+            animation = 0;
+          } else if(hadInput) {
             if(yframes >= 8) {
               flip = SDL_FLIP_NONE;
               if(up) {
@@ -3637,7 +3639,11 @@ class entity:public actor {
                 }
               }
             }
-          }
+          } 
+
+          
+         
+        
           hadInput = 0;
 
 
@@ -3669,16 +3675,9 @@ class entity:public actor {
             }
 
             if(stunned && hisStatusComponent.stunned.statuses.size() > 0) {
-              //const float lifetime = hisStatusComponent.stunned.statuses.at(0).lifetime;
-              //if(lifetime >= g_flashtime) {
               rmod *= 0.5;
               gmod *= 0.5;
               bmod *= 0.5;
-              //} else {
-              //rmod *= 0.5 * (1-((float)lifetime/g_flashtime));
-              //gmod *= 0.5 * (1-((float)lifetime/g_flashtime));
-              //bmod *= 0.5 * (1-((float)lifetime/g_flashtime));
-              //}
             }
 
             if(marked) {
@@ -3818,37 +3817,38 @@ class entity:public actor {
 
       // !!! horrible implementation, if you have problems with pathfinding efficiency try making this not O(n)
       template <class T>
-        T* Get_Closest_Node(vector<T*> array, int useVelocity = 0) {
-          float min_dist = 0;
-          T* ret = nullptr;
-          bool flag = 1;
+      T* Get_Closest_Node(vector<T*> array, int useVelocity = 0) {
+        float min_dist = 0;
+        T* ret = nullptr;
+        bool flag = 1;
 
-          int cacheX = getOriginX();
-          int cacheY = getOriginY();
+        int cacheX = getOriginX();
+        int cacheY = getOriginY();
 
-          if(useVelocity) {
-            cacheX += xaccel * 3;
-            cacheY += yaccel * 3;
-          }
-
-          //todo check for boxs
-          if(array.size() == 0) {return nullptr;}
-          for (long long unsigned int i = 0; i < array.size(); i++) {
-            float dist = Distance(cacheX, cacheY, array[i]->x, array[i]->y);
-            if(dist < min_dist || flag) {
-              min_dist = dist;
-              ret = array[i];
-              flag = 0;
-            }
-          }
-          return ret;
+        if(useVelocity) {
+          cacheX += xaccel * 3;
+          cacheY += yaccel * 3;
         }
+
+        //todo check for boxs
+        if(array.size() == 0) {return nullptr;}
+        for (long long unsigned int i = 0; i < array.size(); i++) {
+          float dist = Distance(cacheX, cacheY, array[i]->x, array[i]->y);
+          if(dist < min_dist || flag) {
+            min_dist = dist;
+            ret = array[i];
+            flag = 0;
+          }
+        }
+        return ret;
+      }
 
 
 
       //returns a pointer to a door that the player used
       virtual door* update(vector<door*> doors, float elapsed) {
         if(!tangible) {return nullptr;}
+        
 
         if(usingTimeToLive) {
           timeToLiveMs -= elapsed;
@@ -3863,10 +3863,6 @@ class entity:public actor {
 
 
           float angle = convertFrameToAngle(parent->animation, parent->flip == SDL_FLIP_HORIZONTAL);
-
-          M("Trying to use orbitRange for orbital");
-          D(angle);
-
 
           //orbitoffset is the number of frames, counter-clockwise from facing straight down
           float fangle = angle;
@@ -4297,27 +4293,25 @@ class entity:public actor {
 
           yvel += ypush;
           xvel += xpush;
-          // yaccel += 12 * ypush;
-          // xaccel += 12 * xpush;
-
         }
 
 
         if((xcollide || ycollide) && ( pow( pow(oxvel,2) + pow(oyvel, 2), 0.5) > 30 )) {
+          if(fragileMovement) {
+            timeToLiveMs = -1;
+            usingTimeToLive = 1;
+          }
           //playSound(-1, g_bonk, 0);
         }
 
         if(!ycollide && !transition) {
           y+= yvel * ((double) elapsed / 256.0);
-
         }
 
         //when coordinates are bungled, it isnt happening here
         if(!xcollide && !transition) {
           x+= xvel * ((double) elapsed / 256.0);
         }
-
-
 
         if(slowSeconds > 0) {
           slowSeconds -= elapsed/1000;
@@ -4739,7 +4733,7 @@ class entity:public actor {
             if(x.resetStableAccumulate == 2) {
               x.cooldownMS -= elapsed;
             }
-            if(target == nullptr) {if(x.resetStableAccumulate == 0) {x.cooldownMS = x.upperCooldownBound;};}
+            if(target == nullptr) {if(x.resetStableAccumulate == 0) {x.cooldownMS = x.upperCooldownBound;}}
 
             float inRange = 0;
             float dist = std::numeric_limits<float>::max();
@@ -4763,7 +4757,6 @@ class entity:public actor {
             if(x.cooldownMS < 0) {
 
               //do we acknowledge the player's existance?
-              //if(target != nullptr) {
 
               //are we in range to the player?
 
@@ -4809,28 +4802,9 @@ class entity:public actor {
 
               }
 
-              //}
             }
           }
-        }
-
-
-
-        //!!! inefficient
-        //	for(auto x : g_entities) {
-        //		if(x->faction == this->targetFaction && XYWorldDistance(this->x, this->y, x->x, x->y) < g_earshot) {
-        //			this->target = x;
-        //		}
-        //	}
-        //}
-
-
-        //de-agro
-        //if(agrod && target != nullptr) {
-        //	if(XYWorldDistance(this->x, this->y, target->x, target->y) > g_earshot * 1.5) {
-        //		this->target = nullptr;
-        //	}
-        //}
+        } 
 
         //apply statuseffect
         this->stunned = hisStatusComponent.stunned.updateStatuses(elapsed);
@@ -4909,7 +4883,7 @@ class entity:public actor {
                 yvel += normy * mag;
               }
 
-            } else if(m && x->usesContactScript && x->contactReadyToProc) {
+            } else if(m && x->usesContactScript && x->contactReadyToProc && x->tangible && this->faction != x->faction) {
               //make a scriptcaller
               adventureUI scripter(renderer, 1);
               scripter.playersUI = 0;
@@ -4929,12 +4903,12 @@ class entity:public actor {
           return nullptr;
         }
 
-        if(!canFight) {
-          return nullptr;
-        }
+//        if(!canFight) {
+//          return nullptr;
+//        }
 
         //shooting ai
-        if(agrod) {
+        if(canFight && agrod) {
           //do we have a target?
           if(target != nullptr) {
             //check if target is still valid
@@ -5216,8 +5190,57 @@ class entity:public actor {
           }
         }
 
-        //navigate
-        if(target !=  nullptr && target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) {
+
+        if(this->missile) {
+          // missile movment
+          if(target !=  nullptr && target->tangible) {
+
+            if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
+              float ydist = 0;
+              float xdist = 0;
+    
+              xdist = abs(target->getOriginX() - getOriginX());
+              ydist = abs(target->getOriginY() - getOriginY());
+    
+              float vect = pow((pow(xdist,2)  + pow(ydist,2)), 0.5);
+              float factor = 1;
+    
+              if(vect != 0) {
+                factor = 1 / vect;
+              }
+    
+              xdist *= factor;
+              ydist *= factor;
+    
+              if(target->getOriginX() > getOriginX()) {
+                xaccel = this->xagil * xdist;
+                walkingxaccel = xaccel;
+              } else {
+                xaccel = -this->xagil * xdist;
+                walkingxaccel = xaccel;
+              }
+              if(target->getOriginY() > getOriginY()) {
+                yaccel = this->xagil * ydist;
+                walkingyaccel = yaccel;
+              } else {
+                yaccel = -this->xagil * ydist;
+                walkingyaccel = yaccel;
+              }
+  
+            } else {
+              walkingyaccel = 0; walkingxaccel = 0;
+              
+              //stop if in range
+              yaccel = 0;
+              xaccel = 0;
+            }
+
+          }
+
+          
+        } else 
+          // monster movement
+          if(target !=  nullptr && target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) {
           //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
           
           if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
@@ -5654,11 +5677,15 @@ entity* searchEntities(string fname, entity* caller) {
   if(caller != 0 && (fname ==  "this" || fname == "me") ) {
     return caller;
   }
+
+
   for(auto n : g_entities) {
     if(n->name == fname && n->tangible) {
       return n;
     }
   }
+
+
   return nullptr;
 }
 
@@ -6947,6 +6974,11 @@ void clear_map(camera& cameraToReset) {
   //push the narrarator back on
   g_entities.push_back(hold_narra);
   g_actors.push_back(hold_narra);
+
+  //clear lastReferencedEnt
+  //possible issue with adventureUI instances of persistent ents
+  //with lastReferencedEntity fields set to deleted entity
+  adventureUIManager->lastReferencedEntity = 0;
 
   size = (int)g_tiles.size();
   for(int i = 0; i < size; i++) {

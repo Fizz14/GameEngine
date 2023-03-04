@@ -1811,22 +1811,28 @@ int WinMain()
         if(g_entities[i]->usingTimeToLive) {
 
           if(g_entities[i]->timeToLiveMs < 0) {
-            //change manner of death for ttl here (e.g. shrink, fade)
-            //ttl ents will just be deleted so that they don't accumulate
-            //if you wish for cheap textures, spawn another ent with that tex
-            //which doesn't get deleted until the map is deloaded
-
-//            g_entities[i]->originalWeight = g_entities[i]->height;
-//            g_entities[i]->originalHeight = g_entities[i]->width;
 
             g_entities[i]->height = 0;
             g_entities[i]->width = 0;
 
             g_entities[i]->shrinking = 1;
-            //g_entities[i]->dynamic = 1; //playing with fire
-            //g_entities[i]->zvel = -40;
+
+            g_entities[i]->dynamic = 0;
+            g_entities[i]->xvel = 0;
+            g_entities[i]->yvel = 0;
+            g_entities[i]->missile = 0;
+
 
             if(g_entities[i]->curheight < 1) {
+              //remove this entity from it's parent's 
+              //list of children
+              if(g_entities[i]->isOrbital) {
+                g_entities[i]->parent->children.erase(remove(g_entities[i]->parent->children.begin(), g_entities[i]->parent->children.end(), g_entities[i]), g_entities[i]->parent->children.end());
+                g_entities[i]->isOrbital = 0;
+              }
+
+
+
               if(!g_entities[i]->asset_sharer) {
                 g_entities[i]->tangible = 0;
                 g_entities[i]->usingTimeToLive = 0;
