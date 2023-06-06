@@ -4500,6 +4500,110 @@ void write_map(entity *mapent)
         }
       }
 
+      if(word == "break" || word == "breakpoint") 
+      {
+        breakpoint();
+      }
+
+      if (word == "debug") //print some debug info about this entity
+      {
+        line >> word;
+        entity *chosenEntity = searchEntities(word);
+        if (chosenEntity != nullptr)
+        {
+          M("--DEBUG INFO FOR CHOSEN ENTITY:");
+          M("");
+
+          M("Physics Data:");
+          D(chosenEntity->canBeSolid);
+          D(chosenEntity->solid);
+          D(chosenEntity->semisolid);
+          D(chosenEntity->pushable);
+          D(chosenEntity->navblock);
+          D(chosenEntity->xmaxspeed);
+          D(chosenEntity->friction);
+          M("");
+
+          M("Visual Data:");
+          D(chosenEntity->large);
+          D(chosenEntity->banished);
+          D(chosenEntity->createdAfterMapLoad);
+
+          M("Animation Data:");
+          D(chosenEntity->framewidth);
+          D(chosenEntity->frameheight);
+          D(chosenEntity->xframes); //frames per anim
+          D(chosenEntity->yframes); //directions
+          D(chosenEntity->growFromFloor);
+          D(chosenEntity->turnToFacePlayer);
+          M("");
+
+          M("OOP Data:");
+          D(chosenEntity->dynamic);
+          D(chosenEntity->persistentHidden);
+          D(chosenEntity->persistentGeneral);
+          D(chosenEntity->isOrbital);
+          D(chosenEntity->isWorlditem);
+          D(chosenEntity->isAI);
+          D(chosenEntity->aiIndex);
+          M("");
+
+          M("Combat Data:");
+          D(chosenEntity->faction);
+          D(chosenEntity->autoAgroRadius);
+          D(chosenEntity->invincible);
+          D(chosenEntity->hp);
+          D(chosenEntity->maxhp);
+          D(chosenEntity->weaponName);
+          M("");
+
+          M("Pathfinding:");
+          D(chosenEntity->pathfinding);
+          D(chosenEntity->current);
+          D(chosenEntity->dest);
+          D(chosenEntity->maxStuckTime);
+          D(chosenEntity->stuckTime);
+          M("");
+
+
+          M("Scripting:");
+          D(chosenEntity->usesContactScript);
+          D(chosenEntity->contactScriptWaitMS);
+          D(chosenEntity->curContactScriptWaitMS);
+          D(chosenEntity->contactReadyToProc);
+          M("ContactScript:");
+          M("{");
+          for(auto x : chosenEntity->contactScript){
+            D(x);
+          }
+          M("}");
+          D(chosenEntity->talks);
+          M("Dialogue:");
+          M("{");
+          for(auto x : chosenEntity->sayings){
+            D(x);
+          }
+          M("}");
+          M("");
+
+
+
+        } else {
+          //debug g_entities instead of a particular entity
+          M("Entities List:");
+          M("{");
+          for(int i = 0; i < g_entities.size(); i++){
+            if("engine" != g_entities[i]->name.substr(0,6)) {
+              string iAsString = to_string(i);
+              string printMe = "g_entities[" + iAsString + "]->name: " + g_entities[i]->name;
+              M(printMe);
+            }
+          }
+          M("}");
+        }
+
+      }
+
       // roam zombie 0 -> make zombie roam poi 0
       if (word == "roam")
       {
@@ -4855,7 +4959,7 @@ void write_map(entity *mapent)
         e->z = wallstart;
         e->shadow->x = e->x + e->shadow->xoffset;
         e->shadow->y = e->y + e->shadow->yoffset;
-        breakpoint();
+        //breakpoint();
         break;
       }
       if (word == "item")
@@ -5797,7 +5901,9 @@ void write_map(entity *mapent)
     if (sleepingMS > 1)
     {
       sleepingMS -= elapsed;
-      protag_is_talking = !mobilize;
+      if( playersUI) {
+        protag_is_talking = !mobilize;
+      }
       return;
     }
     else
@@ -7636,6 +7742,44 @@ void write_map(entity *mapent)
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/quit")
     {
       quit = 1;
+      return;
+    }
+
+    // show the level-select interface
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 12) == "/levelselect")
+    {
+      g_inventoryUiIsLevelSelect = 1;
+      inPauseMenu = 1;
+      adventureUIManager->showInventoryUI();
+
+
+
+      // this is the stuff we do when we read '#' (end scripting)
+      if (playersUI)
+      {
+        protag_is_talking = 2;
+      }
+      executingScript = 0;
+
+      mobilize = 0;
+      if(this == adventureUIManager) {
+        adventureUIManager->hideTalkingUI();
+      }
+
+
+
+      if(!useOwnScriptInsteadOfTalkersScript) {
+        talker->dialogue_index = 0;
+        talker->animate = 0;
+        if (talker->turnToFacePlayer)
+        {
+          if (talker->defaultAnimation == 0 || talker->defaultAnimation == 4)
+          {
+            talker->flip = SDL_FLIP_NONE;
+          }
+          talker->animation = talker->defaultAnimation;
+        }
+      }
       return;
     }
 

@@ -90,6 +90,10 @@ class collisionZone;
 
 class pointOfInterest;
 
+class levelNode;
+
+class levelSequence;
+
 vector<cshadow *> g_shadows;
 
 vector<entity *> g_entities;
@@ -335,7 +339,7 @@ float g_itemsinec = 0;
 
 float g_elapsed_accumulator = 0;
 
-// I've always bounced around thinking these matter and turning them down
+// I've bounced around thinking these matter and turning them down
 // or deciding that they don't matter and pumping them up
 // Here's what I know atm: the first value should be left at 11 prettymuch always
 // 2 is okay - g_TiltResolution actually doesn't affect loading
@@ -594,6 +598,10 @@ bool old_z_value = 1; // the last value of the z key. used for advancing dialogu
 float g_healthbarBorderSize = 0;
 bool g_showHUD = 0;
 
+bool g_inventoryUiIsLevelSelect = 0; //set to 1 to repurpose to inventory UI for level select UI
+string g_levelSequenceName = "default"; //use the default level sequence for the base game by default
+levelSequence* g_levelSequence;
+
 // scripts
 float dialogue_cooldown = 0; // seconds until he can have dialogue again.
 entity *g_talker = 0;				 // drives scripts, must be referenced before deleting an entity to avoid crashes
@@ -636,12 +644,13 @@ float g_bhoppingBoost = 4; // the factor applied to friction whilst airborn
 float g_defaultBhoppingBoost = 4;
 float g_maxBhoppingBoost = 2;
 float g_deltaBhopBoost = 0.2;
+int protagConsecutiveBhops = 0; //increased for every successive bhop
 
 // float g_dash_cooldown = 1000;
 // float g_max_dash_cooldown = 1000;
 
 float g_jump_afterslow = 0.1;
-float g_jump_afterslow_seconds = 0;
+float g_jump_afterslow_seconds = 2; //make it so that the longer you bhop the longer you are slown
 
 bool storedJump = 0;
 

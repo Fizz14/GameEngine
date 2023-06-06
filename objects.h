@@ -14,6 +14,7 @@
 #include <fstream>
 #include <stdio.h>
 #include <string>
+#include <cctype> //tolower()
 #include <limits>
 #include <stdlib.h>
 
@@ -2298,7 +2299,7 @@ class adventureUI {
     ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
 
     ui* crosshair = 0; //for guiding player to objectives
-
+    
     textbox* healthText = 0;
     bool light = 0;
 
@@ -2563,6 +2564,9 @@ class entity:public actor {
     float animtime = 0; //time since having started animating
     float animspeed = 0;
     float animlimit = 0.5; // the extent to the animation. 0.5 means halfway
+
+    bool growFromFloor = 1; //when entities shrink/grow, do they shrink 
+                            //to the floor or to their center?
     float curwidth = 0;
     float curheight = 0;
     float originalWidth = 0; //for shrink effect
@@ -2872,6 +2876,9 @@ class entity:public actor {
       file >> comment;
       file >> this->animspeed;
       file >> this->animlimit;
+
+      file >> comment;
+      file >> this->growFromFloor;
 
       file >> comment;
       file >> this->turnToFacePlayer;
@@ -3372,6 +3379,9 @@ class entity:public actor {
         file >> this->animlimit;
 
         file >> comment;
+        file >> growFromFloor;
+
+        file >> comment;
         file >> this->turnToFacePlayer;
 
         file >> comment;
@@ -3388,6 +3398,7 @@ class entity:public actor {
         file >> comment;
         file >> this->dynamic;
         bool solidifyHim = 0;
+
 
         file >> comment;
         file >> solidifyHim;
@@ -3538,8 +3549,6 @@ class entity:public actor {
       void shoot();
 
       void render(SDL_Renderer * renderer, camera fcamera) {
-
-
         if(!tangible) {return;}
         if(this == protag) { g_protagHasBeenDrawnThisFrame = 1; }
         //if its a wallcap, tile the image just like a maptile
@@ -3548,19 +3557,58 @@ class entity:public actor {
         
           
         if(shrinking) {
-          obj = rect(
-              (floor(x) -fcamera.x + (originalWidth-floor(curwidth))/2)* 1 ,
-              (floor(y) - ((floor(curheight) * (XtoY) + (originalHeight * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
-              floor(curwidth),
-              floor(curheight)
-              );
+          if(growFromFloor) {
+            obj = rect(
+                (floor(x) -fcamera.x + (originalWidth-floor(curwidth))/2)* 1 ,
+                (floor(y) - ((floor(curheight) * (XtoY) + (originalHeight * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
+                floor(curwidth),
+                floor(curheight)
+                );
+          } else {
+            obj = rect(
+                (floor(x) -fcamera.x + (originalWidth-floor(curwidth))/2)* 1 ,
+
+                (floor(y) - ((floor(curheight) * (XtoY) + (originalHeight * (1-XtoY)))) 
+
+                 - ( 
+                     (originalHeight * (XtoY))
+                      -
+                     (curheight * XtoY)
+                   )*0.5
+
+                 - (floor(z)) * XtoZ) - fcamera.y,
+
+                floor(curwidth),
+                floor(curheight)
+                );
+          }
         } else {
-          obj = rect(
-              (floor(x) -fcamera.x + (width-floor(curwidth))/2)* 1 ,
-              (floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
-              floor(curwidth),
-              floor(curheight)
-              );
+
+          if(growFromFloor) {
+            obj = rect(
+                (floor(x) -fcamera.x + (width-floor(curwidth))/2)* 1 ,
+                (floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) - (floor(z) + floatheight) * XtoZ) - fcamera.y,
+                floor(curwidth),
+                floor(curheight)
+                );
+          } else {
+            obj = rect(
+                (floor(x) -fcamera.x + (width-floor(curwidth))/2)* 1 ,
+
+                (floor(y) - ((floor(curheight) * (XtoY) + (height * (1-XtoY)))) 
+
+                 - ( 
+                     (height * (XtoY))
+                      -
+                     (curheight * XtoY)
+                   )*0.5
+
+                 - (floor(z)) * XtoZ) - fcamera.y,
+
+                floor(curwidth),
+                floor(curheight)
+                );
+          }
         }
 
 
@@ -4564,10 +4612,15 @@ class entity:public actor {
 
             if(!storedJump) {
               //penalize the player for not bhopping
-              protag->slowPercent = g_jump_afterslow;
-              protag->slowSeconds = g_jump_afterslow_seconds;
-              protag->currentAirBoost = g_defaultBhoppingBoost;
+              if(protagConsecutiveBhops > 3) {
+                protag->slowPercent = g_jump_afterslow;
+                protag->slowSeconds = g_jump_afterslow_seconds;
+                protag->currentAirBoost = g_defaultBhoppingBoost;
+              }
+              protagConsecutiveBhops = 0;
 
+            } else {
+              protagConsecutiveBhops++;
             }
           }
           grounded = 1;
@@ -5724,6 +5777,7 @@ int loadSave() {
 
   string field = "";
   string value = "";
+  //load save fields
   while(getline(file, line)) {
     if(line == "&") { break;}
     field = line.substr(0, line.find(' '));
@@ -7175,7 +7229,92 @@ class worldItem : public entity {
     }
 };
 
+class levelNode {
+public:
+  string pred_name = "none"; //unlock this level if a level has this name
+  int req_pellets = 10; //needed from predeccessor
+  string name = "unamed";
+  string mapfilename = "static/maps/unset";
+  SDL_Texture* sprite;
 
+  levelNode(string p1, int p2, string p3, string p4, SDL_Renderer * renderer) {
+    pred_name = p1;
+    req_pellets = p2;
+    name = p3;
+    mapfilename = p4;
+
+    //load graphic
+    string lowerName = name;
+
+    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), 
+        [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } ); //I convinced c++ that e is a number for this uber-efficient line of code
+
+    string loadSTR = "levelsequence/icons/" + lowerName + ".bmp";
+    D(loadSTR);
+    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
+    sprite = SDL_CreateTextureFromSurface(renderer, loadMe);
+    SDL_FreeSurface(loadMe);
+  }
+
+  ~levelNode() {
+    SDL_DestroyTexture(sprite);
+  }
+};
+
+// levelSequence class.
+// A levelSequence contains levelNodes
+
+class levelSequence {
+public:
+  vector<levelNode> levelNodes;
+  
+  //make a levelsequence given a filename, and look in the levelsequences folder
+  levelSequence(string filename, SDL_Renderer * renderer){
+    M("Loading levelSequence");
+    filename = "levelsequence/" + filename + ".txt";
+    
+    ifstream file;
+    file.open(filename.c_str());
+
+    if(!file.is_open()) {
+      //error opening level sequence file
+      E("Couldn't open level sequence file");
+
+      //we should just crash, but that would make debugging hard
+      return;
+    }
+
+    string temp;
+    getline(file, temp);
+    
+    string pred_name;
+    string req_pellets_str;
+    string level_name;
+    string map_name;
+    getline(file,temp);
+
+    for(;;) {
+
+      getline(file,pred_name);
+      getline(file,req_pellets_str);
+      int req_pellets = stoi(req_pellets_str);
+      getline(file,level_name);
+      getline(file,map_name);
+      map_name = "maps/" + map_name;
+      //map_name = map_name.substr(0, map_name.length()-4);
+      //something funny with taking off the ending
+      D(map_name);
+      if(file.eof()) {break;}
+      levelNode newLevelNode(pred_name, req_pellets, level_name, map_name, renderer);
+      levelNodes.push_back(newLevelNode);
+      getline(file,temp);
+
+    }
+  }
+
+
+
+};
 
 
 
