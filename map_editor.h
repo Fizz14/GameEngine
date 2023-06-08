@@ -5709,6 +5709,15 @@ void write_map(entity *mapent)
     responseText->updateText("", 34, 34);
   }
 
+  void adventureUI::showScoreUI() {
+    scoreText->show = 1;
+  }
+
+  void adventureUI::hideScoreUI() {
+    scoreText->show = 0;
+    //scoreText->updateText("", 34, 34);
+  }
+
   void adventureUI::showInventoryUI()
   {
     if(!light) {
@@ -5757,6 +5766,17 @@ void write_map(entity *mapent)
       responseText->boxY = 0.87;
       responseText->worldspace = 1;
       responseText->align = 2; // center-align
+                               
+
+      scoreText = new textbox(renderer, "Yes", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
+      scoreText->boxWidth = 0.95;
+      scoreText->width = 0.95;
+      scoreText->boxHeight = 0;
+      scoreText->boxX = 0.95;
+      scoreText->boxY = 0.05;
+      scoreText->worldspace = 1;
+      scoreText->align = 1; // right-align
+
 
       inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
       inventoryA->is9patch = true;
@@ -5798,9 +5818,10 @@ void write_map(entity *mapent)
 
       playersUI = 1;
 
-      hideInventoryUI();
 
+      hideInventoryUI();
       hideTalkingUI();
+      hideScoreUI();
     }
 
   }
@@ -5816,8 +5837,11 @@ void write_map(entity *mapent)
     delete talkingBox;
     // delete talkingBoxTexture;
     delete talkingText;
+    delete scoreText;
+
     delete inventoryA;
     delete inventoryB;
+
   }
 
   void adventureUI::pushText(entity *ftalker)
@@ -6301,7 +6325,7 @@ void write_map(entity *mapent)
     // change mapdir
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/mapdir")
     {
-      M("setting mapdir");
+      //M("setting mapdir");
       string s = scriptToUse->at(talker->dialogue_index + 1);
       s.erase(0, 8);
       g_mapdir = s.substr(0, s.find(' '));
@@ -7085,6 +7109,7 @@ void write_map(entity *mapent)
     }
 
     // load savefile
+    // /loadsave
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/loadsave")
     {
       loadSave();
@@ -7116,7 +7141,80 @@ void write_map(entity *mapent)
       return;
     }
 
+    // show score ui
+    // /showscore
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/showscore")
+    {
+      adventureUIManager->showScoreUI();
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // hide score ui
+    // /hidescore
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/hidescore")
+    {
+      adventureUIManager->hideScoreUI();
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // increment score
+    // /addscore 15
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/addscore")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      g_score += stoi(x[1]);
+
+      string displayScore = to_string(g_score);
+      scoreText->updateText(displayScore, 34, 34);
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+    // decrement score
+    // /subtractscore 15
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 14) == "/subtractscore")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      g_score -= stoi(x[1]);
+      
+      string displayScore = to_string(g_score);
+      scoreText->updateText(displayScore, 34, 34);
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+
+    // reset score
+    // /resetscore
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/resetscore")
+    {
+      g_score = 0;
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+
     // write savefile
+    // /save
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/save")
     {
       writeSave();
@@ -7393,8 +7491,6 @@ void write_map(entity *mapent)
       string s = scriptToUse->at(talker->dialogue_index + 1);
       s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
-
-      M("In /animate interpreter");
 
       entity *ent = 0;
       // if the entity we are talking to is the same as the one we want to animate, just animate talker
@@ -7745,14 +7841,39 @@ void write_map(entity *mapent)
       return;
     }
 
-    // show the level-select interface
+    //unlock a level by name
+    // /unlock twistland
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/unlock")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      for(int i = 0; i < g_levelSequence->levelNodes.size(); i++) {
+        string lowerName = g_levelSequence->levelNodes[i]->name;
+
+        std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } );
+        
+        if(lowerName == x[1]) {
+          g_levelSequence->levelNodes[i]->locked = 0;
+        }
+
+        //!!! add some popup message
+
+      }
+      
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // show the level select interface
+    // /levelselect
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 12) == "/levelselect")
     {
       g_inventoryUiIsLevelSelect = 1;
       inPauseMenu = 1;
+      
       adventureUIManager->showInventoryUI();
-
-
 
       // this is the stuff we do when we read '#' (end scripting)
       if (playersUI)

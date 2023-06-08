@@ -5,6 +5,8 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_mixer.h>
 #include <stdlib.h>
+#include <chrono>
+#include <thread>
 #include "globals.h"
 #include "objects.h"
 #include "map_editor.h"
@@ -17,8 +19,8 @@ void getInput(float &elapsed);
 int WinMain()
 {
 
-  //devMode = 0; canSwitchOffDevMode = 0;
-  devMode = 1; canSwitchOffDevMode = 1;
+  devMode = 0; canSwitchOffDevMode = 0;
+  //devMode = 1; canSwitchOffDevMode = 1;
 
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
@@ -145,11 +147,12 @@ int WinMain()
     config = "edit";
     nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walker.bmp"));
   }
+
   // set bindings from file
   ifstream bindfile;
   bindfile.open("user/configs/" + config + ".cfg");
   string line;
-  for (int i = 0; i < 13; i++)
+  for (int i = 0; i < 14; i++)
   {
     getline(bindfile, line);
     bindings[i] = SDL_GetScancodeFromName(line.c_str());
@@ -311,6 +314,13 @@ int WinMain()
   g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
   g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
   g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
+  
+  { //load static textures
+    string loadSTR = "levelsequence/icons/locked.bmp";
+    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
+    g_locked_level_texture = SDL_CreateTextureFromSurface(renderer, loadMe);
+    SDL_FreeSurface(loadMe);
+  }
 
   //load levelSequence
   g_levelSequence = new levelSequence(g_levelSequenceName, renderer);
@@ -319,16 +329,18 @@ int WinMain()
   if (devMode)
   {
     // g_transitionSpeed = 10000;
-    //!!!
+    
     loadSave();
     cout << "finished loadSave()" << endl;
-    // empty map or default map for map editing, perhaps a tutorial even
-      
-    load_map(renderer, g_levelSequence->levelNodes[0].mapfilename,"a");
-    //cameraToReset.resetCamera(); //somehow, reseting the cam is needed for lightcookies (changed default values to zero)
-    //init_map_writing(renderer);
-    g_map = g_levelSequence->levelNodes[0].mapfilename;
-    g_mapdir = "g";
+     
+    string filename = g_levelSequence->levelNodes[0]->mapfilename;
+
+    D(filename);
+
+    load_map(renderer, filename,"a");
+    vector<string> x = splitString(filename, '/');
+    g_mapdir = x[1];
+    
     protag->x = 100000;
     protag->y = 100000;
   }
@@ -336,15 +348,20 @@ int WinMain()
   {
     SDL_ShowCursor(0);
     loadSave();
-    g_mapdir = "first";
-    load_map(renderer, g_first_map, "a");
+
+    string filename = g_levelSequence->levelNodes[0]->mapfilename;
+    D(filename);
+
+    load_map(renderer, filename,"a");
+    vector<string> x = splitString(filename, '/');
+    g_mapdir = x[1];
   }
 
-  ui *inventoryMarker = new ui(renderer, "static/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
+  inventoryMarker = new ui(renderer, "static/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
   inventoryMarker->show = 0;
   inventoryMarker->persistent = 1;
 
-  textbox *inventoryText = new textbox(renderer, "1", 40, WIN_WIDTH * 0.8, 0, WIN_WIDTH * 0.2);
+  inventoryText = new textbox(renderer, "1", 40, WIN_WIDTH * 0.8, 0, WIN_WIDTH * 0.2);
   inventoryText->show = 0;
   inventoryText->align = 1;
 
@@ -677,15 +694,21 @@ int WinMain()
     // INPUT
     getInput(elapsed);
 
+
+
     // spring
     if ((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move))
     {
+      g_afterspin_duration = 0;
+      g_spinning_duration = 0;
       protag->zaccel = 180;
+      g_protag_jumped_this_frame = 1;
       storedJump = 0;
       breakpoint();
     }
     else
     {
+      g_protag_jumped_this_frame = 0;
       if (input[8] && !oldinput[8] && !protag->grounded)
       {
         storedJump = 1;
@@ -1673,7 +1696,7 @@ int WinMain()
 
       int i = 0;
 
-      if (g_inventoryUiIsLevelSelect == 0) { 
+      if (g_inventoryUiIsLevelSelect == 0) {
         //populate boxes based on inventory
         for (auto it = mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it)
         {
@@ -1744,20 +1767,34 @@ int WinMain()
         }
         else
         {
-          adventureUIManager->escText->updateText("", WIN_WIDTH * g_fontsize, 0.9);
+          adventureUIManager->escText->updateText("No items in inventory", WIN_WIDTH * g_fontsize, 0.9);
         }
       } else {
         //populate the UI based on the loaded level sequence.
-        for(levelNode node : g_levelSequence->levelNodes) {
+        for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
           if( i < itemsPerRow * inventoryScroll) {
             i++;
             continue;
           }
           SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
-          SDL_RenderCopy(renderer, node.sprite, NULL, &drect);
+
+          //should we draw the locked graphic?
+          if(g_levelSequence->levelNodes[j]->locked) {
+            SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+          } else {
+            SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
+          }
 
           if (i == inventorySelection)
           {
+
+            if(g_levelSequence->levelNodes[i]->locked) {
+              adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+            } else {
+              adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+
+            }
+
             // this item should have the marker
             inventoryMarker->show = 1;
             inventoryMarker->x = x / WIN_WIDTH;
@@ -1788,6 +1825,10 @@ int WinMain()
         g_itemsInInventory = g_levelSequence->levelNodes.size();
         
       }
+
+      //re-render inventory reticle so it goes on top of the items/level icons
+      inventoryMarker->render(renderer, g_camera);
+      inventoryMarker->show = 0;
     }
     else
     {
@@ -1895,6 +1936,8 @@ int WinMain()
 
       }
     }
+
+
 
     // did the protag die?
     if (protag->hp <= 0 && protag->essential)
@@ -2314,7 +2357,6 @@ int interact(float elapsed, entity *protag)
       }
       if (g_entities[i]->tangible && g_entities[i]->sayings.size() > 0)
       {
-        T("Initiated dialogue with some entity"); //get called many times if an AI uses an ability
         if (g_entities[i]->animlimit != 0)
         {
           g_entities[i]->animate = 1;
@@ -2743,14 +2785,18 @@ void getInput(float &elapsed)
       // pause menu
       if (inPauseMenu)
       {
-        playSound(-1, g_menu_close_sound, 0);
-        inPauseMenu = 0;
-        elapsed = 16;
-        adventureUIManager->hideInventoryUI();
+        //if this is the inventory screen, close it
+        if(g_inventoryUiIsLevelSelect == 0) {
+          playSound(-1, g_menu_close_sound, 0);
+          inPauseMenu = 0;
+          elapsed = 16;
+          adventureUIManager->hideInventoryUI();
+        }
       }
       else
       {
         playSound(-1, g_menu_open_sound, 0);
+        g_inventoryUiIsLevelSelect = 0;
         inPauseMenu = 1;
         inventorySelection = 0;
         adventureUIManager->showInventoryUI();
@@ -2765,6 +2811,7 @@ void getInput(float &elapsed)
     {
       old_pause_value = 0;
     }
+
   }
   else
   {
@@ -2824,6 +2871,42 @@ void getInput(float &elapsed)
   {
     input[9] = 0;
   }
+
+  if(keystate[bindings[13]]) 
+  {
+    input[13] = 1;
+  }
+  else
+  {
+    input[13] = 0;
+  }
+
+
+  //spinning
+  if (input[13] && !oldinput[13] && protag_can_move && protag->grounded
+      && g_spin_cooldown <= 0 && g_spinning_duration <= 0 && g_afterspin_duration <= 0
+
+     )
+  {
+    //propel the protag in the direction of their velocity
+    //at high speed, removing control from them
+    g_spinning_duration = g_spinning_duration_max;
+    g_spinning_xvel = protag->xvel * g_spinning_boost;
+    g_spinning_yvel = protag->yvel * g_spinning_boost;
+    g_spin_cooldown = g_spin_max_cooldown;
+  }
+
+  if(g_spin_enabled && g_spinning_duration >= 0 && g_spinning_duration - elapsed < 0 && protag->grounded && !g_protag_jumped_this_frame) {
+    g_afterspin_duration = g_afterspin_duration_max;
+  }
+
+  g_spin_entity->x = protag->x;
+  g_spin_entity->y = protag->y;
+  g_spin_entity->z = protag->z;
+
+  g_spin_cooldown -= elapsed;
+  g_spinning_duration -= elapsed;
+  g_afterspin_duration -= elapsed;
 
   // mapeditor cancel button
   if (keystate[SDL_SCANCODE_X])
@@ -2924,26 +3007,141 @@ void getInput(float &elapsed)
   }
   else if (keystate[bindings[11]] && !old_z_value && inPauseMenu)
   {
-    // select item in pausemenu
-    // only if we arent running a script
-    D(mainProtag->inventory.size());
-    if (protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory.size() > 0 && mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script.size() > 0)
-    {
-      // call the item's script
-      // D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);
-      adventureUIManager->blip = g_ui_voice;
-      adventureUIManager->sayings = &mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script;
-      adventureUIManager->talker = protag;
-      protag->dialogue_index = -1;
-      protag->sayings = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script;
-      adventureUIManager->continueDialogue();
-      // if we changed maps/died/whatever, close the inventory
-      if (transition)
+    if(g_inventoryUiIsLevelSelect == 0) {
+      // select item in pausemenu
+      // only if we arent running a script
+      D(mainProtag->inventory.size());
+      if (protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory.size() > 0 && mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script.size() > 0)
       {
-        inPauseMenu = 0;
-        adventureUIManager->hideInventoryUI();
+        // call the item's script
+        // D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);
+        adventureUIManager->blip = g_ui_voice;
+        adventureUIManager->sayings = &mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script;
+        adventureUIManager->talker = protag;
+        protag->dialogue_index = -1;
+        protag->sayings = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script;
+        adventureUIManager->continueDialogue();
+        // if we changed maps/died/whatever, close the inventory
+        if (transition)
+        {
+          inPauseMenu = 0;
+          adventureUIManager->hideInventoryUI();
+        }
+        old_z_value = 1;
       }
-      old_z_value = 1;
+    } else {
+      //if this level is unlocked, travel to its map
+      if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
+
+        //because of the frame-order, we must re-draw the inventory now
+        
+        {
+
+          // draw pause screen
+            adventureUIManager->crosshair->x = 5;
+      
+            // iterate thru inventory and draw items on screen
+            float defaultX = WIN_WIDTH * 0.05;
+            float defaultY = WIN_WIDTH * 0.05;
+            float x = defaultX;
+            float y = defaultY;
+            float maxX = WIN_WIDTH * 0.9;
+            float maxY = WIN_HEIGHT * 0.60;
+            float itemWidth = WIN_WIDTH * 0.07;
+            float padding = WIN_WIDTH * 0.01;
+      
+            int i = 0;
+      
+              //populate the UI based on the loaded level sequence.
+              for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
+                if( i < itemsPerRow * inventoryScroll) {
+                  i++;
+                  continue;
+                }
+                SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+      
+                //should we draw the locked graphic?
+                if(g_levelSequence->levelNodes[j]->locked) {
+                  SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+                } else {
+                  SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
+                }
+      
+                if (i == inventorySelection)
+                {
+      
+                  if(g_levelSequence->levelNodes[i]->locked) {
+                    adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+                  } else {
+                    adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+      
+                  }
+      
+                  // this item should have the marker
+                  inventoryMarker->show = 1;
+                  inventoryMarker->x = x / WIN_WIDTH;
+                  inventoryMarker->y = y / WIN_HEIGHT;
+                  inventoryMarker->width = itemWidth / WIN_WIDTH;
+        
+                  float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+                  inventoryMarker->x -= biggen;
+                  inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                  inventoryMarker->width += biggen * 2;
+                  inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                }
+        
+                x += itemWidth + padding;
+                if (x > maxX)
+                {
+                  x = defaultX;
+                  y += itemWidth + padding;
+                  if (y > maxY)
+                  {
+                    // we filled up the entire inventory, so lets leave
+                    break;
+                  }
+                }
+                i++;
+      
+              }
+              g_itemsInInventory = g_levelSequence->levelNodes.size();
+              
+            
+      
+            //re-render inventory reticle so it goes on top of the items/level icons
+            inventoryMarker->render(renderer, g_camera);
+            inventoryMarker->show = 0;
+        }
+
+        for (long long unsigned int i = 0; i < g_ui.size(); i++)
+        {
+          g_ui[i]->render(renderer, g_camera);
+        }
+
+        clear_map(g_camera);
+
+        inPauseMenu = 0;
+
+        string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
+        vector<string> x = splitString(mapName, '/');
+        g_mapdir = x[1];
+
+
+        load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
+        adventureUIManager->hideInventoryUI();
+
+        if (canSwitchOffDevMode)
+        {
+          init_map_writing(renderer);
+        }
+        protag_is_talking = 0;
+        protag_can_move = 1;
+      } else {
+        //play an error noise?
+
+      }
+      
+
     }
   }
   // D(mainProtag->inventory[mainProtag->inventory.size() - 1 -inventorySelection].first->name);
@@ -3013,10 +3211,10 @@ void getInput(float &elapsed)
   {
     devinput[2] = 1;
   }
-  if (keystate[SDL_SCANCODE_V] && devMode)
-  {
-    devinput[3] = 1;
-  }
+//  if (keystate[SDL_SCANCODE_V] && devMode)
+//  {
+//    devinput[3] = 1;
+//  }
   if (keystate[SDL_SCANCODE_B] && devMode)
   {
     // this is make-trigger

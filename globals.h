@@ -386,6 +386,9 @@ int itemsPerRow = ceil((0.9 - 0.05) / (0.07 + 0.01));
 int g_inventoryColumns = ceil((0.74 - 0.05) / 0.07);
 int g_itemsInInventory = 0;
 int g_inventoryRows = 4;
+SDL_Texture* g_locked_level_texture;
+textbox *inventoryText; //showing numbers by items
+ui *inventoryMarker; //indicates inventory selection
 // for not counting extra presses in UI for shooting and moving axisen
 int oldUIUp = 1;
 int oldUIDown = 1;
@@ -601,6 +604,7 @@ bool g_showHUD = 0;
 bool g_inventoryUiIsLevelSelect = 0; //set to 1 to repurpose to inventory UI for level select UI
 string g_levelSequenceName = "default"; //use the default level sequence for the base game by default
 levelSequence* g_levelSequence;
+int g_score; //generally used for unlocking levels, has checks/sets in scripting system and its own hud element
 
 // scripts
 float dialogue_cooldown = 0; // seconds until he can have dialogue again.
@@ -640,17 +644,27 @@ enum travelstyle
 
 // movement
 
-float g_bhoppingBoost = 4; // the factor applied to friction whilst airborn
-float g_defaultBhoppingBoost = 4;
-float g_maxBhoppingBoost = 2;
-float g_deltaBhopBoost = 0.2;
+float g_bhoppingBoost = 0; // the factor applied to friction whilst airborn
+float g_defaultBhoppingBoost = 1;
+float g_maxBhoppingBoost = 1;
+float g_deltaBhopBoost = 1;
 int protagConsecutiveBhops = 0; //increased for every successive bhop
 
-// float g_dash_cooldown = 1000;
-// float g_max_dash_cooldown = 1000;
+float g_jump_afterslow = 0;
+float g_jump_afterslow_seconds = 0; //make it so that the longer you bhop the longer you are slowed
 
-float g_jump_afterslow = 0.1;
-float g_jump_afterslow_seconds = 2; //make it so that the longer you bhop the longer you are slown
+bool g_spin_enabled = 1;
+entity* g_spin_entity;
+float g_spin_cooldown = 400;
+float g_spin_max_cooldown = 100;
+float g_spinning_duration = 0;
+float g_spinning_duration_max = 400; //duration of a spin
+float g_afterspin_duration = 0;
+float g_afterspin_duration_max = 200; //duration of afterspin imobility
+float g_spinning_xvel = 0; //x and y velocities are locked upon starting a spin
+float g_spinning_yvel = 0;
+float g_spinning_boost = 3;
+bool g_protag_jumped_this_frame = 0;
 
 bool storedJump = 0;
 

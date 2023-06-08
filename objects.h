@@ -1380,6 +1380,7 @@ class actor {
     string name = "unnamed";
 
     bool tangible = 1;
+    bool visible = 1;
 
     //add entities and mapObjects to g_actors with dc
     actor() {
@@ -2303,10 +2304,15 @@ class adventureUI {
     textbox* healthText = 0;
     bool light = 0;
 
-    int countEntities = 0; //used atthemoment for /lookatall to count how many entities we've looked at
+    textbox* scoreText = 0;
+
+    int countEntities = 0; //used now for /lookatall to count how many entities we've looked at
 
     void showTalkingUI();
     void hideTalkingUI();
+
+    void showScoreUI();
+    void hideScoreUI();
 
 
     void showInventoryUI();
@@ -2820,7 +2826,7 @@ class entity:public actor {
       //check local folder
       if(fileExists("maps/" + g_mapdir + "/sprites/" + filename + ".bmp")) {spritefilevar = "maps/" + g_mapdir + "/sprites/" + filename + ".bmp";}
 
-      D(spritefilevar);
+      //D(spritefilevar);
 
       const char* spritefile = spritefilevar.c_str();
       float size;
@@ -3550,6 +3556,8 @@ class entity:public actor {
 
       void render(SDL_Renderer * renderer, camera fcamera) {
         if(!tangible) {return;}
+        if(!visible) {return;}
+
         if(this == protag) { g_protagHasBeenDrawnThisFrame = 1; }
         //if its a wallcap, tile the image just like a maptile
         
@@ -3706,9 +3714,6 @@ class entity:public actor {
           if(framespots.size() > 1) {
             //int spinOffset = 0;
             int framePlusSpinOffset = frame;
-            if(spinningMS > 0) {
-              //change player frames to make a spin effect
-            }
 
 
             SDL_Rect srcrect = {framespots[framePlusSpinOffset].x,framespots[framePlusSpinOffset].y, framewidth, frameheight};
@@ -4131,6 +4136,26 @@ class entity:public actor {
 
         if(yaccel < 0) {
           yvel += yaccel* ((double) elapsed / 256.0);
+        }
+
+        //if this is the protag, and they're spinning, use saved xvel/yvel
+        if(this == protag) {
+          if( g_spinning_duration > 0) {
+            xvel = g_spinning_xvel;
+            yvel = g_spinning_yvel;
+            protag->visible = 0;
+            g_spin_entity->visible = 1;
+
+          } else {
+            protag->visible = 1;
+            g_spin_entity->visible = 0;
+            if(g_afterspin_duration > 0) {
+              xvel = 0;
+              yvel = 0;
+              protag->visible = 1;
+              g_spin_entity->visible = 0;
+            }
+          }
         }
 
         rect movedbounds;
@@ -4815,7 +4840,7 @@ class entity:public actor {
 
               if( inRange && !myScriptCaller->executingScript) {
 
-                I(this->name + " used " + x.name + ".");
+                //I(this->name + " used " + x.name + ".");
                 //this->dialogue_index = 1;
                 //this->sayings = x.script;
                 this->myScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
@@ -5765,6 +5790,103 @@ vector<entity*> gatherEntities(string fname) {
   return ret;
 }
 
+class levelNode {
+public:
+  string pred_name = "none"; //unlock this level if a level has this name
+  int req_pellets = 10; //needed from predeccessor
+  string name = "unamed";
+  string mapfilename = "static/maps/unset";
+  string waypointname;
+  SDL_Texture* sprite;
+
+  bool locked = 1;
+
+  levelNode(string p1, int p2, string p3, string p4, string p5, SDL_Renderer * renderer) {
+    pred_name = p1;
+    req_pellets = p2;
+    name = p3;
+    mapfilename = p4;
+    waypointname = p5;
+
+    //load graphic
+    string lowerName = name;
+
+    int myPellets = 0; //pellets collected from this map
+
+    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), 
+        [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } ); //I convinced c++ that e is a number for this uber-efficient line of code
+
+    string loadSTR = "levelsequence/icons/" + lowerName + ".bmp";
+    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
+    if(loadMe == NULL) {
+      E("Error loading level selection icon.");
+      D(loadSTR);
+    }
+    sprite = SDL_CreateTextureFromSurface(renderer, loadMe);
+    SDL_FreeSurface(loadMe);
+  }
+
+  ~levelNode() {
+    SDL_DestroyTexture(sprite);
+  }
+};
+
+// levelSequence class.
+// A levelSequence contains levelNodes
+
+class levelSequence {
+public:
+  vector<levelNode*> levelNodes;
+  
+  //make a levelsequence given a filename, and look in the levelsequences folder
+  levelSequence(string filename, SDL_Renderer * renderer){
+    M("Loading levelSequence");
+    filename = "levelsequence/" + filename + ".txt";
+    
+    ifstream file;
+    file.open(filename.c_str());
+
+    if(!file.is_open()) {
+      //error opening level sequence file
+      E("Couldn't open level sequence file");
+
+      //we should just crash, but that would make debugging hard
+      return;
+    }
+
+    string temp;
+    getline(file, temp);
+    
+    string pred_name;
+    string req_pellets_str;
+    string level_name;
+    string map_name;
+    string way_name;
+    getline(file,temp);
+
+    for(;;) {
+
+      getline(file,pred_name);
+      getline(file,req_pellets_str);
+      int req_pellets = stoi(req_pellets_str);
+      getline(file,level_name);
+      getline(file,map_name);
+      getline(file,way_name);
+      map_name = "maps/" + map_name;
+      //map_name = map_name.substr(0, map_name.length()-4);
+      //something funny with taking off the ending
+      D(map_name);
+      if(file.eof()) {break;}
+      levelNode* newLevelNode = new levelNode(pred_name, req_pellets, level_name, map_name, way_name, renderer);
+      levelNodes.push_back(newLevelNode);
+      getline(file,temp);
+
+    }
+  }
+
+
+
+};
 
 int loadSave() {
   g_save.clear();
@@ -5840,6 +5962,16 @@ int loadSave() {
 
   g_focus = protag;
 
+  //load spin entity
+  if(g_spin_enabled) {
+    string spinEntFilename = protag->name + "-spin";
+    entity* a = new entity(renderer, spinEntFilename);
+    g_spin_entity = a;
+    g_spin_entity->visible = 0;
+    g_spin_entity->msPerFrame = 50;
+    g_spin_entity->loopAnimation = 1;
+  }
+
   //load inventory
   while(getline(file, line)) {
     if(line == "&") { break;}
@@ -5847,6 +5979,22 @@ int loadSave() {
     value = line.substr(line.find(" "), line.length()-1);
     indexItem* a = new indexItem(field, 0);
     protag->getItem(a, stoi(value));
+  }
+
+  //load which levels are unlocked, as a list of lowercase names
+  M("LETS UNLOCK LEVELS");
+  while(getline(file, line)) {
+    if(line == "&") { break;}
+    D(line);
+    for(int i = 0; i < g_levelSequence->levelNodes.size(); i++) {
+      string lowerName = g_levelSequence->levelNodes[i]->name;
+      std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),  [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } );
+      if (lowerName == line) {
+        g_levelSequence->levelNodes[i]->locked = 0;
+        M("UNLOCKED A LEVEL");
+      }
+    }
+
   }
 
   file.close();
@@ -5899,8 +6047,17 @@ int writeSave() {
     file << x.first->name << " " << x.second << endl;
   }
   file << "&" << endl; //token to stop writing inventory
+  
+  for(int i = 0; i < g_levelSequence->levelNodes.size(); i++) {
+    if(g_levelSequence->levelNodes[i]->locked == 0) {
+      string lowerName = g_levelSequence->levelNodes[i]->name;
+      std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),  [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);} } );
+      file << lowerName << endl;
+    }
+  }
 
-
+  file << "&" << endl; //token to stop writing unlocked levels
+                       
   file.close();
   return 0;
 }
@@ -6015,6 +6172,7 @@ void entity::shoot() {
 
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
   if(!owner->tangible) {return;}
+  if(!owner->visible) {return;}
 
   //update alpha
   if(enabled && alphamod != 255) {
@@ -6743,6 +6901,7 @@ void clear_map(camera& cameraToReset) {
 
 
 
+
       //Fogofwar
       if(g_fogofwarEnabled && !devMode) {
 
@@ -6891,6 +7050,164 @@ void clear_map(camera& cameraToReset) {
       for(long long unsigned int i=0; i < g_ui.size(); i++){
         g_ui[i]->render(renderer, g_camera);
       }
+
+      // draw pause screen
+      if (inPauseMenu)
+      {
+        adventureUIManager->crosshair->x = 5;
+  
+        // iterate thru inventory and draw items on screen
+        float defaultX = WIN_WIDTH * 0.05;
+        float defaultY = WIN_WIDTH * 0.05;
+        float x = defaultX;
+        float y = defaultY;
+        float maxX = WIN_WIDTH * 0.9;
+        float maxY = WIN_HEIGHT * 0.60;
+        float itemWidth = WIN_WIDTH * 0.07;
+        float padding = WIN_WIDTH * 0.01;
+  
+        int i = 0;
+  
+        if (g_inventoryUiIsLevelSelect == 0) {
+          //populate boxes based on inventory
+          for (auto it = mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it)
+          {
+    
+            if (i < itemsPerRow * inventoryScroll)
+            {
+              // this item won't be rendered
+              i++;
+              continue;
+            }
+    
+            SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth};
+            if (it->second > 0)
+            {
+              SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
+            }
+            // draw number
+            if (it->second > 1)
+            {
+              inventoryText->show = 1;
+              inventoryText->updateText(to_string(it->second), 35, 100);
+              inventoryText->boxX = (x + (itemWidth * 0.8)) / WIN_WIDTH;
+              inventoryText->boxY = (y + (itemWidth - inventoryText->boxHeight / 2) * 0.6) / WIN_HEIGHT;
+              inventoryText->worldspace = 1;
+              inventoryText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+            }
+            else
+            {
+              inventoryText->show = 0;
+            }
+    
+            if (i == inventorySelection)
+            {
+              // this item should have the marker
+              inventoryMarker->show = 1;
+              inventoryMarker->x = x / WIN_WIDTH;
+              inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->width = itemWidth / WIN_WIDTH;
+    
+              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+              inventoryMarker->x -= biggen;
+              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->width += biggen * 2;
+              inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+    
+            x += itemWidth + padding;
+            if (x > maxX)
+            {
+              x = defaultX;
+              y += itemWidth + padding;
+              if (y > maxY)
+              {
+                // we filled up the entire inventory, so lets leave
+                break;
+              }
+            }
+            i++;
+          }
+          g_itemsInInventory = mainProtag->inventory.size();
+    
+          if (mainProtag->inventory.size() > 0 && mainProtag->inventory.size() - 1 - inventorySelection < mainProtag->inventory.size())
+          {
+            string description = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script[0];
+            // first line is a comment so take off the //
+            description = description.substr(2);
+            adventureUIManager->escText->updateText(description, WIN_WIDTH * g_fontsize, 0.9);
+          }
+          else
+          {
+            adventureUIManager->escText->updateText("No items in inventory", WIN_WIDTH * g_fontsize, 0.9);
+          }
+        } else {
+          //populate the UI based on the loaded level sequence.
+          for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
+            if( i < itemsPerRow * inventoryScroll) {
+              i++;
+              continue;
+            }
+            SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+  
+            //should we draw the locked graphic?
+            if(g_levelSequence->levelNodes[j]->locked) {
+              SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+            } else {
+              SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
+            }
+  
+            if (i == inventorySelection)
+            {
+  
+              if(g_levelSequence->levelNodes[i]->locked) {
+                adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+              } else {
+                adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+  
+              }
+  
+              // this item should have the marker
+              inventoryMarker->show = 1;
+              inventoryMarker->x = x / WIN_WIDTH;
+              inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->width = itemWidth / WIN_WIDTH;
+    
+              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+              inventoryMarker->x -= biggen;
+              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->width += biggen * 2;
+              inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+    
+            x += itemWidth + padding;
+            if (x > maxX)
+            {
+              x = defaultX;
+              y += itemWidth + padding;
+              if (y > maxY)
+              {
+                // we filled up the entire inventory, so lets leave
+                break;
+              }
+            }
+            i++;
+  
+          }
+          g_itemsInInventory = g_levelSequence->levelNodes.size();
+          
+        }
+  
+        //re-render inventory reticle so it goes on top of the items/level icons
+        inventoryMarker->render(renderer, g_camera);
+        inventoryMarker->show = 0;
+      }
+      else
+      {
+        inventoryMarker->show = 0;
+        inventoryText->show = 0;
+      }
+
       for(long long unsigned int i=0; i < g_textboxes.size(); i++){
         g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
@@ -7229,92 +7546,6 @@ class worldItem : public entity {
     }
 };
 
-class levelNode {
-public:
-  string pred_name = "none"; //unlock this level if a level has this name
-  int req_pellets = 10; //needed from predeccessor
-  string name = "unamed";
-  string mapfilename = "static/maps/unset";
-  SDL_Texture* sprite;
-
-  levelNode(string p1, int p2, string p3, string p4, SDL_Renderer * renderer) {
-    pred_name = p1;
-    req_pellets = p2;
-    name = p3;
-    mapfilename = p4;
-
-    //load graphic
-    string lowerName = name;
-
-    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), 
-        [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } ); //I convinced c++ that e is a number for this uber-efficient line of code
-
-    string loadSTR = "levelsequence/icons/" + lowerName + ".bmp";
-    D(loadSTR);
-    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
-    sprite = SDL_CreateTextureFromSurface(renderer, loadMe);
-    SDL_FreeSurface(loadMe);
-  }
-
-  ~levelNode() {
-    SDL_DestroyTexture(sprite);
-  }
-};
-
-// levelSequence class.
-// A levelSequence contains levelNodes
-
-class levelSequence {
-public:
-  vector<levelNode> levelNodes;
-  
-  //make a levelsequence given a filename, and look in the levelsequences folder
-  levelSequence(string filename, SDL_Renderer * renderer){
-    M("Loading levelSequence");
-    filename = "levelsequence/" + filename + ".txt";
-    
-    ifstream file;
-    file.open(filename.c_str());
-
-    if(!file.is_open()) {
-      //error opening level sequence file
-      E("Couldn't open level sequence file");
-
-      //we should just crash, but that would make debugging hard
-      return;
-    }
-
-    string temp;
-    getline(file, temp);
-    
-    string pred_name;
-    string req_pellets_str;
-    string level_name;
-    string map_name;
-    getline(file,temp);
-
-    for(;;) {
-
-      getline(file,pred_name);
-      getline(file,req_pellets_str);
-      int req_pellets = stoi(req_pellets_str);
-      getline(file,level_name);
-      getline(file,map_name);
-      map_name = "maps/" + map_name;
-      //map_name = map_name.substr(0, map_name.length()-4);
-      //something funny with taking off the ending
-      D(map_name);
-      if(file.eof()) {break;}
-      levelNode newLevelNode(pred_name, req_pellets, level_name, map_name, renderer);
-      levelNodes.push_back(newLevelNode);
-      getline(file,temp);
-
-    }
-  }
-
-
-
-};
 
 
 
