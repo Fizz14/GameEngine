@@ -602,6 +602,20 @@ float g_healthbarBorderSize = 0;
 bool g_showHUD = 0;
 
 bool g_inventoryUiIsLevelSelect = 0; //set to 1 to repurpose to inventory UI for level select UI
+
+bool g_inventoryUiIsKeyboard = 0; //set to 1 to repurpose to inventory UI for player string input
+string g_keyboardInput = "";
+string g_alphabet = "abcdefghijklmnopqrstuvwxyz<^;";
+string g_alphabet_lower = "abcdefghijklmnopqrstuvwxyz<^;";
+string g_alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ<^;";
+vector<SDL_Texture*>* g_alphabet_textures;
+vector<SDL_Texture*> g_alphabetLower_textures;
+vector<SDL_Texture*> g_alphabetUpper_textures;
+vector<float> g_alphabet_widths;
+int g_keyboardInputLength = 12;
+string g_keyboardSaveToField = ""; //the save-field to write keyboard input to, when ready
+SDL_Color g_textcolor = { 155, 115, 115 };
+
 string g_levelSequenceName = "default"; //use the default level sequence for the base game by default
 levelSequence* g_levelSequence;
 int g_score; //generally used for unlocking levels, has checks/sets in scripting system and its own hud element
@@ -634,6 +648,7 @@ bool g_autoSetThemesFromMapDirectory = 0; // if 1, loading a map will also set t
 string g_saveName = "a";
 
 std::map<string, int> g_save = {};
+std::map<string, string> g_saveStrings = {};
 
 // AI
 enum travelstyle
@@ -663,7 +678,7 @@ float g_afterspin_duration = 0;
 float g_afterspin_duration_max = 200; //duration of afterspin imobility
 float g_spinning_xvel = 0; //x and y velocities are locked upon starting a spin
 float g_spinning_yvel = 0;
-float g_spinning_boost = 3;
+float g_spinning_boost = 2.6;
 bool g_protag_jumped_this_frame = 0;
 
 bool storedJump = 0;

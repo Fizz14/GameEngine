@@ -19,8 +19,8 @@ void getInput(float &elapsed);
 int WinMain()
 {
 
-  devMode = 0; canSwitchOffDevMode = 0;
-  //devMode = 1; canSwitchOffDevMode = 1;
+  //devMode = 0; canSwitchOffDevMode = 0;
+  devMode = 1; canSwitchOffDevMode = 1;
 
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
@@ -187,7 +187,6 @@ int WinMain()
   valuestr = line.substr(line.find(' '), line.length());
   value = stof(valuestr);
   g_music_volume = value;
-  cout << g_music_volume << endl;
 
   // get sfx volume
   getline(bindfile, line);
@@ -314,6 +313,44 @@ int WinMain()
   g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
   g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
   g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
+
+  //render each character of the alphabet to a texture
+  TTF_Font* alphabetfont = 0;
+  alphabetfont = TTF_OpenFont(g_font.c_str(), 1400 * g_fontsize);
+  SDL_Surface* textsurface = 0;
+  SDL_Texture* texttexture = 0;
+  g_alphabet_textures = &g_alphabetLower_textures;
+  for (int i = 0; i < g_alphabet.size(); i++) {
+    string letter = "";
+    letter += g_alphabet_lower[i];
+    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 30);
+    texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+    int texW = 0;int texH = 0;
+    SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+    g_alphabet_widths.push_back(texW);
+
+    SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
+    g_alphabetLower_textures.push_back(texttexture);
+    SDL_FreeSurface(textsurface);
+  }
+
+  for (int i = 0; i < g_alphabet.size(); i++) {
+    string letter = "";
+    letter += g_alphabet_upper[i];
+    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 30);
+    texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+    int texW = 0;int texH = 0;
+    SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+    g_alphabet_widths.push_back(texW);
+
+    SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
+    g_alphabetUpper_textures.push_back(texttexture);
+    SDL_FreeSurface(textsurface);
+  }
+
+  TTF_CloseFont(alphabetfont);
   
   { //load static textures
     string loadSTR = "levelsequence/icons/locked.bmp";
@@ -331,11 +368,8 @@ int WinMain()
     // g_transitionSpeed = 10000;
     
     loadSave();
-    cout << "finished loadSave()" << endl;
      
     string filename = g_levelSequence->levelNodes[0]->mapfilename;
-
-    D(filename);
 
     load_map(renderer, filename,"a");
     vector<string> x = splitString(filename, '/');
@@ -350,7 +384,6 @@ int WinMain()
     loadSave();
 
     string filename = g_levelSequence->levelNodes[0]->mapfilename;
-    D(filename);
 
     load_map(renderer, filename,"a");
     vector<string> x = splitString(filename, '/');
@@ -1697,138 +1730,193 @@ int WinMain()
       int i = 0;
 
       if (g_inventoryUiIsLevelSelect == 0) {
-        //populate boxes based on inventory
-        for (auto it = mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it)
-        {
+        if(g_inventoryUiIsKeyboard == 1) {
+          //draw a letter in each box and append to a string
+
+
+          for(int j = 0; j < g_alphabet.size(); j++) {
+            if( i < itemsPerRow * inventoryScroll) {
+              i++;
+              continue;
+            }
+            SDL_Rect drect = {(int)x + (0.02 * WIN_WIDTH), (int)y, (int)itemWidth * (g_alphabet_widths[i] / 60), (int)itemWidth}; 
+              
+            // draw the ith letter of "alphabet" in drect
+            SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
   
-          if (i < itemsPerRow * inventoryScroll)
-          {
-            // this item won't be rendered
+
+            if (i == inventorySelection)
+            {
+            // this item should have the marker
+            inventoryMarker->show = 1;
+            inventoryMarker->x = x / WIN_WIDTH;
+            inventoryMarker->y = y / WIN_HEIGHT;
+            inventoryMarker->width = itemWidth / WIN_WIDTH;
+  
+            float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+            inventoryMarker->x -= biggen;
+            inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            inventoryMarker->width += biggen * 2;
+            inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+    
+            x += itemWidth + padding;
+            if (x > maxX)
+            {
+              x = defaultX;
+              y += itemWidth + padding;
+              if (y > maxY)
+              {
+                // we filled up the entire inventory, so lets leave
+                break;
+              }
+            }
             i++;
-            continue;
-          }
   
-          SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth};
-          if (it->second > 0)
-          {
-            SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
           }
-          // draw number
-          if (it->second > 1)
+
+          //draw current input in the bottom box
+          adventureUIManager->escText->updateText(g_keyboardInput.c_str(), WIN_WIDTH * g_fontsize, 0.9);
+          
+
+          g_itemsInInventory = g_alphabet.size();
+
+
+        } else {
+          //populate boxes based on inventory
+          for (auto it = mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it)
           {
-            inventoryText->show = 1;
-            inventoryText->updateText(to_string(it->second), 35, 100);
-            inventoryText->boxX = (x + (itemWidth * 0.8)) / WIN_WIDTH;
-            inventoryText->boxY = (y + (itemWidth - inventoryText->boxHeight / 2) * 0.6) / WIN_HEIGHT;
-            inventoryText->worldspace = 1;
-            inventoryText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    
+            if (i < itemsPerRow * inventoryScroll)
+            {
+              // this item won't be rendered
+              i++;
+              continue;
+            }
+    
+            SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth};
+            if (it->second > 0)
+            {
+              SDL_RenderCopy(renderer, it->first->texture, NULL, &drect);
+            }
+            // draw number
+            if (it->second > 1)
+            {
+              inventoryText->show = 1;
+              inventoryText->updateText(to_string(it->second), 35, 100);
+              inventoryText->boxX = (x + (itemWidth * 0.8)) / WIN_WIDTH;
+              inventoryText->boxY = (y + (itemWidth - inventoryText->boxHeight / 2) * 0.6) / WIN_HEIGHT;
+              inventoryText->worldspace = 1;
+              inventoryText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+            }
+            else
+            {
+              inventoryText->show = 0;
+            }
+    
+            if (i == inventorySelection)
+            {
+              // this item should have the marker
+              inventoryMarker->show = 1;
+              inventoryMarker->x = x / WIN_WIDTH;
+              inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->width = itemWidth / WIN_WIDTH;
+    
+              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+              inventoryMarker->x -= biggen;
+              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->width += biggen * 2;
+              inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+    
+            x += itemWidth + padding;
+            if (x > maxX)
+            {
+              x = defaultX;
+              y += itemWidth + padding;
+              if (y > maxY)
+              {
+                // we filled up the entire inventory, so lets leave
+                break;
+              }
+            }
+            i++;
+          }
+          g_itemsInInventory = mainProtag->inventory.size();
+    
+          if (mainProtag->inventory.size() > 0 && mainProtag->inventory.size() - 1 - inventorySelection < mainProtag->inventory.size())
+          {
+            string description = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script[0];
+            // first line is a comment so take off the //
+            description = description.substr(2);
+            adventureUIManager->escText->updateText(description, WIN_WIDTH * g_fontsize, 0.9);
           }
           else
           {
-            inventoryText->show = 0;
+            adventureUIManager->escText->updateText("No items in inventory", WIN_WIDTH * g_fontsize, 0.9);
           }
-  
-          if (i == inventorySelection)
-          {
-            // this item should have the marker
-            inventoryMarker->show = 1;
-            inventoryMarker->x = x / WIN_WIDTH;
-            inventoryMarker->y = y / WIN_HEIGHT;
-            inventoryMarker->width = itemWidth / WIN_WIDTH;
-  
-            float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-            inventoryMarker->x -= biggen;
-            inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            inventoryMarker->width += biggen * 2;
-            inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          }
-  
-          x += itemWidth + padding;
-          if (x > maxX)
-          {
-            x = defaultX;
-            y += itemWidth + padding;
-            if (y > maxY)
-            {
-              // we filled up the entire inventory, so lets leave
-              break;
-            }
-          }
-          i++;
-        }
-        g_itemsInInventory = mainProtag->inventory.size();
-  
-        if (mainProtag->inventory.size() > 0 && mainProtag->inventory.size() - 1 - inventorySelection < mainProtag->inventory.size())
-        {
-          string description = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script[0];
-          // first line is a comment so take off the //
-          description = description.substr(2);
-          adventureUIManager->escText->updateText(description, WIN_WIDTH * g_fontsize, 0.9);
-        }
-        else
-        {
-          adventureUIManager->escText->updateText("No items in inventory", WIN_WIDTH * g_fontsize, 0.9);
         }
       } else {
-        //populate the UI based on the loaded level sequence.
-        for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
-          if( i < itemsPerRow * inventoryScroll) {
-            i++;
-            continue;
-          }
-          SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
-
-          //should we draw the locked graphic?
-          if(g_levelSequence->levelNodes[j]->locked) {
-            SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
-          } else {
-            SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
-          }
-
-          if (i == inventorySelection)
-          {
-
-            if(g_levelSequence->levelNodes[i]->locked) {
-              adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+          //populate the UI based on the loaded level sequence.
+          for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
+            if( i < itemsPerRow * inventoryScroll) {
+              i++;
+              continue;
+            }
+            SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+  
+            //should we draw the locked graphic?
+            if(g_levelSequence->levelNodes[j]->locked) {
+              SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
             } else {
-              adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
-
+              SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
             }
-
-            // this item should have the marker
-            inventoryMarker->show = 1;
-            inventoryMarker->x = x / WIN_WIDTH;
-            inventoryMarker->y = y / WIN_HEIGHT;
-            inventoryMarker->width = itemWidth / WIN_WIDTH;
   
-            float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-            inventoryMarker->x -= biggen;
-            inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            inventoryMarker->width += biggen * 2;
-            inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          }
-  
-          x += itemWidth + padding;
-          if (x > maxX)
-          {
-            x = defaultX;
-            y += itemWidth + padding;
-            if (y > maxY)
+            if (i == inventorySelection)
             {
-              // we filled up the entire inventory, so lets leave
-              break;
+  
+              if(g_levelSequence->levelNodes[i]->locked) {
+                adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+              } else {
+                adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+  
+              }
+  
+              // this item should have the marker
+              inventoryMarker->show = 1;
+              inventoryMarker->x = x / WIN_WIDTH;
+              inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->width = itemWidth / WIN_WIDTH;
+    
+              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+              inventoryMarker->x -= biggen;
+              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->width += biggen * 2;
+              inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             }
+    
+            x += itemWidth + padding;
+            if (x > maxX)
+            {
+              x = defaultX;
+              y += itemWidth + padding;
+              if (y > maxY)
+              {
+                // we filled up the entire inventory, so lets leave
+                break;
+              }
+            }
+            i++;
+  
           }
-          i++;
-
+          g_itemsInInventory = g_levelSequence->levelNodes.size();
+          
         }
-        g_itemsInInventory = g_levelSequence->levelNodes.size();
-        
-      }
-
-      //re-render inventory reticle so it goes on top of the items/level icons
-      inventoryMarker->render(renderer, g_camera);
-      inventoryMarker->show = 0;
+  
+        //re-render inventory reticle so it goes on top of the items/level icons
+        inventoryMarker->render(renderer, g_camera);
+        inventoryMarker->show = 0;
+      
     }
     else
     {
@@ -2909,10 +2997,10 @@ void getInput(float &elapsed)
   g_afterspin_duration -= elapsed;
 
   // mapeditor cancel button
-  if (keystate[SDL_SCANCODE_X])
-  {
-    devinput[4] = 1;
-  }
+//  if (keystate[SDL_SCANCODE_X])
+//  {
+//    devinput[4] = 1;
+//  }
 
   int markeryvel = 0;
   // mapeditor cursor vertical movement for keyboards
@@ -3008,6 +3096,64 @@ void getInput(float &elapsed)
   else if (keystate[bindings[11]] && !old_z_value && inPauseMenu)
   {
     if(g_inventoryUiIsLevelSelect == 0) {
+
+      if(g_inventoryUiIsKeyboard) {
+        //append this character to the string
+
+        //handle special keys like caps, backspace, and enter
+        if(
+            g_alphabet[inventorySelection] == '<' 
+            || g_alphabet[inventorySelection] == '^' 
+            || g_alphabet[inventorySelection] == ';'
+
+            ) {
+
+            //backspace
+            if(g_alphabet[inventorySelection] == '<') {
+              if(g_keyboardInput.size() > 0) {
+                g_keyboardInput = g_keyboardInput.substr(0, g_keyboardInput.size()-1);
+              }
+            }
+
+            //caps
+            if(g_alphabet[inventorySelection] == '^') {
+              if(g_alphabet == g_alphabet_lower) {
+                g_alphabet = g_alphabet_upper;
+                g_alphabet_textures = &g_alphabetUpper_textures;
+              } else {
+                g_alphabet = g_alphabet_lower;
+                g_alphabet_textures = &g_alphabetLower_textures;
+              }
+            }
+
+            if(g_alphabet[inventorySelection] == ';' && g_keyboardInput != "") {
+              writeSaveFieldString(g_keyboardSaveToField, g_keyboardInput);
+
+              //this will continue the script which was running, even if it just instantly terminates
+
+              g_inventoryUiIsLevelSelect = 0;
+              g_inventoryUiIsKeyboard = 0;
+              inPauseMenu = 0;
+              breakpoint();
+              adventureUIManager->hideInventoryUI();
+
+              adventureUIManager->talker->dialogue_index++;
+              adventureUIManager->talker->dialogue_index++;
+              adventureUIManager->continueDialogue();
+
+
+            }
+
+
+        } else {
+        
+          if(g_keyboardInput.size() < g_keyboardInputLength) {
+            g_keyboardInput += g_alphabet[inventorySelection];
+          }
+
+        }
+
+      } else {
       // select item in pausemenu
       // only if we arent running a script
       D(mainProtag->inventory.size());
@@ -3029,119 +3175,123 @@ void getInput(float &elapsed)
         }
         old_z_value = 1;
       }
-    } else {
-      //if this level is unlocked, travel to its map
-      if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
-
-        //because of the frame-order, we must re-draw the inventory now
-        
-        {
-
-          // draw pause screen
-            adventureUIManager->crosshair->x = 5;
-      
-            // iterate thru inventory and draw items on screen
-            float defaultX = WIN_WIDTH * 0.05;
-            float defaultY = WIN_WIDTH * 0.05;
-            float x = defaultX;
-            float y = defaultY;
-            float maxX = WIN_WIDTH * 0.9;
-            float maxY = WIN_HEIGHT * 0.60;
-            float itemWidth = WIN_WIDTH * 0.07;
-            float padding = WIN_WIDTH * 0.01;
-      
-            int i = 0;
-      
-              //populate the UI based on the loaded level sequence.
-              for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
-                if( i < itemsPerRow * inventoryScroll) {
-                  i++;
-                  continue;
-                }
-                SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
-      
-                //should we draw the locked graphic?
-                if(g_levelSequence->levelNodes[j]->locked) {
-                  SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
-                } else {
-                  SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
-                }
-      
-                if (i == inventorySelection)
-                {
-      
-                  if(g_levelSequence->levelNodes[i]->locked) {
-                    adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
-                  } else {
-                    adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
-      
-                  }
-      
-                  // this item should have the marker
-                  inventoryMarker->show = 1;
-                  inventoryMarker->x = x / WIN_WIDTH;
-                  inventoryMarker->y = y / WIN_HEIGHT;
-                  inventoryMarker->width = itemWidth / WIN_WIDTH;
-        
-                  float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-                  inventoryMarker->x -= biggen;
-                  inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-                  inventoryMarker->width += biggen * 2;
-                  inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-                }
-        
-                x += itemWidth + padding;
-                if (x > maxX)
-                {
-                  x = defaultX;
-                  y += itemWidth + padding;
-                  if (y > maxY)
-                  {
-                    // we filled up the entire inventory, so lets leave
-                    break;
-                  }
-                }
-                i++;
-      
-              }
-              g_itemsInInventory = g_levelSequence->levelNodes.size();
-              
-            
-      
-            //re-render inventory reticle so it goes on top of the items/level icons
-            inventoryMarker->render(renderer, g_camera);
-            inventoryMarker->show = 0;
-        }
-
-        for (long long unsigned int i = 0; i < g_ui.size(); i++)
-        {
-          g_ui[i]->render(renderer, g_camera);
-        }
-
-        clear_map(g_camera);
-
-        inPauseMenu = 0;
-
-        string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
-        vector<string> x = splitString(mapName, '/');
-        g_mapdir = x[1];
-
-
-        load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
-        adventureUIManager->hideInventoryUI();
-
-        if (canSwitchOffDevMode)
-        {
-          init_map_writing(renderer);
-        }
-        protag_is_talking = 0;
-        protag_can_move = 1;
-      } else {
-        //play an error noise?
-
       }
+    } else {
+     
+  
+        //if this level is unlocked, travel to its map
+        if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
+  
+          //because of the frame-order, we must re-draw the inventory now
+          
+          {
+  
+            // draw pause screen
+              adventureUIManager->crosshair->x = 5;
+        
+              // iterate thru inventory and draw items on screen
+              float defaultX = WIN_WIDTH * 0.05;
+              float defaultY = WIN_WIDTH * 0.05;
+              float x = defaultX;
+              float y = defaultY;
+              float maxX = WIN_WIDTH * 0.9;
+              float maxY = WIN_HEIGHT * 0.60;
+              float itemWidth = WIN_WIDTH * 0.07;
+              float padding = WIN_WIDTH * 0.01;
+        
+              int i = 0;
+        
+                //populate the UI based on the loaded level sequence.
+                for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
+                  if( i < itemsPerRow * inventoryScroll) {
+                    i++;
+                    continue;
+                  }
+                  SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+        
+                  //should we draw the locked graphic?
+                  if(g_levelSequence->levelNodes[j]->locked) {
+                    SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+                  } else {
+                    SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
+                  }
+        
+                  if (i == inventorySelection)
+                  {
+        
+                    if(g_levelSequence->levelNodes[i]->locked) {
+                      adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+                    } else {
+                      adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+        
+                    }
+        
+                    // this item should have the marker
+                    inventoryMarker->show = 1;
+                    inventoryMarker->x = x / WIN_WIDTH;
+                    inventoryMarker->y = y / WIN_HEIGHT;
+                    inventoryMarker->width = itemWidth / WIN_WIDTH;
+          
+                    float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+                    inventoryMarker->x -= biggen;
+                    inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                    inventoryMarker->width += biggen * 2;
+                    inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                  }
+          
+                  x += itemWidth + padding;
+                  if (x > maxX)
+                  {
+                    x = defaultX;
+                    y += itemWidth + padding;
+                    if (y > maxY)
+                    {
+                      // we filled up the entire inventory, so lets leave
+                      break;
+                    }
+                  }
+                  i++;
+        
+                }
+                g_itemsInInventory = g_levelSequence->levelNodes.size();
+                
+              
+        
+              //re-render inventory reticle so it goes on top of the items/level icons
+              inventoryMarker->render(renderer, g_camera);
+              inventoryMarker->show = 0;
+          }
+  
+          for (long long unsigned int i = 0; i < g_ui.size(); i++)
+          {
+            g_ui[i]->render(renderer, g_camera);
+          }
+  
+          clear_map(g_camera);
+  
+          inPauseMenu = 0;
+  
+          string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
+          vector<string> x = splitString(mapName, '/');
+          g_mapdir = x[1];
+  
+  
+          load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
+          adventureUIManager->hideInventoryUI();
+  
+          if (canSwitchOffDevMode)
+          {
+            init_map_writing(renderer);
+          }
+          protag_is_talking = 0;
+          protag_can_move = 1;
+        } else {
+          //play an error noise?
+  
+        }
+        
+  
       
-
     }
   }
   // D(mainProtag->inventory[mainProtag->inventory.size() - 1 -inventorySelection].first->name);
@@ -3207,7 +3357,7 @@ void getInput(float &elapsed)
   {
     devinput[1] = 1;
   }
-  if (keystate[SDL_SCANCODE_C] && devMode)
+  if (keystate[SDL_SCANCODE_V] && devMode)
   {
     devinput[2] = 1;
   }

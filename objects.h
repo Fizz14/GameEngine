@@ -2235,7 +2235,7 @@ class ability {
 
       getline(stream, line);
 
-      M("Lines of ability");
+      //M("Lines of ability");
       while (getline(stream, line)) {
         script.push_back(line);
       }
@@ -2743,7 +2743,7 @@ class entity:public actor {
     float maxDistanceFromHome = 1400;
     float range = 3;
     int stuckTime = 0; //time since ai is trying to go somewhere but isn't moving
-    int maxStuckTime = 8; //time waited before resolving stuckness
+    int maxStuckTime = 80; //frames waited before resolving stuckness
     float lastx = 0;
     float lasty = 0;
 
@@ -3241,7 +3241,7 @@ class entity:public actor {
           hasAtleastOneAbility = 1;
           //line contains the name of an ability
           ability newAbility = ability(line);
-          M("loading new ability called " + line);
+          //M("loading new ability called " + line);
 
           //they're stored as seconds in the configfile, but ms in the object
           float seconds = 0;
@@ -3488,7 +3488,7 @@ class entity:public actor {
 
 
       ~entity() {
-        M("~entity()" );
+        //M("~entity()" );
         if (!wallcap) {
           delete shadow;
         }
@@ -5508,9 +5508,10 @@ class entity:public actor {
           lastx = x;
           lasty = y;
           if(stuckTime > maxStuckTime) {
+            M("A PATHFINDER IS STUCK");
             //spring to get over obstacles
             //this->zaccel = 350;
-            stuckTime = 0;
+            //stuckTime = 0;
             current = Get_Closest_Node(g_navNodes);
             if(current != nullptr) {
               int c = rand() % current->friends.size();
@@ -5598,9 +5599,6 @@ class entity:public actor {
       }
 
       if(timeSinceLastDijkstra < 0) {
-        if(dest != nullptr) {
-          current = dest;
-        }
         current = dest;
         //randomized time to space out dijkstra calls -> less framedrops
         timeSinceLastDijkstra = dijkstraSpeed + rand() % 500;
@@ -5840,7 +5838,6 @@ public:
   
   //make a levelsequence given a filename, and look in the levelsequences folder
   levelSequence(string filename, SDL_Renderer * renderer){
-    M("Loading levelSequence");
     filename = "levelsequence/" + filename + ".txt";
     
     ifstream file;
@@ -5873,9 +5870,7 @@ public:
       getline(file,map_name);
       getline(file,way_name);
       map_name = "maps/" + map_name;
-      //map_name = map_name.substr(0, map_name.length()-4);
-      //something funny with taking off the ending
-      D(map_name);
+
       if(file.eof()) {break;}
       levelNode* newLevelNode = new levelNode(pred_name, req_pellets, level_name, map_name, way_name, renderer);
       levelNodes.push_back(newLevelNode);
@@ -5913,6 +5908,24 @@ int loadSave() {
     }
 
   }
+
+  //load saved strings
+  while(getline(file, line)) {
+    if(line == "&") { break;}
+    field = line.substr(0, line.find(' '));
+    value = line.substr(line.find(" ")+1, line.length()-1);
+
+    try {
+      g_saveStrings.insert( pair<string, string>(field, value) );
+      D(field);
+      D(value);
+    } catch(...) {
+      E("Error writing save.");
+      return -1;
+    }
+
+  }
+
   file >> g_mapOfLastSave >> g_waypointOfLastSave;
   getline(file,line);
   getline(file,line);
@@ -5943,7 +5956,7 @@ int loadSave() {
     party.push_back(a);
     a->tangible = 0;
     a->inParty = 1;
-    M("added an entity to the party " + name);
+    //M("added an entity to the party " + name);
     if(a->essential) {
       mainProtag = a;
       setMainProtag = 1;
@@ -5954,8 +5967,8 @@ int loadSave() {
   if(setMainProtag) {
     protag = mainProtag;
   } else {
-    //feck
-    E("No essential entity found in save");
+    //fick
+    //E("No essential entity found in save");
     protag = party[0];
     mainProtag = protag;
   }
@@ -5982,16 +5995,16 @@ int loadSave() {
   }
 
   //load which levels are unlocked, as a list of lowercase names
-  M("LETS UNLOCK LEVELS");
+  //M("LETS UNLOCK LEVELS");
   while(getline(file, line)) {
     if(line == "&") { break;}
-    D(line);
+    //D(line);
     for(int i = 0; i < g_levelSequence->levelNodes.size(); i++) {
       string lowerName = g_levelSequence->levelNodes[i]->name;
       std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),  [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } );
       if (lowerName == line) {
         g_levelSequence->levelNodes[i]->locked = 0;
-        M("UNLOCKED A LEVEL");
+        //M("UNLOCKED A LEVEL");
       }
     }
 
@@ -6032,7 +6045,18 @@ int writeSave() {
     file << it->first << " " << it->second << endl;
     it++;
   }
-  file << "&" << endl; //token to stop writing saveflags
+  file << "&" << endl; //token to stop writing savefields
+                       
+                       
+  auto it2 = g_saveStrings.begin();
+
+  while (it2 != g_saveStrings.end() ) {
+    file << it2->first << " " << it2->second << endl;
+    it2++;
+  }
+  file << "&" << endl; //token to stop writing savestrings
+                       
+                       
   file << g_mapdir + "/" + g_map << " " << g_waypoint << endl;
   file << "&" << endl;
 
@@ -6078,6 +6102,25 @@ void writeSaveField(string field, int value) {
     g_save.insert(std::make_pair(field, value));
   } else {
     g_save[field] = value;
+  }
+}
+
+string readSaveStringField(string field) {
+  std::map<string, string>::iterator it = g_saveStrings.find(field);
+  if(it != g_saveStrings.end()) {
+    return it->second;
+  } else {
+    return "unset";
+  }
+}
+
+void writeSaveFieldString(string field, string value) {
+  auto it = g_saveStrings.find(field);
+
+  if (it == g_saveStrings.end()) {
+    g_saveStrings.insert(std::make_pair(field, value));
+  } else {
+    g_saveStrings[field] = value;
   }
 }
 

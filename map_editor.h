@@ -156,7 +156,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
   g_map = mapname.substr(first + 1, last - first - 1);
   g_waypoint = destWaypointName;
-  D(g_map);
+
   // hide HUD if this is a special map, show it otherwise
   g_showHUD = !(g_map.substr(0, 3) == "sp-");
 
@@ -172,7 +172,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   std::getline(infile, line);
   line.erase(0, line.find(" "));
   word = line;
-  D(word);
+
   g_budget = 0;
   g_budget = strtol(word.c_str(), NULL, 10);
 
@@ -1188,14 +1188,13 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   g_camera.oldx = g_camera.x;
   g_camera.oldy = g_camera.y;
 
-  M("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
+  //M("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
 
   // call map's init-script
   // seemingly crashes the game sometimes
   if (fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
     string loadstr = "maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
-    D(loadstr);
     const char *plik = loadstr.c_str();
     ifstream stream;
     stream.open(plik);
@@ -1226,10 +1225,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     adventureUIManager->talker = narrarator;
     adventureUIManager->talker->dialogue_index = -1;
 
-    D(narrarator->sayings.size());
+    //D(narrarator->sayings.size());
     for (int i = 0; i < adventureUIManager->sayings->size(); i++)
     {
-      D(adventureUIManager->sayings->at(i));
+      //D(adventureUIManager->sayings->at(i));
     }
 
     if (narrarator->sayings.size() > 0)
@@ -2444,11 +2443,11 @@ void write_map(entity *mapent)
     boxsenabled = !boxsenabled;
     if (boxsenabled)
     {
-      M("collisions ON");
+      //M("collisions ON");
     }
     else
     {
-      M("collisions OFF");
+      //M("collisions OFF");
     }
   }
 
@@ -4833,6 +4832,24 @@ void write_map(entity *mapent)
         mapent->y = y;
         break;
       }
+      if (word == "travel")
+      {
+        string wayname;
+        line >> wayname;
+
+        for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
+        {
+          if (g_waypoints[i]->name == wayname)
+          {
+            protag->x = g_waypoints[i]->x - protag->width / 2;
+            protag->y = g_waypoints[i]->y + protag->bounds.height;
+            protag->z = g_waypoints[i]->z;
+            break;
+          }
+        }
+
+        break;
+      }
       if (word == "nudge" || word == "n")
       {
         int x, y;
@@ -5850,8 +5867,6 @@ void write_map(entity *mapent)
     adventureUIManager->hideInventoryUI();
     talker = ftalker;
     g_talker = ftalker;
-    D(talker->dialogue_index);
-    D(sayings->size());
     if (sayings->at(talker->dialogue_index).at(0) == '%')
     {
       pushedText = sayings->at(talker->dialogue_index).substr(1);
@@ -5860,6 +5875,29 @@ void write_map(entity *mapent)
     {
       pushedText = sayings->at(talker->dialogue_index);
     }
+
+    //parse pushedText for variables within $$, e.g. $$playername$$
+    int position = pushedText.find("$$");  
+    if(position != string::npos) {
+      int position2 = pushedText.find("$$", position+1);
+      if(position2 != string::npos) {
+        //get the text between those two positions
+        string variableName = pushedText.substr(position + 2, position2 - position -2);
+        D(variableName);
+
+        //is there a savestring for that?
+        string res = readSaveStringField(variableName);
+        pushedText.erase(pushedText.begin() + position, pushedText.begin() + position2 + 2);
+        D(pushedText);
+        pushedText.insert(position, res);
+
+        D(pushedText);
+
+
+      }
+    }
+    
+
     curText = "";
     typing = true;
     showTalkingUI();
@@ -7282,11 +7320,54 @@ void write_map(entity *mapent)
       int value = stoi(valuestr);
 
       string field = s.substr(s.find('{') + 1, s.length() - 1);
-      D(value);
-      D(field);
       writeSaveField(field, value);
       talker->dialogue_index++;
       this->continueDialogue();
+      return;
+    }
+
+    // prompt user for text input and save the answer to a save-field
+    //
+    // /keyboard playername
+    // AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrXxTtUuVvWwXxYyZz
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/keyboard")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      auto parts = splitString(s, ' ');
+      g_keyboardSaveToField = parts[1];
+      g_keyboardInput = "";
+
+      g_inventoryUiIsLevelSelect = 0;
+      g_inventoryUiIsKeyboard = 1;
+      inPauseMenu = 1;
+      adventureUIManager->showInventoryUI();
+
+      // this is the stuff we do when we read '#' (end scripting)
+      if (playersUI)
+      {
+        protag_is_talking = 2;
+      }
+      executingScript = 0;
+
+      mobilize = 0;
+      if(this == adventureUIManager) {
+        adventureUIManager->hideTalkingUI();
+      }
+
+
+
+      if(!useOwnScriptInsteadOfTalkersScript) {
+        talker->dialogue_index = 0;
+        talker->animate = 0;
+        if (talker->turnToFacePlayer)
+        {
+          if (talker->defaultAnimation == 0 || talker->defaultAnimation == 4)
+          {
+            talker->flip = SDL_FLIP_NONE;
+          }
+          talker->animation = talker->defaultAnimation;
+        }
+      }
       return;
     }
 
@@ -7504,8 +7585,8 @@ void write_map(entity *mapent)
       else
       {
         ent = searchEntities(split[0], talker);
-        M("Searched for ent");
-        D(ent->name);
+//        M("Searched for ent");
+//        D(ent->name);
       }
       if (ent != 0)
       {
@@ -7589,7 +7670,6 @@ void write_map(entity *mapent)
     {
       string s = scriptToUse->at(talker->dialogue_index + 1);
       vector<string> split = splitString(s, ' ');
-      D(split[1]);
       string loadstring = "static/sounds/" + split[1] + ".wav";
       Mix_Chunk *a = Mix_LoadWAV(loadstring.c_str());
       if (!g_mute && a != nullptr)
@@ -7871,6 +7951,7 @@ void write_map(entity *mapent)
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 12) == "/levelselect")
     {
       g_inventoryUiIsLevelSelect = 1;
+      g_inventoryUiIsKeyboard = 0;
       inPauseMenu = 1;
       
       adventureUIManager->showInventoryUI();
