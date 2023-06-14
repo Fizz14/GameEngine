@@ -2635,7 +2635,7 @@ void write_map(entity *mapent)
 
     // set material
     // textbox(SDL_Renderer* renderer, const char* content, float size, int x, int y, int width) {
-    textbox *consoleDisplay = new textbox(renderer, "console", WIN_WIDTH * g_fontsize / 2, 0, 0, 4000);
+    textbox *consoleDisplay = new textbox(renderer, "console", g_fontsize * 30, 0, 0, 4000);
     string input;
     SDL_Event console_event;
     bool polling = 1;
@@ -2653,7 +2653,7 @@ void write_map(entity *mapent)
         // update textbox
         string renderinput = ">" + input;
         SDL_Rect rect = {consoleDisplay->x, consoleDisplay->y, WIN_WIDTH, consoleDisplay->height};
-        consoleDisplay->updateText(renderinput, WIN_WIDTH * g_fontsize / 2, WIN_WIDTH);
+        consoleDisplay->updateText(renderinput, -1, WIN_WIDTH);
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderFillRect(renderer, &rect);
@@ -5712,7 +5712,7 @@ void write_map(entity *mapent)
     talkingBox->show = 1;
     // talkingBoxTexture->show = 1;
     talkingText->show = 1;
-    talkingText->updateText("", 34, 34);
+    talkingText->updateText("", -1, 34);
     responseText->show = 1;
   }
 
@@ -5723,7 +5723,7 @@ void write_map(entity *mapent)
     // talkingBoxTexture->show = 0;
     talkingText->show = 0;
     responseText->show = 0;
-    responseText->updateText("", 34, 34);
+    responseText->updateText("", -1, 34);
   }
 
   void adventureUI::showScoreUI() {
@@ -5741,6 +5741,7 @@ void write_map(entity *mapent)
       inventoryA->show = 1;
       inventoryB->show = 1;
       escText->show = 1;
+      escText->updateText("",-1,1);
     }
   }
 
@@ -5767,7 +5768,7 @@ void write_map(entity *mapent)
       // talkingBoxTexture->persistent = true;
       /// SDL_SetTextureBlendMode(talkingBoxTexture->texture, SDL_BLENDMODE_ADD);
 
-      talkingText = new textbox(renderer, "I hope you find what your looking for. Extra text to get to four lines of dialogue in the dialogue box. We still need a little more, hang on... there we go", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
+      talkingText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
       talkingText->boxWidth = 0.95;
       talkingText->width = 0.95;
       talkingText->boxHeight = 0.25;
@@ -5775,17 +5776,17 @@ void write_map(entity *mapent)
       talkingText->boxY = 0.7;
       talkingText->worldspace = 1;
 
-      responseText = new textbox(renderer, "Yes", WIN_WIDTH * 0.5, 0, 0, 0.9);
+      responseText = new textbox(renderer, "Yes", 1700 * g_fontsize, 0, 0, 0.9);
       responseText->boxWidth = 0.95;
       responseText->width = 0.95;
-      responseText->boxHeight = 0.;
-      responseText->boxX = 0.15;
+      responseText->boxHeight = 0.2;
+      responseText->boxX = 0.5;
       responseText->boxY = 0.87;
       responseText->worldspace = 1;
       responseText->align = 2; // center-align
                                
 
-      scoreText = new textbox(renderer, "Yes", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
+      scoreText = new textbox(renderer, "Yes", 30 * g_fontsize, 0, 0, 0.9);
       scoreText->boxWidth = 0.95;
       scoreText->width = 0.95;
       scoreText->boxHeight = 0;
@@ -5813,7 +5814,7 @@ void write_map(entity *mapent)
       crosshair->heightFromWidthFactor = 1;
       crosshair->show = 0;
 
-      healthText = new textbox(renderer, "blem blem", WIN_WIDTH * g_minifontsize, 0, 0, 0.9);
+      healthText = new textbox(renderer, "", 30 * g_minifontsize, 0, 0, 0.9);
       healthText->boxWidth = 0.95;
       healthText->width = 0.95;
       healthText->boxHeight = 0.25;
@@ -5823,7 +5824,7 @@ void write_map(entity *mapent)
       healthText->show = 1;
       healthText->align = 2;
 
-      escText = new textbox(renderer, "", WIN_WIDTH * g_fontsize, 0, 0, 0.9);
+      escText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
 
       escText->boxX = 0.5;
       escText->boxY = 0.83;
@@ -5905,7 +5906,7 @@ void write_map(entity *mapent)
 
   void adventureUI::updateText()
   {
-    talkingText->updateText(curText, WIN_WIDTH * g_fontsize, 0.9);
+    talkingText->updateText(curText, -1, 0.9);
 
     //used to be code here for unsleeping the player's ui
 
@@ -5921,13 +5922,13 @@ void write_map(entity *mapent)
       {
         latter = " > ";
       }
-      responseText->updateText(former + responses[response_index] + latter, WIN_WIDTH * g_fontsize, 0.9);
+      responseText->updateText(former + responses[response_index] + latter, -1, 0.9);
       responseText->show = 1;
       response = responses[response_index];
     }
     else
     {
-      responseText->updateText("", WIN_WIDTH * g_fontsize, 0.9);
+      responseText->updateText("", -1, 0.9);
       responseText->show = 0;
     }
 
@@ -7211,7 +7212,7 @@ void write_map(entity *mapent)
       g_score += stoi(x[1]);
 
       string displayScore = to_string(g_score);
-      scoreText->updateText(displayScore, 34, 34);
+      scoreText->updateText(displayScore, -1, 34);
 
       talker->dialogue_index++;
       this->continueDialogue();
@@ -7229,7 +7230,7 @@ void write_map(entity *mapent)
       g_score -= stoi(x[1]);
       
       string displayScore = to_string(g_score);
-      scoreText->updateText(displayScore, 34, 34);
+      scoreText->updateText(displayScore, -1, 34);
 
       talker->dialogue_index++;
       this->continueDialogue();
@@ -7332,10 +7333,14 @@ void write_map(entity *mapent)
     // AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrXxTtUuVvWwXxYyZz
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/keyboard")
     {
+      breakpoint();
+
       string s = scriptToUse->at(talker->dialogue_index + 1);
       auto parts = splitString(s, ' ');
       g_keyboardSaveToField = parts[1];
       g_keyboardInput = "";
+      g_alphabet = g_alphabet_lower;
+      g_alphabet_textures = &g_alphabetLower_textures;
 
       g_inventoryUiIsLevelSelect = 0;
       g_inventoryUiIsKeyboard = 1;
@@ -7354,20 +7359,45 @@ void write_map(entity *mapent)
         adventureUIManager->hideTalkingUI();
       }
 
+      return;
+    }
 
+    //Launch options menu
+    /*
+      
+      Up              Up        1
+      Down            Down      2
+      Left            Left      3
+      Right           Right     4
+      Jump            X         5
+      Interact        Z         6
+      Inventory       C         7
+      Spin/Use Item   A         8
+      Fullscreen      Off       9
+      Music Volume    0.4      10
+      Sound Volume    0.4      11
+      Graphics        3        12
+      Brightness      100      13
 
-      if(!useOwnScriptInsteadOfTalkersScript) {
-        talker->dialogue_index = 0;
-        talker->animate = 0;
-        if (talker->turnToFacePlayer)
-        {
-          if (talker->defaultAnimation == 0 || talker->defaultAnimation == 4)
-          {
-            talker->flip = SDL_FLIP_NONE;
-          }
-          talker->animation = talker->defaultAnimation;
-        }
+    */
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/settings") 
+    {
+      M("Check dialogue index before");
+      D(adventureUIManager->talker->dialogue_index);
+      //write to settingsUi from related variables
+      g_settingsUI->show();
+      g_inSettingsMenu = 1;
+      g_settingsUI->positionOfCursor = 0;
+      g_settingsUI->cursorIsOnBackButton = 0;
+
+      // this is the stuff we do when we read '#' (end scripting)
+      executingScript = 0;
+
+      mobilize = 0;
+      if(this == adventureUIManager) {
+        adventureUIManager->hideTalkingUI();
       }
+
       return;
     }
 
@@ -7954,6 +7984,7 @@ void write_map(entity *mapent)
       g_inventoryUiIsKeyboard = 0;
       inPauseMenu = 1;
       
+      adventureUIManager->escText->updateText("", -1, 0.9);
       adventureUIManager->showInventoryUI();
 
       // this is the stuff we do when we read '#' (end scripting)
@@ -7968,20 +7999,6 @@ void write_map(entity *mapent)
         adventureUIManager->hideTalkingUI();
       }
 
-
-
-      if(!useOwnScriptInsteadOfTalkersScript) {
-        talker->dialogue_index = 0;
-        talker->animate = 0;
-        if (talker->turnToFacePlayer)
-        {
-          if (talker->defaultAnimation == 0 || talker->defaultAnimation == 4)
-          {
-            talker->flip = SDL_FLIP_NONE;
-          }
-          talker->animation = talker->defaultAnimation;
-        }
-      }
       return;
     }
 

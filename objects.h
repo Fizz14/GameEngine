@@ -2330,6 +2330,7 @@ class adventureUI {
     void continueDialogue();
 };
 
+
 class worldsound {
   public:
     //a playable sound in the world, with a position
@@ -3045,7 +3046,10 @@ class entity:public actor {
       }
       if(!asset_sharer) {
 
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+        //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+        //changing this in june 2023 to use linear interp on low res character sprites
+        //this may have unwanted consequences for engine sprites, e.g. lighting
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
         SDL_Surface* image = IMG_Load(spritefile);
         texture = SDL_CreateTextureFromSurface(renderer, image);
         SDL_FreeSurface(image);
@@ -6337,6 +6341,8 @@ class textbox {
     bool show = true;
     int align = 0;
 
+    float fontsize = 0;
+
     int errorflag = 0;
 
     //used for drawing in worldspace
@@ -6347,6 +6353,7 @@ class textbox {
 
     float boxScale = 40;
     bool worldspace = false; //use worldspace or screenspace;
+    
 
     textbox(SDL_Renderer* renderer, const char* fcontent, float size, float fx, float fy, float fwidth) {
       //M("textbox()" );
@@ -6354,6 +6361,7 @@ class textbox {
         TTF_CloseFont(font);
       }
       font = TTF_OpenFont(g_font.c_str(), size);
+      fontsize = size;
       content = fcontent;
 
       textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
@@ -6363,6 +6371,8 @@ class textbox {
       int texH = 0;
       x = fx;
       y = fy;
+      boxX = fx;
+      boxY = fy;
       SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
       SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
       this->width = texW;
@@ -6380,13 +6390,18 @@ class textbox {
     }
     void render(SDL_Renderer* renderer, int winwidth, int winheight) {
       if(show) {
+        
+
         if(worldspace) {
           if(align == 1) {
+            //right
             SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, (float)width,  (float)thisrect.h};
             SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
           } else {
             if(align == 0) {
+              //left
               SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
+
               SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
             } else {
               //center text
@@ -6414,6 +6429,9 @@ class textbox {
       }
     }
     void updateText(string content, float size, float fwidth) {
+      if(size < 0) { //easy way to preserve fontsize
+        size = fontsize;
+      }
       TTF_CloseFont(font);
       SDL_DestroyTexture(texttexture);
       SDL_FreeSurface(textsurface);
@@ -6465,8 +6483,10 @@ class ui {
 
     bool persistent = 0;
     int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
+    bool renderOverText = 0;
 
     int shrinkPixels = 0; //used for shrinking a ui element by an amount of pixels, usually in combination with some other element intended as a border
+    float shrinkPercent = 0; //used for shrinking a ui element by an amount of pixels, usually in combination with some other element intended as a border
 
     float heightFromWidthFactor = 0; //set this to 0.5 or 1 and the height of the element will be held to that ratio of the width, even if the screen's ratio changes.
 
@@ -6494,13 +6514,21 @@ class ui {
 
     void render(SDL_Renderer * renderer, camera fcamera) {
       if(this->show) {
+
         if(is9patch) {
+          int ibound = width * WIN_WIDTH;
+          int jbound = height * WIN_HEIGHT;
+
+          if(heightFromWidthFactor) {
+            jbound = ibound * height;
+          }
+
+
+
           if(WIN_WIDTH != 0) {
             patchscale = WIN_WIDTH;
             patchscale /= 4000;
           }
-          int ibound = width * WIN_WIDTH;
-          int jbound = height * WIN_HEIGHT;
           int scaledpatchwidth = patchwidth * patchscale;
           int i = 0;
           while (i < ibound) {
@@ -6563,10 +6591,10 @@ class ui {
 
         } else {
           if(heightFromWidthFactor != 0) {
-            SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex), y * WIN_HEIGHT + (shrinkPixels / scalex), width * WIN_WIDTH - (shrinkPixels / scalex) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2) };
+            SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
             SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
           } else {
-            SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex), y * WIN_HEIGHT + (shrinkPixels / scalex), width * WIN_WIDTH - (shrinkPixels / scalex) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2};
+            SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2};
             SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
           }
         }
@@ -7132,7 +7160,7 @@ void clear_map(camera& cameraToReset) {
             if (it->second > 1)
             {
               inventoryText->show = 1;
-              inventoryText->updateText(to_string(it->second), 35, 100);
+              inventoryText->updateText(to_string(it->second), -1, 100);
               inventoryText->boxX = (x + (itemWidth * 0.8)) / WIN_WIDTH;
               inventoryText->boxY = (y + (itemWidth - inventoryText->boxHeight / 2) * 0.6) / WIN_HEIGHT;
               inventoryText->worldspace = 1;
@@ -7178,11 +7206,11 @@ void clear_map(camera& cameraToReset) {
             string description = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script[0];
             // first line is a comment so take off the //
             description = description.substr(2);
-            adventureUIManager->escText->updateText(description, WIN_WIDTH * g_fontsize, 0.9);
+            adventureUIManager->escText->updateText(description, -1, 0.9);
           }
           else
           {
-            adventureUIManager->escText->updateText("No items in inventory", WIN_WIDTH * g_fontsize, 0.9);
+            adventureUIManager->escText->updateText("No items in inventory", -1, 0.9);
           }
         } else {
           //populate the UI based on the loaded level sequence.
@@ -7204,9 +7232,9 @@ void clear_map(camera& cameraToReset) {
             {
   
               if(g_levelSequence->levelNodes[i]->locked) {
-                adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+                adventureUIManager->escText->updateText("???", -1, 0.9);
               } else {
-                adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+                adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
   
               }
   
@@ -7590,6 +7618,184 @@ class worldItem : public entity {
 };
 
 
+class settingsUI {
+  public:
+    ui* ninePatch;
+    ui* settingsMarkerLeft;
+    ui* settingsMarkerRight;
+
+    ui* backButton;
+    ui* bbNinePatch;
+
+    vector<textbox*> optionTextboxes;
+
+    vector<textbox*> valueTextboxes;
+
+    int optionIndex = 0;
+
+    float yStart = 0.05;
+    float yEnd = 0.9;
+    float xStart = 0.05;
+    float xEnd = 0.7;
+
+    float bbXStart = 0.8;
+    float bbYStart = 0.05;
+    float bbWidth = 0.10;
+
+    int numLines;
+
+    int positionOfCursor = 0;
+    int cursorIsOnBackButton = 0;
+    int minPositionOfCursor = 0;
+    int maxPositionOfCursor = 0;
+
+    float cursorOffsetFromText = 0.02; // this is finicky, but this offsets the positioning of 
+                                      // the top of the markers from the top of the text
+    float markerWidth = 0.055;
+    float markerLeftX = 0.064;
+    float markerRightX = 0.68;
+
+    float markerBBOffset = 0.022; //offset position of cursor when on the back button
+
+
+    settingsUI() {
+
+      ninePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", xStart, yStart, xEnd, yEnd, 0);
+      ninePatch->patchwidth = 213;
+      ninePatch->patchscale = 0.4;
+      ninePatch->is9patch = true;
+      ninePatch->persistent = true;
+      ninePatch->show = 1;
+      ninePatch->priority = 0;
+
+      settingsMarkerLeft = new ui(renderer, "static/ui/non_selector_left.bmp", markerLeftX, 0.1, markerWidth, 1, 2);
+      settingsMarkerLeft->persistent = 1;
+      settingsMarkerLeft->show = 1;
+      settingsMarkerLeft->priority = 3;
+      settingsMarkerLeft->heightFromWidthFactor = 1;
+      settingsMarkerLeft->renderOverText = 1;
+
+      settingsMarkerRight = new ui(renderer, "static/ui/non_selector_right.bmp", markerRightX, 0.1, markerWidth, 1, 2);
+      settingsMarkerRight->persistent = 1;
+      settingsMarkerRight->show = 1;
+      settingsMarkerRight->priority = 3;
+      settingsMarkerRight->heightFromWidthFactor = 1;
+      settingsMarkerRight->renderOverText = 1;
+
+      vector<string> optionStrings;
+      
+      optionStrings.push_back("Up");
+      optionStrings.push_back("Down");
+      optionStrings.push_back("Left");
+      optionStrings.push_back("Right");
+      optionStrings.push_back("Jump");
+      optionStrings.push_back("Interact");
+      optionStrings.push_back("Inventory");
+      optionStrings.push_back("Spin/Use Item");
+
+      optionStrings.push_back("Fullscreen");
+      optionStrings.push_back("Music Volume");
+      optionStrings.push_back("Sounds Volume");
+      optionStrings.push_back("Graphics Quality");
+      optionStrings.push_back("Brightness");
+
+      numLines = optionStrings.size();
+      float spacing = (yEnd - yStart) / (numLines);
+
+      backButton = new ui(renderer, "static/ui/menu_back.bmp", bbXStart, bbYStart, bbWidth, 1, 2);
+      backButton->heightFromWidthFactor = 1;
+      backButton->shrinkPercent = 0.03;
+      backButton->persistent = 1;
+      backButton->show = 1;
+      backButton->priority = 1;
+
+      bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", bbXStart, bbYStart, bbWidth, 1, 0);
+      bbNinePatch->patchwidth = 213;
+      bbNinePatch->patchscale = 0.4;
+      bbNinePatch->is9patch = true;
+      bbNinePatch->persistent = true;
+      bbNinePatch->show = 1;
+      bbNinePatch->priority = 0;
+      bbNinePatch->heightFromWidthFactor = 1;
+
+
+      int i = 0;
+      for(float yPos = yStart + spacing/2; yPos < yEnd; yPos+= spacing ) 
+      {
+        textbox* newTextbox = new textbox(renderer, optionStrings[i].c_str(), 30 * g_fontsize, xStart + (spacing/2 * (WIN_WIDTH/WIN_HEIGHT)), yPos, xEnd - xStart);
+        newTextbox->show = 0;
+        optionTextboxes.push_back(newTextbox);
+        
+        string content = "";
+        if(i == 0) {content = SDL_GetScancodeName(bindings[0]);}
+        if(i == 1) {content = SDL_GetScancodeName(bindings[1]);}
+        if(i == 2) {content = SDL_GetScancodeName(bindings[2]);}
+        if(i == 3) {content = SDL_GetScancodeName(bindings[3]);}
+
+        if(i == 4) {content = SDL_GetScancodeName(bindings[8]);}
+        if(i == 5) {content = SDL_GetScancodeName(bindings[11]);}
+        if(i == 6) {content = SDL_GetScancodeName(bindings[12]);}
+        if(i == 7) {content = SDL_GetScancodeName(bindings[13]);}
+
+        if(i == 8) {content = to_string(g_fullscreen); }
+        if(i == 9) {content = to_string(g_music_volume); }
+        if(i == 10) {content = to_string(g_sfx_volume); }
+        if(i == 11) {content = to_string(g_graphicsquality); }
+        if(i == 12) {content = to_string(g_brightness_setting); }
+
+        newTextbox = new textbox(renderer, content.c_str(), 30 * g_fontsize, xEnd + 0.02, yPos, 0.3);
+        newTextbox->show = 0;
+        newTextbox->align = 1;
+        valueTextboxes.push_back(newTextbox);
+
+
+        i++;
+      }
+
+      maxPositionOfCursor = optionTextboxes.size() - 1;
+
+      hide();
+    }
+
+    ~settingsUI() {
+      delete ninePatch;
+      delete inventoryMarker;
+      delete settingsMarkerLeft;
+      delete settingsMarkerRight;
+      delete backButton;
+
+    }
+
+    void show() {
+      M("settingsUI::show()");
+      ninePatch->show = 1;
+      settingsMarkerLeft->show = 1;
+      settingsMarkerRight->show = 1;
+      backButton->show = 1;
+      bbNinePatch->show = 1;
+      for(auto x : optionTextboxes) {
+        x->show = 1;
+      }
+      for(auto x : valueTextboxes) {
+        x->show = 1;
+      }
+    }
+
+    void hide() {
+      ninePatch->show = 0;
+      settingsMarkerLeft->show = 0;
+      settingsMarkerRight->show = 0;
+      backButton->show = 0;
+      bbNinePatch->show = 0;
+      for(auto x : optionTextboxes) {
+        x->show = 0;
+      }
+      for(auto x : valueTextboxes) {
+        x->show = 0;
+      }
+    }
+
+};
 
 
 

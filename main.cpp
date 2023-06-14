@@ -16,6 +16,8 @@ using namespace std;
 
 void getInput(float &elapsed);
 
+void toggleFullscreen();
+
 int WinMain()
 {
 
@@ -134,7 +136,8 @@ int WinMain()
   float transitionDelta = transitionImageHeight;
 
   // font
-  g_font = "engine/Monda-Bold.ttf";
+  //g_font = "engine/Monda-Bold.ttf";
+  g_font = "engine/Rubik-Medium.ttf";
 
   // setup UI
   adventureUIManager = new adventureUI(renderer);
@@ -143,7 +146,7 @@ int WinMain()
   {
     init_map_writing(renderer);
     // done once, because textboxes aren't cleared during clear_map()
-    nodeInfoText = new textbox(renderer, "", g_fontsize * WIN_WIDTH, 0, 0, WIN_WIDTH);
+    nodeInfoText = new textbox(renderer, "",  g_fontsize, 0, 0, WIN_WIDTH);
     config = "edit";
     nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walker.bmp"));
   }
@@ -314,20 +317,22 @@ int WinMain()
   g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
   g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
 
+  //init user keyboard
   //render each character of the alphabet to a texture
   TTF_Font* alphabetfont = 0;
-  alphabetfont = TTF_OpenFont(g_font.c_str(), 1400 * g_fontsize);
+  alphabetfont = TTF_OpenFont(g_font.c_str(), 40 * g_fontsize);
   SDL_Surface* textsurface = 0;
   SDL_Texture* texttexture = 0;
   g_alphabet_textures = &g_alphabetLower_textures;
   for (int i = 0; i < g_alphabet.size(); i++) {
     string letter = "";
     letter += g_alphabet_lower[i];
-    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 30);
+    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
     texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
 
     int texW = 0;int texH = 0;
     SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+    texW *= 1.5; //gotta boosh out those letters
     g_alphabet_widths.push_back(texW);
 
     SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
@@ -343,7 +348,8 @@ int WinMain()
 
     int texW = 0;int texH = 0;
     SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
-    g_alphabet_widths.push_back(texW);
+    texW *= 1.5; //gotta boosh out those letters
+    g_alphabet_upper_widths.push_back(texW);
 
     SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
     g_alphabetUpper_textures.push_back(texttexture);
@@ -351,6 +357,9 @@ int WinMain()
   }
 
   TTF_CloseFont(alphabetfont);
+
+  //init options menu
+  g_settingsUI = new settingsUI();
   
   { //load static textures
     string loadSTR = "levelsequence/icons/locked.bmp";
@@ -394,7 +403,7 @@ int WinMain()
   inventoryMarker->show = 0;
   inventoryMarker->persistent = 1;
 
-  inventoryText = new textbox(renderer, "1", 40, WIN_WIDTH * 0.8, 0, WIN_WIDTH * 0.2);
+  inventoryText = new textbox(renderer, "1", 40,  g_fontsize, 0, WIN_WIDTH * 0.2);
   inventoryText->show = 0;
   inventoryText->align = 1;
 
@@ -569,7 +578,6 @@ int WinMain()
 
   while (!quit)
   {
-
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -622,6 +630,15 @@ int WinMain()
               // protag->getItem(a, 1);
               break;
           }
+          if(g_swallowAKey) {
+            M("We should swallow this key");
+            g_swallowedKey = event.key.keysym.scancode;
+            g_swallowAKey = 0;
+            g_swallowedAKeyThisFrame = 1;
+          } else {
+            g_swallowedAKeyThisFrame = 0;
+          }
+
           break;
         case SDL_KEYUP:
           switch (event.key.keysym.sym)
@@ -1543,7 +1560,7 @@ int WinMain()
 
         nodeInfoText->x = obj.x;
         nodeInfoText->y = obj.y - 20;
-        nodeInfoText->updateText(g_worldsounds[i]->name, 15, 15);
+        nodeInfoText->updateText(g_worldsounds[i]->name, -1, 15);
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
 
@@ -1622,7 +1639,7 @@ int WinMain()
         SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
         nodeInfoText->x = obj.x + 25;
         nodeInfoText->y = obj.y + 25;
-        nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, 15, 15);
+        nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
 
@@ -1636,7 +1653,7 @@ int WinMain()
 
         nodeInfoText->x = obj.x + 25;
         nodeInfoText->y = obj.y + 25;
-        nodeInfoText->updateText(g_triggers[i]->binding, 15, 15);
+        nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
 
@@ -1647,7 +1664,7 @@ int WinMain()
         SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
         nodeInfoText->x = obj.x;
         nodeInfoText->y = obj.y - 20;
-        nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, 15, 15);
+        nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, -1, 15);
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
 
@@ -1677,7 +1694,7 @@ int WinMain()
     if (!inPauseMenu && g_showHUD)
     {
       // !!! segfaults on mapload sometimes
-      adventureUIManager->healthText->updateText(to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), WIN_WIDTH * g_minifontsize, 0.9);
+      adventureUIManager->healthText->updateText(to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), -1, 0.9);
       adventureUIManager->healthText->show = g_showHealthbar;
     }
     else
@@ -1705,11 +1722,55 @@ int WinMain()
 
     for (long long unsigned int i = 0; i < g_ui.size(); i++)
     {
-      g_ui[i]->render(renderer, g_camera);
+      if(!g_ui[i]->renderOverText) {
+        g_ui[i]->render(renderer, g_camera);
+      }
     }
     for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
     {
       g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+
+    //some ui are rendered over text
+    for (long long unsigned int i = 0; i < g_ui.size(); i++)
+    {
+      if(g_ui[i]->renderOverText) {
+        g_ui[i]->render(renderer, g_camera);
+      }
+    }
+
+    // settings menu
+    if (g_inSettingsMenu) 
+    {
+      //move reticle to the correct position
+      if(!g_settingsUI->cursorIsOnBackButton) {
+        g_settingsUI->settingsMarkerLeft->y
+          = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
+          - (g_settingsUI->cursorOffsetFromText);
+
+        g_settingsUI->settingsMarkerLeft->x
+          = g_settingsUI->markerLeftX;
+
+        g_settingsUI->settingsMarkerRight->y
+          = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
+          - (g_settingsUI->cursorOffsetFromText);
+
+        g_settingsUI->settingsMarkerRight->x
+          = g_settingsUI->markerRightX;
+
+
+
+      } else {
+        float ww = WIN_WIDTH;
+        float wh = WIN_HEIGHT;
+
+        g_settingsUI->settingsMarkerRight->x = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+        g_settingsUI->settingsMarkerRight->y = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffset * (ww/wh));
+
+        g_settingsUI->settingsMarkerLeft->x = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+        g_settingsUI->settingsMarkerLeft->y = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffset * (ww/wh));
+      }
+
     }
 
     // draw pause screen
@@ -1739,7 +1800,13 @@ int WinMain()
               i++;
               continue;
             }
-            SDL_Rect drect = {(int)x + (0.02 * WIN_WIDTH), (int)y, (int)itemWidth * (g_alphabet_widths[i] / 60), (int)itemWidth}; 
+
+            SDL_Rect drect;
+            if(g_alphabet == g_alphabet_lower) {
+              drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230) , (int)y, (int)itemWidth * (g_alphabet_widths[i] / 60), (int)itemWidth}; 
+            } else {
+              drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230), (int)y, (int)itemWidth * (g_alphabet_upper_widths[i] / 60), (int)itemWidth}; 
+            }
               
             // draw the ith letter of "alphabet" in drect
             SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
@@ -1776,7 +1843,7 @@ int WinMain()
           }
 
           //draw current input in the bottom box
-          adventureUIManager->escText->updateText(g_keyboardInput.c_str(), WIN_WIDTH * g_fontsize, 0.9);
+          adventureUIManager->escText->updateText(g_keyboardInput.c_str(), -1, 0.9);
           
 
           g_itemsInInventory = g_alphabet.size();
@@ -1803,7 +1870,7 @@ int WinMain()
             if (it->second > 1)
             {
               inventoryText->show = 1;
-              inventoryText->updateText(to_string(it->second), 35, 100);
+              inventoryText->updateText(to_string(it->second), -1, 100);
               inventoryText->boxX = (x + (itemWidth * 0.8)) / WIN_WIDTH;
               inventoryText->boxY = (y + (itemWidth - inventoryText->boxHeight / 2) * 0.6) / WIN_HEIGHT;
               inventoryText->worldspace = 1;
@@ -1849,11 +1916,11 @@ int WinMain()
             string description = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script[0];
             // first line is a comment so take off the //
             description = description.substr(2);
-            adventureUIManager->escText->updateText(description, WIN_WIDTH * g_fontsize, 0.9);
+            adventureUIManager->escText->updateText(description, -1, 0.9);
           }
           else
           {
-            adventureUIManager->escText->updateText("No items in inventory", WIN_WIDTH * g_fontsize, 0.9);
+            adventureUIManager->escText->updateText("No items in inventory", -1, 0.9);
           }
         }
       } else {
@@ -1876,9 +1943,9 @@ int WinMain()
             {
   
               if(g_levelSequence->levelNodes[i]->locked) {
-                adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+                adventureUIManager->escText->updateText("???", -1, 0.9);
               } else {
-                adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+                adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
   
               }
   
@@ -2575,7 +2642,67 @@ void getInput(float &elapsed)
     oldinput[i] = input[i];
   }
 
+  for (int i = 0; i < 5; i++)
+  {
+    oldStaticInput[i] = staticInput[i];
+  }
+
   SDL_PollEvent(&event);
+
+
+  //for portability, use the input[] array to drive controls
+  //some actions are not bound, e.g. navigation of the settings menu
+
+  //menu up 
+  if(keystate[SDL_SCANCODE_UP] || keystate[SDL_SCANCODE_W])
+  {
+    staticInput[0] = 1;
+  } else 
+  {
+    staticInput[0] = 0;
+  }
+  //menu down 
+  if(keystate[SDL_SCANCODE_DOWN] || keystate[SDL_SCANCODE_S])
+  {
+    staticInput[1] = 1;
+  } else 
+  {
+    staticInput[1] = 0;
+  }
+  //menu left
+  if(keystate[SDL_SCANCODE_LEFT] || keystate[SDL_SCANCODE_A])
+  {
+    staticInput[2] = 1;
+  } else 
+  {
+    staticInput[2] = 0;
+  }
+  //menu down 
+  if(keystate[SDL_SCANCODE_RIGHT] || keystate[SDL_SCANCODE_D])
+  {
+    staticInput[3] = 1;
+  } else 
+  {
+    staticInput[3] = 0;
+  }
+  //menu confirm
+  if(keystate[SDL_SCANCODE_Z] || keystate[SDL_SCANCODE_SPACE])
+  {
+    staticInput[4] = 1;
+  } else 
+  {
+    staticInput[4] = 0;
+  }
+
+
+  if (keystate[bindings[9]])
+  {
+    input[9] = 1;
+  }
+  else
+  {
+    input[9] = 0;
+  }
 
   if (keystate[SDL_SCANCODE_W])
   {
@@ -2714,14 +2841,7 @@ void getInput(float &elapsed)
       g_cameraAimingOffsetYTarget /= len;
     }
 
-    if (keystate[bindings[9]])
-    {
-      input[9] = 1;
-    }
-    else
-    {
-      input[9] = 0;
-    }
+
 
     if (keystate[bindings[10]])
     {
@@ -2741,7 +2861,7 @@ void getInput(float &elapsed)
         inventorySelection -= itemsPerRow;
 
         //}
-        SoldUIUp = (oldUIUp) ? 6 : 30;
+        SoldUIUp = (oldUIUp) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
       }
       else
       {
@@ -2768,7 +2888,7 @@ void getInput(float &elapsed)
           inventorySelection += itemsPerRow;
         }
         //}
-        SoldUIDown = (oldUIDown) ? 6 : 30;
+        SoldUIDown = (oldUIDown) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
       }
       else
       {
@@ -2795,7 +2915,7 @@ void getInput(float &elapsed)
             inventorySelection--;
           }
         }
-        SoldUILeft = (oldUILeft) ? 6 : 30;
+        SoldUILeft = (oldUILeft) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
       }
       else
       {
@@ -2823,7 +2943,7 @@ void getInput(float &elapsed)
             inventorySelection++;
           }
         }
-        SoldUIRight = (oldUIRight) ? 6 : 30;
+        SoldUIRight = (oldUIRight) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
       }
       else
       {
@@ -2886,6 +3006,7 @@ void getInput(float &elapsed)
         playSound(-1, g_menu_open_sound, 0);
         g_inventoryUiIsLevelSelect = 0;
         inPauseMenu = 1;
+        adventureUIManager->escText->updateText("", -1, 0.9);
         inventorySelection = 0;
         adventureUIManager->showInventoryUI();
       }
@@ -2903,6 +3024,147 @@ void getInput(float &elapsed)
   }
   else
   {
+    //settings menu
+    if(g_inSettingsMenu) {
+      //menu up
+      if (staticInput[0])
+      {
+        if(SoldUIUp <= 0)
+        {
+          g_settingsUI->positionOfCursor--;
+          SoldUIUp = (oldStaticInput[0]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+        } else {
+          SoldUIUp--;
+        }
+      } else {
+        SoldUIUp = 0; 
+      }
+
+      //menu down
+      if (staticInput[1]) {
+        if(SoldUIDown <= 0)
+        {
+          g_settingsUI->positionOfCursor++;
+          SoldUIDown = (oldStaticInput[1]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+        } else {
+          SoldUIDown--;
+        }
+      } else {
+        SoldUIDown = 0; 
+      }
+
+     
+      //menu left
+      if (staticInput[2] && !oldStaticInput[2])
+      {
+        if(g_settingsUI->cursorIsOnBackButton) {
+          g_settingsUI->cursorIsOnBackButton = 0;
+          g_settingsUI->positionOfCursor = 0;
+        }
+      }
+      
+      //menu right
+      if (staticInput[3] && !oldStaticInput[3])
+      {
+        if(!g_settingsUI->cursorIsOnBackButton) {
+          g_settingsUI->cursorIsOnBackButton = 1;
+          g_settingsUI->positionOfCursor = 0;
+        }
+      }
+
+      //menu select
+      if (staticInput[4] && !oldStaticInput[4] && !g_swallowedAKeyThisFrame)
+      {
+        if(g_settingsUI->cursorIsOnBackButton) {
+          //continue the script which was running 
+          g_inventoryUiIsLevelSelect = 0;
+          g_inventoryUiIsKeyboard = 0;
+          g_inSettingsMenu = 0;
+          inPauseMenu = 0;
+
+          adventureUIManager->hideInventoryUI();
+          g_settingsUI->hide();
+
+          adventureUIManager->talker->dialogue_index++;
+          adventureUIManager->continueDialogue();
+        } else {
+
+          if(g_settingsUI->positionOfCursor == 0) { //rebind Up
+            g_pollForThisBinding = 0; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 1) { //rebind Down
+            g_pollForThisBinding = 1; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 2) { //rebind Left
+            g_pollForThisBinding = 2; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 3) { //rebind Right
+            g_pollForThisBinding = 3; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 4) { //rebind Jump
+            g_pollForThisBinding = 8; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 5) { //rebind Interact
+            g_pollForThisBinding = 11; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 6) { //rebind Inventory
+            g_pollForThisBinding = 12; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 7) { //rebind Spin/use
+            g_pollForThisBinding = 13; 
+            g_swallowAKey = 1;
+            g_awaitSwallowedKey = 1;
+          }
+  
+          if(g_settingsUI->positionOfCursor == 8) { //fullscreen
+            if(!g_fullscreen) {
+              g_settingsUI->valueTextboxes[8]->updateText(g_affirmStr, -1, 0.3);
+            } else {
+              g_settingsUI->valueTextboxes[8]->updateText(g_negStr, -1, 0.3);
+            }
+            toggleFullscreen();
+          }
+        }
+      }
+
+      //did we swallow a keypress?
+      if(g_awaitSwallowedKey && !g_swallowAKey) {
+        //there might be a problem with this logic
+        bindings[g_pollForThisBinding] = g_swallowedKey;
+        g_awaitSwallowedKey = 0;
+      }
+
+      if(g_settingsUI->positionOfCursor > g_settingsUI->maxPositionOfCursor) {
+        g_settingsUI->positionOfCursor = g_settingsUI->maxPositionOfCursor;
+      }
+
+      if(g_settingsUI->positionOfCursor < g_settingsUI->minPositionOfCursor) {
+        g_settingsUI->positionOfCursor = g_settingsUI->minPositionOfCursor;
+      }
+
+    }
+
     // reset shooting offsets
     g_cameraAimingOffsetXTarget = 0;
     g_cameraAimingOffsetYTarget = 0;
@@ -3083,7 +3345,7 @@ void getInput(float &elapsed)
     keyboard_marker_vertical_modifier_refresh_b = 0;
   }
 
-  if (keystate[bindings[11]] && !old_z_value && !inPauseMenu)
+  if (keystate[bindings[11]] && !old_z_value && !inPauseMenu && !g_inSettingsMenu)
   {
     if (protag_is_talking == 1)
     {
@@ -3134,11 +3396,13 @@ void getInput(float &elapsed)
               g_inventoryUiIsLevelSelect = 0;
               g_inventoryUiIsKeyboard = 0;
               inPauseMenu = 0;
-              breakpoint();
               adventureUIManager->hideInventoryUI();
+  
 
               adventureUIManager->talker->dialogue_index++;
-              adventureUIManager->talker->dialogue_index++;
+              M("KB: Check dialogue index after");
+              D(adventureUIManager->talker->dialogue_index);
+              D(adventureUIManager->talker->sayings.at(adventureUIManager->talker->dialogue_index));
               adventureUIManager->continueDialogue();
 
 
@@ -3220,9 +3484,9 @@ void getInput(float &elapsed)
                   {
         
                     if(g_levelSequence->levelNodes[i]->locked) {
-                      adventureUIManager->escText->updateText("???", WIN_WIDTH * g_fontsize, 0.9);
+                      adventureUIManager->escText->updateText("???", -1, 0.9);
                     } else {
-                      adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, WIN_WIDTH * g_fontsize, 0.9);
+                      adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
         
                     }
         
@@ -3294,7 +3558,7 @@ void getInput(float &elapsed)
       
     }
   }
-  // D(mainProtag->inventory[mainProtag->inventory.size() - 1 -inventorySelection].first->name);
+
   dialogue_cooldown -= elapsed;
   if (keystate[bindings[11]] && !inPauseMenu)
   {
@@ -3518,90 +3782,7 @@ void getInput(float &elapsed)
 
   if (keystate[SDL_SCANCODE_F] && fullscreen_refresh)
   {
-    g_fullscreen = !g_fullscreen;
-    if (g_fullscreen)
-    {
-      SDL_GetCurrentDisplayMode(0, &DM);
-
-      SDL_GetWindowSize(window, &saved_WIN_WIDTH, &saved_WIN_HEIGHT);
-
-      SDL_SetWindowSize(window, DM.w, DM.h);
-      SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
-      SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-
-
-      // we need to reload some (all?) textures
-      for (auto x : g_mapObjects)
-      {
-        if (x->mask_fileaddress != "&")
-        {
-          x->reloadTexture();
-        }
-      }
-
-      // reassign textures for asset-sharers
-      for (auto x : g_mapObjects)
-      {
-        x->reassignTexture();
-      }
-
-      // the same must be done for masked tiles
-      for (auto t : g_tiles)
-      {
-        if (t->mask_fileaddress != "&")
-        {
-          t->reloadTexture();
-        }
-      }
-
-      // reassign textures for any asset-sharers
-      for (auto x : g_tiles)
-      {
-        x->reassignTexture();
-      }
-    }
-    else
-    {
-
-      SDL_SetWindowFullscreen(window, 0);
-
-      // restore saved width/height
-      SDL_SetWindowSize(window, saved_WIN_WIDTH, saved_WIN_HEIGHT);
-      SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
-      SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-
-      // we need to reload some (all?) textures
-      for (auto x : g_mapObjects)
-      {
-        if (x->mask_fileaddress != "&")
-        {
-          x->reloadTexture();
-          I("reloaded a texture of mask");
-          I(x->mask_fileaddress);
-        }
-      }
-
-      // reassign textures for asset-sharers
-      for (auto x : g_mapObjects)
-      {
-        x->reassignTexture();
-      }
-
-      // the same must be done for masked tiles
-      for (auto t : g_tiles)
-      {
-        if (t->mask_fileaddress != "&")
-        {
-          t->reloadTexture();
-        }
-      }
-
-      // reassign textures for any asset-sharers
-      for (auto x : g_tiles)
-      {
-        x->reassignTexture();
-      }
-    }
+    toggleFullscreen();
   }
 
   if (keystate[SDL_SCANCODE_F])
@@ -3634,5 +3815,92 @@ void getInput(float &elapsed)
   if (keystate[SDL_SCANCODE_I] && devMode)
   {
     devinput[19] = 1;
+  }
+}
+
+void toggleFullscreen() {
+  g_fullscreen = !g_fullscreen;
+  if (g_fullscreen)
+  {
+    SDL_GetCurrentDisplayMode(0, &DM);
+
+    SDL_GetWindowSize(window, &saved_WIN_WIDTH, &saved_WIN_HEIGHT);
+
+    SDL_SetWindowSize(window, DM.w, DM.h);
+    SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
+    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+
+
+    // we need to reload some (all?) textures
+    for (auto x : g_mapObjects)
+    {
+      if (x->mask_fileaddress != "&")
+      {
+        x->reloadTexture();
+      }
+    }
+
+    // reassign textures for asset-sharers
+    for (auto x : g_mapObjects)
+    {
+      x->reassignTexture();
+    }
+
+    // the same must be done for masked tiles
+    for (auto t : g_tiles)
+    {
+      if (t->mask_fileaddress != "&")
+      {
+        t->reloadTexture();
+      }
+    }
+
+    // reassign textures for any asset-sharers
+    for (auto x : g_tiles)
+    {
+      x->reassignTexture();
+    }
+  }
+  else
+  {
+
+    SDL_SetWindowFullscreen(window, 0);
+
+    // restore saved width/height
+    SDL_SetWindowSize(window, saved_WIN_WIDTH, saved_WIN_HEIGHT);
+    SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
+    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+
+    // we need to reload some (all?) textures
+    for (auto x : g_mapObjects)
+    {
+      if (x->mask_fileaddress != "&")
+      {
+        x->reloadTexture();
+        I("reloaded a texture of mask");
+        I(x->mask_fileaddress);
+      }
+    }
+
+    // reassign textures for asset-sharers
+    for (auto x : g_mapObjects)
+    {
+      x->reassignTexture();
+    }
+
+    // the same must be done for masked tiles
+    for (auto t : g_tiles)
+    {
+      if (t->mask_fileaddress != "&")
+      {
+        t->reloadTexture();
+      }
+    }
+
+    // reassign textures for any asset-sharers
+    for (auto x : g_tiles)
+    {
+      x->reassignTexture();
+    }
   }
 }

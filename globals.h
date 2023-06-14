@@ -56,6 +56,8 @@ class ui;
 
 class adventureUI;
 
+class settingsUI;
+
 class attack;
 
 class weapon;
@@ -398,6 +400,19 @@ int SoldUIUp = 1;
 int SoldUIDown = 1;
 int SoldUILeft = 1;
 int SoldUIRight = 1;
+int g_inputDelayFrames = 30;      //For the nice effect where the user can press a button or hold it
+int g_inputDelayRepeatFrames = 6;
+
+//options / settings menu
+bool g_inSettingsMenu = 0;
+settingsUI* g_settingsUI;
+SDL_Scancode g_swallowedKey; //for swallowing a key from a polled event
+bool g_swallowAKey = 0;          //set this to one to swallow the next key pressed
+bool g_awaitSwallowedKey = 0;
+bool g_swallowedAKeyThisFrame = 0;
+int g_pollForThisBinding = -1;
+string g_affirmStr = "Yes";
+string g_negStr = "No";
 
 // physics
 float g_gravity = 220;
@@ -493,12 +508,12 @@ class camera
 };
 
 // zoom is really g_defaultZoom when screenwidth is STANDARD_SCREENWIDTH
-int WIN_WIDTH = 640;
-int WIN_HEIGHT = 480;
+//int WIN_WIDTH = 640;
+//int WIN_HEIGHT = 480;
 // theres some warping if STANDARD_SCREENWIDTH < WIN_WIDTH but that shouldn't ever happen
 // if in the future kids have screens with 10 million pixels across feel free to mod the game
 const int STANDARD_SCREENWIDTH = 1080;
-// int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
+ int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 // int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
 int old_WIN_WIDTH = 0; // used for detecting change in window width to recalculate scalex and y
 int saved_WIN_WIDTH = WIN_WIDTH;
@@ -544,8 +559,16 @@ string g_waypointOfLastSave = "a";
 // input
 const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 bool devinput[50] = {false};
+
+//these are meant to make it easy to port bindable inputs
 bool input[16] = {false};
 bool oldinput[16] = {false};
+
+//these are for UNbindable inputs, which are for using the settings menu
+//that way, the player can't be stuck with impossible binds
+bool staticInput[5] = {false};
+bool oldStaticInput[5] = {false};
+
 SDL_Scancode bindings[16];
 bool left_ui_refresh = false; // used to detect when arrows is pressed and then released
 bool right_ui_refresh = false;
@@ -612,6 +635,7 @@ vector<SDL_Texture*>* g_alphabet_textures;
 vector<SDL_Texture*> g_alphabetLower_textures;
 vector<SDL_Texture*> g_alphabetUpper_textures;
 vector<float> g_alphabet_widths;
+vector<float> g_alphabet_upper_widths;
 int g_keyboardInputLength = 12;
 string g_keyboardSaveToField = ""; //the save-field to write keyboard input to, when ready
 SDL_Color g_textcolor = { 155, 115, 115 };
