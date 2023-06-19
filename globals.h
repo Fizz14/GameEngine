@@ -193,6 +193,11 @@ bool showImportantMessages = 1;
   std::cout << #a << ": " << (a) << endl; \
 }
 
+#define ID(a)                                \
+{                                         \
+  std::cout << #a << ": " << (a) << endl; \
+}
+
   template <typename T>
 void M(T msg, bool disableNewline = 0)
 {
@@ -313,8 +318,62 @@ int g_lastFunctionalY = 0;
 int g_fogMiddleX = 10;
 int g_fogMiddleY = 9;
 float g_viewdist = 310; // 240, 310 is casual, 340 could be from an upgrade.   it was 310 500 is max
+//instead of calculating distance every frame, lookup which boxes should be open in a table
+
+std::vector<std::vector<int>>g_fog_window = {
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0},
+  {0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0},
+  {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0},
+  {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0},
+  {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0},
+  {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0},
+  {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0},
+  {0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0},
+  {0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+};
+
+
+//for debugging fog-screen alignment
+//std::vector<std::vector<int>>g_fog_window = {
+//  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+//  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+//};
+//
+
+
 bool g_fogIgnoresLOS = 0;
-int g_tile_fade_speed = 50; // 40
+int g_tile_fade_speed = 90; // 40, 50
 int xtileshift = 0;
 int ytileshift = 0;
 bool g_force_cookies_update = 0;
@@ -381,6 +440,10 @@ float g_transitionSpeed = 3; // 3, 9
 float use_cooldown = 0; // misleading, its not for attacks at all
 vector<attack *> AdventureattackSet;
 int inPauseMenu = 0;
+bool g_firstFrameOfPauseMenu = 0; //true if this is the first frame of the pause menu, for aligning the cursor
+bool g_firstFrameOfSettingsMenu = 0; //true if this is the first frame of the pause menu, for aligning the cursor
+float g_UiGlideSpeedX = 0.012;
+float g_UiGlideSpeedY; //set from g_UiGlideSpeedX based on aspect ratio
 bool old_pause_value = 1;		// wait until the user releases the button to not count extra presses
 int inventoryScroll = 0;		// how many rows in the inventory we've scrolled thru
 int inventorySelection = 1; // which item in the inventory is selected
@@ -411,11 +474,22 @@ bool g_swallowAKey = 0;          //set this to one to swallow the next key press
 bool g_awaitSwallowedKey = 0;
 bool g_swallowedAKeyThisFrame = 0;
 int g_pollForThisBinding = -1;
-string g_affirmStr = "Yes";
-string g_negStr = "No";
+int g_whichRebindValue;
+const string g_affirmStr = "Yes";
+const string g_negStr = "No";
+const vector<string> g_graphicsStrings = {"Very Low", "Low", "Medium", "High"};
+
+//blinking text
+int g_blinkingMS = 0;
+const int g_maxBlinkingMS = 1000;
+bool g_blinkHidden = 0; //alternates every maxBlinkingMS
+
 
 // physics
 float g_gravity = 220;
+int g_hasBeenHoldingJump = 0; //for letting the player hold jump to go higher
+int g_jumpGaranteedAccelMs = 0; 
+int g_maxJumpGaranteedAccelMs = 150; //for x ms protag is garanteed to accelerate
 // These two variables contain the position of the hit of the last lineTrace()
 int lineTraceX, lineTraceY;
 
@@ -508,12 +582,12 @@ class camera
 };
 
 // zoom is really g_defaultZoom when screenwidth is STANDARD_SCREENWIDTH
-//int WIN_WIDTH = 640;
-//int WIN_HEIGHT = 480;
+int WIN_WIDTH = 640;
+int WIN_HEIGHT = 480;
 // theres some warping if STANDARD_SCREENWIDTH < WIN_WIDTH but that shouldn't ever happen
 // if in the future kids have screens with 10 million pixels across feel free to mod the game
 const int STANDARD_SCREENWIDTH = 1080;
- int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
+//int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 // int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
 int old_WIN_WIDTH = 0; // used for detecting change in window width to recalculate scalex and y
 int saved_WIN_WIDTH = WIN_WIDTH;
@@ -574,7 +648,7 @@ bool left_ui_refresh = false; // used to detect when arrows is pressed and then 
 bool right_ui_refresh = false;
 bool fullscreen_refresh = true;
 bool quit = false;
-string config = "default";
+string g_config = "default";
 bool g_holdingCTRL = 0;
 // this is most noticable with a rifle, but sometimes when you try to shoot
 // diagonally, you press one button (e.g. up) a frame or so early then the other (e.g. left)
@@ -653,6 +727,10 @@ bool g_forceEndDialogue = 0; // used to end dialogue when the talking entity has
 SDL_Texture *nodeDebug;
 clock_t debugClock;
 string g_lifecycle = "Alpha";
+ui* g_dijkstraDebugRed;
+ui* g_dijkstraDebugBlue;
+ui* g_dijkstraDebugYellow;
+entity* g_dijkstraEntity;
 
 // world
 int g_layers = 12;							 // max blocks in world
@@ -703,9 +781,11 @@ float g_afterspin_duration_max = 200; //duration of afterspin imobility
 float g_spinning_xvel = 0; //x and y velocities are locked upon starting a spin
 float g_spinning_yvel = 0;
 float g_spinning_boost = 2.6;
+float g_doubleSpinHelpMs = 0; //a spin can cancel another spin in the last x ms (double spin)
 bool g_protag_jumped_this_frame = 0;
 
 bool storedJump = 0;
+bool storedSpin = 0;
 
 bool fileExists(const std::string &name)
 {
@@ -877,25 +957,33 @@ float convertFrameToAngle(int frame, bool flipped)
   return 0;
 }
 
+//wrap an angle so that it is within the range of 0 and 2pi radians
+float wrapAngle(float input) {
+  while(input < 0) {
+    input+= 2*M_PI;
+  }
+  while(input > 2*M_PI) {
+    input-= 2*M_PI;
+  }
+  return input;
+}
+
 // convert an angle to a sprite's frame, for eight-frame sprites (arms)
 int convertAngleToFrame(float angle)
 {
-  vector<float> angles = {0, (M_PI * 1) / 4, M_PI / 2, (M_PI * 3) / 4, M_PI, (M_PI * 5) / 4, (M_PI * 6) / 4, (M_PI * 7) / 4, M_PI * 2};
+  //up is pi/2
+  vector<float> angles = {0, (M_PI * 1) / 4, M_PI / 2, (M_PI * 3) / 4, M_PI, (M_PI * 5) / 4, (M_PI * 6) / 4, (M_PI * 7) / 4};
+  vector<int> frames = {6, 7, 0, 1, 2, 3, 4, 5};
+
   for (long long unsigned int i = 0; i < angles.size(); i++)
   {
-    if (angles[i] + M_PI / 8 > angle)
+    if (wrapAngle(angles[i] + M_PI / 8) > angle)
     {
-      // this rather silly check is done to accomodate certain values of orbitOffset that would  push angle to not quite fit normally
-      // this change came with the ninth entry in the vector of angles
-      if (i == 8)
-      {
-        i = 0;
-      }
-      return 7 - i;
+      return frames[i];
     }
   }
 
-  return 0;
+  return 5;
 }
 
 // measures distance in the world, not by the screen.

@@ -1619,6 +1619,22 @@ void init_map_writing(SDL_Renderer *renderer)
       texstrs.push_back(entry.path().u8string());
     }
   }
+
+  if (devMode)
+  {
+    floortexDisplay->show = 1;
+    captexDisplay->show = 1;
+    walltexDisplay->show = 1;
+  }
+  else
+  {
+    floortexDisplay->show = 0;
+    captexDisplay->show = 0;
+    walltexDisplay->show = 0;
+    // float scalex = ((float)WIN_WIDTH / 1920) * g_defaultZoom;
+    // float scaley = scalex;
+    SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
+  }
 }
 
 // called every frame if map_editing is true
@@ -7339,12 +7355,14 @@ void write_map(entity *mapent)
       auto parts = splitString(s, ' ');
       g_keyboardSaveToField = parts[1];
       g_keyboardInput = "";
+      inventorySelection = 0;
       g_alphabet = g_alphabet_lower;
       g_alphabet_textures = &g_alphabetLower_textures;
 
       g_inventoryUiIsLevelSelect = 0;
       g_inventoryUiIsKeyboard = 1;
       inPauseMenu = 1;
+      g_firstFrameOfPauseMenu = 1;
       adventureUIManager->showInventoryUI();
 
       // this is the stuff we do when we read '#' (end scripting)
@@ -7387,6 +7405,7 @@ void write_map(entity *mapent)
       //write to settingsUi from related variables
       g_settingsUI->show();
       g_inSettingsMenu = 1;
+      g_firstFrameOfSettingsMenu = 1;
       g_settingsUI->positionOfCursor = 0;
       g_settingsUI->cursorIsOnBackButton = 0;
 
@@ -7982,7 +8001,9 @@ void write_map(entity *mapent)
     {
       g_inventoryUiIsLevelSelect = 1;
       g_inventoryUiIsKeyboard = 0;
+      inventorySelection = 0;
       inPauseMenu = 1;
+      g_firstFrameOfPauseMenu = 1;
       
       adventureUIManager->escText->updateText("", -1, 0.9);
       adventureUIManager->showInventoryUI();

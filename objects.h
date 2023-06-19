@@ -27,6 +27,32 @@
 
 using namespace std;
 
+/*
+ *         pi/2 up
+ *
+ *
+ *   pi left  *      0 right
+ *    
+ *
+ *         3pi/4 down
+ */
+
+
+
+//returns the direction to turn from angle a to angle b
+bool getTurningDirection(float a, float b) {
+  b -= a;
+  b = wrapAngle(b);
+  if(b < M_PI) {
+    //turn counterclockwise (positive)
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+
+
 void parseScriptForLabels(vector<string> &sayings) {
   //parse sayings for lables
   vector<pair<string, int>> symboltable;
@@ -2535,6 +2561,19 @@ class entity:public actor {
     float yvel = 0;
     float zvel = 0;
 
+    // angular reform of movement system
+    // as long-planned, entities will not move in explicit directions,
+    // but rather specify target angles and move (forwards)
+    float steeringAngle = 0; //degrees, 0-360
+    float targetSteeringAngle = 0; //degrees
+    float turningSpeed = 1; //turns per second
+
+    float forwardsVelocity; //set by inputting movement, this will be converted to xvel and yvel based on to feed back into the old system.
+
+    // e.g., targetSteeringAngle is set for the protag when a movement key is pressed,
+    // and steeringAngle is slowly interpolated to that angle, used for both
+    // the frame chosen and the actual force of movement on the protag.
+
     //this is for making entities point where they are trying to walk
     float walkingxaccel = 0;
     float walkingyaccel = 0;
@@ -2562,6 +2601,8 @@ class entity:public actor {
     //are low-level, and updated fickely.
     //destination will be pursued via pathfinding each frame, if set.
     navNode* Destination = nullptr;
+
+    float angleToTarget = 0;
 
 
 
@@ -2837,6 +2878,9 @@ class entity:public actor {
 
       file >> comment;
       file >> this->xagil;
+
+      file >> comment;
+      file >> this->turningSpeed;
 
 
       file >> comment;
@@ -3628,79 +3672,27 @@ class entity:public actor {
 
         if(RectOverlap(obj, cam)) {
 
-
-          //set frame from animation
-          // animation is y, frameInAnimation is x
-          if (yframes < 3) {
+          //set visual direction
+          if(forwardsVelocity > 0) {
+            animation = convertAngleToFrame(steeringAngle);
             flip = SDL_FLIP_NONE;
-            animation = 0;
-          } else if(hadInput) {
-            if(yframes >= 8) {
-              flip = SDL_FLIP_NONE;
-              if(up) {
-                if(left) {
-                  animation = 1;
-                } else if (right) {
-                  animation = 7;
-                } else {
-                  animation = 0;
-                }
-              } else if (down) {
-                if(left) {
-                  animation = 3;
-                } else if (right) {
-                  animation = 5;
-                } else {
-                  animation = 4;
-                }
-              } else {
-                if(left) {
-                  animation = 2;
-                } else if (right) {
-                  animation = 6;
-                } else {
-                  animation = 4;
-                }
+            if(yframes < 8) {
+              if(animation == 5) {
+                animation = 3;
+                flip = SDL_FLIP_HORIZONTAL;
+              } else if(animation == 6) {
+                animation = 2;
+                flip = SDL_FLIP_HORIZONTAL;
+              } else if(animation == 7) {
+                animation = 1;
+                flip = SDL_FLIP_HORIZONTAL;
               }
-            } else {
-              if(up) {
-                if(left) {
-                  animation = 1;
-                  flip = SDL_FLIP_NONE;
-                } else if (right) {
-                  animation = 1;
-                  flip = SDL_FLIP_HORIZONTAL;
-                } else {
-                  animation = 0;
-                  flip = SDL_FLIP_NONE;
-                }
-              } else if (down) {
-                if(left) {
-                  animation = 3;
-                  flip = SDL_FLIP_NONE;
-                } else if (right) {
-                  animation = 3;
-                  flip = SDL_FLIP_HORIZONTAL;
-                } else {
-                  animation = 4;
-                  flip = SDL_FLIP_NONE;
-                }
-              } else {
-                if(left) {
-                  animation = 2;
-                  flip = SDL_FLIP_NONE;
-                } else if (right) {
-                  animation = 2;
-                  flip = SDL_FLIP_HORIZONTAL;
-                } else {
-                  //default
-                  animation = 4;
-                  flip = SDL_FLIP_NONE;
-                }
-              }
+  
             }
-          } 
-
+            if(animation > 5 || animation < 0) {
+              animation = 0;
+            }
+          }
           
          
         
@@ -3785,8 +3777,9 @@ class entity:public actor {
 
       void move_up() {
         if(stunned) {return;}
+        forwardsVelocity = (xagil * (100 - statusSlownPercent));
         //y-=xagil;
-        yaccel = -1* (xagil * (100 - statusSlownPercent));
+        //yaccel = -1* (xagil * (100 - statusSlownPercent));
         if(shooting) { return;}
         up = true;
         down = false;
@@ -3802,8 +3795,9 @@ class entity:public actor {
 
       void move_down() {
         if(stunned) {return;}
+        forwardsVelocity = (xagil * (100 - statusSlownPercent));
         //y+=xagil;
-        yaccel = (xagil * (100 - statusSlownPercent));
+        //yaccel = (xagil * (100 - statusSlownPercent));
         if(shooting) { return;}
         down = true;
         up = false;
@@ -3812,8 +3806,9 @@ class entity:public actor {
 
       void move_left() {
         if(stunned) {return;}
+        forwardsVelocity = (xagil * (100 - statusSlownPercent));
         //x-=xagil;
-        xaccel = -1 * (xagil * (100 - statusSlownPercent));
+        //xaccel = -1 * (xagil * (100 - statusSlownPercent));
         //x -= 3;
         if(shooting) { return;}
         left = true;
@@ -3830,8 +3825,9 @@ class entity:public actor {
 
       void move_right() {
         if(stunned) {return;}
+        forwardsVelocity = (xagil * (100 - statusSlownPercent));
         //x+=xagil;
-        xaccel = (xagil * (100 - statusSlownPercent));
+        //xaccel = (xagil * (100 - statusSlownPercent));
         if(shooting) { return;}
         right = true;
         left = false;
@@ -4115,7 +4111,71 @@ class entity:public actor {
         }
 
         if(!dynamic) { return nullptr; }
+        
 
+        //set xaccel and yaccel from forwardsVelocity
+        xaccel = cos(steeringAngle) * forwardsVelocity;
+        yaccel = -sin(steeringAngle) * forwardsVelocity;
+        forwardsVelocity = 0;
+ 
+
+        if(this == protag) {
+          if(up) {
+            if(left) {
+              //up + left
+              targetSteeringAngle = 3*M_PI/4;
+  
+            } else if(right) {
+              //up + right
+              targetSteeringAngle = M_PI/4;
+  
+            } else {
+              //up
+              targetSteeringAngle = M_PI/2;
+  
+            }
+  
+          } else if(down) {
+            if(left) {
+              //down + left
+              targetSteeringAngle = 5 * M_PI/4;
+  
+            } else if(right) {
+              //down + right
+              targetSteeringAngle = 7 * M_PI/4;
+  
+            } else {
+              //down
+              targetSteeringAngle = 3 * M_PI/2;
+  
+            }
+   
+          } else if(left) {
+            //left
+            targetSteeringAngle = M_PI;
+  
+          } else if(right) {
+            //right
+            targetSteeringAngle = 0;
+          }
+        }
+
+        if( (this != protag) || ((protag_can_move) && (up || down || left || right))) {
+          float amountToTurn = turningSpeed * elapsed/1000 * 2*M_PI;
+          if(g_spinning_duration > 0) {
+            amountToTurn = 2 * M_PI;
+          }
+          if( abs(targetSteeringAngle - steeringAngle) < amountToTurn) {
+            steeringAngle = targetSteeringAngle;
+          } else {
+            if(getTurningDirection(steeringAngle, targetSteeringAngle)) {
+              steeringAngle += amountToTurn;
+            } else {
+              steeringAngle -= amountToTurn;
+            }
+          }
+          steeringAngle = wrapAngle(steeringAngle);
+        }
 
         //normalize accel vector
         float vectorlen = pow( pow(xaccel, 2) + pow(yaccel, 2), 0.5) / (xmaxspeed * (1 - statusSlownPercent));
@@ -4126,6 +4186,7 @@ class entity:public actor {
           yaccel /=vectorlen;
           yaccel /= p_ratio;
         }
+
         if(xaccel > 0) {
           xvel += xaccel * ((double) elapsed / 256.0);
         }
@@ -4629,8 +4690,10 @@ class entity:public actor {
             }
           }
         }
+ 
 
         if(z > floor + 1) {
+
           zaccel -= g_gravity * ((double) elapsed / 256.0);
           grounded = 0;
         } else {
@@ -4660,6 +4723,12 @@ class entity:public actor {
 
 
         zvel += zaccel * ((double) elapsed / 256.0);
+
+        if(this == protag && zvel < 75 && g_jumpGaranteedAccelMs < 0 ) {
+          if(!input[8]) {
+            if(zvel > 0) {zvel = 0;}
+          }
+        }
 
         //for banish animation from scripts
         if(this->banished && zvel <= 0) {
@@ -5036,73 +5105,6 @@ class entity:public actor {
               float yvector;
               //bool recalcAngle = 0; //should we change his angle in the first place?
               //combatrange is higher than shooting range because sometimes that range is broken while a fight is still happening, so he shouldnt turn away
-              if(distanceToTarget < this->hisweapon->attacks[hisweapon->combo]->range * 1.7) {
-                //set vectors from target
-                xvector = (this->getOriginX()) - (target->getOriginX());
-                yvector = (this->getOriginY()) - (target->getOriginY());
-                recalcAngle = 1;
-              } else {
-                //set vectors from velocity
-                xvector = -walkingxaccel;
-                yvector = -walkingyaccel;
-
-                //if he's not traveling very fast it looks natural to not change angle
-                //recalcAngle+= elapsed;
-                //if(Distance(0,0,xaccel, yaccel) > this->xmaxspeed * 0.8) {recalcAngle = 1;}
-                recalcAngle = (Distance(0,0,xvector, yvector) > 0);
-
-              }
-
-              if(recalcAngle) {
-                recalcAngle = -1000; //update every second
-                float angle = atan2(yvector, xvector);
-                flip = SDL_FLIP_NONE;
-                up = 0; down = 0; left = 0; right = 0;
-                if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
-                  if(yframes >= 8) {
-                    animation = 6;
-                  } else {
-                    animation = 2;
-                    flip = SDL_FLIP_HORIZONTAL;
-                  }
-                  right = 1;
-                } else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
-                  if(yframes >= 8) {
-                    animation = 7;
-                  } else {
-                    animation = 1;
-                    flip = SDL_FLIP_HORIZONTAL;
-                  }
-                  right = 1;
-                  up = 1;
-                } else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
-                  animation = 0;
-                  up = 1;
-                } else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
-                  animation = 1;
-                  up = 1;
-                  left = 1;
-                } else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
-                  animation = 2;
-                  left = 1;
-                } else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
-                  animation = 3;
-                  left = 1;
-                  down = 1;
-                } else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
-                  animation = 4;
-                  down = 1;
-                } else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
-                  if(yframes >= 8) {
-                    animation = 5;
-                  } else {
-                    flip = SDL_FLIP_HORIZONTAL;
-                    animation = 3;
-                  }
-                  right = 1;
-                  down = 1;
-                }
-              }
 
               //now that we have a direction, shoot
               if(shooting) {
@@ -5133,64 +5135,6 @@ class entity:public actor {
           //bool recalcAngle = 0; //should we change his angle in the first place?
           //combatrange is higher than shooting range because sometimes that range is broken while a fight is still happening, so he shouldnt turn away
 
-          //set vectors from velocity
-          float xvector = -walkingxaccel;
-          float yvector = -walkingyaccel;
-
-          //if he's not traveling very fast it looks natural to not change angle
-          //recalcAngle = 1;
-          if(recalcAngle) {
-            recalcAngle = -1000; //update every second
-
-            float angle = atan2(yvector, xvector);
-            flip = SDL_FLIP_NONE;
-            up = 0; down = 0; left = 0; right = 0;
-            if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
-              if(yframes >= 8) {
-                animation = 6;
-              } else {
-                animation = 2;
-                flip = SDL_FLIP_HORIZONTAL;
-              }
-              right = 1;
-            } else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
-              if(yframes >= 8) {
-                animation = 7;
-              } else {
-                animation = 1;
-                flip = SDL_FLIP_HORIZONTAL;
-              }
-              right = 1;
-              up = 1;
-            } else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
-              animation = 0;
-              up = 1;
-            } else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
-              animation = 1;
-              up = 1;
-              left = 1;
-            } else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
-              animation = 2;
-              left = 1;
-            } else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
-              animation = 3;
-              left = 1;
-              down = 1;
-            } else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
-              animation = 4;
-              down = 1;
-            } else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
-              if(yframes >= 8) {
-                animation = 5;
-              } else {
-                flip = SDL_FLIP_HORIZONTAL;
-                animation = 3;
-              }
-              right = 1;
-              down = 1;
-            }
-          }
-
           //here's the code for roaming/patrolling
           //we aren't agrod.
           if(traveling) {
@@ -5211,62 +5155,6 @@ class entity:public actor {
               //should we be ready for our next travel-instruction?
               if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 32) {
                 readyForNextTravelInstruction = 1;
-              }
-              {
-                //set vectors from velocity
-                float xvector = -xaccel;
-                float yvector = -yaccel;
-                //!!!optimize
-                if(1) {
-
-                  float angle = atan2(yvector, xvector);
-                  flip = SDL_FLIP_NONE;
-                  up = 0; down = 0; left = 0; right = 0;
-                  if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
-                    if(yframes >= 8) {
-                      animation = 6;
-                    } else {
-                      animation = 2;
-                      flip = SDL_FLIP_HORIZONTAL;
-                    }
-                    right = 1;
-                  } else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
-                    if(yframes >= 8) {
-                      animation = 7;
-                    } else {
-                      animation = 1;
-                      flip = SDL_FLIP_HORIZONTAL;
-                    }
-                    right = 1;
-                    up = 1;
-                  } else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
-                    animation = 0;
-                    up = 1;
-                  } else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
-                    animation = 1;
-                    up = 1;
-                    left = 1;
-                  } else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
-                    animation = 2;
-                    left = 1;
-                  } else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
-                    animation = 3;
-                    left = 1;
-                    down = 1;
-                  } else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
-                    animation = 4;
-                    down = 1;
-                  } else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
-                    if(yframes >= 8) {
-                      animation = 5;
-                    } else {
-                      flip = SDL_FLIP_HORIZONTAL;
-                      animation = 3;
-                    }
-                    right = 1;
-                    down = 1;
-                  }
-                }
               }
             }
           }
@@ -5322,60 +5210,32 @@ class entity:public actor {
           
         } else 
           // monster movement
-          if(target !=  nullptr && target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) {
+          if(target != nullptr) {
+            angleToTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
+            angleToTarget = wrapAngle(angleToTarget);
+          }
+          g_dijkstraEntity = this;
+
+          if(target !=  nullptr && target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) ) {
           //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
           
+          targetSteeringAngle = angleToTarget;
           if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
-            float ydist = 0;
-            float xdist = 0;
-  
-            xdist = abs(target->getOriginX() - getOriginX());
-            ydist = abs(target->getOriginY() - getOriginY());
-  
-            float vect = pow((pow(xdist,2)  + pow(ydist,2)), 0.5);
-            float factor = 1;
-  
-            if(vect != 0) {
-              factor = 1 / vect;
-            }
-  
-            xdist *= factor;
-            ydist *= factor;
-  
-            if(target->getOriginX() > getOriginX()) {
-              xaccel = this->xagil * xdist;
-              walkingxaccel = xaccel;
-            } else {
-              xaccel = -this->xagil * xdist;
-              walkingxaccel = xaccel;
-            }
-            if(target->getOriginY() > getOriginY()) {
-              yaccel = this->xagil * ydist;
-              walkingyaccel = yaccel;
-            } else {
-              yaccel = -this->xagil * ydist;
-              walkingyaccel = yaccel;
-            }
-
+            forwardsVelocity = xagil;
           } else {
-            walkingyaccel = 0; walkingxaccel = 0;
-            
             //stop if in range
-            yaccel = 0;
-            xaccel = 0;
+            forwardsVelocity = 0;
           }
-
-          //spring to get over obstacles
-          //if(target->z > this->z + 32 && target->grounded && this->grounded) {
-          //this->zaccel = 200;
-          //}
 
           //recalculate current when we lose los
           current = nullptr;
+          dest = nullptr;
+          Destination = nullptr;
+          timeSinceLastDijkstra = -1;
+
+
         } else {
           if(Destination != nullptr) {
-            //M("BasicNavigate()");
-            //T(Destination);
             BasicNavigate(Destination);
           }
         }
@@ -5405,42 +5265,11 @@ class entity:public actor {
               //repeat with half of 2/3 of the range. it might just be better to have them navigate
               //to the player
 
-              //use frame to get prefered cardinal point
-              int index = 0;
-              switch(animation) {
-                case 0:
-                  //facing up
-                  index = 0;
-                  break;
-                case 1:
-                  //facing upleft or upright
-                  if(flip == SDL_FLIP_HORIZONTAL) {
-                    index = 1;
-                  } else {
-                    index = 7;
-                  }
-                  break;
-                case 2:
-                  //facing upleft or upright
-                  if(flip == SDL_FLIP_HORIZONTAL) {
-                    index = 2;
-                  } else {
-                    index = 6;
-                  }
-                  break;
-                case 3:
-                  //facing upleft or upright
-                  if(flip == SDL_FLIP_HORIZONTAL) {
-                    index = 3;
-                  } else {
-                    index = 5;
-                  }
-                  break;
-                case 4:
-                  //facing upleft or upright
-                  index = 4;
-                  break;
-              }
+              //DEPRECATED - use frame to get prefered cardinal point
+              //NOW - use angle to target to get prefered cardinal point
+              int index = convertAngleToFrame(angleToTarget);
+
+
 
               //use this code for strafing
               //rotate clockwise
@@ -5512,7 +5341,7 @@ class entity:public actor {
           lastx = x;
           lasty = y;
           if(stuckTime > maxStuckTime) {
-            M("A PATHFINDER IS STUCK");
+            //M("A PATHFINDER IS STUCK");
             //spring to get over obstacles
             //this->zaccel = 350;
             //stuckTime = 0;
@@ -5532,7 +5361,7 @@ class entity:public actor {
     //all-purpose pathfinding function
     void BasicNavigate(navNode* ultimateTargetNode) {
       if(g_navNodes.size() < 1) {return;}
-      if(current == nullptr) {
+      if(current == nullptr) { //modified during rotational overhaul
         
         //around the time when I started getting organs to follow the player
         //i noticed that sometimes entities would lose LOS and take the long
@@ -5548,41 +5377,12 @@ class entity:public actor {
       // dest->Render(0,255,0);
       // Destination->Render(0,0,255);
 
-      float ydist = 0;
-      float xdist = 0;
+      float angleToTarget = atan2(dest->x - getOriginX(), dest->y - getOriginY()) - M_PI/2;
+      angleToTarget = wrapAngle(angleToTarget);
+      targetSteeringAngle = angleToTarget;
+      forwardsVelocity = xagil;
 
-      xdist = abs(dest->x - getOriginX());
-      ydist = abs(dest->y - getOriginY());
-
-      float vect = pow((pow(xdist,2)  + pow(ydist,2)), 0.5);
-      float factor = 1;
-
-      if(vect != 0) {
-        factor = 1 / vect;
-      }
-
-      xdist *= factor;
-      ydist *= factor;
-
-      if(dest->x > getOriginX()) {
-        xaccel = this->xagil * xdist;
-        walkingxaccel = xaccel;
-      } else {
-        xaccel = -this->xagil * xdist;
-        walkingxaccel = xaccel;
-      }
-      if(dest->y > getOriginY()) {
-        yaccel = this->xagil * ydist;
-        walkingyaccel = yaccel;
-      } else {
-        yaccel = -this->xagil * ydist;
-        walkingyaccel = yaccel;
-      }
-      //spring to get over obstacles
-      if(dest->z > this->z + 32 && this->grounded) {
-        this->zaccel = 200;
-      }
-
+      
       int prog = 0;
       if(abs(dest->y - getOriginY() ) < 64) {
         prog ++;
@@ -5686,12 +5486,17 @@ class entity:public actor {
           }
         }
 
-
-        dest = path.at(path.size() - 1);
+        dest = path.at(path.size() - 1); 
+        if( path.size() > 0) {
+          //take next node in path
+          current = dest;
+          dest = path.at(path.size() - 1);
+          path.erase(path.begin() + path.size()-1);
+        }
       } else {
         timeSinceLastDijkstra -= elapsed;
       }
-
+      
     }
 
     //functions for inv
@@ -6354,6 +6159,8 @@ class textbox {
     float boxScale = 40;
     bool worldspace = false; //use worldspace or screenspace;
     
+    bool blinking = 0;
+    
 
     textbox(SDL_Renderer* renderer, const char* fcontent, float size, float fx, float fy, float fwidth) {
       //M("textbox()" );
@@ -6374,7 +6181,7 @@ class textbox {
       boxX = fx;
       boxY = fy;
       SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
-      SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
+      //SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
       this->width = texW;
       this->height = texH;
       thisrect = { fx, fy, (float)texW, (float)texH };
@@ -6390,7 +6197,11 @@ class textbox {
     }
     void render(SDL_Renderer* renderer, int winwidth, int winheight) {
       if(show) {
-        
+        if(blinking) {
+          if(g_blinkHidden) {
+            return;
+          }
+        }
 
         if(worldspace) {
           if(align == 1) {
@@ -6441,7 +6252,7 @@ class textbox {
       int texW = 0;
       int texH = 0;
       SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
-      SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
+      //SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
       width = texW;
       thisrect = { (float)x, (float)y, (float)texW, (float)texH };
 
@@ -6453,7 +6264,11 @@ class ui {
     float x;
     float y;
 
+    float targetx = -1; //for gliding to a position
+    float targety = -1;
+
     float xagil;
+
 
     float xaccel;
     float yaccel;
@@ -6485,6 +6300,8 @@ class ui {
     int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
     bool renderOverText = 0;
 
+    int worldspace = 0;
+
     int shrinkPixels = 0; //used for shrinking a ui element by an amount of pixels, usually in combination with some other element intended as a border
     float shrinkPercent = 0; //used for shrinking a ui element by an amount of pixels, usually in combination with some other element intended as a border
 
@@ -6513,7 +6330,17 @@ class ui {
     }
 
     void render(SDL_Renderer * renderer, camera fcamera) {
+      //proportional gliding
+      if(targetx >= 0) {
+        x = (targetx + x) / 2;
+      }
+
+      if(targety >= 0) {
+        y = (targety + y) / 2;
+      }
+
       if(this->show) {
+
 
         if(is9patch) {
           int ibound = width * WIN_WIDTH;
@@ -6590,12 +6417,18 @@ class ui {
           }
 
         } else {
-          if(heightFromWidthFactor != 0) {
-            SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
+          if(worldspace) {
+            SDL_FRect dstrect = {x, y, width, height};
+            dstrect = transformRect( dstrect );
             SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
           } else {
-            SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2};
-            SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+            if(heightFromWidthFactor != 0) {
+              SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
+              SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+            } else {
+              SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2};
+              SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+            }
           }
         }
       }
@@ -7118,8 +6951,23 @@ void clear_map(camera& cameraToReset) {
       // adventureUIManager->healthText->boxX = protagHealthbarA->x + protagHealthbarA->width/2;
       // adventureUIManager->healthText->boxY = protagHealthbarA->y - 0.005;
 
-      for(long long unsigned int i=0; i < g_ui.size(); i++){
-        g_ui[i]->render(renderer, g_camera);
+      for (long long unsigned int i = 0; i < g_ui.size(); i++)
+      {
+        if(!g_ui[i]->renderOverText) {
+          g_ui[i]->render(renderer, g_camera);
+        }
+      }
+      for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
+      {
+        g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
+  
+      //some ui are rendered over text
+      for (long long unsigned int i = 0; i < g_ui.size(); i++)
+      {
+        if(g_ui[i]->renderOverText) {
+          g_ui[i]->render(renderer, g_camera);
+        }
       }
 
       // draw pause screen
@@ -7177,6 +7025,8 @@ void clear_map(camera& cameraToReset) {
               inventoryMarker->show = 1;
               inventoryMarker->x = x / WIN_WIDTH;
               inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->x += 0.02 * 40 * ((float)WIN_WIDTH / (float)WIN_HEIGHT); 
+              inventoryMarker->y += 0.03 * 40 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
               inventoryMarker->width = itemWidth / WIN_WIDTH;
     
               float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
@@ -7242,6 +7092,9 @@ void clear_map(camera& cameraToReset) {
               inventoryMarker->show = 1;
               inventoryMarker->x = x / WIN_WIDTH;
               inventoryMarker->y = y / WIN_HEIGHT;
+              //now that it's a hand
+              inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
               inventoryMarker->width = itemWidth / WIN_WIDTH;
     
               float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
@@ -7279,9 +7132,6 @@ void clear_map(camera& cameraToReset) {
         inventoryText->show = 0;
       }
 
-      for(long long unsigned int i=0; i < g_textboxes.size(); i++){
-        g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-      }
 
       SDL_RenderCopy(renderer, g_shade, NULL, NULL);
       //SDL_RenderPresent(renderer);
@@ -7621,8 +7471,8 @@ class worldItem : public entity {
 class settingsUI {
   public:
     ui* ninePatch;
-    ui* settingsMarkerLeft;
-    ui* settingsMarkerRight;
+    ui* handMarker;
+    ui* fingerMarker;
 
     ui* backButton;
     ui* bbNinePatch;
@@ -7635,7 +7485,7 @@ class settingsUI {
 
     float yStart = 0.05;
     float yEnd = 0.9;
-    float xStart = 0.05;
+    float xStart = 0.25;
     float xEnd = 0.7;
 
     float bbXStart = 0.8;
@@ -7648,19 +7498,34 @@ class settingsUI {
     int cursorIsOnBackButton = 0;
     int minPositionOfCursor = 0;
     int maxPositionOfCursor = 0;
+    bool modifyingValue = 0; //set to one when the user selects an option and begins tinkering it
 
-    float cursorOffsetFromText = 0.02; // this is finicky, but this offsets the positioning of 
-                                      // the top of the markers from the top of the text
+    float fingerOffset = 0.016;
+    float handOffset = 0.008;
+
     float markerWidth = 0.055;
-    float markerLeftX = 0.064;
-    float markerRightX = 0.68;
+    float markerFingerX = 0.70;
+    float markerHandX = 0.68;
 
-    float markerBBOffset = 0.022; //offset position of cursor when on the back button
+    float markerBBOffset = 0.04; //offset position of cursor when on the back button
+    float markerBBOffsetY = 0.04; 
+                                  
+    const float maxVolume = 1;
+    const float minVolume = 0;
+    const float deltaVolume = 0.05;
+
+    const float maxGraphics = 3;
+    const float minGraphics = 0;
+    const float deltaGraphics = 1;
+
+    const float maxBrightness = 100;
+    const float minBrightness = 5;
+    const float deltaBrightness = 5;
 
 
     settingsUI() {
 
-      ninePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", xStart, yStart, xEnd, yEnd, 0);
+      ninePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
       ninePatch->patchwidth = 213;
       ninePatch->patchscale = 0.4;
       ninePatch->is9patch = true;
@@ -7668,19 +7533,19 @@ class settingsUI {
       ninePatch->show = 1;
       ninePatch->priority = 0;
 
-      settingsMarkerLeft = new ui(renderer, "static/ui/non_selector_left.bmp", markerLeftX, 0.1, markerWidth, 1, 2);
-      settingsMarkerLeft->persistent = 1;
-      settingsMarkerLeft->show = 1;
-      settingsMarkerLeft->priority = 3;
-      settingsMarkerLeft->heightFromWidthFactor = 1;
-      settingsMarkerLeft->renderOverText = 1;
+      handMarker = new ui(renderer, "static/ui/hand_selector.bmp", markerHandX, 0.1, markerWidth, 1, 2);
+      handMarker->persistent = 1;
+      handMarker->show = 1;
+      handMarker->priority = 3;
+      handMarker->heightFromWidthFactor = 1;
+      handMarker->renderOverText = 1;
 
-      settingsMarkerRight = new ui(renderer, "static/ui/non_selector_right.bmp", markerRightX, 0.1, markerWidth, 1, 2);
-      settingsMarkerRight->persistent = 1;
-      settingsMarkerRight->show = 1;
-      settingsMarkerRight->priority = 3;
-      settingsMarkerRight->heightFromWidthFactor = 1;
-      settingsMarkerRight->renderOverText = 1;
+      fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.bmp", markerFingerX, 0.1, markerWidth, 1, 2);
+      fingerMarker->persistent = 1;
+      fingerMarker->show = 1;
+      fingerMarker->priority = 3;
+      fingerMarker->heightFromWidthFactor = 1;
+      fingerMarker->renderOverText = 1;
 
       vector<string> optionStrings;
       
@@ -7737,11 +7602,11 @@ class settingsUI {
         if(i == 6) {content = SDL_GetScancodeName(bindings[12]);}
         if(i == 7) {content = SDL_GetScancodeName(bindings[13]);}
 
-        if(i == 8) {content = to_string(g_fullscreen); }
-        if(i == 9) {content = to_string(g_music_volume); }
-        if(i == 10) {content = to_string(g_sfx_volume); }
-        if(i == 11) {content = to_string(g_graphicsquality); }
-        if(i == 12) {content = to_string(g_brightness_setting); }
+        if(i == 8) {content = (g_fullscreen) ? g_affirmStr : g_negStr; }
+        if(i == 9) {content = to_string((int)round(g_music_volume * 100)) + "%"; }
+        if(i == 10) {content = to_string((int)round(g_sfx_volume * 100)) + "%"; }
+        if(i == 11) {content = g_graphicsStrings[g_graphicsquality]; }
+        if(i == 12) {content = to_string((int)round(g_brightness)) + "%"; }
 
         newTextbox = new textbox(renderer, content.c_str(), 30 * g_fontsize, xEnd + 0.02, yPos, 0.3);
         newTextbox->show = 0;
@@ -7760,8 +7625,8 @@ class settingsUI {
     ~settingsUI() {
       delete ninePatch;
       delete inventoryMarker;
-      delete settingsMarkerLeft;
-      delete settingsMarkerRight;
+      delete handMarker;
+      delete fingerMarker;
       delete backButton;
 
     }
@@ -7769,8 +7634,7 @@ class settingsUI {
     void show() {
       M("settingsUI::show()");
       ninePatch->show = 1;
-      settingsMarkerLeft->show = 1;
-      settingsMarkerRight->show = 1;
+      uiSelecting();
       backButton->show = 1;
       bbNinePatch->show = 1;
       for(auto x : optionTextboxes) {
@@ -7783,8 +7647,8 @@ class settingsUI {
 
     void hide() {
       ninePatch->show = 0;
-      settingsMarkerLeft->show = 0;
-      settingsMarkerRight->show = 0;
+      handMarker->show = 0;
+      fingerMarker->show = 0;
       backButton->show = 0;
       bbNinePatch->show = 0;
       for(auto x : optionTextboxes) {
@@ -7793,6 +7657,16 @@ class settingsUI {
       for(auto x : valueTextboxes) {
         x->show = 0;
       }
+    }
+
+    void uiModifying() {
+      g_settingsUI->fingerMarker->show = 0;
+      g_settingsUI->handMarker->show = 1;
+    }
+
+    void uiSelecting() {
+      g_settingsUI->handMarker->show = 0;
+      g_settingsUI->fingerMarker->show = 1;
     }
 
 };

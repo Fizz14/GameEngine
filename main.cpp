@@ -16,6 +16,8 @@ using namespace std;
 
 void getInput(float &elapsed);
 
+void toggleDevmode();
+
 void toggleFullscreen();
 
 int WinMain()
@@ -147,13 +149,13 @@ int WinMain()
     init_map_writing(renderer);
     // done once, because textboxes aren't cleared during clear_map()
     nodeInfoText = new textbox(renderer, "",  g_fontsize, 0, 0, WIN_WIDTH);
-    config = "edit";
+    g_config = "edit";
     nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walker.bmp"));
   }
 
   // set bindings from file
   ifstream bindfile;
-  bindfile.open("user/configs/" + config + ".cfg");
+  bindfile.open("user/configs/" + g_config + ".cfg");
   string line;
   for (int i = 0; i < 14; i++)
   {
@@ -229,7 +231,6 @@ int WinMain()
   valuestr = line.substr(line.find(' '), line.length());
   value = stoi(valuestr);
   g_brightness = value;
-
   SDL_Surface* shadesurface = IMG_Load("engine/black-diffuse.bmp");
   g_shade = SDL_CreateTextureFromSurface(renderer, shadesurface);
   SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
@@ -317,25 +318,56 @@ int WinMain()
   g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
   g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
 
+  if(devMode) {
+    g_dijkstraDebugRed = new ui(renderer, "engine/walkerRed.bmp", 0,0,32,32, 3);
+    g_dijkstraDebugRed->persistent = 1;
+    g_dijkstraDebugRed->worldspace = 1;
+    g_dijkstraDebugBlue = new ui(renderer, "engine/walkerBlue.bmp", 0,0,32,32, 3);
+    g_dijkstraDebugBlue->persistent = 1;
+    g_dijkstraDebugBlue->worldspace = 1;
+    g_dijkstraDebugYellow = new ui(renderer, "engine/walkerYellow.bmp", 0,0,32,32, 3);
+    g_dijkstraDebugYellow->persistent = 1;
+    g_dijkstraDebugYellow->worldspace = 1;
+  }
+
   //init user keyboard
   //render each character of the alphabet to a texture
   TTF_Font* alphabetfont = 0;
-  alphabetfont = TTF_OpenFont(g_font.c_str(), 40 * g_fontsize);
+  alphabetfont = TTF_OpenFont(g_font.c_str(), 60 * g_fontsize);
   SDL_Surface* textsurface = 0;
   SDL_Texture* texttexture = 0;
   g_alphabet_textures = &g_alphabetLower_textures;
   for (int i = 0; i < g_alphabet.size(); i++) {
     string letter = "";
     letter += g_alphabet_lower[i];
-    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
+    bool special = 0;
+    if(letter == ";") {
+      //load custom enter graphic
+      textsurface = IMG_Load("static/ui/menu_confirm.bmp");
+      special = 1;
+    } else if (letter == "<") {
+      //load custom backspace graphic
+      textsurface = IMG_Load("static/ui/menu_back.bmp");
+      special = 1;
+    } else if (letter == "^") {
+      //load custom capslock graphic
+      textsurface = IMG_Load("static/ui/menu_upper_empty.bmp");
+      special = 1;
+    } else {
+      textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
+    }
     texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
 
     int texW = 0;int texH = 0;
     SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
-    texW *= 1.5; //gotta boosh out those letters
-    g_alphabet_widths.push_back(texW);
+    if(!special) {
+      texW *= 1.1; //gotta boosh out those letters
+      g_alphabet_widths.push_back(texW);
+    } else {
+      g_alphabet_widths.push_back(50);
+    }
 
-    SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
+    //SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
     g_alphabetLower_textures.push_back(texttexture);
     SDL_FreeSurface(textsurface);
   }
@@ -343,15 +375,35 @@ int WinMain()
   for (int i = 0; i < g_alphabet.size(); i++) {
     string letter = "";
     letter += g_alphabet_upper[i];
-    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 30);
+    bool special = 0;
+    if(letter == ";") {
+      //load custom enter graphic
+      textsurface = IMG_Load("static/ui/menu_confirm.bmp");
+      special = 1;
+    } else if (letter == "<") {
+      //load custom backspace graphic
+      textsurface = IMG_Load("static/ui/menu_back.bmp");
+      special = 1;
+    } else if (letter == "^") {
+      //load custom capslock graphic
+      textsurface = IMG_Load("static/ui/menu_upper.bmp");
+      special = 1;
+    } else {
+      textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
+    }
     texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
 
     int texW = 0;int texH = 0;
     SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
-    texW *= 1.5; //gotta boosh out those letters
-    g_alphabet_upper_widths.push_back(texW);
 
-    SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
+    if(!special) {
+      texW *= 1.1; //gotta boosh out those letters
+      g_alphabet_upper_widths.push_back(texW);
+    } else {
+      g_alphabet_upper_widths.push_back(50);
+    }
+
+    //SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
     g_alphabetUpper_textures.push_back(texttexture);
     SDL_FreeSurface(textsurface);
   }
@@ -399,9 +451,14 @@ int WinMain()
     g_mapdir = x[1];
   }
 
-  inventoryMarker = new ui(renderer, "static/ui/non_selector.bmp", 0, 0, 0.15, 0.15, 2);
+  inventoryMarker = new ui(renderer, "static/ui/finger_selector_angled.bmp", 0, 0, 0.1, 0.1, 2);
   inventoryMarker->show = 0;
   inventoryMarker->persistent = 1;
+  inventoryMarker->renderOverText = 1;
+  inventoryMarker->heightFromWidthFactor = 1;
+  inventoryMarker->height = 1;
+
+  g_UiGlideSpeedY = 0.012 * WIN_WIDTH/WIN_HEIGHT;
 
   inventoryText = new textbox(renderer, "1", 40,  g_fontsize, 0, WIN_WIDTH * 0.2);
   inventoryText->show = 0;
@@ -733,7 +790,14 @@ int WinMain()
     use_cooldown -= elapsed / 1000;
     musicFadeTimer += elapsed;
     musicUpdateTimer += elapsed;
+    g_blinkingMS += elapsed;
+    g_jumpGaranteedAccelMs -= elapsed;
     // g_dash_cooldown -= elapsed;
+    
+    if(g_blinkingMS >= g_maxBlinkingMS) {
+      g_blinkHidden = !g_blinkHidden;
+      g_blinkingMS = g_blinkHidden? g_maxBlinkingMS * 0.9 : 0;
+    }
 
     if (inPauseMenu)
     {
@@ -749,10 +813,12 @@ int WinMain()
     // spring
     if ((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move))
     {
+      g_hasBeenHoldingJump = 1;
       g_afterspin_duration = 0;
       g_spinning_duration = 0;
       protag->zaccel = 180;
       g_protag_jumped_this_frame = 1;
+      g_jumpGaranteedAccelMs = g_maxJumpGaranteedAccelMs;
       storedJump = 0;
       breakpoint();
     }
@@ -914,6 +980,7 @@ int WinMain()
       }
       SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
       SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
+      g_UiGlideSpeedY = 0.012 * WIN_WIDTH/WIN_HEIGHT;
     }
 
     old_WIN_WIDTH = WIN_WIDTH;
@@ -999,7 +1066,8 @@ int WinMain()
               flipper = !flipper;
               int xpos = ((i - g_fogMiddleX) * 64) + functionalX;
               int ypos = ((j - g_fogMiddleY) * 55) + functionalY;
-              if (XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist)
+              //if (XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist)
+              if(g_fog_window[i][j])
               {
                 // g_fogcookies[i][j] -= g_tile_fade_speed; if (g_fogcookies[i][j] < 0) g_fogcookies[i][j] = 0;
                 g_fogcookies[i][j] = 0;
@@ -1115,7 +1183,12 @@ int WinMain()
               {
                 blocked = LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 1, g_focus->stableLayer + 1, 15, 1);
               }
-              if (!(XYWorldDistance(functionalX, functionalY, xpos, ypos) > g_viewdist) && blocked)
+
+              int yBoost = 0;  //you could debate this, but since the block closest to the bottom of the screen is hidden by the shadow-cookie above it, I'll give the player an extra block of vision towards the bottom of the screen
+              if(ypos < functionalY) {yBoost = 55;}
+
+              //if (!(XYWorldDistance(functionalX, functionalY + yBoost, xpos, ypos) > g_viewdist) && blocked)
+              if(g_fog_window[i][j] && blocked)
               {
 
                 g_fogcookies[i][j] += g_tile_fade_speed * (elapsed / 60);
@@ -1679,14 +1752,14 @@ int WinMain()
     {
       // black bars
       SDL_Rect topbar = {px, FoWrect.y - 1000, 1500, 1000};
-      SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+      //SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
       SDL_Rect botbar = {px, FoWrect.y + g_fogheight * 55 + 10, 2000, 1000};
-      SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+      //SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
 
       SDL_Rect leftbar = {px-800, FoWrect.y, 1000, 1500};
-      SDL_RenderCopy(renderer, blackbarTexture, NULL, &leftbar);
+      //SDL_RenderCopy(renderer, blackbarTexture, NULL, &leftbar);
       SDL_Rect rightbar = {px + 1100, FoWrect.y, 1000, 1500};
-      SDL_RenderCopy(renderer, blackbarTexture, NULL, &rightbar);
+      //SDL_RenderCopy(renderer, blackbarTexture, NULL, &rightbar);
 
     }
 
@@ -1744,19 +1817,19 @@ int WinMain()
     {
       //move reticle to the correct position
       if(!g_settingsUI->cursorIsOnBackButton) {
-        g_settingsUI->settingsMarkerLeft->y
+        g_settingsUI->handMarker->targety
           = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
-          - (g_settingsUI->cursorOffsetFromText);
+          + (g_settingsUI->handOffset);
 
-        g_settingsUI->settingsMarkerLeft->x
-          = g_settingsUI->markerLeftX;
+        g_settingsUI->handMarker->targetx
+          = g_settingsUI->markerHandX;
 
-        g_settingsUI->settingsMarkerRight->y
+        g_settingsUI->fingerMarker->targety
           = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
-          - (g_settingsUI->cursorOffsetFromText);
+          + (g_settingsUI->fingerOffset);
 
-        g_settingsUI->settingsMarkerRight->x
-          = g_settingsUI->markerRightX;
+        g_settingsUI->fingerMarker->targetx
+          = g_settingsUI->markerFingerX;
 
 
 
@@ -1764,11 +1837,20 @@ int WinMain()
         float ww = WIN_WIDTH;
         float wh = WIN_HEIGHT;
 
-        g_settingsUI->settingsMarkerRight->x = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
-        g_settingsUI->settingsMarkerRight->y = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffset * (ww/wh));
+        g_settingsUI->fingerMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+        g_settingsUI->fingerMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
 
-        g_settingsUI->settingsMarkerLeft->x = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
-        g_settingsUI->settingsMarkerLeft->y = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffset * (ww/wh));
+        g_settingsUI->handMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+        g_settingsUI->handMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
+      }
+
+      if(g_firstFrameOfSettingsMenu) {
+        g_firstFrameOfSettingsMenu = 0;
+        g_settingsUI->handMarker->x = g_settingsUI->handMarker->targetx;
+        g_settingsUI->handMarker->y = g_settingsUI->handMarker->targety;
+        g_settingsUI->fingerMarker->x = g_settingsUI->fingerMarker->targetx;
+        g_settingsUI->fingerMarker->y = g_settingsUI->fingerMarker->targety;
+
       }
 
     }
@@ -1816,15 +1898,31 @@ int WinMain()
             {
             // this item should have the marker
             inventoryMarker->show = 1;
-            inventoryMarker->x = x / WIN_WIDTH;
-            inventoryMarker->y = y / WIN_HEIGHT;
+            float biggen = 0; // !!! resolutions : might have problems with diff resolutions
+                                 
+            if(g_firstFrameOfPauseMenu) {
+              inventoryMarker->x = x / WIN_WIDTH;
+              inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->x -= biggen;
+              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              //now that it's a hand
+              inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              g_firstFrameOfPauseMenu = 0;
+            } else {
+              inventoryMarker->targetx = x / WIN_WIDTH;
+              inventoryMarker->targety = y / WIN_HEIGHT;
+              inventoryMarker->targetx -= biggen;
+              inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              //now that it's a hand
+              inventoryMarker->targetx += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+
             inventoryMarker->width = itemWidth / WIN_WIDTH;
   
-            float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-            inventoryMarker->x -= biggen;
-            inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             inventoryMarker->width += biggen * 2;
-            inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            //inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             }
     
             x += itemWidth + padding;
@@ -1885,13 +1983,28 @@ int WinMain()
             {
               // this item should have the marker
               inventoryMarker->show = 1;
-              inventoryMarker->x = x / WIN_WIDTH;
-              inventoryMarker->y = y / WIN_HEIGHT;
-              inventoryMarker->width = itemWidth / WIN_WIDTH;
-    
+
               float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-              inventoryMarker->x -= biggen;
-              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              if(g_firstFrameOfPauseMenu) {
+                inventoryMarker->x = x / WIN_WIDTH;
+                inventoryMarker->y = y / WIN_HEIGHT;
+                inventoryMarker->x -= biggen;
+                inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                g_firstFrameOfPauseMenu = 0;
+              } else {
+                inventoryMarker->targetx = x / WIN_WIDTH;
+                inventoryMarker->targety = y / WIN_HEIGHT;
+                inventoryMarker->targetx -= biggen;
+                inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->targetx += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              }
+
+              inventoryMarker->width = itemWidth / WIN_WIDTH;
               inventoryMarker->width += biggen * 2;
               inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             }
@@ -1951,13 +2064,29 @@ int WinMain()
   
               // this item should have the marker
               inventoryMarker->show = 1;
-              inventoryMarker->x = x / WIN_WIDTH;
-              inventoryMarker->y = y / WIN_HEIGHT;
+              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+                                   
+              if(g_firstFrameOfPauseMenu) {
+                inventoryMarker->x = x / WIN_WIDTH;
+                inventoryMarker->y = y / WIN_HEIGHT;
+                inventoryMarker->x -= biggen;
+                inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                g_firstFrameOfPauseMenu = 0;
+              } else {
+                inventoryMarker->targetx = x / WIN_WIDTH;
+                inventoryMarker->targety = y / WIN_HEIGHT;
+                inventoryMarker->targetx -= biggen;
+                inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->targetx += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              }
+
               inventoryMarker->width = itemWidth / WIN_WIDTH;
     
-              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-              inventoryMarker->x -= biggen;
-              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
               inventoryMarker->width += biggen * 2;
               inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             }
@@ -2004,7 +2133,7 @@ int WinMain()
 
     // ENTITY MOVEMENT (ENTITY UPDATE)
     // dont update movement while transitioning
-    if (!transition)
+    if (1/*!transition*/)
     {
       for (long long unsigned int i = 0; i < g_entities.size(); i++)
       {
@@ -2092,6 +2221,22 @@ int WinMain()
       }
     }
 
+
+    //show dijkstra debugging sprites
+//    if(devMode && g_dijkstraEntity != nullptr) {
+//      if(g_dijkstraEntity->current != nullptr) {
+//        g_dijkstraDebugRed->x = g_dijkstraEntity->current->x;
+//        g_dijkstraDebugRed->y = g_dijkstraEntity->current->y;
+//      }
+//      if(g_dijkstraEntity->dest != nullptr) {
+//        g_dijkstraDebugBlue->x = g_dijkstraEntity->dest->x;
+//        g_dijkstraDebugBlue->y = g_dijkstraEntity->dest->y;
+//      }
+//      if(g_dijkstraEntity->Destination != nullptr) {
+//        g_dijkstraDebugYellow->x = g_dijkstraEntity->Destination->x;
+//        g_dijkstraDebugYellow->y = g_dijkstraEntity->Destination->y;
+//      }
+//    }
 
 
     // did the protag die?
@@ -2722,62 +2867,7 @@ void getInput(float &elapsed)
   }
   if (keystate[SDL_SCANCODE_G] && !inputRefreshCanSwitchOffDevMode && canSwitchOffDevMode)
   {
-    if (canSwitchOffDevMode)
-    {
-      devMode = !devMode;
-      if(g_camera.upperLimitX != g_camera.lowerLimitX) {
-        if(devMode) {g_camera.enforceLimits = 0;} else {g_camera.enforceLimits = 1;}
-      }
-      g_zoom_mod = 1;
-      g_update_zoom = 1;
-      marker->x = -1000;
-      markerz->x = -1000;
-      if (g_fogofwarEnabled && !devMode)
-      {
-        for (auto x : g_fogslates)
-        {
-          x->tangible = 1;
-        }
-        for (auto x : g_fogslatesA)
-        {
-          x->tangible = 1;
-        }
-        for (auto x : g_fogslatesB)
-        {
-          x->tangible = 1;
-        }
-      }
-      else
-      {
-        for (auto x : g_fogslates)
-        {
-          x->tangible = 0;
-        }
-        for (auto x : g_fogslatesA)
-        {
-          x->tangible = 0;
-        }
-        for (auto x : g_fogslatesB)
-        {
-          x->tangible = 0;
-        }
-      }
-    }
-    if (devMode)
-    {
-      floortexDisplay->show = 1;
-      captexDisplay->show = 1;
-      walltexDisplay->show = 1;
-    }
-    else
-    {
-      floortexDisplay->show = 0;
-      captexDisplay->show = 0;
-      walltexDisplay->show = 0;
-      // float scalex = ((float)WIN_WIDTH / 1920) * g_defaultZoom;
-      // float scaley = scalex;
-      SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
-    }
+    toggleDevmode();
   }
   if (keystate[SDL_SCANCODE_G])
   {
@@ -2856,16 +2946,18 @@ void getInput(float &elapsed)
     {
       if (inPauseMenu && SoldUIUp <= 0)
       {
-        playSound(-1, g_menu_manip_sound, 0);
-        // if(inventorySelection - itemsPerRow >= 0) {
-        inventorySelection -= itemsPerRow;
+        //playSound(1, g_menu_manip_sound, 0);
+        if(inventorySelection - itemsPerRow >= 0) {
+          inventorySelection -= itemsPerRow;
 
-        //}
+        }
         SoldUIUp = (oldUIUp) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
       }
       else
       {
-        protag->move_up();
+        if(protag_can_move) {
+          protag->move_up();
+        }
       }
       oldUIUp = 1;
     }
@@ -2880,19 +2972,21 @@ void getInput(float &elapsed)
     {
       if (inPauseMenu && SoldUIDown <= 0)
       {
-        playSound(-1, g_menu_manip_sound, 0);
-        // if(inventorySelection + itemsPerRow < g_itemsInInventory) {
+        //playSound(1, g_menu_manip_sound, 0);
+        if(inventorySelection + itemsPerRow < g_itemsInInventory) {
 
-        if (ceil((float)(inventorySelection + 1) / (float)itemsPerRow) < (g_itemsInInventory / g_inventoryRows))
-        {
-          inventorySelection += itemsPerRow;
+          if (ceil((float)(inventorySelection + 1) / (float)itemsPerRow) < (g_itemsInInventory / g_inventoryRows))
+          {
+            inventorySelection += itemsPerRow;
+          }
         }
-        //}
         SoldUIDown = (oldUIDown) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
       }
       else
       {
-        protag->move_down();
+        if(protag_can_move) {
+          protag->move_down();
+        }
       }
       oldUIDown = 1;
     }
@@ -2907,7 +3001,7 @@ void getInput(float &elapsed)
     {
       if (inPauseMenu && SoldUILeft <= 0)
       {
-        playSound(-1, g_menu_manip_sound, 0);
+        //playSound(1, g_menu_manip_sound, 0);
         if (inventorySelection > 0)
         {
           if (inventorySelection % itemsPerRow != 0)
@@ -2919,7 +3013,9 @@ void getInput(float &elapsed)
       }
       else
       {
-        protag->move_left();
+        if(protag_can_move) {
+          protag->move_left();
+        }
       }
       oldUILeft = 1;
     }
@@ -2934,7 +3030,7 @@ void getInput(float &elapsed)
     {
       if (inPauseMenu && SoldUIRight <= 0)
       {
-        playSound(-1, g_menu_manip_sound, 0);
+        //playSound(1, g_menu_manip_sound, 0);
         if (inventorySelection <= g_itemsInInventory)
         {
           // dont want this to wrap around
@@ -2947,7 +3043,9 @@ void getInput(float &elapsed)
       }
       else
       {
-        protag->move_right();
+        if(protag_can_move) {
+          protag->move_right();
+        }
       }
       oldUIRight = 1;
     }
@@ -3006,6 +3104,7 @@ void getInput(float &elapsed)
         playSound(-1, g_menu_open_sound, 0);
         g_inventoryUiIsLevelSelect = 0;
         inPauseMenu = 1;
+        g_firstFrameOfPauseMenu = 1;
         adventureUIManager->escText->updateText("", -1, 0.9);
         inventorySelection = 0;
         adventureUIManager->showInventoryUI();
@@ -3031,7 +3130,9 @@ void getInput(float &elapsed)
       {
         if(SoldUIUp <= 0)
         {
-          g_settingsUI->positionOfCursor--;
+          if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
+            g_settingsUI->positionOfCursor--;
+          }
           SoldUIUp = (oldStaticInput[0]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
         } else {
           SoldUIUp--;
@@ -3042,9 +3143,11 @@ void getInput(float &elapsed)
 
       //menu down
       if (staticInput[1]) {
-        if(SoldUIDown <= 0)
+        if(SoldUIDown <= 0 )
         {
-          g_settingsUI->positionOfCursor++;
+          if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
+            g_settingsUI->positionOfCursor++;
+          }
           SoldUIDown = (oldStaticInput[1]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
         } else {
           SoldUIDown--;
@@ -3055,27 +3158,150 @@ void getInput(float &elapsed)
 
      
       //menu left
-      if (staticInput[2] && !oldStaticInput[2])
+      if (staticInput[2])
       {
-        if(g_settingsUI->cursorIsOnBackButton) {
-          g_settingsUI->cursorIsOnBackButton = 0;
-          g_settingsUI->positionOfCursor = 0;
+        if(SoldUILeft <= 0)
+        {
+          if(g_settingsUI->modifyingValue) {
+            //modify the value left
+            switch(g_settingsUI->positionOfCursor) {
+              case 9: {
+                g_music_volume -= g_settingsUI->deltaVolume;
+                if(g_music_volume < g_settingsUI->minVolume) {
+                  g_music_volume = g_settingsUI->minVolume;
+                }
+                string content = to_string((int)round(g_music_volume * 100)) + "%";
+                g_settingsUI->valueTextboxes[9]->updateText(content, -1, 1);
+                Mix_VolumeMusic(g_music_volume * 128);
+                break;
+              }
+              case 10: {
+                g_sfx_volume -= g_settingsUI->deltaVolume;
+                if(g_sfx_volume < g_settingsUI->minVolume) {
+                  g_sfx_volume = g_settingsUI->minVolume;
+                }
+                string content = to_string((int)round(g_sfx_volume * 100))+ "%";
+                g_settingsUI->valueTextboxes[10]->updateText(content, -1, 1);
+                break;
+              }
+              case 11: {
+                g_graphicsquality -= g_settingsUI->deltaGraphics;
+                if(g_graphicsquality < g_settingsUI->minGraphics) {
+                  g_graphicsquality = g_settingsUI->minGraphics;
+                }
+                g_settingsUI->valueTextboxes[11]->updateText(g_graphicsStrings[g_graphicsquality], -1, 1);
+                break;
+              }
+              default: {
+                g_brightness -= g_settingsUI->deltaBrightness;
+                if(g_brightness < g_settingsUI->minBrightness) {
+                  g_brightness = g_settingsUI->minBrightness;
+                }
+                string content = to_string((int)round(g_brightness)) + "%";
+                g_settingsUI->valueTextboxes[12]->updateText(content, -1, 1);
+                SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+                break;
+              }
+            }
+          } else {
+            if(g_settingsUI->cursorIsOnBackButton && !g_awaitSwallowedKey) {
+              g_settingsUI->cursorIsOnBackButton = 0;
+              g_settingsUI->positionOfCursor = 0;
+            }
+          }
+          SoldUILeft = (oldStaticInput[2]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+        } else {
+          SoldUILeft --;
         }
+      } else {
+        SoldUILeft = 0;
       }
       
       //menu right
-      if (staticInput[3] && !oldStaticInput[3])
+      if (staticInput[3])
       {
-        if(!g_settingsUI->cursorIsOnBackButton) {
-          g_settingsUI->cursorIsOnBackButton = 1;
-          g_settingsUI->positionOfCursor = 0;
+        if(SoldUIRight <= 0)
+        {
+          if(g_settingsUI->modifyingValue) {
+            //modify the value right
+            switch(g_settingsUI->positionOfCursor) {
+              case 9: {
+                g_music_volume += g_settingsUI->deltaVolume;
+                if(g_music_volume > g_settingsUI->maxVolume) {
+                  g_music_volume = g_settingsUI->maxVolume;
+                }
+                string content = to_string((int)round(g_music_volume * 100)) + "%";
+                g_settingsUI->valueTextboxes[9]->updateText(content, -1, 1);
+                Mix_VolumeMusic(g_music_volume * 128);
+                break;
+              }
+              case 10: {
+                g_sfx_volume += g_settingsUI->deltaVolume;
+                if(g_music_volume > g_settingsUI->maxVolume) {
+                  g_music_volume = g_settingsUI->maxVolume;
+                }
+                string content = to_string((int)round(g_sfx_volume * 100)) + "%";
+                g_settingsUI->valueTextboxes[10]->updateText(content, -1, 1);
+                break;
+              }
+              case 11: {
+                g_graphicsquality += g_settingsUI->deltaGraphics;
+                if(g_graphicsquality > g_settingsUI->maxGraphics) {
+                  g_graphicsquality = g_settingsUI->maxGraphics;
+                }
+                g_settingsUI->valueTextboxes[11]->updateText(g_graphicsStrings[g_graphicsquality], -1, 1);
+                break;
+              }
+              default: {
+                g_brightness += g_settingsUI->deltaBrightness;
+                if(g_brightness > g_settingsUI->maxBrightness) {
+                  g_brightness = g_settingsUI->maxBrightness;
+                }
+                string content = to_string((int)round(g_brightness)) + "%";
+                g_settingsUI->valueTextboxes[12]->updateText(content, -1, 1);
+                SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+                break;
+              }
+            }
+          } else {
+            if(!g_settingsUI->cursorIsOnBackButton && !g_awaitSwallowedKey) {
+              g_settingsUI->cursorIsOnBackButton = 1;
+            }
+          }
+          SoldUIRight = (oldStaticInput[3]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+        } else {
+          SoldUIRight --;
         }
+      } else {
+        SoldUIRight = 0;
       }
 
       //menu select
       if (staticInput[4] && !oldStaticInput[4] && !g_swallowedAKeyThisFrame)
       {
         if(g_settingsUI->cursorIsOnBackButton) {
+          //save config to file
+          {
+            ofstream outfile("user/configs/" + g_config + ".cfg");
+            for(int i = 0; i < 14; i++) {
+              outfile << SDL_GetScancodeName(bindings[i]) << endl;
+            }
+            outfile << "Fullscreen " << g_fullscreen << endl;
+            outfile << "BgDarkness " << g_background_darkness << endl;
+            outfile << "MusicVolume " << g_music_volume << endl;
+            outfile << "SFXVolume " << g_sfx_volume << endl;
+            outfile << "Textsize " << g_fontsize << endl;
+            outfile << "Minitextsize " << g_minifontsize << endl;
+            outfile << "Transitionspeed " << g_transitionSpeed << endl;
+            outfile << "Graphics0lowto3high " << g_graphicsquality << endl;
+            outfile << "brightness0lowto100high " << g_brightness << endl;
+            outfile << "This config was autowritten" << endl;
+            outfile.close();
+
+  
+          }
+
+
           //continue the script which was running 
           g_inventoryUiIsLevelSelect = 0;
           g_inventoryUiIsKeyboard = 0;
@@ -3088,53 +3314,89 @@ void getInput(float &elapsed)
           adventureUIManager->talker->dialogue_index++;
           adventureUIManager->continueDialogue();
         } else {
+          for(int i = 0; i < g_settingsUI->valueTextboxes.size(); i++) {
+            //g_settingsUI->valueTextboxes[i]->blinking = 0;
+          }
+
 
           if(g_settingsUI->positionOfCursor == 0) { //rebind Up
             g_pollForThisBinding = 0; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 0;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 1) { //rebind Down
             g_pollForThisBinding = 1; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 1;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 2) { //rebind Left
             g_pollForThisBinding = 2; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 2;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 3) { //rebind Right
             g_pollForThisBinding = 3; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 3;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 4) { //rebind Jump
             g_pollForThisBinding = 8; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 4;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 5) { //rebind Interact
             g_pollForThisBinding = 11; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 5;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 6) { //rebind Inventory
             g_pollForThisBinding = 12; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 6;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 7) { //rebind Spin/use
             g_pollForThisBinding = 13; 
             g_swallowAKey = 1;
             g_awaitSwallowedKey = 1;
+            g_whichRebindValue = 7;
+            g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
+            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
+            g_settingsUI->uiModifying();
           }
   
           if(g_settingsUI->positionOfCursor == 8) { //fullscreen
@@ -3145,6 +3407,46 @@ void getInput(float &elapsed)
             }
             toggleFullscreen();
           }
+
+          if(g_settingsUI->positionOfCursor == 9) { // Music volume
+            g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
+            if(g_settingsUI->modifyingValue) {
+              //g_settingsUI->valueTextboxes[9]->blinking = 1;
+              g_settingsUI->uiModifying();
+            } else {
+              g_settingsUI->uiSelecting();
+            }
+          }
+
+          if(g_settingsUI->positionOfCursor == 10) { // Sounds volume
+            g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
+            if(g_settingsUI->modifyingValue) {
+              //g_settingsUI->valueTextboxes[10]->blinking = 1;
+              g_settingsUI->uiModifying();
+            } else {
+              g_settingsUI->uiSelecting();
+            }
+          }
+
+          if(g_settingsUI->positionOfCursor == 11) { // Graphics Quality
+            g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
+            if(g_settingsUI->modifyingValue) {
+              //g_settingsUI->valueTextboxes[11]->blinking = 1;
+              g_settingsUI->uiModifying();
+            } else {
+              g_settingsUI->uiSelecting();
+            }
+          }
+
+          if(g_settingsUI->positionOfCursor == 12) { // Brightness
+            g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
+            if(g_settingsUI->modifyingValue) {
+              //g_settingsUI->valueTextboxes[12]->blinking = 1;
+              g_settingsUI->uiModifying();
+            } else {
+              g_settingsUI->uiSelecting();
+            }
+          }
         }
       }
 
@@ -3152,7 +3454,10 @@ void getInput(float &elapsed)
       if(g_awaitSwallowedKey && !g_swallowAKey) {
         //there might be a problem with this logic
         bindings[g_pollForThisBinding] = g_swallowedKey;
+        g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText(SDL_GetScancodeName(g_swallowedKey), -1, 1);
+        //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 0;
         g_awaitSwallowedKey = 0;
+        g_settingsUI->uiSelecting();
       }
 
       if(g_settingsUI->positionOfCursor > g_settingsUI->maxPositionOfCursor) {
@@ -3161,8 +3466,9 @@ void getInput(float &elapsed)
 
       if(g_settingsUI->positionOfCursor < g_settingsUI->minPositionOfCursor) {
         g_settingsUI->positionOfCursor = g_settingsUI->minPositionOfCursor;
-      }
+      } else {
 
+      }
     }
 
     // reset shooting offsets
@@ -3233,17 +3539,23 @@ void getInput(float &elapsed)
 
 
   //spinning
-  if (input[13] && !oldinput[13] && protag_can_move && protag->grounded
-      && g_spin_cooldown <= 0 && g_spinning_duration <= 0 && g_afterspin_duration <= 0
+  if ( ((input[13] && !oldinput[13]) || (input[13] && storedSpin) ) && protag_can_move && protag->grounded
+          && (g_spin_cooldown <= 0 && g_spinning_duration <= 0 + g_doubleSpinHelpMs && g_afterspin_duration <= 0 )
 
      )
   {
+    storedSpin = 0;
     //propel the protag in the direction of their velocity
     //at high speed, removing control from them
     g_spinning_duration = g_spinning_duration_max;
     g_spinning_xvel = protag->xvel * g_spinning_boost;
     g_spinning_yvel = protag->yvel * g_spinning_boost;
     g_spin_cooldown = g_spin_max_cooldown;
+  } else {
+    if(input[13] && !oldinput[13] && !protag->grounded) {
+      storedSpin = 1;
+    }
+
   }
 
   if(g_spin_enabled && g_spinning_duration >= 0 && g_spinning_duration - elapsed < 0 && protag->grounded && !g_protag_jumped_this_frame) {
@@ -3400,9 +3712,6 @@ void getInput(float &elapsed)
   
 
               adventureUIManager->talker->dialogue_index++;
-              M("KB: Check dialogue index after");
-              D(adventureUIManager->talker->dialogue_index);
-              D(adventureUIManager->talker->sayings.at(adventureUIManager->talker->dialogue_index));
               adventureUIManager->continueDialogue();
 
 
@@ -3441,121 +3750,36 @@ void getInput(float &elapsed)
       }
       }
     } else {
-     
+      //if this level is unlocked, travel to its map
+      if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
   
-        //if this level is unlocked, travel to its map
-        if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
-  
-          //because of the frame-order, we must re-draw the inventory now
-          
-          {
-  
-            // draw pause screen
-              adventureUIManager->crosshair->x = 5;
-        
-              // iterate thru inventory and draw items on screen
-              float defaultX = WIN_WIDTH * 0.05;
-              float defaultY = WIN_WIDTH * 0.05;
-              float x = defaultX;
-              float y = defaultY;
-              float maxX = WIN_WIDTH * 0.9;
-              float maxY = WIN_HEIGHT * 0.60;
-              float itemWidth = WIN_WIDTH * 0.07;
-              float padding = WIN_WIDTH * 0.01;
-        
-              int i = 0;
-        
-                //populate the UI based on the loaded level sequence.
-                for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
-                  if( i < itemsPerRow * inventoryScroll) {
-                    i++;
-                    continue;
-                  }
-                  SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
-        
-                  //should we draw the locked graphic?
-                  if(g_levelSequence->levelNodes[j]->locked) {
-                    SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
-                  } else {
-                    SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
-                  }
-        
-                  if (i == inventorySelection)
-                  {
-        
-                    if(g_levelSequence->levelNodes[i]->locked) {
-                      adventureUIManager->escText->updateText("???", -1, 0.9);
-                    } else {
-                      adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
-        
-                    }
-        
-                    // this item should have the marker
-                    inventoryMarker->show = 1;
-                    inventoryMarker->x = x / WIN_WIDTH;
-                    inventoryMarker->y = y / WIN_HEIGHT;
-                    inventoryMarker->width = itemWidth / WIN_WIDTH;
-          
-                    float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-                    inventoryMarker->x -= biggen;
-                    inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-                    inventoryMarker->width += biggen * 2;
-                    inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-                  }
-          
-                  x += itemWidth + padding;
-                  if (x > maxX)
-                  {
-                    x = defaultX;
-                    y += itemWidth + padding;
-                    if (y > maxY)
-                    {
-                      // we filled up the entire inventory, so lets leave
-                      break;
-                    }
-                  }
-                  i++;
-        
-                }
-                g_itemsInInventory = g_levelSequence->levelNodes.size();
-                
-              
-        
-              //re-render inventory reticle so it goes on top of the items/level icons
-              inventoryMarker->render(renderer, g_camera);
-              inventoryMarker->show = 0;
-          }
-  
-          for (long long unsigned int i = 0; i < g_ui.size(); i++)
-          {
-            g_ui[i]->render(renderer, g_camera);
-          }
-  
-          clear_map(g_camera);
-  
-          inPauseMenu = 0;
-  
-          string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
-          vector<string> x = splitString(mapName, '/');
-          g_mapdir = x[1];
-  
-  
-          load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
-          adventureUIManager->hideInventoryUI();
-  
-          if (canSwitchOffDevMode)
-          {
-            init_map_writing(renderer);
-          }
-          protag_is_talking = 0;
-          protag_can_move = 1;
-        } else {
-          //play an error noise?
-  
+        for (long long unsigned int i = 0; i < g_ui.size(); i++)
+        {
+          //g_ui[i]->render(renderer, g_camera);
         }
-        
   
-      
+        clear_map(g_camera);
+  
+        inPauseMenu = 0;
+  
+        string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
+        vector<string> x = splitString(mapName, '/');
+        g_mapdir = x[1];
+  
+  
+        load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
+        adventureUIManager->hideInventoryUI();
+  
+        if (canSwitchOffDevMode)
+        {
+          init_map_writing(renderer);
+        }
+        protag_is_talking = 0;
+        protag_can_move = 1;
+      } else {
+        //play an error noise?
+  
+      }
     }
   }
 
@@ -3600,16 +3824,19 @@ void getInput(float &elapsed)
   if (keystate[SDL_SCANCODE_LSHIFT] && devMode)
   {
     protag->xmaxspeed = 100;
+    protag->turningSpeed = 1.4;
     //protag->ymaxspeed = 145;
   }
   if (keystate[SDL_SCANCODE_LCTRL] && devMode)
   {
     protag->xmaxspeed = 20;
+    protag->turningSpeed = 16;
     //protag->ymaxspeed = 20;
   }
   if (keystate[SDL_SCANCODE_CAPSLOCK] && devMode)
   {
     protag->xmaxspeed = 750;
+    protag->turningSpeed = 16;
     //protag->ymaxspeed = 750;
   }
 
@@ -3902,5 +4129,64 @@ void toggleFullscreen() {
     {
       x->reassignTexture();
     }
+  }
+}
+
+void toggleDevmode() {
+  if (canSwitchOffDevMode)
+  {
+    devMode = !devMode;
+    if(g_camera.upperLimitX != g_camera.lowerLimitX) {
+      if(devMode) {g_camera.enforceLimits = 0;} else {g_camera.enforceLimits = 1;}
+    }
+    g_zoom_mod = 1;
+    g_update_zoom = 1;
+    marker->x = -1000;
+    markerz->x = -1000;
+    if (g_fogofwarEnabled && !devMode)
+    {
+      for (auto x : g_fogslates)
+      {
+        x->tangible = 1;
+      }
+      for (auto x : g_fogslatesA)
+      {
+        x->tangible = 1;
+      }
+      for (auto x : g_fogslatesB)
+      {
+        x->tangible = 1;
+      }
+    }
+    else
+    {
+      for (auto x : g_fogslates)
+      {
+        x->tangible = 0;
+      }
+      for (auto x : g_fogslatesA)
+      {
+        x->tangible = 0;
+      }
+      for (auto x : g_fogslatesB)
+      {
+        x->tangible = 0;
+      }
+    }
+  }
+  if (devMode)
+  {
+    floortexDisplay->show = 1;
+    captexDisplay->show = 1;
+    walltexDisplay->show = 1;
+  }
+  else
+  {
+    floortexDisplay->show = 0;
+    captexDisplay->show = 0;
+    walltexDisplay->show = 0;
+    // float scalex = ((float)WIN_WIDTH / 1920) * g_defaultZoom;
+    // float scaley = scalex;
+    SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
   }
 }
