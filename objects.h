@@ -2601,7 +2601,6 @@ class entity:public actor {
     //are low-level, and updated fickely.
     //destination will be pursued via pathfinding each frame, if set.
     navNode* Destination = nullptr;
-
     float angleToTarget = 0;
 
 
@@ -2750,6 +2749,7 @@ class entity:public actor {
     vector<ability> myAbilities;
     float autoAgroRadius = -1;
     float enrageSpeedbuff = 0;
+                                     
     //aiIndex is used for having AI use their own patrolPoints
     //and not someone-else's
     //use -1 for things which call scripts but don't have targets (fleshpit)
@@ -3313,7 +3313,6 @@ class entity:public actor {
             newAbility.resetStableAccumulate = 2; //charge when out of range
           }
 
-          //
 
           newAbility.cooldownMS = (newAbility.lowerCooldownBound + newAbility.upperCooldownBound) / 2;
           this->myAbilities.push_back(newAbility);
@@ -5220,6 +5219,7 @@ class entity:public actor {
           //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
           
           targetSteeringAngle = angleToTarget;
+
           if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
             forwardsVelocity = xagil;
           } else {
@@ -5307,28 +5307,29 @@ class entity:public actor {
               } else {
                 ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
                 //T(this->hisweapon->attacks[hisweapon->combo]->range);
-
-
+  
+  
                 if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
                   //vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
-
+  
                   Destination = getNodeByPosition(ret[0], ret[1]);
-//                  T(ret[0]);
-//                  T(ret[1]);
-//                  T(target->x);
-//                  T(target->y);
-//                  T(Destination);
+  //                T(ret[0]);
+  //                T(ret[1]);
+  //                T(target->x);
+  //                T(target->y);
+  //                T(Destination);
                 } else {
                   //Can't get our full range, so use the values in LineTraceX and LineTraceY
                   extern int lineTraceX, lineTraceY;
                   //Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
                   Destination = getNodeByPosition(lineTraceX, lineTraceY);
-//                T(lineTraceX);
-//                T(lineTraceY);
-//                T(target->x);
-//                T(target->y);
+  //              T(lineTraceX);
+  //              T(lineTraceY);
+  //              T(target->x);
+  //              T(target->y);
                 }
               }
+              
             }
           }
 
@@ -5397,8 +5398,6 @@ class entity:public actor {
           current = dest;
           dest = path.at(path.size() - 1);
           path.erase(path.begin() + path.size()-1);
-        } else {
-          //path completed
         }
       }
 

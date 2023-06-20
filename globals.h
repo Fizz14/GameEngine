@@ -781,7 +781,7 @@ float g_afterspin_duration_max = 200; //duration of afterspin imobility
 float g_spinning_xvel = 0; //x and y velocities are locked upon starting a spin
 float g_spinning_yvel = 0;
 float g_spinning_boost = 2.6;
-float g_doubleSpinHelpMs = 0; //a spin can cancel another spin in the last x ms (double spin)
+float g_doubleSpinHelpMs = 32; //a spin can cancel another spin in the last x ms (double spin)
 bool g_protag_jumped_this_frame = 0;
 
 bool storedJump = 0;
