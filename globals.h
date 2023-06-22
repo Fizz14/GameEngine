@@ -46,6 +46,8 @@ class mapCollision;
 
 class box;
 
+class impliedSlope;
+
 class tri;
 
 class ramp;
@@ -109,6 +111,8 @@ vector<tile *> g_tiles;
 vector<door *> g_doors;
 
 vector<vector<box *>> g_boxs;
+
+vector<impliedSlope *> g_impliedSlopes; //slopes which are implied to be behind walls, preventing entities from "hiding" behind them, as in zelda
 
 vector<textbox *> g_textboxes;
 

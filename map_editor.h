@@ -1708,6 +1708,18 @@ void write_map(entity *mapent)
       }
       layer++;
     }
+
+    for (auto n : g_impliedSlopes)
+    {
+      drect.x = (n->bounds.x - g_camera.x) * g_camera.zoom;
+      drect.y = (n->bounds.y - g_camera.y) * g_camera.zoom;
+      drect.w = n->bounds.width * g_camera.zoom;
+      drect.h = n->bounds.height * g_camera.zoom;
+
+      SDL_SetRenderDrawColor(renderer, 10, 200, 150, 255);
+      SDL_RenderDrawRectF(renderer, &drect);
+    }
+
     for (auto n : g_projectiles)
     {
       drect.x = (n->x + n->bounds.x - g_camera.x) * g_camera.zoom;
@@ -2077,6 +2089,29 @@ void write_map(entity *mapent)
             c->children.push_back(e);
           }
         }
+      }
+    }
+  }
+
+  if (devinput[34] && !olddevinput[34] && makingbox == 0)
+  {
+    lx = px;
+    ly = py;
+    makingbox = 1;
+    selection->image = IMG_Load("engine/invisiblewall.bmp");
+    selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
+    SDL_FreeSurface(selection->image);
+  }
+  else
+  {
+    if (devinput[34] && !olddevinput[34] && makingbox == 1)
+    {
+      if (makingbox)
+      {
+
+        makingbox = 0;
+        impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart);
+
       }
     }
   }

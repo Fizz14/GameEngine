@@ -774,6 +774,27 @@ class box:public mapCollision {
     }
 };
 
+
+//For walls which are not drawn, this object implies that they are sloped so that entities cannot hide behind them, which makes the world feel a bit easier to understand and feels very natural and "forgetable"
+//always two blocks zeight, one block in y, and whatever in x
+//support for layers?
+class impliedSlope:public mapCollision {
+public:
+  rect bounds;
+  int layer = 0;
+  
+  impliedSlope(int x1, int y1, int x2, int y2, int flayer) {
+    bounds.x = x1;
+    bounds.y = y1;
+    bounds.z = flayer * 32;
+    bounds.width = x2;
+    bounds.height = y2;
+    bounds.zeight = 64;
+    layer = flayer;
+    g_impliedSlopes.push_back(this);
+  }
+};
+
 // The idea of a collisionZone is to reduce overhead for large maps
 // by having entities check if they are overlapping a collisionZone and only test for
 // collision with other walls/projectiles/entities also overlapping that collisionZone
@@ -4428,6 +4449,53 @@ class entity:public actor {
 
           }
 
+          //test for implied slopes
+          for(auto i : g_impliedSlopes) {
+            rect movedbounds;
+            rect simslope = rect(0,0,0,0);
+            movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+            
+            bool overlapY = RectOverlap(movedbounds, i->bounds);
+
+            if(overlapY) {
+              //use z to check if overlapping slope
+              //height of
+              //if this->z == i->z + 64, then the height of the collision is 0
+              //if this->z <= i->z, then the height of the collison is i->bounds.height
+              float heightFactor;
+              if(i->bounds.z >= this->z) {
+                heightFactor = 1;
+              } else if (this->z - 64 > i->bounds.z) {
+                heightFactor = 0;
+              } else {
+                heightFactor = 1 - ((this->z - i->bounds.z) /64);
+              }
+              rect simslope = rect(i->bounds.x, i->bounds.y + (64 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
+              if(RectOverlap(simslope, movedbounds)) {
+                yvel = -1* ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (64 * (1- heightFactor))) );
+                rect movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y  , bounds.width, bounds.height);
+              }
+            }
+            
+            if(overlapY) {
+              movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
+              bool overlapX = RectOverlap(movedbounds, simslope);
+
+              if(overlapX) {
+                xcollide = 1;
+              }
+
+            } else {
+              movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
+              bool overlapX = RectOverlap(movedbounds, i->bounds);
+
+              if(overlapX) {
+                xcollide = 1;
+              }
+
+            }
+          }
+
           yvel += ypush;
           xvel += xpush;
         }
@@ -5606,6 +5674,7 @@ public:
   SDL_Texture* sprite;
 
   bool locked = 1;
+  bool hidden = 0; //levels can be hidden so it is impossible to return to them (?)
 
   levelNode(string p1, int p2, string p3, string p4, string p5, SDL_Renderer * renderer) {
     pred_name = p1;
@@ -6101,7 +6170,7 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, i
 
 
     for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++) {
-      if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
+      if(RectOverlap(a, g_boxs[layer][j]->bounds) && g_boxs[layer][j]->walltexture != "engine/seethru.bmp") {
         lineTraceX = a.x + a.width/2;
         lineTraceY = a.y + a.height/2;
         return false;
@@ -7517,8 +7586,8 @@ class settingsUI {
     const float minGraphics = 0;
     const float deltaGraphics = 1;
 
-    const float maxBrightness = 100;
-    const float minBrightness = 5;
+    const float maxBrightness = 140;
+    const float minBrightness = 60;
     const float deltaBrightness = 5;
 
 

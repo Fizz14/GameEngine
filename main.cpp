@@ -233,7 +233,9 @@ int WinMain()
   g_brightness = value;
   SDL_Surface* shadesurface = IMG_Load("engine/black-diffuse.bmp");
   g_shade = SDL_CreateTextureFromSurface(renderer, shadesurface);
-  SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+  //SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+  SDL_SetWindowBrightness(window, g_brightness/100.0 );
+  SDL_SetTextureAlphaMod(g_shade, 0);
   SDL_FreeSurface(shadesurface);
 
   switch (g_graphicsquality)
@@ -3130,7 +3132,9 @@ void getInput(float &elapsed)
       {
         if(SoldUIUp <= 0)
         {
-          if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
+          if(g_settingsUI->positionOfCursor == 0) {
+            g_settingsUI->positionOfCursor = g_settingsUI->maxPositionOfCursor;
+          } else if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
             g_settingsUI->positionOfCursor--;
           }
           SoldUIUp = (oldStaticInput[0]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
@@ -3145,7 +3149,9 @@ void getInput(float &elapsed)
       if (staticInput[1]) {
         if(SoldUIDown <= 0 )
         {
-          if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
+          if(g_settingsUI->positionOfCursor == g_settingsUI->maxPositionOfCursor) {
+            g_settingsUI->positionOfCursor = 0;
+          } else if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
             g_settingsUI->positionOfCursor++;
           }
           SoldUIDown = (oldStaticInput[1]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
@@ -3199,7 +3205,8 @@ void getInput(float &elapsed)
                 }
                 string content = to_string((int)round(g_brightness)) + "%";
                 g_settingsUI->valueTextboxes[12]->updateText(content, -1, 1);
-                SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+                //SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+                SDL_SetWindowBrightness(window, g_brightness/100.0 );
                 break;
               }
             }
@@ -3259,7 +3266,8 @@ void getInput(float &elapsed)
                 }
                 string content = to_string((int)round(g_brightness)) + "%";
                 g_settingsUI->valueTextboxes[12]->updateText(content, -1, 1);
-                SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+                //SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+                SDL_SetWindowBrightness(window, g_brightness/100.0 );
                 break;
               }
             }
@@ -3940,6 +3948,12 @@ void getInput(float &elapsed)
   {
     // make navnode box
     devinput[21] = 1;
+  }
+
+  //make implied slope 
+  if (keystate[SDL_SCANCODE_L] && devMode)
+  {
+    devinput[34] = 1;
   }
 
   if (keystate[SDL_SCANCODE_ESCAPE])
