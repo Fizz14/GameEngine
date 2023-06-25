@@ -3956,6 +3956,16 @@ void getInput(float &elapsed)
     devinput[34] = 1;
   }
 
+  //make triangular implied slope 
+  if (keystate[SDL_SCANCODE_K] && devMode)
+  {
+    devinput[35] = 1;
+  }
+  if (keystate[SDL_SCANCODE_J] && devMode)
+  {
+    devinput[36] = 1;
+  }
+
   if (keystate[SDL_SCANCODE_ESCAPE])
   {
     if (devMode)

@@ -48,6 +48,8 @@ class box;
 
 class impliedSlope;
 
+class impliedSlopeTri;
+
 class tri;
 
 class ramp;
@@ -113,6 +115,8 @@ vector<door *> g_doors;
 vector<vector<box *>> g_boxs;
 
 vector<impliedSlope *> g_impliedSlopes; //slopes which are implied to be behind walls, preventing entities from "hiding" behind them, as in zelda
+                                        
+vector<impliedSlopeTri *> g_impliedSlopeTris; //same as g_impliedSlopes, but for triangular slopes
 
 vector<textbox *> g_textboxes;
 

@@ -251,6 +251,18 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       box *c = new box(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8, s3.c_str());
       (void)c;
     }
+    if (word == "islope")
+    {
+      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
+      impliedSlope *i = new impliedSlope(p1, p2, p3, p4, p5, p6, p7);
+      (void)i;
+    }
+    if (word == "islopet")
+    {
+      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5;
+      impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, p5);
+      (void)i;
+    }
     if (word == "entity")
     {
       // M("loading entity" << endl;
@@ -622,6 +634,16 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         }
       }
     }
+   
+    //add shading for implied slopes
+    for (auto i : g_impliedSlopes) {
+      //all implied slopes have top shading
+      child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", box->bounds.x, box->bounds.y + box->bounds.height + 19 + 2, 64 * box->layer + 2, box->bounds.width, 55);
+      child->parent = box;
+      box->children.push_back(child);
+    }
+
+
     for (vector<tri *> layer : g_triangles)
     {
       for (auto triangle : layer)
@@ -1486,6 +1508,16 @@ bool mapeditor_save_map(string word)
       ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << " " << g_boxs[j][i]->shineTop << " " << g_boxs[j][i]->shineBot << " " << shadestring << endl;
     }
   }
+
+  for (auto i : g_impliedSlopes) {
+    ofile << "islope " << to_string(i->bounds.x) << " " << to_string(i->bounds.y) << " " << to_string(i->bounds.width) << " " << to_string(i->bounds.height) << " " << to_string(i->layer) << " " << to_string(i->shadeLeft) << " " << to_string(i->shadeRight) << endl;
+  }
+
+  for (auto i : g_impliedSlopeTris) {
+    ofile << "islopet " << i->x1 << " " << i->y1 << " " << i->x2 << " " << i->y2 << " " << i->layer << endl;
+  }
+
+  
   for (long long unsigned int i = 0; i < g_doors.size(); i++)
   {
     ofile << "door " << g_doors[i]->to_map << " " << g_doors[i]->to_point << " " << g_doors[i]->x << " " << g_doors[i]->y << " " << g_doors[i]->z << " " << g_doors[i]->width << " " << g_doors[i]->height << " " << g_doors[i]->zeight << endl;
@@ -1738,6 +1770,12 @@ void write_map(entity *mapent)
         n->render(renderer);
       }
     }
+
+    for (auto t : g_impliedSlopeTris)
+    {
+      t->render(renderer);
+    }
+
     // draw navNodes
     for (long long unsigned int i = 0; i < g_navNodes.size(); i++)
     {
@@ -2110,11 +2148,23 @@ void write_map(entity *mapent)
       {
 
         makingbox = 0;
-        impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart);
+        impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart, 0, 0);
 
       }
     }
   }
+  
+  if(devinput[35] && !olddevinput[35]) { //.:
+    int minimize = 18; //pixels to shrink this triangle
+    impliedSlopeTri* n = new impliedSlopeTri(marker->x + minimize, marker->y + marker->height, marker->x + marker->width, marker->y + minimize, wallstart);
+    
+  }
+
+  if(devinput[36] && !olddevinput[36]) { //:.
+    int minimize = 18;
+    impliedSlopeTri* n = new impliedSlopeTri(marker->x + marker->width - minimize, marker->y + marker->height, marker->x, marker->y + minimize, wallstart);
+  }
+
 
   if (devinput[20] && !olddevinput[20] && makingbox == 0)
   {

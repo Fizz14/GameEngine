@@ -453,6 +453,64 @@ class tri:public mapCollision {
     }
 };
 
+class impliedSlopeTri:public mapCollision {
+  public:
+    int x1; int y1;
+    int x2; int y2;
+    int type; //only types for impliedSlopeTri are 1 (:.) and 2 (.:)
+    float m;
+    int b;
+    int layer = 0;
+    
+    int x;
+    int y;
+    int width;
+    int height;
+
+    impliedSlopeTri(int fx1, int fy1, int fx2, int fy2, int flayer) {
+      //M("tri()");
+      x1=fx1; y1=fy1;
+      x2=fx2; y2=fy2;
+      layer = flayer;
+      if(x2 < x1 && y2 > y1) {
+        type = 0; //  :'
+      }
+      if(x2 < x1 && y2 < y1) {
+        type = 1; //  :,
+      }
+      if(x2 > x1 && y2 < y1) {
+        type = 2; //  ,:
+      }
+      if(x2 > x1 && y2 > y1) {
+        type = 3; //  ':
+      }
+      m = float(y1 -y2) / float(x1 - x2);
+      b = y1 - (m * x1);
+
+      x = min(x1, x2);
+      y = min(y1, y2);
+      width = abs(x1 - x2);
+      height = abs(y1 - y2);
+
+      g_impliedSlopeTris.push_back(this);
+    }
+
+    ~impliedSlopeTri() {
+      g_impliedSlopeTris.erase(remove(g_impliedSlopeTris.begin(), g_impliedSlopeTris.end(), this), g_impliedSlopeTris.end());
+    }
+
+    void render(SDL_Renderer* renderer) {
+      int tx1 = g_camera.zoom * (x1-g_camera.x);
+      int tx2 = g_camera.zoom * (x2-g_camera.x);
+      int ty1 = g_camera.zoom * (y1-g_camera.y)- layer * 38;
+      int ty2 = g_camera.zoom * (y2-g_camera.y)- layer * 38;
+      SDL_SetRenderDrawColor(renderer, 10, 200, 150, 255);
+      SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty2);
+      SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty1);
+      SDL_RenderDrawLine(renderer,  tx2, ty2, tx2, ty1);
+    }
+};
+
 //sortingfunction for optimizing fog and triangular walls
 //sort based on x and y
 inline int trisort(tri* one, tri* two) {
@@ -484,6 +542,44 @@ class ramp : public mapCollision {
 
 
 bool PointInsideRightTriangle(tri* t, int px, int py) {
+  switch(t->type) {
+    case(0):
+      if(px >= t->x2 && py >= t->y1 && py < floor(t->m * px)  + t->b) {
+
+
+        return true;
+      }
+      break;
+
+    case(1):
+      if(px >= t->x2 && py <= t->y1 && py > ceil(t->m * px) + t->b) {
+
+
+        return true;
+      }
+      break;
+
+    case(2):
+      if(px <= t->x2 && py <= t->y1 && py > ceil(t->m * px) + t->b) {
+
+
+        return true;
+      }
+      break;
+
+    case(3):
+      if(px <= t->x2 && py >= t->y1 && py < floor(t->m * px)  + t->b) {
+
+
+        return true;
+      }
+      break;
+
+  }
+  return false;
+}
+
+bool IPointInsideRightTriangle(impliedSlopeTri* t, int px, int py) {
   switch(t->type) {
     case(0):
       if(px >= t->x2 && py >= t->y1 && py < floor(t->m * px)  + t->b) {
@@ -618,6 +714,34 @@ bool TriRectOverlap(tri* a, rect r) {
     return 1;
   }
   if(PointInsideRightTriangle(a, x, y)) {
+    return 1;
+  }
+  //also check if the points of the triangle are inside the rectangle
+  //skin usage is possibly redundant here
+  if(a->x1 > x + 0 && a->x1 < x + width - 0 && a->y1 > y + 0 && a->y1 < y + height - 0) {
+    return 1;
+  }
+  if(a->x2 > x + 0 && a->x2 < x + width - 0 && a->y2 > y + 0&& a->y2 < y + height - 0) {
+    return 1;
+  }
+  if(a->x2 > x + 0 && a->x2 < x + width - 0 && a->y1 > y + 0 && a->y1 < y + height - 0) {
+    return 1;
+  }
+  return 0;
+}
+
+//for impliedSlopeTris
+bool ITriRectOverlap(impliedSlopeTri* a, int x, int y, int width, int height) {
+  if(IPointInsideRightTriangle(a, x, y +  height)) {
+    return 1;
+  }
+  if(IPointInsideRightTriangle(a, x + width, y + height)) {
+    return 1;
+  }
+  if(IPointInsideRightTriangle(a, x + width, y)) {
+    return 1;
+  }
+  if(IPointInsideRightTriangle(a, x, y)) {
     return 1;
   }
   //also check if the points of the triangle are inside the rectangle
@@ -782,8 +906,10 @@ class impliedSlope:public mapCollision {
 public:
   rect bounds;
   int layer = 0;
+  bool shadeLeft = 0;
+  bool shadeRight = 0;
   
-  impliedSlope(int x1, int y1, int x2, int y2, int flayer) {
+  impliedSlope(int x1, int y1, int x2, int y2, int flayer, int fsleft, int fsright) {
     bounds.x = x1;
     bounds.y = y1;
     bounds.z = flayer * 32;
@@ -791,9 +917,16 @@ public:
     bounds.height = y2;
     bounds.zeight = 64;
     layer = flayer;
+    shadeLeft = fsleft;
+    shadeRight = fsright;
     g_impliedSlopes.push_back(this);
   }
+
+  ~impliedSlope() {
+    g_impliedSlopes.erase(remove(g_impliedSlopes.begin(), g_impliedSlopes.end(), this), g_impliedSlopes.end());
+  }
 };
+
 
 // The idea of a collisionZone is to reduce overhead for large maps
 // by having entities check if they are overlapping a collisionZone and only test for
@@ -3922,7 +4055,6 @@ class entity:public actor {
       virtual door* update(vector<door*> doors, float elapsed) {
         if(!tangible) {return nullptr;}
         
-
         if(usingTimeToLive) {
           timeToLiveMs -= elapsed;
         }
@@ -4302,6 +4434,7 @@ class entity:public actor {
             for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
 
               //update bounds with new pos
+
               rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 
               //don't worry about boxes if we're not even close
@@ -4400,7 +4533,6 @@ class entity:public actor {
 
           //and try setting jerk to a comp of the ent velocity to make the movement faster and better-scaling
 
-          //can still get stuck if we walk diagonally into a triangular wall
 
           for(auto n : g_triangles[layer]){
             rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
@@ -4449,50 +4581,149 @@ class entity:public actor {
 
           }
 
+          //test for triangular implied slopes
+          for(auto n : g_impliedSlopeTris) {
+            rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+
+            float heightFactor = 0;
+
+            if(n->layer * 64 >= this->z) {
+              heightFactor = 1;
+            } else if (this->z - 63 > n->layer * 64) {
+              heightFactor = 0;
+            } else {
+              heightFactor = 1 - ((this->z - n->layer * 64) /63);
+            }
+
+            //behaves as a triangle if heightFactor is nearly 1
+            if(heightFactor > 0.95) {
+  
+              if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+                //if we move the player one pixel up will we still overlap?
+                if(n->type == 3 || n->type == 2)  {
+                  xpush = jerk;
+                }
+  
+                if(n->type == 0 || n->type == 1) {
+                  xpush = -jerk; ;
+                }
+  
+  
+                //ycollide = true;
+                yvel = 0;
+  
+              }
+  
+              movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+              if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+                //if we move the player one pixel up will we still overlap?
+                if(n->type == 1 || n->type == 2) {
+                  ypush = jerk;
+                }
+  
+                if(n->type == 0 || n->type == 3){
+                  ypush = -jerk;
+                }
+  
+                //xcollide = true;
+                xvel = 0;
+  
+              }
+  
+              movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+              if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+//                xcollide = true;
+//                ycollide = true;
+                xvel = 0;
+                yvel = 0;
+                //continue;
+  
+  
+              }
+            }
+
+            //find modified bounds for player collision based on height
+            //I guess, simulate this by moving movedbounds up based on heighFactor
+            movedbounds.y -= (1-heightFactor) * 64;
+
+            //push the player away 
+            if(heightFactor > 0 && ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+
+              if(n->type == 1) {
+                this->y-=2;
+                this->x+=2;
+              } else {
+                this->y-=2;
+                this->x-=2;
+              }
+
+              zvel = max(zvel, -1.0f);
+            }
+          }
+
+
           //test for implied slopes
           for(auto i : g_impliedSlopes) {
             rect movedbounds;
             rect simslope = rect(0,0,0,0);
-            movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+            movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
             
             bool overlapY = RectOverlap(movedbounds, i->bounds);
 
+            float heightFactor;
+            if(i->bounds.z >= this->z) {
+              heightFactor = 1;
+            } else if (this->z - 63 > i->bounds.z) {
+              heightFactor = 0;
+            } else {
+              heightFactor = 1 - ((this->z - i->bounds.z) /63);
+            }
+
             if(overlapY) {
-              //use z to check if overlapping slope
-              //height of
-              //if this->z == i->z + 64, then the height of the collision is 0
-              //if this->z <= i->z, then the height of the collison is i->bounds.height
-              float heightFactor;
-              if(i->bounds.z >= this->z) {
-                heightFactor = 1;
-              } else if (this->z - 64 > i->bounds.z) {
-                heightFactor = 0;
-              } else {
-                heightFactor = 1 - ((this->z - i->bounds.z) /64);
-              }
-              rect simslope = rect(i->bounds.x, i->bounds.y + (64 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
-              if(RectOverlap(simslope, movedbounds)) {
-                yvel = -1* ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (64 * (1- heightFactor))) );
+              rect simslope = rect(i->bounds.x, i->bounds.y + (16 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
+              if(heightFactor < 0.95 && heightFactor > 0 && RectOverlap(simslope, movedbounds)) {
+                heightFactor = pow(heightFactor, 2);
+                //yvel = -1 * ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (64 * (1- heightFactor) )) );
+
+                float difference = ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (8 * (1- heightFactor) )) );
+                //y += -1 * difference;
+                //yvel = -1 * difference;
+                y-=2;
+                yvel = 0;
+                xaccel = 0;
+                if(heightFactor < 0.3) {
+                  xcollide = 1;
+                }
+
+
+                //zaccel -= -1;
+                zvel = max(zvel, -1.0f);
+                //ycollide = 1;
+
                 rect movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y  , bounds.width, bounds.height);
               }
             }
-            
-            if(overlapY) {
-              movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
-              bool overlapX = RectOverlap(movedbounds, simslope);
 
-              if(overlapX) {
-                xcollide = 1;
+            if(heightFactor > 0) {
+              
+              if(overlapY) {
+                ycollide = 1;
+                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
+                bool overlapX = RectOverlap(movedbounds, simslope);
+  
+                if(overlapX) {
+                  xcollide = 1;
+                }
+  
+              } else {
+                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
+                bool overlapX = RectOverlap(movedbounds, i->bounds);
+ 
+                if(overlapX) {
+                  xcollide = 1;
+                }
+  
               }
-
-            } else {
-              movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
-              bool overlapX = RectOverlap(movedbounds, i->bounds);
-
-              if(overlapX) {
-                xcollide = 1;
-              }
-
             }
           }
 
