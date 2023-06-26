@@ -138,8 +138,7 @@ int WinMain()
   float transitionDelta = transitionImageHeight;
 
   // font
-  //g_font = "engine/Monda-Bold.ttf";
-  g_font = "engine/Rubik-Medium.ttf";
+  g_font = "engine/fonts/Rubik-ExtraBold.ttf";
 
   // setup UI
   adventureUIManager = new adventureUI(renderer);
@@ -3793,6 +3792,8 @@ void getInput(float &elapsed)
   }
 
   dialogue_cooldown -= elapsed;
+
+
   if (keystate[bindings[11]] && !inPauseMenu)
   {
     if (protag_is_talking == 1)
@@ -3815,6 +3816,11 @@ void getInput(float &elapsed)
     text_speed_up = 1;
     old_z_value = 0;
   }
+
+  if(keystate[bindings[8]] && protag_is_talking) {
+    adventureUIManager->skipText();
+  }
+
   if (keystate[bindings[11]] && inPauseMenu)
   {
     old_z_value = 1;

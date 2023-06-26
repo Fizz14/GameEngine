@@ -56,25 +56,35 @@ bool getTurningDirection(float a, float b) {
 void parseScriptForLabels(vector<string> &sayings) {
   //parse sayings for lables
   vector<pair<string, int>> symboltable;
+  
   for(int i = 0; i < (int)sayings.size(); i++) {
     if(sayings[i][0] == '<') {
       pair<string, int> pushMeBack{ sayings[i].substr(1,sayings[i].length() - 2), i };
       symboltable.push_back(pushMeBack);
+      continue;
     }
   }
+
 
   for(int i = 0; i < (int)sayings.size(); i++) {
     int pos = sayings[i].find(":");
     if(pos != (int)string::npos) {
+      bool good = 0;
       for(auto y: symboltable) {
         if(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)) == y.first) {
-
-          //sayings[i].erase(pos, sayings[i].length() - pos - 1);
           sayings[i].replace(pos, y.first.length() + 1, ":" + to_string(y.second + 3) );
+          good = 1;
         }
+      }
+      if(!good) {
+        E("Couldn't match labels from symboltable.");
+        M(sayings[i]);
+        quit = 1;
+        break;
       }
     }
   }
+
 }
 
 class heightmap {
@@ -2456,11 +2466,81 @@ class adventureUI {
     SDL_Color currentTextcolor = {155, 115, 115};
     SDL_Color defaultTextcolor = {155, 115, 115};
     
+    //gruvbox
+//    vector<pair<string,SDL_Color>> textcolors = {
+//      {"default", {251, 73, 52}}, //Pink, regular textbox
+//
+//      {"lightred", {251, 73, 52}},
+//      {"lightgreen", {184, 187, 38}},
+//      {"lightyellow", {250, 189, 47}},
+//      {"lightblue", {131, 165, 152}},
+//      {"lightpurple", {211, 134, 155}},
+//      {"lightteal", {142, 192, 124}},
+//      {"lightorange", {254, 128, 25}},
+//
+//
+//      {"red", {204, 36, 29}},
+//      {"green", {152, 151, 26}},
+//      {"yellow", {215, 153, 33}},
+//      {"blue", {69, 133, 136}},
+//      {"purple", {177, 98, 134}},
+//      {"teal", {104, 157, 106}},
+//      {"orange", {214, 93, 14}},
+//
+//
+//      {"darkred", {157, 0, 6}},
+//      {"darkgreen", {121, 116, 14}},
+//      {"darkyellow", {181,118,20}},
+//      {"darkblue", {7,102,120}},
+//      {"darkpurple", {143,63,113}},
+//      {"darkteal", {66,123,88}},
+//      {"darkorange", {175,58,3}},
+//                                   };
+
     vector<pair<string,SDL_Color>> textcolors = {
-      {"pink", {155, 115, 115}}, //Pink, regular textbox
-      {"green",{115, 155, 126}}, //Green, for tech
-      {"white",{140, 115, 145}}  //Purple
+      {"default", {155, 115, 115}}, //Pink, regular textbox
+
+      {"red", {155, 115, 115}},
+      {"orange", {155, 135, 115}},
+      {"yellow", {155, 155, 115}},
+      {"green", {115, 155, 115}},
+      {"aqua", {115, 155, 155}},
+      {"purple", {155, 115, 155}},
+      {"blue", {115, 115, 155}},
+
+      {"bred", {190, 55, 55}},
+      {"borange", {190, 123, 55}},
+      {"byellow", {190, 190, 55}},
+      {"bgreen", {55, 190, 55}},
+      {"baqua", {55, 190, 190}},
+      {"bpurple", {190, 55, 190}},
+      {"bblue", {55, 55, 190}},
+
+      {"fred", {130, 55, 55}},
+      {"forange", {130, 92, 55}},
+      {"fyellow", {130, 130, 55}},
+      {"fgreen", {55, 130, 115}},
+      {"faqua", {55, 130, 130}},
+      {"fpurple", {130, 55, 130}},
+      {"fblue", {55, 55, 130}},
+
                                    };
+
+    string currentFontStr = g_font;
+    string defaultFontStr = g_font;
+
+    vector<pair<string, string>> fonts = {
+      {"default","engine/fonts/Rubik-ExtraBold.ttf"},
+      {"mono","engine/fonts/RubikMonoOne-Regular.ttf"},
+      {"creepy","engine/fonts/RubikPuddles-Regular.ttf"},
+      {"furry","engine/fonts/RubikBeastly-Regular.ttf"},
+      {"cracked","engine/fonts/RubikDistressed-Regular.ttf"},
+      {"living","engine/fonts/RubikMicrobe-Regular.ttf"},
+      {"dripping","engine/fonts/RubikWetPaint-Regular.ttf"},
+      {"hardened","engine/fonts/Rubik80sFade-Regular.ttf"},
+      {"outline","engine/fonts/RubikBurned-Regular.ttf"},
+      {"bubbly","engine/fonts/RubikBubbles-Regular.ttf"}
+    };
    
     //scripts need a way to remember
     //an entity so that we can spawn someone
@@ -2517,6 +2597,8 @@ class adventureUI {
     void pushText(entity* ftalker);
 
     void updateText();
+
+    void skipText();
     
     void initDialogue();
 
@@ -6038,8 +6120,9 @@ int loadSave() {
 
     try {
       g_saveStrings.insert( pair<string, string>(field, value) );
-      D(field);
-      D(value);
+      //for debugging saved strings
+//      D(field);
+//      D(value);
     } catch(...) {
       E("Error writing save.");
       return -1;
@@ -6551,14 +6634,14 @@ class textbox {
         }
       }
     }
-    void updateText(string content, float size, float fwidth, SDL_Color fcolor = g_textcolor) {
+    void updateText(string content, float size, float fwidth, SDL_Color fcolor = g_textcolor, string fontstr = g_font) {
       if(size < 0) { //easy way to preserve fontsize
         size = fontsize;
       }
       TTF_CloseFont(font);
       SDL_DestroyTexture(texttexture);
       SDL_FreeSurface(textsurface);
-      font = TTF_OpenFont(g_font.c_str(), size);
+      font = TTF_OpenFont(fontstr.c_str(), size);
       textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), fcolor, fwidth * WIN_WIDTH);
       texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
       int texW = 0;

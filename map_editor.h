@@ -5989,6 +5989,7 @@ void write_map(entity *mapent)
     // talkingBoxTexture->show = 0;
     talkingText->show = 0;
     currentTextcolor = defaultTextcolor;
+    currentFontStr = defaultFontStr;
     talkingText->updateText("", -1, 34, defaultTextcolor);
     responseText->show = 0;
     responseText->updateText("", -1, 34, defaultTextcolor);
@@ -6174,7 +6175,7 @@ void write_map(entity *mapent)
 
   void adventureUI::updateText()
   {
-    talkingText->updateText(curText, -1, 0.9, currentTextcolor);
+    talkingText->updateText(curText, -1, 0.9, currentTextcolor, currentFontStr);
 
     //used to be code here for unsleeping the player's ui
 
@@ -6190,13 +6191,13 @@ void write_map(entity *mapent)
       {
         latter = " > ";
       }
-      responseText->updateText(former + responses[response_index] + latter, -1, 0.9, currentTextcolor);
+      responseText->updateText(former + responses[response_index] + latter, -1, 0.9, currentTextcolor, currentFontStr);
       responseText->show = 1;
       response = responses[response_index];
     }
     else
     {
-      responseText->updateText("", -1, 0.9, currentTextcolor);
+      responseText->updateText("", -1, 0.9, currentTextcolor, currentFontStr);
       responseText->show = 0;
     }
 
@@ -6219,9 +6220,17 @@ void write_map(entity *mapent)
     }
   }
 
+  void adventureUI::skipText() {
+    curText = pushedText;
+    Mix_HaltChannel(6);
+    Mix_VolumeChunk(blip, 20);
+    playSound(6, blip, 0);
+  }
+
   //for resetting text color
   void adventureUI::initDialogue() {
     currentTextcolor = textcolors[0].second;
+    currentFontStr = fonts[0].second;
   }
 
   void adventureUI::continueDialogue()
@@ -6643,12 +6652,40 @@ void write_map(entity *mapent)
       vector<string> x = splitString(s, ' ');
       string desiredColor = x[1];
       currentTextcolor = textcolors[0].second;
+      bool good = 0;
       for(auto y : textcolors) {
         if(y.first == desiredColor) {
           currentTextcolor = y.second;
+          good = 1;
           break;
         }
       }
+      if(!good) {
+        E("Failed to set textcolor");
+        M(desiredColor);
+        quit = 1;
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //change textbox font
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/font")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      string desiredFontStr = x[1];
+      currentFontStr = fonts[0].second;
+      for(auto y : fonts) {
+        if(y.first == desiredFontStr) {
+          currentFontStr = y.second;
+          break;
+        }
+      }
+
+      M("set font");
 
       talker->dialogue_index++;
       this->continueDialogue();
@@ -8298,6 +8335,14 @@ void write_map(entity *mapent)
         adventureUIManager->hideTalkingUI();
       }
 
+      return;
+    }
+
+    //if this is a label, don't print that
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 1) == "<")
+    {
+      talker->dialogue_index++;
+      this->continueDialogue();
       return;
     }
 
