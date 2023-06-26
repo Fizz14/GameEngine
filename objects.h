@@ -458,6 +458,7 @@ class impliedSlopeTri:public mapCollision {
     int x1; int y1;
     int x2; int y2;
     int type; //only types for impliedSlopeTri are 1 (:.) and 2 (.:)
+    int style = 0; //set during bake, used for shading
     float m;
     int b;
     int layer = 0;
@@ -467,11 +468,12 @@ class impliedSlopeTri:public mapCollision {
     int width;
     int height;
 
-    impliedSlopeTri(int fx1, int fy1, int fx2, int fy2, int flayer) {
+    impliedSlopeTri(int fx1, int fy1, int fx2, int fy2, int flayer, int fstyle) {
       //M("tri()");
       x1=fx1; y1=fy1;
       x2=fx2; y2=fy2;
       layer = flayer;
+      style = fstyle;
       if(x2 < x1 && y2 > y1) {
         type = 0; //  :'
       }
@@ -2450,6 +2452,15 @@ class adventureUI {
 
     ui* talkingBox = 0;
     ui* talkingBoxTexture = 0;
+
+    SDL_Color currentTextcolor = {155, 115, 115};
+    SDL_Color defaultTextcolor = {155, 115, 115};
+    
+    vector<pair<string,SDL_Color>> textcolors = {
+      {"pink", {155, 115, 115}}, //Pink, regular textbox
+      {"green",{115, 155, 126}}, //Green, for tech
+      {"white",{140, 115, 145}}  //Purple
+                                   };
    
     //scripts need a way to remember
     //an entity so that we can spawn someone
@@ -2506,6 +2517,8 @@ class adventureUI {
     void pushText(entity* ftalker);
 
     void updateText();
+    
+    void initDialogue();
 
     void continueDialogue();
 };
@@ -6538,7 +6551,7 @@ class textbox {
         }
       }
     }
-    void updateText(string content, float size, float fwidth) {
+    void updateText(string content, float size, float fwidth, SDL_Color fcolor = g_textcolor) {
       if(size < 0) { //easy way to preserve fontsize
         size = fontsize;
       }
@@ -6546,7 +6559,7 @@ class textbox {
       SDL_DestroyTexture(texttexture);
       SDL_FreeSurface(textsurface);
       font = TTF_OpenFont(g_font.c_str(), size);
-      textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
+      textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), fcolor, fwidth * WIN_WIDTH);
       texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
       int texW = 0;
       int texH = 0;

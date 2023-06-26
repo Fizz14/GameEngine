@@ -958,6 +958,7 @@ int WinMain()
         adventureUIManager->talker = narrarator;
         narrarator->dialogue_index = -1;
         narrarator->sayings = g_listeners[i]->script;
+        adventureUIManager->initDialogue();
         adventureUIManager->continueDialogue();
         g_listeners[i]->active = 0;
       }

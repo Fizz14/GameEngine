@@ -259,8 +259,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     }
     if (word == "islopet")
     {
-      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5;
-      impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, p5);
+      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6;
+      impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, p5, p6);
       (void)i;
     }
     if (word == "entity")
@@ -638,9 +638,104 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     //add shading for implied slopes
     for (auto i : g_impliedSlopes) {
       //all implied slopes have top shading
-      child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", box->bounds.x, box->bounds.y + box->bounds.height + 19 + 2, 64 * box->layer + 2, box->bounds.width, 55);
-      child->parent = box;
-      box->children.push_back(child);
+      child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", i->bounds.x, i->bounds.y + 19 + 2, 64 * i->layer + 2, i->bounds.width, 55);
+      child->parent = i;
+      i->children.push_back(child);
+
+      if(i->shadeLeft) {
+        for (int j = 0; j < i->bounds.height; j += g_platformResolution)
+        {
+          child = new mapObject(renderer, "engine/h-OCCLUSION.bmp", "&", i->bounds.x - 27, i->bounds.y + j + g_platformResolution, 64 * i->layer, 55 / 2, g_platformResolution);
+          child->parent = i;
+          i->children.push_back(child);
+        }
+
+        child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", i->bounds.x - (38 - 19), i->bounds.y, 64 * i->layer, 19, 19, 0, 0);
+        child->parent = i;
+        i->children.push_back(child);
+
+      }
+
+      if(i->shadeRight) {
+        for (int j = 0; j < i->bounds.height; j += g_platformResolution)
+        { // 5, 8
+          child = new mapObject(renderer, "engine/h-OCCLUSION.bmp", "&", i->bounds.x + i->bounds.width, i->bounds.y + j + g_platformResolution, 64 * i->layer, 55 / 2, g_platformResolution);
+          child->parent = i;
+          i->children.push_back(child);
+        }
+
+        child = new mapObject(renderer, "engine/x-OCCLUSION.bmp", "&", i->bounds.x + i->bounds.width, i->bounds.y, 64 * i->layer, 32, 19, 0, 0);
+        child->parent = i;
+        i->children.push_back(child);
+
+      }
+
+
+    }
+
+    for (auto i : g_impliedSlopeTris) {
+      //0 - straight
+      //1 - outcurve
+      //2 - incurve
+      switch(i->style) {
+        case 0: {
+          if(i->type == 1) {
+
+            int step = g_TiltResolution;
+            for (int j = 0; j < 64; j += step)
+            {
+              child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", i->x2 + j, i->y1 + 30 - 64+ (j * XtoY) - 1, i->layer * 64, step, 50, 0, -(j * XtoY));
+              child->parent = i;
+              i->children.push_back(child);
+            }
+
+          } else {
+
+            int step = g_TiltResolution;
+            for (int j = 0; j < 64; j += step)
+            {
+              child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", i->x2 + j - 64, i->y1 + 30 - (j * XtoY) - 1, i->layer * 64, step, 50, 0, (j * XtoY));
+              child->parent = i;
+              i->children.push_back(child);
+            }
+
+          }
+
+          break;
+        }
+        case 1: { //outcurve
+        }
+
+        case 2: { //incurve
+          if(i->type == 1) {
+
+            int step = g_TiltResolution;
+            for (int j = 0; j < 64; j += step)
+            {
+              child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", i->x2 - j + 64, i->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) - 1 - 64, i->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) + 0);
+              child->parent = i;
+              i->children.push_back(child);
+            }
+
+          } else {
+
+            int step = g_TiltResolution;
+            for (int j = 0; j < 64; j += step)
+            {
+              child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", i->x2 + j - 64, i->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) - 1 - 64, i->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) + 0);
+              child->parent = i;
+              i->children.push_back(child);
+            }
+
+          }
+          break;
+        }
+
+
+      }
+
+
+
     }
 
 
@@ -1514,7 +1609,7 @@ bool mapeditor_save_map(string word)
   }
 
   for (auto i : g_impliedSlopeTris) {
-    ofile << "islopet " << i->x1 << " " << i->y1 << " " << i->x2 << " " << i->y2 << " " << i->layer << endl;
+    ofile << "islopet " << i->x1 << " " << i->y1 << " " << i->x2 << " " << i->y2 << " " << i->layer << " " << i->style << endl;
   }
 
   
@@ -2155,14 +2250,14 @@ void write_map(entity *mapent)
   }
   
   if(devinput[35] && !olddevinput[35]) { //.:
-    int minimize = 18; //pixels to shrink this triangle
-    impliedSlopeTri* n = new impliedSlopeTri(marker->x + minimize, marker->y + marker->height, marker->x + marker->width, marker->y + minimize, wallstart);
+    int minimize = 0; //pixels to shrink this triangle
+    impliedSlopeTri* n = new impliedSlopeTri(marker->x, marker->y + marker->height + minimize, marker->x + marker->width, marker->y + minimize, wallstart, 0);
     
   }
 
   if(devinput[36] && !olddevinput[36]) { //:.
-    int minimize = 18;
-    impliedSlopeTri* n = new impliedSlopeTri(marker->x + marker->width - minimize, marker->y + marker->height, marker->x, marker->y + minimize, wallstart);
+    int minimize = 0;
+    impliedSlopeTri* n = new impliedSlopeTri(marker->x + marker->width, marker->y + marker->height + minimize, marker->x, marker->y + minimize, wallstart, 0);
   }
 
 
@@ -3212,6 +3307,16 @@ void write_map(entity *mapent)
                   b->shadeRight = false;
                 }
               }
+
+              //Don't use top shading if there's an implied slope above
+              //Otherwise, there will be a corner of shadow which might be displayed
+              for(auto i : g_impliedSlopes) {
+                if(RectOverlap(i->bounds, uneighbor)) {
+                  b->shadeTop = false;
+
+                }
+
+              }
             }
             if (i > 0)
             {
@@ -3529,6 +3634,65 @@ void write_map(entity *mapent)
               }
             }
           }
+        }
+
+        //calculate shading for impliedslopes
+        for(auto b : g_impliedSlopes) {
+          rect lneighbor = {b->bounds.x + 2 - 64, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
+          rect rneighbor = {b->bounds.x + 2 + b->bounds.width, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
+          b->shadeLeft = 0;
+          b->shadeRight = 0;
+          for (auto t : g_tiles) {
+            if (RectOverlap(t->getMovedBounds(), lneighbor)) {
+              b->shadeLeft = true;
+            }
+            if (RectOverlap(t->getMovedBounds(), rneighbor)) {
+              b->shadeRight = true;
+            }
+          }
+
+          //remove shading if there is a collision there
+          for (auto n : g_boxs[0])
+          {
+            // don't calculate lighting by invisible walls
+            if (n->walltexture == "engine/seethru.bmp")
+            {
+              continue;
+            }
+            if (RectOverlap(n->bounds, lneighbor))
+            {
+              b->shadeLeft = false;
+            }
+            if (RectOverlap(n->bounds, rneighbor))
+            {
+              b->shadeRight = false;
+            }
+          }
+
+          for(auto t : g_triangles[0]) {
+            if(TriRectOverlap(t, lneighbor)) {
+              b->shadeLeft = false;
+            }
+            if(TriRectOverlap(t, rneighbor)) {
+              b->shadeRight = false;
+            }
+          }
+        }
+
+        for(auto t : g_impliedSlopeTris) {
+          //check the triangle below and copy its style
+          int lowerY = min(t->y1, t->y2);
+          int lowerX = min(t->x1, t->x2);
+          rect dneighbor = {lowerX + 16, lowerY + 16 + 64, 32, 32};
+          
+          for(auto tri : g_triangles[0]) {
+            if(TriRectOverlap(tri, dneighbor)) {
+              M("Baked IST style");
+              t->style = tri->style;
+              break;
+            }
+          }
+
         }
         
 //        //clear all invalid boxes
@@ -5815,6 +5979,7 @@ void write_map(entity *mapent)
     talkingText->show = 1;
     talkingText->updateText("", -1, 34);
     responseText->show = 1;
+    responseText->updateText("", -1, 34);
   }
 
   void adventureUI::hideTalkingUI()
@@ -5823,8 +5988,10 @@ void write_map(entity *mapent)
     talkingBox->show = 0;
     // talkingBoxTexture->show = 0;
     talkingText->show = 0;
+    currentTextcolor = defaultTextcolor;
+    talkingText->updateText("", -1, 34, defaultTextcolor);
     responseText->show = 0;
-    responseText->updateText("", -1, 34);
+    responseText->updateText("", -1, 34, defaultTextcolor);
   }
 
   void adventureUI::showScoreUI() {
@@ -6007,7 +6174,7 @@ void write_map(entity *mapent)
 
   void adventureUI::updateText()
   {
-    talkingText->updateText(curText, -1, 0.9);
+    talkingText->updateText(curText, -1, 0.9, currentTextcolor);
 
     //used to be code here for unsleeping the player's ui
 
@@ -6023,13 +6190,13 @@ void write_map(entity *mapent)
       {
         latter = " > ";
       }
-      responseText->updateText(former + responses[response_index] + latter, -1, 0.9);
+      responseText->updateText(former + responses[response_index] + latter, -1, 0.9, currentTextcolor);
       responseText->show = 1;
       response = responses[response_index];
     }
     else
     {
-      responseText->updateText("", -1, 0.9);
+      responseText->updateText("", -1, 0.9, currentTextcolor);
       responseText->show = 0;
     }
 
@@ -6051,6 +6218,12 @@ void write_map(entity *mapent)
       typing = false;
     }
   }
+
+  //for resetting text color
+  void adventureUI::initDialogue() {
+    currentTextcolor = textcolors[0].second;
+  }
+
   void adventureUI::continueDialogue()
   {
     // has our entity died?
@@ -6154,7 +6327,8 @@ void write_map(entity *mapent)
 
     // item prompt
     //$
-    if (scriptToUse->at(talker->dialogue_index + 1).at(0) == '$')
+    //Would confict with string variables, so I added a second check
+    if (scriptToUse->at(talker->dialogue_index + 1).at(0) == '$' && scriptToUse->at(talker->dialogue_index + 1).at(1) != '$')
     {
       int j = 1;
       // parse which block of memory we are interested in
@@ -6459,6 +6633,25 @@ void write_map(entity *mapent)
         this->continueDialogue();
       }
 
+      return;
+    }
+
+    // change textbox text color
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/textcolor")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      string desiredColor = x[1];
+      currentTextcolor = textcolors[0].second;
+      for(auto y : textcolors) {
+        if(y.first == desiredColor) {
+          currentTextcolor = y.second;
+          break;
+        }
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
       return;
     }
 
