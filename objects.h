@@ -27,6 +27,9 @@
 
 using namespace std;
 
+entity* searchEntities(string fname, entity* caller);
+entity* searchEntities(string fname);
+
 /*
  *         pi/2 up
  *
@@ -1626,10 +1629,25 @@ class effectIndex {
     bool OwnsTexture = 1;
     SDL_Texture* texture;
     int spawnNumber = 12;
-    int spawnRadius = 1;
+    float spawnRadius = 1;
+
     int plifetime = 5;
+    int disappearMethod = 0; // 0 -> shrink, 1-> fade
+
     int pwidth = 50;
     int pheight = 50;
+
+    int yframes = 1;
+    int chooseRandomFrame = 0;
+
+    int framewidth = 1;
+    int frameheight = 1;
+
+    int alpha = 255;
+    int deltaAlpha = 0;
+
+    int persistent = 0;
+
     float pvelocityx = 0;
     float pvelocityy = 0;
     float pvelocityz = 0;
@@ -1639,9 +1657,17 @@ class effectIndex {
     float pdeltasizex = -10;
     float pdeltasizey = 10;
 
+    //for spawners, which are attached to entities
+    entity* spawnerParent = nullptr;
+    float spawnerXOffset = 0;
+    float spawnerYOffset = 0;
+    float spawnerZOffset = 0;
+    float spawnerIntervalMs = 0;
+    
+
     effectIndex(string filename, SDL_Renderer* renderer);
 
-    //given coordinates, spawn particles in the leve
+    //given coordinates, spawn particles in the level
     void happen(int fx, int fy, int fz);
 
     ~effectIndex();
@@ -1652,6 +1678,7 @@ class effectIndex {
 
 class particle : public actor {
   public:
+    effectIndex* type = nullptr;
     int lifetime = 0;
     float velocityx = 0;
     float velocityy = 0;
@@ -1661,10 +1688,21 @@ class particle : public actor {
     float accelerationz = 0;
     float deltasizex = 0;
     float deltasizey = 0;
+
+    int frame = 0;
+    int yframes = 1;
+    int framewidth = 0;
+    int frameheight = 0;
+
+    float alpha = 255; //this is out of 25500, converted later
+    float curAlpha = 0;
+    float deltaAlpha = 0;
+
     SDL_Texture* texture;
 
-    particle(effectIndex* type) {
+    particle(effectIndex* ftype) {
       g_particles.push_back(this);
+      type = ftype;
       lifetime = type->plifetime;
       width = type->pwidth;
       height = type->pheight;
@@ -1677,6 +1715,9 @@ class particle : public actor {
       deltasizex = type->pdeltasizex;
       deltasizey = type->pdeltasizey;
       texture = type->texture;
+      yframes = type->yframes;
+      framewidth = type->framewidth;
+      frameheight = type->frameheight;
     }
 
     ~particle() {
@@ -1695,16 +1736,29 @@ class particle : public actor {
       velocityz += accelerationz * elapsed;
       width += deltasizex * elapsed;
       height += deltasizey * elapsed;
+      curAlpha += deltaAlpha * elapsed;
+      if(curAlpha < 0) {curAlpha = 0;}
       float zero = 0;
       width = max(zero,width);
       height = max(zero,height);
       z = max(zero,z);
     }
 
+    // particle render
     void render(SDL_Renderer* renderer, camera fcamera) {
 
       SDL_FRect dstrect = { (x -fcamera.x -(width/2))* fcamera.zoom, (y-(z* XtoZ) - fcamera.y-(height/2)) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};
-      SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+
+      //set opacity of texture
+      SDL_SetTextureAlphaMod(texture, curAlpha / 100);
+
+      //need to consider the frame
+      if(yframes > 1) {
+        SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
+        SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+      } else {
+        SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+      }
 
     }
 };
@@ -1714,7 +1768,7 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   string existSTR;
   existSTR = "maps/" + g_mapdir + "/effects/" + filename + ".eft";
   if(!fileExists(existSTR)) {
-    existSTR = "static/effects" + filename + ".eft";
+    existSTR = "static/effects/" + filename + ".eft";
     if(!fileExists(existSTR)) {
       existSTR = "static/effects/default.eft";
     }
@@ -1740,11 +1794,12 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 
 
   if(1) {
-    existSTR = "maps/" + g_mapdir + "/effects/" + texname + ".bmp";
+    existSTR = "maps/" + g_mapdir + "/sprites/" + texname + ".bmp";
     if(!fileExists(existSTR)) {
-      existSTR = "static/effects/	" + texname + ".bmp";
+      existSTR = "static/sprites/" + texname + ".bmp";
       if(!fileExists(existSTR)) {
-        existSTR = "static/effects/default.bmp";
+        existSTR = "engine/effect-default.bmp";
+        E("Couldn't load effect, using default.");
       }
     }
 
@@ -1760,6 +1815,22 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
     SDL_FreeSurface(image);
   }
 
+  //yframes;
+  file >> line;
+  file >> yframes;
+
+  //calculate framewidth;
+  int texW = 0;
+  int texH = 0;
+
+  SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
+  framewidth = texW / yframes;
+  frameheight = texH;
+
+  //chose_frandom_frame;
+  file >> line;
+  file >> chooseRandomFrame;
+
   //spawnNumber
   file >> line;
   file >> spawnNumber;
@@ -1772,7 +1843,10 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   //plifetime
   file >> line;
   file >> plifetime;
-  plifetime *= 1000;
+
+  //disappear method
+  file >> line;
+  file >> disappearMethod;
 
   //pwidth
   file >> line;
@@ -1781,6 +1855,14 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   //pheight
   file >> line;
   file >> pheight;
+
+  //alpha
+  file >> line;
+  file >> alpha;
+
+  //delta alpha
+  file >> line;
+  file >> deltaAlpha;
 
   //pvelocityx
   file >> line;
@@ -1813,17 +1895,64 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   file >> line;
   file >> pdeltasizey;
 
+  //parent
+  file >> line;
+  file >> line;
+  spawnerParent = searchEntities(line);
+
+  //spawner X offset
+  file >> line;
+  file >> spawnerXOffset;
+
+  //spawner Y offset
+  file >> line;
+  file >> spawnerYOffset;
+
+  //spawner Z offset
+  file >> line;
+  file >> spawnerZOffset;
+
+  //interval ms
+  file >> line;
+  file >> spawnerIntervalMs;
+
+
   g_effectIndexes.push_back(this);
 
 }
 
+//add support effectIndexes to maps
 //given coordinates, spawn particles in the level
 void effectIndex::happen(int fx, int fy, int fz) {
   for(int i = 0; i < spawnNumber; i++) {
     particle* a = new particle(this);
-    a->x = fx + (spawnRadius/2 - (rand() % spawnRadius));
-    a->y = fy + (spawnRadius/2 - (rand() % spawnRadius));
-    a->z = fz + (spawnRadius/2 - (rand() % spawnRadius));
+
+//    a->x = fx + (spawnRadius/2 - (rand() % spawnRadius));
+//    a->y = fy + (spawnRadius/2 - (rand() % spawnRadius));
+//    a->z = fz + (spawnRadius/2 - (rand() % spawnRadius));
+
+    //spawn randomly in a sphere
+    float tx = rand() % 10000 - 5000;
+    float ty = rand() % 10000 - 5000;
+    float tz = rand() % 10000 - 5000;
+    float tr = fmod(rand(), spawnRadius);
+
+    float net = tr / pow( pow(tx,2) + pow(ty,2) + pow(tz,2) , 0.5);
+    tx *= net;
+    ty *= net;
+    tz *= net;
+
+    a->x = fx + tx;
+    a->y = fy + ty;
+    a->z = fz + tz;
+      
+    a->alpha = this->alpha;
+    a->deltaAlpha = this->deltaAlpha; 
+    a->curAlpha = this->alpha;
+
+    if(chooseRandomFrame) {
+      a->frame = rand() % this->yframes;
+    }
   }
 }
 
@@ -1834,6 +1963,36 @@ effectIndex::~effectIndex() {
 
   g_effectIndexes.erase(remove(g_effectIndexes.begin(), g_effectIndexes.end(), this), g_effectIndexes.end());
 }
+
+//a class associated with an effectIndex.
+//It has a parent entity and an offset
+//and triggers the effect every n seconds
+//
+//the data actually comes from the .eft file
+class emitter {
+public:
+  entity* parent = nullptr;
+  effectIndex* type = nullptr;
+ 
+  int timeToLiveMs; //if 0, particle is everlasting
+
+  int xoffset = 0;
+  int yoffset = 0;
+  int zoffset = 0;
+
+  int maxIntervalMs = 1000;
+  int currentIntervalMs = 0; //counts down to zero
+
+  emitter() {
+
+    g_emitters.push_back(this);
+  }
+
+  ~emitter() {
+    
+    g_emitters.erase(remove(g_emitters.begin(), g_emitters.end(), this), g_emitters.end());
+  }
+};
 
 
 class cshadow:public actor {
@@ -2438,8 +2597,165 @@ class ability {
 
 };
 
-entity* searchEntities(string fname, entity* caller);
-entity* searchEntities(string fname);
+// I want a better system for displaying text in the dialog box
+// The new system will involve an instance of class FANCYBOX
+// this class has functions for pushing text and advancing it
+// one instance of FANCYBOX has multiple instances of FANCYWORD
+// these are positioned relative to the origin of the parent FANCYBOX
+// instances of FANCYWORD have FANCYCHAR children which are positioned
+// relative to their parent FANCYWORD 
+//
+// There are some benefits to doing all of this
+// 
+// One, the words are arranged while all of the letters are hidden,
+// meaning as the letters are revealed one at a time, long words drawn at the 
+// end of a line don't travel from the end of one line to the begining of another
+// 
+// Two, individual words can be colored differently or even animated
+// 
+// Three, the size/position of letters can be animated to produce
+// effects similar to that of paper mario ttyd
+//
+// Finally, special characters are easier to handle
+//
+// g_alphabet_lower, g_alphabet_upper, g_specialChars
+// g_alphabet_widths, g_alphabet_upper_widths, g_specialChars_widths
+// g_alphabetLower_textures, g_alphabetUpper_textures, g_specialChars_textures
+
+class fancyword;
+class fancybox;
+
+class fancychar {
+public:
+  float x = 0;
+  float y = 0;
+  float width; 
+  int charsetIndex; //0 for lowercase, 1 for uppercase, 2 for symbols, possibly 3 for special chars
+  SDL_Texture* texture; //pointer to texture in g_fancyAlphabet
+  fancyword * parent; 
+
+  void setIndex(int findex) {
+    auto entry = g_fancyAlphabet[findex];
+    texture = entry.first;
+    width = entry.second/120.0;
+  }
+
+  void render();
+};
+
+class fancyword {
+public:
+  float x = 0;
+  float y = 0;
+  float width; //screenspace width
+  string content; //contains encoding for special characters
+  vector<fancychar> chars;
+
+  void render() { //render each char
+    M("Do we have no chars?");
+    for(auto myChar : chars) {
+      myChar.render();
+      M("Rendered a char");
+    }
+  }
+};
+
+class fancybox {
+public:
+  rect bounds; //screenspace bb
+  vector<fancyword> words;
+  int progress = 0; //how many chars have been shown of the chars which exist?
+
+  fancybox() {
+    bounds.x = 0.05;
+    bounds.y = 0.7;
+    bounds.width = 0.95;
+    bounds.height = 0.25;
+  }
+
+  void render() {
+    //render each word
+    for(auto word : words) {
+      word.render();
+    }
+  }
+
+  //minding newlines and keeping letters of a word on the same line, arrange words/letters together before revealing them
+  //this param might contain some encoding for special chars
+  void arrange(string fcontent) { 
+    M("fancybox::arrange()");
+    
+    //when I add special chars, there will be some extra code here parsing them
+    //and replacing them with a certain character, pushing them back on a list or something
+    //then when I get to that character (e.g., `), I use an entry from the list
+    //either way, each char of fcontent corresponds to one drawn texture of a letter/symbol
+
+    int i = 0;
+    fancyword firstWord;
+    
+    float wordX, wordY;
+    wordX = bounds.x;
+    wordY = bounds.y;
+
+    float widthOfCurrentWord = 0;
+
+    firstWord.x = wordX;
+    firstWord.y = wordY;
+
+    words.push_back(firstWord);
+    float currentWordPos = 0;
+    for(;;) {
+
+      fancychar nextChar;
+      nextChar.setIndex(g_fancyCharLookup[fcontent[i]]);
+      nextChar.x = widthOfCurrentWord;
+      widthOfCurrentWord += nextChar.width;
+      nextChar.parent = &words[words.size()-1];
+      words[words.size()-1].chars.push_back(nextChar);
+
+      if(fcontent[i] == ' ') {
+        //add a space to the latest word and start adding to a new word
+        fancyword nextWord;
+        words.push_back(nextWord);
+        wordX += widthOfCurrentWord;
+        nextWord.x = wordX;
+        nextWord.y = bounds.y;
+        widthOfCurrentWord = 0;
+      }
+      i++;
+      if(i == fcontent.size()) {break;}
+
+    }
+  }
+
+  void reveal() { //words contain their following space
+
+  }
+  
+  
+};
+
+void fancychar::render() {
+  SDL_Rect dstrect = {x + parent->x, y + parent->y, width, 0.1};
+  dstrect.x *= (float)WIN_WIDTH;
+  dstrect.y *= (float)WIN_HEIGHT;
+  dstrect.w *= (float)WIN_WIDTH;
+  dstrect.h *= (float)WIN_HEIGHT;
+  M("Why doesn't this print?");
+  D(x);
+  D(y);
+  D(parent->x);
+  D(parent->y);
+
+  D(dstrect.x);
+  D(dstrect.y);
+  D(dstrect.w);
+  D(dstrect.h);
+  
+
+  SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+}
+
 
 class adventureUI {
   public:
@@ -2530,16 +2846,13 @@ class adventureUI {
     string defaultFontStr = g_font;
 
     vector<pair<string, string>> fonts = {
-      {"default","engine/fonts/Rubik-ExtraBold.ttf"},
-      {"mono","engine/fonts/RubikMonoOne-Regular.ttf"},
+      {"default","engine/fonts/Rubik-Bold.ttf"},
       {"creepy","engine/fonts/RubikPuddles-Regular.ttf"},
-      {"furry","engine/fonts/RubikBeastly-Regular.ttf"},
-      {"cracked","engine/fonts/RubikDistressed-Regular.ttf"},
-      {"living","engine/fonts/RubikMicrobe-Regular.ttf"},
       {"dripping","engine/fonts/RubikWetPaint-Regular.ttf"},
-      {"hardened","engine/fonts/Rubik80sFade-Regular.ttf"},
       {"outline","engine/fonts/RubikBurned-Regular.ttf"},
-      {"bubbly","engine/fonts/RubikBubbles-Regular.ttf"}
+      {"bubbly","engine/fonts/RubikBubbles-Regular.ttf"},
+      {"handwritten","engine/fonts/EduNSWACTFoundation-Bold.ttf"},
+      {"innocent","engine/fonts/ConcertOne-Regular.ttf"}
     };
    
     //scripts need a way to remember
@@ -2595,6 +2908,8 @@ class adventureUI {
     ~adventureUI();
 
     void pushText(entity* ftalker);
+
+    void pushFancyText(entity * ftalker);
 
     void updateText();
 
@@ -2920,7 +3235,9 @@ class entity:public actor {
     float angularSpeed = 10;
     float orbitRange = 1;
     int orbitOffset = 0; //the frames of offset for an orbital.
-
+                         
+    //for pellets
+    int isPellet = 0;
 
     vector<entity*> children;
 
@@ -3497,6 +3814,15 @@ class entity:public actor {
       file >> comment;
       file >> animationconfig;
 
+      //pellet?
+      file >> comment;
+      file >> isPellet;
+
+      if(isPellet) {
+        g_pellets.push_back(this);
+        bounceindex = rand() % 8;
+      }
+
       if(animationconfig == 0) {
         useAnimForWalking = 1;
       }
@@ -3816,6 +4142,11 @@ class entity:public actor {
           g_large_entities.erase(remove(g_large_entities.begin(), g_large_entities.end(), this), g_large_entities.end());
         }
 
+        if(isPellet) {
+          g_pellets.erase(remove(g_pellets.begin(), g_pellets.end(), this), g_pellets.end());
+          M("removed a pellet");
+        }
+
         for(auto x : this->children) {
           x->tangible = 0;
         }
@@ -3936,10 +4267,15 @@ class entity:public actor {
                 flip = SDL_FLIP_HORIZONTAL;
               }
   
+              if(animation > 5 || animation < 0) {
+                animation = 0;
+              }
             }
-            if(animation > 5 || animation < 0) {
+
+            if(yframes < 2) {
               animation = 0;
             }
+
           }
           
          
@@ -4358,7 +4694,25 @@ class entity:public actor {
         }
 
         if(!dynamic) { return nullptr; }
-        
+
+
+        //wait until turned to walk
+        float thisTA = targetSteeringAngle;
+        float thisSA = steeringAngle;
+        float angularDiff = abs(thisTA - thisSA);
+        if( angularDiff > M_PI/2) {
+          //could it be a case of angle wrap causing problems?
+          if(thisTA == 0) {
+            thisTA = 2 * M_PI;
+          }
+          if(thisSA == 0) {
+            thisSA = 2 * M_PI;
+          }
+          angularDiff = abs(thisTA - thisSA);
+          if(angularDiff > M_PI/2) {
+            forwardsVelocity = 0;
+          }
+        }
 
         //set xaccel and yaccel from forwardsVelocity
         xaccel = cos(steeringAngle) * forwardsVelocity;
@@ -6091,7 +6445,7 @@ int loadSave() {
   ifstream file;
   string line;
 
-  string address = "user/saves/" + g_saveName + ".txt";
+  string address = "user/saves/" + g_saveName + ".save";
   const char* plik = address.c_str();
   file.open(plik);
 
@@ -6239,7 +6593,7 @@ int loadSave() {
 int writeSave() {
   ofstream file;
 
-  string address = "user/saves/" + g_saveName + ".txt";
+  string address = "user/saves/" + g_saveName + ".save";
   const char* plik = address.c_str();
   file.open(plik);
 
@@ -6419,7 +6773,12 @@ void entity::shoot() {
 
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
   if(!owner->tangible) {return;}
-  if(!owner->visible) {return;}
+  if(!owner->visible) {
+    //show the protags shadow whilst spinning
+    if(!(owner == protag && g_spinning_duration > -16)) {
+      return;
+    }
+  }
 
   //update alpha
   if(enabled && alphamod != 255) {
@@ -7607,6 +7966,7 @@ void clear_map(camera& cameraToReset) {
 
   g_actors.clear();
 
+  g_pellets.clear();
 
   navNodeMap.clear();
 
@@ -7672,21 +8032,42 @@ void clear_map(camera& cameraToReset) {
     delete g_tiles[0];
   }
 
+  size = (int)g_emitters.size();
+  for(int i = 0; i < size; i++) {
+    delete g_emitters[0];
+  }
+
   size = (int)g_navNodes.size();
   for(int i = 0; i < size; i++) {
     delete g_navNodes[0];
   }
 
-  vector<worldsound*> savedSounds;
 
+  //was there a reason to do this?
+  //none of the entities which persist through map clears
+  //should ever have worldsounds
+//  vector<worldsound*> savedSounds;
+//
+//  size = (int)g_worldsounds.size();
+//  for(int i = 0; i < size; i++) {
+//    if(g_worldsounds[0]->owner == nullptr) {
+//      delete g_worldsounds[0];
+//    } else {
+//      savedSounds.push_back(g_worldsounds[0]);
+//      g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), g_worldsounds[0]), g_worldsounds.end());
+//    }
+//  }
+//
+//  //put savedSounds back to g_worldsounds
+//  for(auto s : savedSounds) {
+//
+//
+//  }
+  
+  //just do a typical clear
   size = (int)g_worldsounds.size();
   for(int i = 0; i < size; i++) {
-    if(g_worldsounds[0]->owner == nullptr) {
-      delete g_worldsounds[0];
-    } else {
-      savedSounds.push_back(g_worldsounds[0]);
-      g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), g_worldsounds[0]), g_worldsounds.end());
-    }
+    delete g_worldsounds[0];
   }
 
   size = (int)g_musicNodes.size();
@@ -7724,13 +8105,24 @@ void clear_map(camera& cameraToReset) {
     delete g_listeners[0];
   }
 
+  vector<effectIndex*> savedEffectIndexes;
   size = (int)g_effectIndexes.size();
   for(int i = 0; i < size; i++) {
-    delete g_effectIndexes[i];
+    if(g_effectIndexes[0]->persistent) {
+      savedEffectIndexes.push_back(g_effectIndexes[0]);
+      g_effectIndexes.erase(remove(g_effectIndexes.begin(), g_effectIndexes.end(), g_effectIndexes[0]), g_effectIndexes.end());
+    } else {
+      delete g_effectIndexes[0];
+    }
+  }
+  
+  for(auto x : savedEffectIndexes) {
+    g_effectIndexes.push_back(x);
   }
 
-  g_particles.clear();
 
+  g_particles.clear();
+                       
   size = g_attacks.size();
   bool contflag = 0;
   for(int i = 0; i < size; i++) {
@@ -7852,7 +8244,7 @@ class worldItem : public entity {
     worldItem(string fname, bool fisKeyItem) : entity(renderer, 5, fname) {
       isWorlditem = 1;
       name = "ITEM-" + fname;
-      bounceindex = rand() % 3;
+      bounceindex = rand() % 8;
       g_worldItems.push_back(this);
 
     }

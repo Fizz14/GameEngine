@@ -16,7 +16,7 @@
 using namespace std;
 
 ofstream ofile;
-bool olddevinput[50];
+bool olddevinput[60];
 bool makingtile, makingbox, makingdoor;         // states
 int lx, ly, rx, ry;                             // for map editing corners;
 float grid = 64;                                // default is 64
@@ -1443,8 +1443,17 @@ void changeTheme(string str)
   captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
 }
 
+//add support to save effectIndexes to maps
+//that way we don't have to load textures in 3 ms
 bool mapeditor_save_map(string word)
 {
+  
+  //for safety
+  if(word.find("..") != std::string::npos) {
+    E("Tried to write a map outside of it's directory");
+    return 0;
+  }
+
   // add warning for file overright
   if ((word != g_map) && fileExists("maps/" + g_mapdir + "/" + word + ".map"))
   {
@@ -2598,6 +2607,7 @@ void write_map(entity *mapent)
       }
     }
   }
+ 
   if (devinput[5] && !olddevinput[5] && makingdoor == 0)
   {
     lx = px;
@@ -2823,6 +2833,138 @@ void write_map(entity *mapent)
         // we looked and didnt find anything, lets make one
         devinput[12] = 1;
       }
+    }
+  }
+
+  //if holding ctrl, move protag around (for moving entities that normally don't move)
+  if(keystate[bindings[0]] && g_holdingCTRL) {
+    protag->up = 0;
+    protag->down = 0;
+    protag->left = 0;
+    protag->right = 0;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+    protag->y -= protag->xmaxspeed/20;
+  }
+
+  if(keystate[bindings[1]] && g_holdingCTRL) {
+    protag->up = 0;
+    protag->down = 0;
+    protag->left = 0;
+    protag->right = 0;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+    protag->y += protag->xmaxspeed/20;
+  }
+
+  if(keystate[bindings[2]] && g_holdingCTRL) {
+    protag->up = 0;
+    protag->down = 0;
+    protag->left = 0;
+    protag->right = 0;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+    protag->x -= protag->xmaxspeed/20;
+  }
+
+  if(keystate[bindings[3]] && g_holdingCTRL) {
+    protag->up = 0;
+    protag->down = 0;
+    protag->left = 0;
+    protag->right = 0;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+    protag->x += protag->xmaxspeed/20;
+  }
+
+
+  if(keystate[bindings[0]] && g_holdingTAB) {
+    protag->up = 1;
+    protag->down = 0;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+  }
+
+  if(keystate[bindings[1]] && g_holdingTAB) {
+    protag->up = 0;
+    protag->down = 1;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+  }
+
+  if(keystate[bindings[2]] && g_holdingTAB) {
+    protag->left = 1;
+    protag->right = 0;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+  }
+
+  if(keystate[bindings[3]] && g_holdingTAB) {
+    protag->left = 0;
+    protag->right = 1;
+    protag->xvel = 0;
+    protag->yvel = 0;
+    protag->forwardsVelocity = 0;
+  }
+
+  if(g_holdingTAB) {
+    if(protag->up) {
+      if(protag->left) {
+        protag->steeringAngle = 3*M_PI/4;
+  
+      } else if(protag->right) {
+        protag->steeringAngle = M_PI/4;
+  
+      } else {
+        protag->steeringAngle = M_PI/2;
+  
+      }
+  
+    } else if(protag->down) {
+      if(protag->left) {
+        protag->steeringAngle = 5 * M_PI/4;
+  
+      } else if(protag->right) {
+        protag->steeringAngle = 7 * M_PI/4;
+  
+      } else {
+        protag->steeringAngle = 3 * M_PI/2;
+  
+      }
+   
+    } else if(protag->left) {
+      protag->steeringAngle = M_PI;
+  
+    } else if(protag->right) {
+      protag->steeringAngle = 0;
+    }
+
+
+    protag->animation = convertAngleToFrame(protag->steeringAngle);
+    protag->flip = SDL_FLIP_NONE;
+    if(protag->yframes < 8) {
+      if(protag->animation == 5) {
+        protag->animation = 3;
+        protag->flip = SDL_FLIP_HORIZONTAL;
+      } else if(protag->animation == 6) {
+        protag->animation = 2;
+        protag->flip = SDL_FLIP_HORIZONTAL;
+      } else if(protag->animation == 7) {
+        protag->animation = 1;
+        protag->flip = SDL_FLIP_HORIZONTAL;
+      }
+  
+      if(protag->animation > 5 || protag->animation < 0) {
+        protag->animation = 0;
+      }
+
     }
   }
 
@@ -4769,10 +4911,40 @@ void write_map(entity *mapent)
         breakpoint();
       }
 
+      //console anim testing
+      // anim direction msPerFrame frameInAnimation LoopAnimation reverse
+      if(word == "anim" || word == "animate") 
+      {
+        string entName = "";
+        int direction, MsPerFrame, FrameInAnimation, LoopAnimation, reverse;
+        line >> entName >> direction >> MsPerFrame >> FrameInAnimation >> LoopAnimation >> reverse;
+        entity* hopeful = searchEntities(entName);
+        if(hopeful != nullptr) {
+          hopeful->animation = direction;
+          hopeful->msPerFrame = MsPerFrame;
+          hopeful->frameInAnimation = FrameInAnimation;
+          hopeful->loopAnimation = LoopAnimation;
+          hopeful->reverseAnimation = reverse;
+          hopeful->scriptedAnimation = 1;
+        }
+
+
+        break;
+      }
+      if(word == "msperframe")
+      {
+        M("Set msperframe");
+        string msp;
+        line >> msp;
+        protag->msPerFrame = 50;
+
+      }
+
       if (word == "debug") //print some debug info about this entity
       {
         line >> word;
         entity *chosenEntity = searchEntities(word);
+        if(chosenEntity == nullptr) { chosenEntity = protag;}
         if (chosenEntity != nullptr)
         {
           M("--DEBUG INFO FOR CHOSEN ENTITY:");
@@ -4792,6 +4964,7 @@ void write_map(entity *mapent)
           D(chosenEntity->large);
           D(chosenEntity->banished);
           D(chosenEntity->createdAfterMapLoad);
+          M("");
 
           M("Animation Data:");
           D(chosenEntity->framewidth);
@@ -4800,6 +4973,14 @@ void write_map(entity *mapent)
           D(chosenEntity->yframes); //directions
           D(chosenEntity->growFromFloor);
           D(chosenEntity->turnToFacePlayer);
+          D(chosenEntity->msPerFrame);
+          D(chosenEntity->frameInAnimation);
+          D(chosenEntity->loopAnimation);
+          M("");
+
+          M("Particle Data:");
+          D(g_emitters.size());
+          D(g_particles.size());
           M("");
 
           M("OOP Data:");
@@ -5242,6 +5423,10 @@ void write_map(entity *mapent)
         e->shadow->x = e->x + e->shadow->xoffset;
         e->shadow->y = e->y + e->shadow->yoffset;
         //breakpoint();
+        if(smokeEffect != nullptr) {
+          //god this is so annoying, keep it off
+          //smokeEffect->happen(e->getOriginX(), e->getOriginY(), e->z );
+        }
         break;
       }
       if (word == "item")
@@ -5792,6 +5977,10 @@ void write_map(entity *mapent)
     }
   }
 
+  if (devinput[37] && !olddevinput[37]) {
+    smokeEffect->happen(g_focus->getOriginX(), g_focus->getOriginY(), g_focus->z);
+  }
+
   // change wall, cap, and floor textures
   if (devinput[16] && !olddevinput[16])
   {
@@ -6131,6 +6320,33 @@ void write_map(entity *mapent)
 
   }
 
+  void adventureUI::pushFancyText(entity * ftalker)
+  {
+    inPauseMenu = 0;
+    adventureUIManager->hideInventoryUI();
+    hideTalkingUI();
+    talker = ftalker;
+    g_talker = ftalker;
+    string arrangeText = sayings->at(talker->dialogue_index);
+    //parse arrangeText for variables within $$, e.g. $$playername$$
+    int position = arrangeText.find("$$");  
+    if(position != string::npos) {
+      int position2 = arrangeText.find("$$", position+1);
+      if(position2 != string::npos) {
+        //get the text between those two positions
+        string variableName = arrangeText.substr(position + 2, position2 - position -2);
+
+        //is there a savestring for that?
+        string res = readSaveStringField(variableName);
+        arrangeText.erase(pushedText.begin() + position, pushedText.begin() + position2 + 2);
+        arrangeText.insert(position, res);
+
+      }
+    }
+    g_fancybox->arrange(arrangeText);
+    M("Finished arrange()");
+  }
+
   void adventureUI::pushText(entity *ftalker)
   {
     inPauseMenu = 0;
@@ -6153,16 +6369,11 @@ void write_map(entity *mapent)
       if(position2 != string::npos) {
         //get the text between those two positions
         string variableName = pushedText.substr(position + 2, position2 - position -2);
-        D(variableName);
 
         //is there a savestring for that?
         string res = readSaveStringField(variableName);
         pushedText.erase(pushedText.begin() + position, pushedText.begin() + position2 + 2);
-        D(pushedText);
         pushedText.insert(position, res);
-
-        D(pushedText);
-
 
       }
     }
@@ -7012,7 +7223,81 @@ void write_map(entity *mapent)
 
           }
 
+          if(hopeEffect == nullptr) {
+            hopeEffect = new effectIndex( effects_name, renderer );
+          }
+          
+          hopeEffect->happen(hopeful->getOriginX(), hopeful->getOriginY(), hopeful->z );
+
         }
+        
+
+      }
+
+      
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //load/spawn spawner from eft file
+    //eft file also contains some data for a spawner (name of parent, offsets, interval)
+    //don't need to use it (e.g., in a cutscene someone disapears and you make a puff of smoke)
+    //but it can be used to create lasting effects (smoke continuously billowing from a brazier)
+    //putting zero for the duration will make it everlasting
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/emitter")
+    {
+      
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      //       /emitter smoke zombie xoffset yoffset zoffset duration
+      if(x.size() >= 6) 
+      {
+        M("Bung");
+        string effects_name = x[1];
+        string ents_name = x[2];
+        string sxoffset = x[3];
+        string syoffset = x[4];
+        string szoffset = x[5];
+        int fxoffset = stoi(sxoffset);
+        int fyoffset = stoi(syoffset);
+        int fzoffset = stoi(szoffset);
+        string stimeToLiveMs = x[6];
+        int ftimeToLiveMs = stoi(stimeToLiveMs);
+
+        entity *hopeful = searchEntities(ents_name);
+        effectIndex* hopeEffect = nullptr;
+        if (hopeful != nullptr)
+        {
+          M("Found ent");
+          for(int i = 0; i < g_effectIndexes.size(); i++) {
+            if(g_effectIndexes[i]->name == effects_name) {
+              hopeEffect = g_effectIndexes[i];
+              M("Found effect");
+              
+            }
+
+          }
+
+          if(hopeEffect == nullptr) {
+            M("Created effect");
+            hopeEffect = new effectIndex( effects_name, renderer );
+          }
+          
+          //hopeEffect->happen(hopeful->getOriginX(), hopeful->getOriginY(), hopeful->z );
+          emitter* e = new emitter();
+          M("Bung B");
+          e->type = hopeEffect;
+          e->parent = hopeful;
+          e->xoffset = fxoffset;
+          e->yoffset = fyoffset;
+          e->zoffset = fzoffset;
+          e->timeToLiveMs = ftimeToLiveMs;
+          e->maxIntervalMs = hopeEffect->spawnerIntervalMs;
+
+        }
+
       }
 
       
@@ -8086,8 +8371,6 @@ void write_map(entity *mapent)
       D(s);
       string agrostatestr = "0";
       agrostatestr = s; // s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-      D(name);
-      D(agrostatestr);
       float agrostate = stof(agrostatestr);
 
       entity *hopeful = searchEntities(name);
@@ -8138,8 +8421,6 @@ void write_map(entity *mapent)
       D(s);
       string tangiblestatestr = "0";
       tangiblestatestr = s; // s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-      D(name);
-      D(tangiblestatestr);
       float tangiblestate = stof(tangiblestatestr);
 
       entity *hopeful = searchEntities(name);
@@ -8271,8 +8552,17 @@ void write_map(entity *mapent)
       string s = scriptToUse->at(talker->dialogue_index + 1);
       s.erase(0, 11);
       string name = s;
+      
+      //for safety
+      if(s.find("..") != std::string::npos) {
+        E("Tried to write a save outside of user/saves directory");
+        talker->dialogue_index++;
+        this->continueDialogue();
+        return;
+      }
+
       D("trying to clear save " + s);
-      filesystem::copy("user/saves/newsave.txt", "user/saves/" + s + ".txt", std::filesystem::copy_options::overwrite_existing);
+      filesystem::copy("user/saves/newsave.save", "user/saves/" + s + ".save", std::filesystem::copy_options::overwrite_existing);
       talker->dialogue_index++;
       this->continueDialogue();
       return;
@@ -8338,11 +8628,20 @@ void write_map(entity *mapent)
       return;
     }
 
+
     //if this is a label, don't print that
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 1) == "<")
     {
       talker->dialogue_index++;
       this->continueDialogue();
+      return;
+    }
+
+    //display fancytext
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 1) == "`")
+    {
+      talker->dialogue_index++;
+      pushFancyText(talker);
       return;
     }
 

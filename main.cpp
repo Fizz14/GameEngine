@@ -138,7 +138,7 @@ int WinMain()
   float transitionDelta = transitionImageHeight;
 
   // font
-  g_font = "engine/fonts/Rubik-ExtraBold.ttf";
+  g_font = "engine/fonts/Rubik-Bold.ttf";
 
   // setup UI
   adventureUIManager = new adventureUI(renderer);
@@ -409,7 +409,36 @@ int WinMain()
     SDL_FreeSurface(textsurface);
   }
 
+  //fancy alphabet
+  int fancyIndex = 0;
+  for(char character : g_fancyAlphabetChars) { //not a char
+    string letter = "";
+    letter += character;
+
+    // add support for special chars here
+    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
+
+    texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+    int texW = 0;int texH = 0;
+    SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+
+    float texWidth = texW;
+    texWidth *= 0.2;
+    
+    std::pair<SDL_Texture*, float> imSecond(texttexture, texW);
+    g_fancyAlphabet.insert( {fancyIndex, imSecond} );
+    
+    g_fancyCharLookup.insert({character, fancyIndex});
+    
+    fancyIndex++;
+
+    SDL_FreeSurface(textsurface);
+  }
+
   TTF_CloseFont(alphabetfont);
+  g_fancybox = new fancybox();
+
 
   //init options menu
   g_settingsUI = new settingsUI();
@@ -464,6 +493,17 @@ int WinMain()
   inventoryText = new textbox(renderer, "1", 40,  g_fontsize, 0, WIN_WIDTH * 0.2);
   inventoryText->show = 0;
   inventoryText->align = 1;
+
+  
+  g_itemsines.push_back( sin(g_elapsed_accumulator / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator - 1400) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 925) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 500) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 600) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 630) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 970) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 1020) / 300) * 10 + 30);
+ 
 
   // This stuff is for the FoW mechanic
 
@@ -562,9 +602,10 @@ int WinMain()
 
   SDL_DestroyTexture(s->texture);
 
-  // test new particle system
 
-  smokeEffect = new effectIndex("default", renderer);
+  //this is used when spawning in entities
+  smokeEffect = new effectIndex("puff", renderer);
+  smokeEffect->persistent = 1;
 
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   SDL_RenderPresent(renderer);
@@ -687,6 +728,8 @@ int WinMain()
               g_holdingCTRL = 1;
               // protag->getItem(a, 1);
               break;
+            case SDLK_LALT:
+              g_holdingTAB = 1;
           }
           if(g_swallowAKey) {
             M("We should swallow this key");
@@ -703,6 +746,9 @@ int WinMain()
           {
             case SDLK_TAB:
               g_holdingCTRL = 0;
+              break;
+            case SDLK_LALT:
+              g_holdingTAB = 0;
               break;
           }
           break;
@@ -1591,9 +1637,46 @@ int WinMain()
     {
       if (g_particles[i]->lifetime < 0)
       {
+        if(g_particles[i]->type->disappearMethod == 0) {
+          //shrink
+          g_particles[i]->deltasizex = -1;
+          g_particles[i]->deltasizey = -1;
+        } else {
+          //fade
+          g_particles[i]->deltaAlpha = -60;
+        }
+      }
+    }
+
+    for (int i = 0; i < g_particles.size(); i++)
+    {
+      if(g_particles[i]->width <= 0 || g_particles[i]->curAlpha <= 0) {
         delete g_particles[i];
         i--;
       }
+    }
+
+    //emitters emit particles
+    for(auto e : g_emitters) {
+
+      //check interval ms
+      if(e->currentIntervalMs <= 0) {
+        e->type->happen(e->parent->getOriginX() + e->xoffset, e->parent->getOriginY() + e->yoffset, e->parent->z + e->zoffset);
+        e->currentIntervalMs = e->maxIntervalMs;
+      }
+      e->currentIntervalMs -= elapsed;
+
+      
+      if(e->timeToLiveMs != 0) {
+        if(e->timeToLiveMs - elapsed <= 0) {
+          delete e;
+        } else {
+          e->timeToLiveMs -= elapsed;
+        }
+      }
+
+   
+
     }
 
     // sort
@@ -1813,6 +1896,9 @@ int WinMain()
         g_ui[i]->render(renderer, g_camera);
       }
     }
+
+    //render fancybox
+    g_fancybox->render();
 
     // settings menu
     if (g_inSettingsMenu) 
@@ -2124,9 +2210,14 @@ int WinMain()
 
     // sines for item bouncing
     g_elapsed_accumulator += elapsed;
-    g_itemsinea = sin(g_elapsed_accumulator / 300) * 10 + 30;
-    g_itemsineb = sin((g_elapsed_accumulator - 1400) / 300) * 10 + 30;
-    g_itemsinec = sin((g_elapsed_accumulator + 925) / 300) * 10 + 30;
+    g_itemsines[0] = ( sin(g_elapsed_accumulator / 300) * 10 + 30);
+    g_itemsines[1] = ( sin((g_elapsed_accumulator + (235 * 1) ) / 300) * 10 + 30);
+    g_itemsines[2] = ( sin((g_elapsed_accumulator + (235 * 2) ) / 300) * 10 + 30);
+    g_itemsines[3] = ( sin((g_elapsed_accumulator + (235 * 3) ) / 300) * 10 + 30);
+    g_itemsines[4] = ( sin((g_elapsed_accumulator + (235 * 4) ) / 300) * 10 + 30);
+    g_itemsines[5] = ( sin((g_elapsed_accumulator + (235 * 5) ) / 300) * 10 + 30);
+    g_itemsines[6] = ( sin((g_elapsed_accumulator + (235 * 6) ) / 300) * 10 + 30);
+    g_itemsines[7] = ( sin((g_elapsed_accumulator + (235 * 7) ) / 300) * 10 + 30);
 
     if (g_elapsed_accumulator > 1800)
     {
@@ -2139,22 +2230,11 @@ int WinMain()
     {
       for (long long unsigned int i = 0; i < g_entities.size(); i++)
       {
-        if (g_entities[i]->isWorlditem)
+        if (g_entities[i]->isWorlditem || g_entities[i]->isPellet)
         {
           // make it bounce
           int index = g_entities[i]->bounceindex;
-          if (index == 0)
-          {
-            g_entities[i]->floatheight = g_itemsinea;
-          }
-          else if (index == 1)
-          {
-            g_entities[i]->floatheight = g_itemsineb;
-          }
-          else
-          {
-            g_entities[i]->floatheight = g_itemsinec;
-          }
+          g_entities[i]->floatheight = g_itemsines[index];
         }
         door *taken = g_entities[i]->update(g_doors, elapsed);
         
@@ -2221,6 +2301,17 @@ int WinMain()
         }
 
       }
+    }
+
+    //did the protag collect a pellet?
+    for(auto x : g_pellets) {
+      bool m = CylinderOverlap(protag->getMovedBounds(), x->getMovedBounds());
+      if(m) {
+        x->usingTimeToLive = 1;
+        x->timeToLiveMs = -1;
+      }
+
+      g_currentPelletsCollected++;
     }
 
 
@@ -3547,7 +3638,7 @@ void getInput(float &elapsed)
 
 
   //spinning
-  if ( ((input[13] && !oldinput[13]) || (input[13] && storedSpin) ) && protag_can_move && protag->grounded
+  if ( ((input[13] && !oldinput[13]) || (input[13] && storedSpin) ) && protag_can_move && (protag->grounded || g_currentSpinJumpHelpMs > 0 )
           && (g_spin_cooldown <= 0 && g_spinning_duration <= 0 + g_doubleSpinHelpMs && g_afterspin_duration <= 0 )
 
      )
@@ -3564,6 +3655,11 @@ void getInput(float &elapsed)
       storedSpin = 1;
     }
 
+  }
+  g_currentSpinJumpHelpMs-= elapsed;
+
+  if(protag->grounded) {
+    g_currentSpinJumpHelpMs = g_spinJumpHelpMs;
   }
 
   if(g_spin_enabled && g_spinning_duration >= 0 && g_spinning_duration - elapsed < 0 && protag->grounded && !g_protag_jumped_this_frame) {
@@ -3948,7 +4044,7 @@ void getInput(float &elapsed)
   // for testing particles
   if (keystate[SDL_SCANCODE_Y] && devMode)
   {
-    smokeEffect->happen(g_focus->getOriginX(), g_focus->getOriginY(), g_focus->z);
+    devinput[37] = 1;
   }
 
   if (keystate[SDL_SCANCODE_PERIOD] && devMode)

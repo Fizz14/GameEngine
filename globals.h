@@ -58,6 +58,12 @@ class textbox;
 
 class ui;
 
+class fancychar;
+
+class fancyword;
+
+class fancybox;
+
 class adventureUI;
 
 class settingsUI;
@@ -92,6 +98,8 @@ class effectIndex;
 
 class particle;
 
+class emitter;
+
 class collisionZone;
 
 class pointOfInterest;
@@ -103,6 +111,8 @@ class levelSequence;
 vector<cshadow *> g_shadows;
 
 vector<entity *> g_entities;
+
+vector<entity *> g_pellets; //for making pellets bounce and squash
 
 vector<entity *> g_solid_entities;
 
@@ -173,6 +183,8 @@ vector<worldItem *> g_worldItems;
 vector<indexItem *> g_indexItems;
 
 vector<particle *> g_particles;
+
+vector<emitter *> g_emitters;
 
 vector<collisionZone *> g_collisionZones;
 
@@ -402,9 +414,7 @@ std::vector<entity *> g_fogslatesA;
 std::vector<entity *> g_fogslatesB;
 
 // for having items bounce
-float g_itemsinea = 0;
-float g_itemsineb = 0;
-float g_itemsinec = 0;
+vector<float> g_itemsines;
 
 float g_elapsed_accumulator = 0;
 
@@ -500,6 +510,11 @@ int g_jumpGaranteedAccelMs = 0;
 int g_maxJumpGaranteedAccelMs = 150; //for x ms protag is garanteed to accelerate
 // These two variables contain the position of the hit of the last lineTrace()
 int lineTraceX, lineTraceY;
+
+// gameplay loop
+int g_maxPelletsInLevel = 0; //number of pellets loaded into the level
+int g_currentPelletsCollected = 0; //how many they have
+int g_pelletsNeededToProgress = 1; //player has beaten the level, just needs to leave
 
 class camera
 {
@@ -640,7 +655,7 @@ string g_waypointOfLastSave = "a";
 
 // input
 const Uint8 *keystate = SDL_GetKeyboardState(NULL);
-bool devinput[50] = {false};
+bool devinput[60] = {false};
 
 //these are meant to make it easy to port bindable inputs
 bool input[16] = {false};
@@ -658,6 +673,7 @@ bool fullscreen_refresh = true;
 bool quit = false;
 string g_config = "default";
 bool g_holdingCTRL = 0;
+bool g_holdingTAB = 0;
 // this is most noticable with a rifle, but sometimes when you try to shoot
 // diagonally, you press one button (e.g. up) a frame or so early then the other (e.g. left)
 // as a result, the game instantly shoots up and its unnacceptable.
@@ -710,14 +726,26 @@ bool g_inventoryUiIsLevelSelect = 0; //set to 1 to repurpose to inventory UI for
 
 bool g_inventoryUiIsKeyboard = 0; //set to 1 to repurpose to inventory UI for player string input
 string g_keyboardInput = "";
+
 string g_alphabet = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_lower = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ<^;";
+
+string g_fancyAlphabetChars = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz !@#$%^&*()+-_;,\"\'";
+
+//the pair contains a texture and a width
+std::map<int, std::pair<SDL_Texture*, float>> g_fancyAlphabet{};
+//here's a map of chars to ints, not containing special characters which are handled later
+std::map<char, int> g_fancyCharLookup;
+
+fancybox* g_fancybox;
+
 vector<SDL_Texture*>* g_alphabet_textures;
 vector<SDL_Texture*> g_alphabetLower_textures;
-vector<SDL_Texture*> g_alphabetUpper_textures;
 vector<float> g_alphabet_widths;
+vector<SDL_Texture*> g_alphabetUpper_textures;
 vector<float> g_alphabet_upper_widths;
+
 int g_keyboardInputLength = 12;
 string g_keyboardSaveToField = ""; //the save-field to write keyboard input to, when ready
 SDL_Color g_textcolor = { 155, 115, 115 };
@@ -789,7 +817,9 @@ float g_afterspin_duration_max = 200; //duration of afterspin imobility
 float g_spinning_xvel = 0; //x and y velocities are locked upon starting a spin
 float g_spinning_yvel = 0;
 float g_spinning_boost = 2.6;
-float g_doubleSpinHelpMs = 32; //a spin can cancel another spin in the last x ms (double spin)
+float g_doubleSpinHelpMs = 16; //a spin can cancel another spin in the last x ms (double spin)
+float g_spinJumpHelpMs = 16; //if you spin a frame after jumping you will jump and spin (spinjump)
+float g_currentSpinJumpHelpMs = g_spinJumpHelpMs;
 bool g_protag_jumped_this_frame = 0;
 
 bool storedJump = 0;
