@@ -306,18 +306,33 @@ int WinMain()
 
   // init static resources
   g_bulletdestroySound = Mix_LoadWAV("static/sounds/step.wav");
+  g_preloadedSounds.emplace_back(g_bulletdestroySound, "static/sounds/step.wav");
   g_playerdamage = Mix_LoadWAV("static/sounds/playerdamage.wav");
+  g_preloadedSounds.emplace_back(g_playerdamage, "static/sounds/playerdamage.wav");
   g_enemydamage = Mix_LoadWAV("static/sounds/enemydamage.wav");
+  g_preloadedSounds.emplace_back(g_enemydamage, "static/sounds/enemydamage.wav");
   g_npcdamage = Mix_LoadWAV("static/sounds/npcdamage.wav");
+  g_preloadedSounds.emplace_back(g_npcdamage, "static/sounds/npcdamage.wav");
   g_s_playerdeath = Mix_LoadWAV("static/sounds/playerdeath.wav");
+  g_preloadedSounds.emplace_back(g_s_playerdeath, "static/sounds/playerdeath.wav");
   g_land = Mix_LoadWAV("static/sounds/step2.wav");
+  g_preloadedSounds.emplace_back(g_land, "static/sounds/step2.wav");
   g_footstep_a = Mix_LoadWAV("static/sounds/protag-step-1.wav");
+  g_preloadedSounds.emplace_back(g_footstep_a, "static/sounds/protag-step-1.wav");
   g_footstep_b = Mix_LoadWAV("static/sounds/protag-step-2.wav");
+  g_preloadedSounds.emplace_back(g_footstep_b, "static/sounds/protag-step-2.wav");
   g_bonk = Mix_LoadWAV("static/sounds/bonk.wav");
+  g_preloadedSounds.emplace_back(g_bonk, "static/sounds/bonk.wav");
   g_menu_open_sound = Mix_LoadWAV("static/sounds/open-menu.wav");
+  g_preloadedSounds.emplace_back(g_menu_open_sound, "static/sounds/open-menu.wav");
   g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
+  g_preloadedSounds.emplace_back(g_menu_close_sound, "static/sounds/close-menu.wav");
   g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
+  g_preloadedSounds.emplace_back(g_ui_voice, "static/sounds/voice-normal.wav");
   g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
+  g_preloadedSounds.emplace_back(g_menu_manip_sound, "static/sounds/manip-menu.wav");
+  g_pelletCollectSound = Mix_LoadWAV("static/sounds/pellet.wav");
+  g_preloadedSounds.emplace_back(g_pelletCollectSound, "static/sounds/pellet.wav");
 
   if(devMode) {
     g_dijkstraDebugRed = new ui(renderer, "engine/walkerRed.bmp", 0,0,32,32, 3);
@@ -453,6 +468,19 @@ int WinMain()
   //load levelSequence
   g_levelSequence = new levelSequence(g_levelSequenceName, renderer);
 
+  //for dlc/custom content, add extra levels from any file that might be there
+  for(const auto & entry : filesystem::directory_iterator("levelsequence/")) {
+    if(entry.path() != "levelsequence/" + g_levelSequenceName + ".txt" && entry.path() != "levelsequence/icons") {
+      string entryStr = entry.path().string();
+      g_levelSequence->addLevels(entryStr);
+    }
+  }
+
+  //This is used to call scripts triggered by pellet goals
+  g_pelletGoalScriptCaller = new adventureUI(renderer, 1);
+  g_pelletGoalScriptCaller->playersUI = 0;
+  g_pelletGoalScriptCaller->talker = narrarator;
+
   srand(time(NULL));
   if (devMode)
   {
@@ -491,6 +519,7 @@ int WinMain()
   g_UiGlideSpeedY = 0.012 * WIN_WIDTH/WIN_HEIGHT;
 
   inventoryText = new textbox(renderer, "1", 40,  g_fontsize, 0, WIN_WIDTH * 0.2);
+  inventoryText->dropshadow = 1;
   inventoryText->show = 0;
   inventoryText->align = 1;
 
@@ -558,7 +587,7 @@ int WinMain()
     s->framewidth = 500;
     s->shadow->width = 0;
     s->dynamic = 0;
-    s->sortingOffset = 130; // -35
+    s->sortingOffset = 130; // -35 then 130
   }
 
   for (size_t i = 0; i < 19; i++)
@@ -1411,6 +1440,7 @@ int WinMain()
           }
         }
       }
+      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
 
       g_lastFunctionalX = functionalX;
       g_lastFunctionalY = functionalY;
@@ -1572,7 +1602,14 @@ int WinMain()
         }
 
         // update crosshair to current objective
-        rect objectiverect = {g_objective->getOriginX(), g_objective->getOriginY() - (XtoZ * ((g_objective->bounds.zeight / 2) + g_objective->z)), 1, 1};
+        int ox = g_objective->getOriginX();
+        int oy = g_objective->getOriginY();
+
+        rect objectiverect = {ox, oy - (XtoZ * ((g_objective->bounds.zeight / 2) + g_objective->z)), 1, 1};
+        
+        if(g_objective->isPellet) { //pellets have very short bounds.zeight values
+          objectiverect.y -= 40;
+        }
         objectiverect = transformRect(objectiverect);
         // is the x offscreen? let's adjust it somewhat
         const float margin = 0.1;
@@ -1595,7 +1632,8 @@ int WinMain()
         crossy = vy + 0.5;
 
         // hide crosshair if we are close
-        if (vectorlen < 0.17)
+        if(XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY()) < pow(64*5.5,2))
+        //if (vectorlen < 0.25)
         {
           crossx = 5;
           crossy = 5;
@@ -1878,15 +1916,25 @@ int WinMain()
     adventureUIManager->healthText->boxX = protagHealthbarA->x + protagHealthbarA->width / 2;
     adventureUIManager->healthText->boxY = protagHealthbarA->y - 0.005;
 
+    for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
+    {
+      if(g_textboxes[i]->layer0) {
+        g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
+    }
+
     for (long long unsigned int i = 0; i < g_ui.size(); i++)
     {
       if(!g_ui[i]->renderOverText) {
         g_ui[i]->render(renderer, g_camera);
       }
     }
+
     for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
     {
-      g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      if(!g_textboxes[i]->layer0) {
+        g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
     }
 
     //some ui are rendered over text
@@ -1950,11 +1998,11 @@ int WinMain()
 
       // iterate thru inventory and draw items on screen
       float defaultX = WIN_WIDTH * 0.05;
-      float defaultY = WIN_WIDTH * 0.05;
+      float defaultY = WIN_HEIGHT * adventureUIManager->inventoryYStart;
       float x = defaultX;
       float y = defaultY;
       float maxX = WIN_WIDTH * 0.9;
-      float maxY = WIN_HEIGHT * 0.60;
+      float maxY = WIN_HEIGHT * adventureUIManager->inventoryYEnd;
       float itemWidth = WIN_WIDTH * 0.07;
       float padding = WIN_WIDTH * 0.01;
 
@@ -1979,6 +2027,15 @@ int WinMain()
             }
               
             // draw the ith letter of "alphabet" in drect
+            if(1) {
+              SDL_Rect shadowRect = drect;
+              float booshAmount = g_textDropShadowDist  * (60 * g_fontsize);
+              shadowRect.x += booshAmount;
+              shadowRect.y += booshAmount;
+              SDL_SetTextureColorMod(g_alphabet_textures->at(i), g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+              SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &shadowRect);
+              SDL_SetTextureColorMod(g_alphabet_textures->at(i), 255,255,255);
+            }
             SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
   
 
@@ -2029,7 +2086,8 @@ int WinMain()
           }
 
           //draw current input in the bottom box
-          adventureUIManager->escText->updateText(g_keyboardInput.c_str(), -1, 0.9);
+          adventureUIManager->inputText->updateText(g_keyboardInput.c_str(), -1, 0.9);
+          adventureUIManager->escText->updateText(adventureUIManager->keyboardPrompt, -1, 0.9);
           
 
           g_itemsInInventory = g_alphabet.size();
@@ -2146,6 +2204,8 @@ int WinMain()
               if(g_levelSequence->levelNodes[i]->locked) {
                 adventureUIManager->escText->updateText("???", -1, 0.9);
               } else {
+                string dispText = g_levelSequence->levelNodes[i]->name;
+                std::replace(dispText.begin(), dispText.end(),'_',' ');
                 adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
   
               }
@@ -2273,10 +2333,12 @@ int WinMain()
 
             g_entities[i]->shrinking = 1;
 
-            g_entities[i]->dynamic = 0;
-            g_entities[i]->xvel = 0;
-            g_entities[i]->yvel = 0;
-            g_entities[i]->missile = 0;
+            if(!g_entities[i]->wasPellet) { 
+              g_entities[i]->dynamic = 0;
+              g_entities[i]->xvel = 0;
+              g_entities[i]->yvel = 0;
+              g_entities[i]->missile = 0;
+            }
 
 
             if(g_entities[i]->curheight < 1) {
@@ -2302,18 +2364,143 @@ int WinMain()
 
       }
     }
-
+    
+    
     //did the protag collect a pellet?
-    for(auto x : g_pellets) {
-      bool m = CylinderOverlap(protag->getMovedBounds(), x->getMovedBounds());
-      if(m) {
-        x->usingTimeToLive = 1;
-        x->timeToLiveMs = -1;
+    float protag_x = protag->getOriginX();
+    float protag_y = protag->getOriginY();
+    for(int i = 0; i < g_pellets.size(); i++) {
+      entity* x = g_pellets[i];
+
+      //well, this is shitty. Somehow I find myself in an unfortunate situation which I dont understand
+      //Somehow, I can't get pellets to appear ontopof the lowest fogsheet yet behind fomm, if he's
+      //infront.
+      //I'm going to cheat and change their sorting offset based on distance to the protag, so they'll still be jank (e.g., other enemy is close to a cupcake), but whatever, it's better than nothin
+      //and I really want pellets to stick out from fog
+      int ydiff = protag_y - x->y;
+      if(-ydiff > -85) {
+        x->sortingOffset = 30;
+      } else {
+        x->sortingOffset = 160; //pellets that are close to the fog are artificially boosted in the draw order
       }
 
-      g_currentPelletsCollected++;
+      if(ydiff < 85 && ydiff > 0) {
+        x->sortingOffset = 30;
+      }
+      
+      
+      bool collected = 0;
+      //try to collect
+      if(devMode == 0) {
+        bool m = CylinderOverlap(protag->getMovedBounds(), x->getMovedBounds());
+        if(m) {
+          
+          playSound(4, g_pelletCollectSound, 0);
+          x->usingTimeToLive = 1;
+          x->timeToLiveMs = -1;
+          x->shadow->size = 0;
+          x->dynamic = 1;
+          x->steeringAngle = wrapAngle(atan2(protag->getOriginX() - x->getOriginX(), protag->getOriginY() - x->getOriginY()) - M_PI/2);
+          x->targetSteeringAngle = x->steeringAngle;
+          x->forwardsVelocity = 14000;
+
+          
+          g_pellets.erase(remove(g_pellets.begin(), g_pellets.end(), x), g_pellets.end());
+          x->isPellet = 0;
+          i--;
+          g_currentPelletsCollected++;
+
+          collected = 1;
+          
+          //did we collect the objective?
+          if(x == g_objective) {
+            g_objective = nullptr;
+          }
+        }
+      }
+
+      if(collected) {
+        for(auto x : g_pelletGoalScripts) {
+
+          if(x.first <= g_currentPelletsCollected) {
+            g_pelletGoalScripts.erase(remove(g_pelletGoalScripts.begin(), g_pelletGoalScripts.end(), x), g_pelletGoalScripts.end());
+            M("Calling goalscript for " + to_string(x.first) + " pellets");
+            //M("We'll call this script: " + x.second);
+
+            //load and call this script (this code is taken from that for the "/script" script-command
+            ifstream stream;
+            string loadstr;
+            string s = x.second;
+        
+            loadstr = "maps/" + g_map + "/scripts/" + s + ".txt";
+            const char *plik = loadstr.c_str();
+
+            stream.open(plik);
+        
+            if (!stream.is_open())
+            {
+              stream.open("scripts/" + s + ".txt");
+            }
+            string line;
+        
+            getline(stream, line);
+        
+            vector<string> nscript;
+            while (getline(stream, line))
+            {
+              nscript.push_back(line);
+            }
+
+            parseScriptForLabels(nscript);
+
+            g_pelletGoalScriptCaller->blip = g_ui_voice;
+            g_pelletGoalScriptCaller->sayings = &nscript;
+            g_pelletGoalScriptCaller->talker = narrarator;
+            narrarator->sayings = nscript;
+            narrarator->dialogue_index = -1;
+            g_pelletGoalScriptCaller->continueDialogue();
+
+
+          }
+
+        }
+
+      }
+    }
+    
+    if(g_usingPelletsAsObjective) {
+      if(g_objective == nullptr) {
+        M("Must find another pellet");
+
+        //search for a nearby pellet
+        entity* closest = nullptr;
+        float closestDist = 0;
+//        int px = protag->getOriginX();
+//        int py = protag->getOriginY();
+        int px = protag->x;
+        int py = protag->y;
+        int thisDist = 0;
+        for(int i = 0; i < g_pellets.size(); i++) {
+          thisDist = XYWorldDistanceSquared(px, py, g_pellets[i]->x, g_pellets[i]->y);
+          if(thisDist < closestDist || closest == nullptr) {
+            closest = g_pellets[i];
+            closestDist = thisDist;
+          }
+        }
+        g_objective = closest; //might be nullptr, that's fine
+
+      }
     }
 
+    string scorePrint = "";
+    if(g_currentPelletsCollected < g_pelletsNeededToProgress || 1) {
+      scorePrint = to_string(g_currentPelletsCollected) + "/" + to_string(g_pelletsNeededToProgress);
+    } else {
+      scorePrint = g_leaveStr;
+    }
+
+    adventureUIManager->scoreText->updateText(scorePrint, -1, 1);
+    adventureUIManager->showScoreUI();
 
     //show dijkstra debugging sprites
 //    if(devMode && g_dijkstraEntity != nullptr) {
@@ -2464,109 +2651,116 @@ int WinMain()
       }
     }
 
-    // update music
-    if (musicUpdateTimer > 500)
-    {
-      musicUpdateTimer = 0;
-
-      // check musicalentities
-      entity *listenToMe = nullptr;
-      for (auto x : g_musicalEntities)
+    if(g_musicSilenceMs > 0) {
+      g_musicSilenceMs -= elapsed;
+      musicUpdateTimer = 500;
+      g_currentMusicPlayingEntity = nullptr;
+      g_closestMusicNode = nullptr;
+    } else { 
+      // update music
+      if (musicUpdateTimer > 500)
       {
-        if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
+        musicUpdateTimer = 0;
+  
+        // check musicalentities
+        entity *listenToMe = nullptr;
+        for (auto x : g_musicalEntities)
         {
-          // we should be playing his music
-          // incorporate priority later
-          listenToMe = x;
-        }
-      }
-      if (listenToMe != nullptr)
-      {
-        closestMusicNode = nullptr;
-        if (g_currentMusicPlayingEntity != listenToMe)
-        {
-          Mix_FadeOutMusic(200);
-          // Mix_PlayMusic(listenToMe->theme, 0);
-          Mix_VolumeMusic(g_music_volume * 128);
-          entFadeFlag = 1;
-          fadeFlag = 0;
-          musicFadeTimer = 0;
-          g_currentMusicPlayingEntity = listenToMe;
-        }
-      }
-      else
-      {
-        bool hadEntPlayingMusic = 0;
-        if (g_currentMusicPlayingEntity != nullptr)
-        {
-          // stop ent music
-          // Mix_FadeOutMusic(1000);
-          hadEntPlayingMusic = 1;
-          g_currentMusicPlayingEntity = nullptr;
-        }
-        if (g_musicNodes.size() > 0 && !g_mute)
-        {
-          newClosest = protag->Get_Closest_Node(g_musicNodes);
-          if (closestMusicNode == nullptr)
+          if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
           {
-            if (!hadEntPlayingMusic)
+            // we should be playing his music
+            // incorporate priority later
+            listenToMe = x;
+          }
+        }
+        if (listenToMe != nullptr)
+        {
+          g_closestMusicNode = nullptr;
+          if (g_currentMusicPlayingEntity != listenToMe)
+          {
+            Mix_FadeOutMusic(200);
+            // Mix_PlayMusic(listenToMe->theme, 0);
+            Mix_VolumeMusic(g_music_volume * 128);
+            entFadeFlag = 1;
+            fadeFlag = 0;
+            musicFadeTimer = 0;
+            g_currentMusicPlayingEntity = listenToMe;
+          }
+        }
+        else
+        {
+          bool hadEntPlayingMusic = 0;
+          if (g_currentMusicPlayingEntity != nullptr)
+          {
+            // stop ent music
+            // Mix_FadeOutMusic(1000);
+            hadEntPlayingMusic = 1;
+            g_currentMusicPlayingEntity = nullptr;
+          }
+          if (g_musicNodes.size() > 0 && !g_mute)
+          {
+            newClosest = protag->Get_Closest_Node(g_musicNodes);
+            if (g_closestMusicNode == nullptr)
             {
-              Mix_PlayMusic(newClosest->blip, -1);
-              Mix_VolumeMusic(g_music_volume * 128);
-              closestMusicNode = newClosest;
+              if (!hadEntPlayingMusic)
+              {
+                Mix_PlayMusic(newClosest->blip, -1);
+                Mix_VolumeMusic(g_music_volume * 128);
+                g_closestMusicNode = newClosest;
+              }
+              else
+              {
+                g_closestMusicNode = newClosest;
+                // change music
+                Mix_FadeOutMusic(1000);
+                musicFadeTimer = 0;
+                fadeFlag = 1;
+                entFadeFlag = 0;
+              }
             }
             else
             {
-              closestMusicNode = newClosest;
-              // change music
-              Mix_FadeOutMusic(1000);
-              musicFadeTimer = 0;
-              fadeFlag = 1;
-              entFadeFlag = 0;
-            }
-          }
-          else
-          {
-
-            // Segfaults, todo is initialize these musicNodes to have something
-            if (newClosest->name != closestMusicNode->name)
-            {
-              // D(newClosest->name);
-              // if(newClosest->name == "silence") {
-              // Mix_FadeOutMusic(1000);
-              //}
-              closestMusicNode = newClosest;
-              // change music
-              Mix_FadeOutMusic(1000);
-              musicFadeTimer = 0;
-              fadeFlag = 1;
-              entFadeFlag = 0;
+  
+              // Segfaults, todo is initialize these musicNodes to have something
+              if (newClosest->name != g_closestMusicNode->name)
+              {
+                // D(newClosest->name);
+                // if(newClosest->name == "silence") {
+                // Mix_FadeOutMusic(1000);
+                //}
+                g_closestMusicNode = newClosest;
+                // change music
+                Mix_FadeOutMusic(1000);
+                musicFadeTimer = 0;
+                fadeFlag = 1;
+                entFadeFlag = 0;
+              }
             }
           }
         }
-      }
-      // check for any cues
-      for (auto x : g_cueSounds)
-      {
-        if (x->played == 0 && Distance(x->x, x->y, protag->x + protag->width / 2, protag->y) < x->radius)
+        // check for any cues
+        for (auto x : g_cueSounds)
         {
-          x->played = 1;
-          playSound(-1, x->blip, 0);
+          if (x->played == 0 && Distance(x->x, x->y, protag->x + protag->width / 2, protag->y) < x->radius)
+          {
+            x->played = 1;
+            playSound(-1, x->blip, 0);
+          }
         }
       }
-    }
-    if (fadeFlag && musicFadeTimer > 1000 /*&& newClosest != 0*/)
-    {
-      fadeFlag = 0;
-      Mix_HaltMusic();
-      cout << "played some music " << newClosest->name << endl;
-      Mix_FadeInMusic(newClosest->blip, -1, 1000);
-    }
-    if (entFadeFlag && musicFadeTimer > 200)
-    {
-      entFadeFlag = 0;
-      Mix_HaltMusic();
-      Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
+      if (fadeFlag && musicFadeTimer > 1000 /*&& newClosest != 0*/)
+      {
+        fadeFlag = 0;
+        Mix_HaltMusic();
+        cout << "played some music " << newClosest->name << endl;
+        Mix_FadeInMusic(newClosest->blip, -1, 1000);
+      }
+      if (entFadeFlag && musicFadeTimer > 200)
+      {
+        entFadeFlag = 0;
+        Mix_HaltMusic();
+        Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
+      }
     }
 
     // wakeup manager if it is sleeping
@@ -3200,6 +3394,7 @@ void getInput(float &elapsed)
         g_firstFrameOfPauseMenu = 1;
         adventureUIManager->escText->updateText("", -1, 0.9);
         inventorySelection = 0;
+        adventureUIManager->positionInventory();
         adventureUIManager->showInventoryUI();
       }
     }
@@ -3223,10 +3418,13 @@ void getInput(float &elapsed)
       {
         if(SoldUIUp <= 0)
         {
-          if(g_settingsUI->positionOfCursor == 0) {
+          
+          if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
+            if(g_settingsUI->positionOfCursor == 0) {
             g_settingsUI->positionOfCursor = g_settingsUI->maxPositionOfCursor;
-          } else if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
-            g_settingsUI->positionOfCursor--;
+            } else {
+              g_settingsUI->positionOfCursor--;
+            }
           }
           SoldUIUp = (oldStaticInput[0]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
         } else {
@@ -3240,10 +3438,12 @@ void getInput(float &elapsed)
       if (staticInput[1]) {
         if(SoldUIDown <= 0 )
         {
-          if(g_settingsUI->positionOfCursor == g_settingsUI->maxPositionOfCursor) {
-            g_settingsUI->positionOfCursor = 0;
-          } else if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) {
-            g_settingsUI->positionOfCursor++;
+          if(!g_awaitSwallowedKey && !g_settingsUI->modifyingValue) { 
+            if(g_settingsUI->positionOfCursor == g_settingsUI->maxPositionOfCursor) {
+              g_settingsUI->positionOfCursor = 0;
+            } else {
+              g_settingsUI->positionOfCursor++;
+            }
           }
           SoldUIDown = (oldStaticInput[1]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
         } else {
@@ -3828,6 +4028,10 @@ void getInput(float &elapsed)
             g_keyboardInput += g_alphabet[inventorySelection];
           }
 
+          //take off caps (add sound if it was on)
+          g_alphabet = g_alphabet_lower;
+          g_alphabet_textures = &g_alphabetLower_textures;
+
         }
 
       } else {
@@ -3870,7 +4074,9 @@ void getInput(float &elapsed)
         vector<string> x = splitString(mapName, '/');
         g_mapdir = x[1];
   
-  
+        //since we are loading a new level, reset the pellets
+        g_currentPelletsCollected = 0;
+
         load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
         adventureUIManager->hideInventoryUI();
   

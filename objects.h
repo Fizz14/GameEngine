@@ -2779,6 +2779,8 @@ class adventureUI {
     ui* talkingBox = 0;
     ui* talkingBoxTexture = 0;
 
+   
+
     SDL_Color currentTextcolor = {155, 115, 115};
     SDL_Color defaultTextcolor = {155, 115, 115};
     
@@ -2865,6 +2867,10 @@ class adventureUI {
     textbox* talkingText = 0;
     textbox* responseText = 0;
     textbox* escText = 0;
+    textbox* inputText = 0;
+
+    string keyboardPrompt = "";
+
     string pushedText; //holds what will be the total contents of the messagebox.
     string curText; //holds what the user currently sees; e.g. half of the message because it hasnt been typed out yet
     bool typing = false; //true if text is currently being typed out to the window.
@@ -2872,6 +2878,7 @@ class adventureUI {
     Mix_Chunk* confirm_noise = Mix_LoadWAV( "sounds/peg.wav" );
     vector<string>* sayings;
     entity* talker = 0;
+    entity* selected = nullptr; //this is used for setting selfdata, instead of just using the talker pointer (that was limited)
     bool askingQuestion = false; //set if current cue is a question
     string response = "tired"; //contains the last response the player gave to a question
     vector<string> responses; //contains each possible response to a question
@@ -2891,13 +2898,12 @@ class adventureUI {
     textbox* scoreText = 0;
 
     int countEntities = 0; //used now for /lookatall to count how many entities we've looked at
-
+                           
     void showTalkingUI();
     void hideTalkingUI();
 
     void showScoreUI();
     void hideScoreUI();
-
 
     void showInventoryUI();
 
@@ -2918,6 +2924,13 @@ class adventureUI {
     void initDialogue();
 
     void continueDialogue();
+
+    void positionKeyboard(); //position UI elements for keyboard- so the prompt is at the top, than the keyboard, than the input
+                             
+    void positionInventory();
+
+    float inventoryYStart = 0.05;
+    float inventoryYEnd = 0.6;
 };
 
 
@@ -3215,6 +3228,7 @@ class entity:public actor {
 
     //object-related design
     bool dynamic = true; //true for things such as wallcaps. movement/box is not calculated if this is false
+    bool CalcDynamicForOneFrame = false; //set this to true to do dynamic calcs only for one frame
     vector<string> sayings;
     bool inParty = false;
     bool talks = false;
@@ -3237,8 +3251,12 @@ class entity:public actor {
     int orbitOffset = 0; //the frames of offset for an orbital.
                          
     //for pellets
-    int isPellet = 0;
+    bool isPellet = 0; //this is turned off
+    bool wasPellet = 0; //this is true if something was ever a pellet
 
+    //change pixel drawing method 
+    bool blurPixelsForScaling = 0;
+ 
     vector<entity*> children;
 
     //for textured entities (e.g. wallcap)
@@ -3441,6 +3459,10 @@ class entity:public actor {
       string comment;
       file >> comment;
       file >> size;
+
+      //useNearestNeighbor
+      file >> comment;
+      file >> blurPixelsForScaling;
 
       file >> comment;
       file >> this->xagil;
@@ -3659,7 +3681,13 @@ class entity:public actor {
         //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
         //changing this in june 2023 to use linear interp on low res character sprites
         //this may have unwanted consequences for engine sprites, e.g. lighting
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+        if(!blurPixelsForScaling) {
+          SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+          M("Some entity is using pixel perfect rendering");
+          D(name);
+        } else {
+          SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+        }
         SDL_Surface* image = IMG_Load(spritefile);
         texture = SDL_CreateTextureFromSurface(renderer, image);
         SDL_FreeSurface(image);
@@ -3821,6 +3849,9 @@ class entity:public actor {
       if(isPellet) {
         g_pellets.push_back(this);
         bounceindex = rand() % 8;
+        wasPellet = 1;
+        CalcDynamicForOneFrame = 1;
+        M("Set calcdynamic");
       }
 
       if(animationconfig == 0) {
@@ -4144,7 +4175,6 @@ class entity:public actor {
 
         if(isPellet) {
           g_pellets.erase(remove(g_pellets.begin(), g_pellets.end(), this), g_pellets.end());
-          M("removed a pellet");
         }
 
         for(auto x : this->children) {
@@ -4211,7 +4241,7 @@ class entity:public actor {
                      (curheight * XtoY)
                    )*0.5
 
-                 - (floor(z)) * XtoZ) - fcamera.y,
+                 - (floor(z) + floatheight) * XtoZ) - fcamera.y,
 
                 floor(curwidth),
                 floor(curheight)
@@ -4238,7 +4268,7 @@ class entity:public actor {
                      (curheight * XtoY)
                    )*0.5
 
-                 - (floor(z)) * XtoZ) - fcamera.y,
+                 - (floor(z) + floatheight) * XtoZ) - fcamera.y,
 
                 floor(curwidth),
                 floor(curheight)
@@ -4252,7 +4282,7 @@ class entity:public actor {
         if(RectOverlap(obj, cam)) {
 
           //set visual direction
-          if(forwardsVelocity > 0) {
+          if(forwardsVelocity > 0 && !this->wasPellet) {
             animation = convertAngleToFrame(steeringAngle);
             flip = SDL_FLIP_NONE;
             if(yframes < 8) {
@@ -4485,6 +4515,7 @@ class entity:public actor {
       //returns a pointer to a door that the player used
       virtual door* update(vector<door*> doors, float elapsed) {
         if(!tangible) {return nullptr;}
+
         
         if(usingTimeToLive) {
           timeToLiveMs -= elapsed;
@@ -4494,6 +4525,7 @@ class entity:public actor {
           t->x = getOriginX();
           t->y = getOriginY();
         }
+
         if(isOrbital) {
           this->z = parent->z -10 - (parent->height - parent->curheight);
 
@@ -4658,20 +4690,20 @@ class entity:public actor {
 
 
         //should we animate?
-        if(useAnimForWalking) {
-          if( (xaccel != 0 || yaccel != 0) || !grounded ) {
-            animate = 1;
+        if( (xaccel != 0 || yaccel != 0) || !grounded ) {
+          animate = 1;
+          if(useAnimForWalking) {
             if( (!scriptedAnimation) && grounded) {
               msPerFrame = 100;
             } else {
               msPerFrame = 0;
             }
-          } else {
-            animate = 0;
-            if(!scriptedAnimation && this->useAnimForWalking) {
-              msPerFrame = 0;
-              frameInAnimation = 0;
-            }
+          }
+        } else {
+          animate = 0;
+          if(useAnimForWalking && !scriptedAnimation && this->useAnimForWalking) {
+            msPerFrame = 0;
+            frameInAnimation = 0;
           }
         }
 
@@ -4693,8 +4725,9 @@ class entity:public actor {
           }
         }
 
-        if(!dynamic) { return nullptr; }
-
+        if(!dynamic && !CalcDynamicForOneFrame) { return nullptr; }
+        if(CalcDynamicForOneFrame) { M("Calct for one frame");}
+        CalcDynamicForOneFrame = 0;
 
         //wait until turned to walk
         float thisTA = targetSteeringAngle;
@@ -4717,7 +4750,14 @@ class entity:public actor {
         //set xaccel and yaccel from forwardsVelocity
         xaccel = cos(steeringAngle) * forwardsVelocity;
         yaccel = -sin(steeringAngle) * forwardsVelocity;
-        forwardsVelocity = 0;
+
+        //keep pellets moving
+        if(this->wasPellet && this->usingTimeToLive) {
+          this->steeringAngle = wrapAngle(atan2(protag->getOriginX() - this->getOriginX(), protag->getOriginY() - this->getOriginY()) - M_PI/2);
+          this->targetSteeringAngle = this->steeringAngle;
+        } else {
+          forwardsVelocity = 0;
+        }
  
 
         if(this == protag) {
@@ -6346,8 +6386,6 @@ vector<entity*> gatherEntities(string fname) {
 
 class levelNode {
 public:
-  string pred_name = "none"; //unlock this level if a level has this name
-  int req_pellets = 10; //needed from predeccessor
   string name = "unamed";
   string mapfilename = "static/maps/unset";
   string waypointname;
@@ -6356,9 +6394,7 @@ public:
   bool locked = 1;
   bool hidden = 0; //levels can be hidden so it is impossible to return to them (?)
 
-  levelNode(string p1, int p2, string p3, string p4, string p5, SDL_Renderer * renderer) {
-    pred_name = p1;
-    req_pellets = p2;
+  levelNode(string p3, string p4, string p5, SDL_Renderer * renderer) {
     name = p3;
     mapfilename = p4;
     waypointname = p5;
@@ -6411,8 +6447,6 @@ public:
     string temp;
     getline(file, temp);
     
-    string pred_name;
-    string req_pellets_str;
     string level_name;
     string map_name;
     string way_name;
@@ -6420,16 +6454,49 @@ public:
 
     for(;;) {
 
-      getline(file,pred_name);
-      getline(file,req_pellets_str);
-      int req_pellets = stoi(req_pellets_str);
       getline(file,level_name);
       getline(file,map_name);
       getline(file,way_name);
       map_name = "maps/" + map_name;
 
       if(file.eof()) {break;}
-      levelNode* newLevelNode = new levelNode(pred_name, req_pellets, level_name, map_name, way_name, renderer);
+      levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer);
+      levelNodes.push_back(newLevelNode);
+      getline(file,temp);
+
+    }
+  }
+
+  //add levels from a file
+  void addLevels(string filename) {
+    ifstream file;
+    file.open(filename.c_str());
+
+    if(!file.is_open()) {
+      //error opening level sequence file
+      E("Couldn't open level sequence file");
+
+      //we should just crash, but that would make debugging hard
+      return;
+    }
+
+    string temp;
+    getline(file, temp);
+    
+    string level_name;
+    string map_name;
+    string way_name;
+    getline(file,temp);
+
+    for(;;) {
+
+      getline(file,level_name);
+      getline(file,map_name);
+      getline(file,way_name);
+      map_name = "maps/" + map_name;
+
+      if(file.eof()) {break;}
+      levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer);
       levelNodes.push_back(newLevelNode);
       getline(file,temp);
 
@@ -6554,6 +6621,9 @@ int loadSave() {
 
   //load which levels are unlocked, as a list of lowercase names
   //M("LETS UNLOCK LEVELS");
+  //
+  //unlocked levels should have '-' instead of ' ' in the name, for parsing reasons
+  //
   while(getline(file, line)) {
     if(line == "&") { break;}
     //D(line);
@@ -6904,6 +6974,8 @@ class textbox {
 
     int errorflag = 0;
 
+    int dropshadow = 0; //use a tiny shadow for readability
+
     //used for drawing in worldspace
     float boxWidth = 50;
     float boxHeight = 50;
@@ -6914,6 +6986,8 @@ class textbox {
     bool worldspace = false; //use worldspace or screenspace;
     
     bool blinking = 0;
+
+    bool layer0 = 0;
     
 
     textbox(SDL_Renderer* renderer, const char* fcontent, float size, float fx, float fy, float fwidth) {
@@ -6961,16 +7035,43 @@ class textbox {
           if(align == 1) {
             //right
             SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, (float)width,  (float)thisrect.h};
+            if(dropshadow) {
+              SDL_FRect shadowRect = dstrect;
+              float booshAmount = g_textDropShadowDist * fontsize;
+              shadowRect.x += booshAmount;
+              shadowRect.y += booshAmount;
+              SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+              SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+              SDL_SetTextureColorMod(texttexture, 255,255,255);
+            }
             SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
           } else {
             if(align == 0) {
               //left
               SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
+              if(dropshadow) {
+                SDL_FRect shadowRect = dstrect;
+                float booshAmount = g_textDropShadowDist * fontsize;
+                shadowRect.x += booshAmount;
+                shadowRect.y += booshAmount;
+                SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+                SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+                SDL_SetTextureColorMod(texttexture, 255,255,255);
+              }
 
               SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
             } else {
               //center text
               SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, (float)width,  (float)thisrect.h};
+              if(dropshadow) {
+                SDL_FRect shadowRect = dstrect;
+                float booshAmount = g_textDropShadowDist * fontsize;
+                shadowRect.x += booshAmount;
+                shadowRect.y += booshAmount;
+                SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+                SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+                SDL_SetTextureColorMod(texttexture, 255,255,255);
+              }
               SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
             }
           }
@@ -6979,14 +7080,41 @@ class textbox {
         } else {
           if(align == 1) {
             SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, (float)width,  (float)thisrect.h};
+            if(dropshadow) {
+              SDL_FRect shadowRect = dstrect;
+              float booshAmount = g_textDropShadowDist * fontsize;
+              shadowRect.x += booshAmount;
+              shadowRect.y += booshAmount;
+              SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+              SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+              SDL_SetTextureColorMod(texttexture, 255,255,255);
+            }
             SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
           } else {
             if(align == 0) {
               SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
+              if(dropshadow) {
+                SDL_FRect shadowRect = dstrect;
+                float booshAmount = g_textDropShadowDist * fontsize;
+                shadowRect.x += booshAmount;
+                shadowRect.y += booshAmount;
+                SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+                SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+                SDL_SetTextureColorMod(texttexture, 255,255,255);
+              }
               SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
             } else {
               //center text
               SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, (float)width,  (float)thisrect.h};
+              if(dropshadow) {
+                SDL_FRect shadowRect = dstrect;
+                float booshAmount = g_textDropShadowDist * fontsize;
+                shadowRect.x += booshAmount;
+                shadowRect.y += booshAmount;
+                SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+                SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+                SDL_SetTextureColorMod(texttexture, 255,255,255);
+              }
               SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
             }
           }
@@ -7045,6 +7173,12 @@ class ui {
 
     bool mapSpecific = 0;
 
+    //added this for the objective crosshair, I don't think I'll use it much for other stuff
+    int frame = 0;
+    int xframes = 1;
+    int framewidth = 0;
+    int frameheight = 0;
+
     //for 9patch
     bool is9patch = 0;
     int patchwidth = 256; //213
@@ -7060,6 +7194,8 @@ class ui {
     float shrinkPercent = 0; //used for shrinking a ui element by an amount of pixels, usually in combination with some other element intended as a border
 
     float heightFromWidthFactor = 0; //set this to 0.5 or 1 and the height of the element will be held to that ratio of the width, even if the screen's ratio changes.
+
+    bool dropshadow = 0;
 
     ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float fwidth, float fheight, int fpriority) {
       //M("ui()" );
@@ -7174,13 +7310,48 @@ class ui {
           if(worldspace) {
             SDL_FRect dstrect = {x, y, width, height};
             dstrect = transformRect( dstrect );
+            if(dropshadow) {
+              SDL_FRect shadowRect = dstrect;
+                float booshAmount = g_textDropShadowDist * 30;
+              shadowRect.x += booshAmount;
+              shadowRect.y += booshAmount;
+              SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+              SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+              SDL_SetTextureColorMod(texture, 255,255,255);
+            }
             SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
           } else {
             if(heightFromWidthFactor != 0) {
               SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
-              SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+              if(dropshadow) {
+                SDL_FRect shadowRect = dstrect;
+                float booshAmount = g_textDropShadowDist * 30;
+                shadowRect.x += booshAmount;
+                shadowRect.y += booshAmount;
+                SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+                SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+                SDL_SetTextureColorMod(texture, 255,255,255);
+              }
+
+
+              if(xframes > 1) {
+                SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
+                SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+              } else {
+                SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+              }
+
             } else {
               SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2};
+              if(dropshadow) {
+                SDL_FRect shadowRect = dstrect;
+                float booshAmount = g_textDropShadowDist * 30;
+                shadowRect.x += booshAmount;
+                shadowRect.y += booshAmount;
+                SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+                SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+                SDL_SetTextureColorMod(texture, 255,255,255);
+              }
               SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
             }
           }
@@ -7276,7 +7447,7 @@ class cueSound {
     string name = "empty";
     int x = 0;
     int y = 0;
-    float radius = 1200;
+    float radius = 1200; //radius is in worldpixels (64 = 1 block)
     bool played = 0;
     cueSound(string fileaddress, int fx, int fy, int fradius) {
       name = fileaddress;
@@ -7286,6 +7457,7 @@ class cueSound {
         existSTR = "static/sounds/" + fileaddress + ".wav";
         if(!fileExists(existSTR)) {
           existSTR = "static/sounds/defaults.wav";
+          E("Couldn't find .wav for " + name);
         }
       }
       blip = Mix_LoadWAV(existSTR.c_str());
@@ -7310,7 +7482,10 @@ void playSoundByName(string fname, float xpos, float ypos) {
     }
   }
   if(sound == NULL) {
-    E("Soundcue " + fname + " not found in level." + " Not critical.");
+    E("Cuesound " + fname + " not found in level.");
+    for (auto s : g_cueSounds) {
+      D(s->name);
+    }
     return;
   }
 
@@ -8292,7 +8467,7 @@ class settingsUI {
 
     float markerWidth = 0.055;
     float markerFingerX = 0.70;
-    float markerHandX = 0.68;
+    float markerHandX = 0.70;
 
     float markerBBOffset = 0.04; //offset position of cursor when on the back button
     float markerBBOffsetY = 0.04; 
@@ -8360,6 +8535,7 @@ class settingsUI {
       backButton->persistent = 1;
       backButton->show = 1;
       backButton->priority = 1;
+      backButton->dropshadow = 1;
 
       bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", bbXStart, bbYStart, bbWidth, 1, 0);
       bbNinePatch->patchwidth = 213;
@@ -8375,6 +8551,7 @@ class settingsUI {
       for(float yPos = yStart + spacing/2; yPos < yEnd; yPos+= spacing ) 
       {
         textbox* newTextbox = new textbox(renderer, optionStrings[i].c_str(), 30 * g_fontsize, xStart + (spacing/2 * (WIN_WIDTH/WIN_HEIGHT)), yPos, xEnd - xStart);
+        newTextbox->dropshadow = 1;
         newTextbox->show = 0;
         optionTextboxes.push_back(newTextbox);
         
@@ -8398,6 +8575,7 @@ class settingsUI {
         newTextbox = new textbox(renderer, content.c_str(), 30 * g_fontsize, xEnd + 0.02, yPos, 0.3);
         newTextbox->show = 0;
         newTextbox->align = 1;
+        newTextbox->dropshadow = 1;
         valueTextboxes.push_back(newTextbox);
 
 

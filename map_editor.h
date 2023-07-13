@@ -143,6 +143,7 @@ void populateMapWithEntities()
 
 void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 {
+  M("load_map");
   debugClock = clock();
   mapname = filename;
   g_loadingATM = 1;
@@ -465,7 +466,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       musicNode *m = new musicNode(sprite, p1, p2);
       (void)m;
     }
-    if (word == "cue")
+    if (word == "cuesound")
     {
 
       iss >> s0 >> s1 >> p1 >> p2 >> p3;
@@ -1312,6 +1313,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   if (fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
     string loadstr = "maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
+    D(loadstr);
     const char *plik = loadstr.c_str();
     ifstream stream;
     stream.open(plik);
@@ -1323,6 +1325,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     while (getline(stream, line))
     {
       script.push_back(line);
+      D(line);
     }
 
     parseScriptForLabels(script);
@@ -1350,6 +1353,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
     if (narrarator->sayings.size() > 0)
     {
+      M("Doing mapinit");
       narrarator->myScriptCaller->continueDialogue();
     }
   }
@@ -1357,6 +1361,9 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   {
     M("MAPINIT NOT FOUND");
   }
+
+  g_maxPelletsInLevel = g_pellets.size();
+  g_currentPelletsCollected = 0;
 
   g_loadingATM = 0;
 }
@@ -1398,6 +1405,7 @@ void changeTheme(string str)
     M("Theme " + path + "not found");
     return;
   }
+
 
   for (const auto &entry : filesystem::directory_iterator(path))
   {
@@ -1640,7 +1648,7 @@ bool mapeditor_save_map(string word)
   }
   for (long long unsigned int i = 0; i < g_cueSounds.size(); i++)
   {
-    ofile << "cue " << g_cueSounds[i]->name << " " << g_cueSounds[i]->x << " " << g_cueSounds[i]->y << " " << g_cueSounds[i]->radius << endl;
+    ofile << "cuesound " << g_cueSounds[i]->name << " " << g_cueSounds[i]->x << " " << g_cueSounds[i]->y << " " << g_cueSounds[i]->radius << endl;
   }
   for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
   {
@@ -5278,6 +5286,14 @@ void write_map(entity *mapent)
         mapent->y = y;
         break;
       }
+
+      if(word == "rp" || word == "randomizepellets") {
+        for(auto x : g_pellets) {
+          x->animation = rand() % x->yframes;
+
+        }
+
+      }
       if (word == "travel")
       {
         string wayname;
@@ -5456,12 +5472,13 @@ void write_map(entity *mapent)
         musicNode *m = new musicNode(entstring, px + marker->width / 2, py + marker->height / 2);
         (void)m;
       }
-      if (word == "cue")
+      if (word == "cue" || word == "cuesound")
       {
         // for cue, input soundname and radius
         line >> entstring;
-        float radius;
+        float radius = 0;
         line >> radius;
+        radius *= 64;
         cueSound *m = new cueSound(entstring, px + marker->width / 2, py + marker->height / 2, radius);
         (void)m;
       }
@@ -6199,7 +6216,7 @@ void write_map(entity *mapent)
       inventoryA->show = 1;
       inventoryB->show = 1;
       escText->show = 1;
-      escText->updateText("",-1,1);
+      inputText->show = 1;
     }
   }
 
@@ -6209,6 +6226,9 @@ void write_map(entity *mapent)
       inventoryA->show = 0;
       inventoryB->show = 0;
       escText->show = 0;
+      escText->updateText("",-1,1);
+      inputText->show = 0;
+      inputText->updateText("", -1, 0.9);
     }
   }
 
@@ -6232,7 +6252,8 @@ void write_map(entity *mapent)
       talkingText->boxHeight = 0.25;
       talkingText->boxX = 0.05;
       talkingText->boxY = 0.7;
-      talkingText->worldspace = 1;
+      talkingText->worldspace = 1; //right align
+      talkingText->dropshadow = 1;
 
       responseText = new textbox(renderer, "Yes", 1700 * g_fontsize, 0, 0, 0.9);
       responseText->boxWidth = 0.95;
@@ -6242,16 +6263,19 @@ void write_map(entity *mapent)
       responseText->boxY = 0.87;
       responseText->worldspace = 1;
       responseText->align = 2; // center-align
+      responseText->dropshadow = 1;
                                
 
-      scoreText = new textbox(renderer, "Yes", 30 * g_fontsize, 0, 0, 0.9);
+      scoreText = new textbox(renderer, "Yes", 1700 * g_fontsize, 0, 0, 0.9);
       scoreText->boxWidth = 0.95;
       scoreText->width = 0.95;
       scoreText->boxHeight = 0;
-      scoreText->boxX = 0.95;
+      scoreText->boxX = 0.5;
       scoreText->boxY = 0.05;
       scoreText->worldspace = 1;
-      scoreText->align = 1; // right-align
+      scoreText->align = 2; // center
+      scoreText->dropshadow = 1;
+      scoreText->layer0 = 1;
 
 
       inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
@@ -6271,6 +6295,9 @@ void write_map(entity *mapent)
       crosshair->persistent = 1;
       crosshair->heightFromWidthFactor = 1;
       crosshair->show = 0;
+      crosshair->xframes = 4;
+      crosshair->framewidth = 128;
+      crosshair->frameheight = 128;
 
       healthText = new textbox(renderer, "", 30 * g_minifontsize, 0, 0, 0.9);
       healthText->boxWidth = 0.95;
@@ -6291,8 +6318,21 @@ void write_map(entity *mapent)
       escText->worldspace = 0;
       escText->show = 1;
       escText->align = 2;
+      escText->dropshadow = 1; 
+
+      inputText = new textbox(renderer, "", 1700 * g_fontsize * 1.4, 0, 0, 0.9);
+
+      inputText->boxX = 0.5;
+      inputText->boxY = 0.3;
+      inputText->boxWidth = 0.98;
+      inputText->boxHeight = 0.25 - 0.02;
+      inputText->worldspace = 0;
+      inputText->show = 1;
+      inputText->align = 2;
+      inputText->dropshadow = 1; 
 
       playersUI = 1;
+
 
 
       hideInventoryUI();
@@ -6749,9 +6789,43 @@ void write_map(entity *mapent)
       return;
     }
 
+    //change talker (useful for writing selfdata to entities from non-dialogue scripts)
+    // do
+    // /select common/train
+    // 5->[4]
+    // to set the forth selfdata of common/train to 4
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/select")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      if(x.size() < 2) {
+        E("Not enough args for /select call.");
+      } else {
+
+        string entName = x[1];
+        entity *hopeful = 0;
+        hopeful = searchEntities(entName);
+        if (hopeful != nullptr)
+        {
+          selected = hopeful;
+          M("Managed to /select an entity");
+        }
+        else
+        {
+          E("Couldn't find entity for /select call");
+        }
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
     // write selfdata 5->[4]
     if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
     {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
       string s = scriptToUse->at(talker->dialogue_index + 1);
       int value = stoi(s.substr(0, s.find('-')));
       s.erase(0, s.find('-') + 1);
@@ -6759,7 +6833,8 @@ void write_map(entity *mapent)
       blockstr.pop_back();
       blockstr.erase(0, 1);
       int block = stoi(blockstr);
-      talker->data[block] = value;
+      M("Oh boy lets write some selfdata to our selected entity");
+      selected->data[block] = value;
       talker->dialogue_index++;
       this->continueDialogue();
       return;
@@ -6769,6 +6844,7 @@ void write_map(entity *mapent)
     //  0-1000->[4]
     if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
     {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
       string s = scriptToUse->at(talker->dialogue_index + 1);
       int firstvalue = stoi(s.substr(0, s.find('-')));
       s.erase(0, s.find('-') + 1);
@@ -6780,16 +6856,29 @@ void write_map(entity *mapent)
       blockstr.erase(0, 1);
       int block = stoi(blockstr);
 
-      talker->data[block] = rand() % (secondvalue - firstvalue + 1) + firstvalue;
-      D(talker->data[block]);
-      talker->dialogue_index++;
+      selected->data[block] = rand() % (secondvalue - firstvalue + 1) + firstvalue;
+      D(selected->data[block]);
+      selected->dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // read selfdata [5]
+    //
+    // [5]
+    // *0:waszero
+    // *1:wasone
+    // #
+    // <waszero>
+    // It was zero.
+    // #
+    // <wasone>
+    // It was one.
+    // #
+    //
     if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("\\[[[:digit:]]+\\]")))
     {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
       int j = 1;
       // parse which block of memory we are interested in
       string s = scriptToUse->at(talker->dialogue_index + 1);
@@ -6807,9 +6896,9 @@ void write_map(entity *mapent)
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
-        if (talker->data[block] == condition)
+        if (selected->data[block] == condition)
         {
-          talker->dialogue_index = jump - 3;
+          selected->dialogue_index = jump - 3;
           this->continueDialogue();
           return;
         }
@@ -6918,11 +7007,10 @@ void write_map(entity *mapent)
     }
 
     // change map
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 4) == "/map")
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/map ")
     {
       M("changing map");
       string s = scriptToUse->at(talker->dialogue_index + 1);
-      // erase '@'
       s.erase(0, 5);
       string name = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
@@ -7197,6 +7285,27 @@ void write_map(entity *mapent)
       return;
     }
 
+    //set pellet goal
+    //meaning, set a script which runs when the player collects X pellets from the level
+    // /pelletgoal 60 finishLevel 
+    // finishLevel scripts need to be local, setting the level to complete and enabling the train
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 11) == "/pelletgoal")
+    {
+      auto x = splitString(scriptToUse->at(talker->dialogue_index + 1), ' ');
+      if(x.size() > 2) {
+        M("Adding pelletgoal for " + x[1] + " pellets");
+        std::pair<int,string> a(stoi(x[1]),x[2]);
+        g_pelletGoalScripts.push_back(a);
+        g_pelletsNeededToProgress = stoi(x[1]);
+      } else {
+        E("Not enough arguments for /pelletgoal");
+      }
+      
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
     //load/spawn particle effect
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/effect")
     {
@@ -7254,7 +7363,6 @@ void write_map(entity *mapent)
       //       /emitter smoke zombie xoffset yoffset zoffset duration
       if(x.size() >= 6) 
       {
-        M("Bung");
         string effects_name = x[1];
         string ents_name = x[2];
         string sxoffset = x[3];
@@ -7270,7 +7378,6 @@ void write_map(entity *mapent)
         effectIndex* hopeEffect = nullptr;
         if (hopeful != nullptr)
         {
-          M("Found ent");
           for(int i = 0; i < g_effectIndexes.size(); i++) {
             if(g_effectIndexes[i]->name == effects_name) {
               hopeEffect = g_effectIndexes[i];
@@ -7281,13 +7388,11 @@ void write_map(entity *mapent)
           }
 
           if(hopeEffect == nullptr) {
-            M("Created effect");
             hopeEffect = new effectIndex( effects_name, renderer );
           }
           
           //hopeEffect->happen(hopeful->getOriginX(), hopeful->getOriginY(), hopeful->z );
           emitter* e = new emitter();
-          M("Bung B");
           e->type = hopeEffect;
           e->parent = hopeful;
           e->xoffset = fxoffset;
@@ -7296,8 +7401,12 @@ void write_map(entity *mapent)
           e->timeToLiveMs = ftimeToLiveMs;
           e->maxIntervalMs = hopeEffect->spawnerIntervalMs;
 
+        } else {
+          E("/emitter error - ent not found");
         }
 
+      } else {
+        E("/emitter error - not enough args");
       }
 
       
@@ -7499,6 +7608,49 @@ void write_map(entity *mapent)
       this->continueDialogue();
       return;
     }
+
+    //set crosshair frame
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 18) == "/setobjectivetype ")
+    {
+      M("Set objective type");
+      g_usingPelletsAsObjective = 0;
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      int frame = stoi(x[1]);
+      
+      if(frame < adventureUIManager->crosshair->xframes) {
+        adventureUIManager->crosshair->frame = frame;
+      } else {
+        E("Tried to set the objective type too highly.");
+
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //set pellet objective
+    //until the objective is set again, when the player collects a pellet, 
+    //the objective will be set to a nearby pellet
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 16) == "/pelletobjective")
+    {
+      g_usingPelletsAsObjective = 1;
+      g_objective = nullptr;
+
+      int frame = 1;
+      
+      if(frame < adventureUIManager->crosshair->xframes) {
+        adventureUIManager->crosshair->frame = frame;
+      } else {
+        E("No frame for /pelletobjective call.");
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
 
     // clear objective
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 15) == "/clearobjective")
@@ -7753,14 +7905,20 @@ void write_map(entity *mapent)
       while (getline(stream, line))
       {
         nscript.push_back(line);
-        D(line);
       }
+
+      parseScriptForLabels(nscript);
+
       adventureUIManager->blip = g_ui_voice;
       adventureUIManager->sayings = &nscript;
       adventureUIManager->talker = protag;
       protag->sayings = nscript;
       protag->dialogue_index = -1;
       adventureUIManager->continueDialogue();
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
     }
 
     // load savefile
@@ -7959,11 +8117,15 @@ void write_map(entity *mapent)
       g_alphabet = g_alphabet_lower;
       g_alphabet_textures = &g_alphabetLower_textures;
 
+      keyboardPrompt = pushedText;
+
       g_inventoryUiIsLevelSelect = 0;
       g_inventoryUiIsKeyboard = 1;
       inPauseMenu = 1;
       g_firstFrameOfPauseMenu = 1;
+      adventureUIManager->positionKeyboard();
       adventureUIManager->showInventoryUI();
+
 
       // this is the stuff we do when we read '#' (end scripting)
       if (playersUI)
@@ -8303,11 +8465,27 @@ void write_map(entity *mapent)
     }
 
     // play a sound that's been loaded into the level as a cue
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 6) == "/sound")
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/mapsound")
     {
       string s = scriptToUse->at(talker->dialogue_index + 1);
-      s.erase(0, 7);
-      playSoundByName(s);
+      auto x = splitString(s, ' ');
+      if(x.size() > 0) {
+        D(x[1]);
+        playSoundByName(x[1]);
+      }
+
+      talker->dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/nomusic")
+    {
+      string s = scriptToUse->at(talker->dialogue_index + 1);
+      auto x = splitString(s, ' ');
+      if(x.size() > 0) {
+        g_musicSilenceMs = stoi(x[1]);
+      }
+      Mix_FadeOutMusic(200);
 
       talker->dialogue_index++;
       this->continueDialogue();
@@ -8320,7 +8498,20 @@ void write_map(entity *mapent)
       string s = scriptToUse->at(talker->dialogue_index + 1);
       vector<string> split = splitString(s, ' ');
       string loadstring = "static/sounds/" + split[1] + ".wav";
-      Mix_Chunk *a = Mix_LoadWAV(loadstring.c_str());
+
+
+      Mix_Chunk *a = nullptr;
+      //before we load it, let's see if it's preloaded 
+      for(auto x : g_preloadedSounds) {
+        if(x.second == loadstring) {
+          a = x.first;
+        }
+      }
+
+      if(a == nullptr) {
+        Mix_Chunk *a = Mix_LoadWAV(loadstring.c_str());
+      }
+
       if (!g_mute && a != nullptr)
       {
         Mix_PlayChannel(0, a, 0);
@@ -8357,12 +8548,13 @@ void write_map(entity *mapent)
 
       return;
     }
-
+    
     // agro/unagro enemy
     //  /agro oilman 1
     //  /agro wubba 0
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/agro")
     {
+      M("in /agro interpreter");
       string s = scriptToUse->at(talker->dialogue_index + 1);
       s.erase(0, 6);
       D(s);
@@ -8377,6 +8569,9 @@ void write_map(entity *mapent)
       if (hopeful != nullptr)
       {
         hopeful->agrod = agrostate;
+      } else {
+        E("/agro couldn't find entity");
+
       }
 
       talker->dialogue_index++;
@@ -8384,7 +8579,6 @@ void write_map(entity *mapent)
       return;
     }
 
-    // teleport entity to another entity
     // /settarget zombie fomm
     if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/settarget")
     {
@@ -8611,6 +8805,7 @@ void write_map(entity *mapent)
       g_firstFrameOfPauseMenu = 1;
       
       adventureUIManager->escText->updateText("", -1, 0.9);
+      adventureUIManager->positionInventory();
       adventureUIManager->showInventoryUI();
 
       // this is the stuff we do when we read '#' (end scripting)
@@ -8648,6 +8843,25 @@ void write_map(entity *mapent)
     // default - keep talking
     talker->dialogue_index++;
     pushText(talker);
+  }
+
+  //position UI elements for keyboard
+  void adventureUI::positionKeyboard() {
+    inventoryYStart = 0.5;
+    inventoryYEnd = 1;
+    escText->boxY = 0.1; //now holds prompt
+    inventoryB->y = 0.01;
+    inventoryA->y = 0.25;
+  }
+
+  //position UI elements for inventory
+  void adventureUI::positionInventory() {
+    inventoryYStart = 0.05;
+    inventoryYEnd = 0.6;
+    escText->boxY = 0.83; //now holds prompt
+    inventoryB->y = 0.76;
+    inventoryA->y = 0.01;
+
   }
 
 #endif

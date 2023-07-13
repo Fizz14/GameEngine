@@ -208,7 +208,7 @@ bool showImportantMessages = 1;
 
 // quick debug info
 #define D(a)                                \
-  if (devMode && showDevMessages)           \
+  if (canSwitchOffDevMode && showDevMessages)           \
 {                                         \
   std::cout << #a << ": " << (a) << endl; \
 }
@@ -221,7 +221,7 @@ bool showImportantMessages = 1;
   template <typename T>
 void M(T msg, bool disableNewline = 0)
 {
-  if (!devMode || !showDevMessages || 0)
+  if (!canSwitchOffDevMode || !showDevMessages || 0)
   {
     return;
   }
@@ -236,7 +236,7 @@ void M(T msg, bool disableNewline = 0)
   template <typename T>
 void E(T msg, bool disableNewline = 0)
 {
-  if (!devMode || !showErrorMessages || 0)
+  if (!canSwitchOffDevMode || !showErrorMessages || 0)
   {
     return;
   }
@@ -495,6 +495,7 @@ int g_pollForThisBinding = -1;
 int g_whichRebindValue;
 const string g_affirmStr = "Yes";
 const string g_negStr = "No";
+const string g_leaveStr = "Lets Leave";
 const vector<string> g_graphicsStrings = {"Very Low", "Low", "Medium", "High"};
 
 //blinking text
@@ -507,7 +508,7 @@ bool g_blinkHidden = 0; //alternates every maxBlinkingMS
 float g_gravity = 220;
 int g_hasBeenHoldingJump = 0; //for letting the player hold jump to go higher
 int g_jumpGaranteedAccelMs = 0; 
-int g_maxJumpGaranteedAccelMs = 150; //for x ms protag is garanteed to accelerate
+int g_maxJumpGaranteedAccelMs = 150; //for x ms protag is garanteed to accelerate, was 150 
 // These two variables contain the position of the hit of the last lineTrace()
 int lineTraceX, lineTraceY;
 
@@ -515,6 +516,10 @@ int lineTraceX, lineTraceY;
 int g_maxPelletsInLevel = 0; //number of pellets loaded into the level
 int g_currentPelletsCollected = 0; //how many they have
 int g_pelletsNeededToProgress = 1; //player has beaten the level, just needs to leave
+vector <std::pair<int, string>> g_pelletGoalScripts; //each entry contains the path to a script which
+//
+adventureUI* g_pelletGoalScriptCaller = nullptr;
+                                     
 
 class camera
 {
@@ -630,11 +635,12 @@ bool g_update_zoom = 0; // update the zoom this frame
 
 float scalex = 1;
 float scaley = scalex;
-float min_scale = 0.1;
-float max_scale = 2;
+float min_scale = 0.000000000001;
+float max_scale = 2.4;
 
 entity *g_focus;
 entity *g_objective = 0;
+bool g_usingPelletsAsObjective = 0; //can be set by scripts, is unset when another objective is set. Makes is so that the objective is set to a pellet and when the player collects it, it is set to another pellet
 entity *narrarator;
 vector<entity *> party;
 float g_max_framerate = 120;
@@ -686,10 +692,14 @@ float g_volume = 0;
 float g_music_volume = 0.8;
 float g_sfx_volume = 1;
 bool g_mute = 0;
+
+vector<std::pair<Mix_Chunk*,string>> g_preloadedSounds;
 Mix_Chunk *g_ui_voice;
 Mix_Chunk *g_menu_open_sound;
 Mix_Chunk *g_menu_close_sound;
 Mix_Chunk *g_menu_manip_sound;
+Mix_Chunk *g_pelletCollectSound;
+Mix_Chunk *g_trainReadySound;
 
 Mix_Chunk *g_land;
 Mix_Chunk *g_footstep_a;
@@ -697,8 +707,13 @@ Mix_Chunk *g_footstep_b;
 Mix_Chunk *g_bonk;
 
 Mix_Chunk *g_deathsound;
-musicNode *closestMusicNode;
+musicNode *g_closestMusicNode;
 musicNode *newClosest;
+
+int g_musicSilenceMs = 0; //this is set by scripts to fade music out for x ms
+int g_currentMusicSilenceMs = 0;
+int g_musicSilenceFadeMs = 200; // if g_musicSilenceMs == 5000, than we spend 1000ms fading out and then 1000ms fading in
+
 int musicFadeTimer = 0;
 bool fadeFlag = 0; // for waiting between fading music in and out
 bool entFadeFlag = 0;
@@ -712,6 +727,8 @@ Mix_Chunk *g_s_playerdeath;
 std::map<string, Mix_Chunk> g_static_sounds = {};
 
 // ui
+int g_textDropShadowColor = 100;
+float g_textDropShadowDist = 0.05; //this is the pixels of the texture, for better or worse
 bool protag_can_move = true;
 int protag_is_talking = 0; // 0 - not talking 1 - talking 2 - about to stop talking
 adventureUI *adventureUIManager;
@@ -809,16 +826,16 @@ float g_jump_afterslow_seconds = 0; //make it so that the longer you bhop the lo
 bool g_spin_enabled = 1;
 entity* g_spin_entity;
 float g_spin_cooldown = 400;
-float g_spin_max_cooldown = 100;
+float g_spin_max_cooldown = 100; //100, for spinning at will
 float g_spinning_duration = 0;
-float g_spinning_duration_max = 400; //duration of a spin
+float g_spinning_duration_max = 400; //400, for spinning at will
 float g_afterspin_duration = 0;
-float g_afterspin_duration_max = 200; //duration of afterspin imobility
+float g_afterspin_duration_max = 200; //200, for spinning at will duration of afterspin imobility
 float g_spinning_xvel = 0; //x and y velocities are locked upon starting a spin
 float g_spinning_yvel = 0;
-float g_spinning_boost = 2.6;
+float g_spinning_boost = 1.8; //2.6 is pretty fast
 float g_doubleSpinHelpMs = 16; //a spin can cancel another spin in the last x ms (double spin)
-float g_spinJumpHelpMs = 16; //if you spin a frame after jumping you will jump and spin (spinjump)
+float g_spinJumpHelpMs = 0; //if you spin a frame after jumping you will jump and spin (spinjump)
 float g_currentSpinJumpHelpMs = g_spinJumpHelpMs;
 bool g_protag_jumped_this_frame = 0;
 
@@ -1030,6 +1047,15 @@ float XYWorldDistance(int x1, int y1, int x2, int y2)
   y1 *= 1 / XtoY;
   y2 *= 1 / XtoY;
   return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2), 0.5);
+}
+
+//faster, use this if you can
+float XYWorldDistanceSquared(int x1, int y1, int x2, int y2)
+{
+  y1 *= 1 / XtoY;
+  y2 *= 1 / XtoY;
+  return pow((x1 - x2), 2) + pow((y1 - y2), 2);
+
 }
 
 vector<string> splitString(string s, char delimiter)
