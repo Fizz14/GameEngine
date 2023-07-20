@@ -1339,17 +1339,11 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
     narrarator->sayings = script;
     narrarator->myScriptCaller->executingScript = 1;
-    narrarator->dialogue_index = -1;
+    narrarator->myScriptCaller->dialogue_index = -1;
     narrarator->myScriptCaller->talker = narrarator;
-    adventureUIManager->sayings = &narrarator->sayings;
+    adventureUIManager->ownScript = narrarator->sayings;
     adventureUIManager->talker = narrarator;
-    adventureUIManager->talker->dialogue_index = -1;
-
-    //D(narrarator->sayings.size());
-    for (int i = 0; i < adventureUIManager->sayings->size(); i++)
-    {
-      //D(adventureUIManager->sayings->at(i));
-    }
+    adventureUIManager->dialogue_index = -1;
 
     if (narrarator->sayings.size() > 0)
     {
@@ -1364,6 +1358,12 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
   g_maxPelletsInLevel = g_pellets.size();
   g_currentPelletsCollected = 0;
+
+//  if(g_pellets.size() > 0) {
+//    g_pelletTexture = g_pellets.at(0);
+//  } else {
+//    g_pelletTexture = nullptr;
+//  }
 
   g_loadingATM = 0;
 }
@@ -1398,7 +1398,6 @@ void changeTheme(string str)
   {
     path = "static/diffuse/" + textureDirectory;
   }
-  D(path);
 
   if (!filesystem::exists(path))
   {
@@ -2438,6 +2437,7 @@ void write_map(entity *mapent)
           if (RectOverlap(n->getMovedBounds(), marker->getMovedBounds()) && !n->inParty && n->tangible && n != protag)
           {
             delete n;
+            if(n == g_objective) { g_objective = nullptr;}
             deleteflag = 0;
             break;
           }
@@ -4409,8 +4409,10 @@ void write_map(entity *mapent)
           ofile.close();
           string theme = word;
           word = "maps/" + g_mapdir + "/" + word + ".map";
+          
           clear_map(g_camera);
           load_map(renderer, word.c_str(), "a");
+
           init_map_writing(renderer);
           if (g_autoSetThemesFromMapDirectory)
           {
@@ -6241,6 +6243,7 @@ void write_map(entity *mapent)
       talkingBox->patchscale = 0.4;
       talkingBox->is9patch = true;
       talkingBox->persistent = true;
+      
 
       // talkingBoxTexture = new ui(renderer, "static/ui/ui-background.bmp", 0.1, 0.45, 0.9, 0.25, 0);
       // talkingBoxTexture->persistent = true;
@@ -6270,10 +6273,10 @@ void write_map(entity *mapent)
       scoreText->boxWidth = 0.95;
       scoreText->width = 0.95;
       scoreText->boxHeight = 0;
-      scoreText->boxX = 0.5;
+      scoreText->boxX = 0.05;
       scoreText->boxY = 0.05;
       scoreText->worldspace = 1;
-      scoreText->align = 2; // center
+      scoreText->align = 0; // center
       scoreText->dropshadow = 1;
       scoreText->layer0 = 1;
 
@@ -6283,6 +6286,7 @@ void write_map(entity *mapent)
       inventoryA->patchwidth = 213;
       inventoryA->patchscale = 0.4;
       inventoryA->persistent = true;
+      inventoryA->show = 0;
 
       inventoryB = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
       inventoryB->is9patch = true;
@@ -6331,15 +6335,45 @@ void write_map(entity *mapent)
       inputText->align = 2;
       inputText->dropshadow = 1; 
 
+
+
       playersUI = 1;
-
-
 
       hideInventoryUI();
       hideTalkingUI();
       hideScoreUI();
     }
 
+  }
+
+  void adventureUI::initFullUI() {
+    hotbar = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 0.1, 1);
+    hotbar->is9patch = true;
+    hotbar->patchwidth = 213;
+    hotbar->patchscale = 0.5;
+    hotbar->persistent = true;
+    hotbar->heightFromWidthFactor = 1;
+
+
+    nextUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 + 0.1, 0.85, 0.1, 1, 1);
+    nextUsableIcon->persistent = true;
+    nextUsableIcon->heightFromWidthFactor = 1;
+    noIconTexture = nextUsableIcon->texture;
+    nextUsableIcon->shrinkPercent = 0.01; 
+
+    prevUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 - 0.1, 0.85, 0.1, 1, 1);
+    prevUsableIcon->persistent = true;
+    prevUsableIcon->heightFromWidthFactor = 1;
+    SDL_DestroyTexture(prevUsableIcon->texture);
+    prevUsableIcon->texture = noIconTexture;
+    prevUsableIcon->shrinkPercent = 0.01; 
+
+    thisUsableIcon = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    thisUsableIcon->persistent = true;
+    thisUsableIcon->heightFromWidthFactor = 1;
+    SDL_DestroyTexture(thisUsableIcon->texture);
+    thisUsableIcon->texture = noIconTexture;
+    thisUsableIcon->shrinkPercent = 0.01; 
   }
 
   adventureUI::~adventureUI()
@@ -6367,7 +6401,7 @@ void write_map(entity *mapent)
     hideTalkingUI();
     talker = ftalker;
     g_talker = ftalker;
-    string arrangeText = sayings->at(talker->dialogue_index);
+    string arrangeText = ownScript.at(dialogue_index);
     //parse arrangeText for variables within $$, e.g. $$playername$$
     int position = arrangeText.find("$$");  
     if(position != string::npos) {
@@ -6393,13 +6427,13 @@ void write_map(entity *mapent)
     adventureUIManager->hideInventoryUI();
     talker = ftalker;
     g_talker = ftalker;
-    if (sayings->at(talker->dialogue_index).at(0) == '%')
+    if (scriptToUse->at(dialogue_index).at(0) == '%')
     {
-      pushedText = sayings->at(talker->dialogue_index).substr(1);
+      pushedText = scriptToUse->at(dialogue_index).substr(1);
     }
     else
     {
-      pushedText = sayings->at(talker->dialogue_index);
+      pushedText = scriptToUse->at(dialogue_index);
     }
 
     //parse pushedText for variables within $$, e.g. $$playername$$
@@ -6484,6 +6518,11 @@ void write_map(entity *mapent)
     currentFontStr = fonts[0].second;
   }
 
+  //scripting system 
+  //scripting interpreter
+  //script system
+  //script interpreter
+  //scripts
   void adventureUI::continueDialogue()
   {
     // has our entity died?
@@ -6519,7 +6558,6 @@ void write_map(entity *mapent)
     }
     executingScript = 1;
 
-    vector<string>* scriptToUse;
     if(useOwnScriptInsteadOfTalkersScript) {
       scriptToUse = &ownScript;
     } else {
@@ -6528,10 +6566,10 @@ void write_map(entity *mapent)
 
 
     // showTalkingUI();
-    // D(talker->dialogue_index);
+    // D(dialogue_index);
     // D(scriptToUse->size());
     // D(talker->name);
-    if (scriptToUse->at(talker->dialogue_index + 1) == "#")
+    if (scriptToUse->at(dialogue_index + 1) == "#")
     {
       if (playersUI)
       {
@@ -6547,7 +6585,7 @@ void write_map(entity *mapent)
 
 
       if(!useOwnScriptInsteadOfTalkersScript) {
-        talker->dialogue_index = 0;
+        dialogue_index = 0;
         talker->animate = 0;
         if (talker->turnToFacePlayer)
         {
@@ -6562,21 +6600,21 @@ void write_map(entity *mapent)
     }
 
     // question
-    if (scriptToUse->at(talker->dialogue_index + 1).at(0) == '%')
+    if (scriptToUse->at(dialogue_index + 1).at(0) == '%')
     {
       // make a question
-      talker->dialogue_index++;
+      dialogue_index++;
       pushText(talker);
       askingQuestion = true;
       // put responses in responses vector
       int j = 1;
-      string res = scriptToUse->at(talker->dialogue_index + j).substr(1);
+      string res = scriptToUse->at(dialogue_index + j).substr(1);
       responses.clear();
       while (res.find(':') != std::string::npos)
       {
         responses.push_back(res.substr(0, res.find(':')));
         j++;
-        res = scriptToUse->at(talker->dialogue_index + j).substr(1);
+        res = scriptToUse->at(dialogue_index + j).substr(1);
       }
       return;
     }
@@ -6588,11 +6626,11 @@ void write_map(entity *mapent)
     // item prompt
     //$
     //Would confict with string variables, so I added a second check
-    if (scriptToUse->at(talker->dialogue_index + 1).at(0) == '$' && scriptToUse->at(talker->dialogue_index + 1).at(1) != '$')
+    if (scriptToUse->at(dialogue_index + 1).at(0) == '$' && scriptToUse->at(dialogue_index + 1).at(1) != '$')
     {
       int j = 1;
       // parse which block of memory we are interested in
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 1);
 
       int numberOfItem = 0;
@@ -6606,35 +6644,35 @@ void write_map(entity *mapent)
         }
       }
 
-      string res = scriptToUse->at(talker->dialogue_index + 1 + j);
+      string res = scriptToUse->at(dialogue_index + 1 + j);
       while (res.find('*') != std::string::npos)
       {
 
         // parse option
         //  *15 29 -> if data is 15, go to line 29
-        string s = scriptToUse->at(talker->dialogue_index + 1 + j);
+        string s = scriptToUse->at(dialogue_index + 1 + j);
         s.erase(0, 1);
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
         if (numberOfItem >= condition)
         {
-          talker->dialogue_index = jump - 3;
+          dialogue_index = jump - 3;
           this->continueDialogue();
           return;
         }
         j++;
-        res = scriptToUse->at(talker->dialogue_index + 1 + j);
+        res = scriptToUse->at(dialogue_index + 1 + j);
       }
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // give item
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/give")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/give")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       vector<string> x = splitString(s, ' ');
 
@@ -6648,14 +6686,14 @@ void write_map(entity *mapent)
 
       mainProtag->getItem(a, stoi(x[1]));
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/take")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/take")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       D(s);
       vector<string> x = splitString(s, ' ');
@@ -6670,18 +6708,18 @@ void write_map(entity *mapent)
 
       mainProtag->loseItem(a, stoi(x[1]));
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // check number of living entities by name
     //  /count
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 6) == "/count")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/count")
     {
       int j = 1;
       // parse which block of memory we are interested in
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 7);
       D(s);
       string name = s;
@@ -6696,26 +6734,26 @@ void write_map(entity *mapent)
         }
       }
 
-      string res = scriptToUse->at(talker->dialogue_index + 1 + j);
+      string res = scriptToUse->at(dialogue_index + 1 + j);
       while (res.find('*') != std::string::npos)
       {
         // parse option
         //  *15 29 -> if data is 15, go to line 29
-        string s = scriptToUse->at(talker->dialogue_index + 1 + j);
+        string s = scriptToUse->at(dialogue_index + 1 + j);
         s.erase(0, 1);
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
         if (numberOfEntity >= condition)
         {
-          talker->dialogue_index = jump - 3;
+          dialogue_index = jump - 3;
           this->continueDialogue();
           return;
         }
         j++;
-        res = scriptToUse->at(talker->dialogue_index + 1 + j);
+        res = scriptToUse->at(dialogue_index + 1 + j);
       }
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -6735,10 +6773,10 @@ void write_map(entity *mapent)
     //  <far>
     //  You are far away.
     //  #
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/distance")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/distance")
     {
       int j = 1;
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
 
       auto x = splitString(s, ' ');
 
@@ -6754,12 +6792,12 @@ void write_map(entity *mapent)
   
         int distance = XYWorldDistance(firstEnt->getOriginX(), firstEnt->getOriginY(), secondEnt->getOriginX(), secondEnt->getOriginY());
   
-        string res = scriptToUse->at(talker->dialogue_index + 1 + j);
+        string res = scriptToUse->at(dialogue_index + 1 + j);
         while (res.find('*') != std::string::npos)
         {
           // parse option
           //  *15:29 -> if distance is less than 15, go to line 29
-          string s = scriptToUse->at(talker->dialogue_index + 1 + j);
+          string s = scriptToUse->at(dialogue_index + 1 + j);
 //I("s");
           //I(s);
           s.erase(0, 1);
@@ -6774,17 +6812,17 @@ void write_map(entity *mapent)
           //I(distance);
           if (distance < condition)
           {
-            talker->dialogue_index = jump - 3;
+            dialogue_index = jump - 3;
             this->continueDialogue();
             return;
           }
           j++;
-          res = scriptToUse->at(talker->dialogue_index + 1 + j);
+          res = scriptToUse->at(dialogue_index + 1 + j);
         }
   
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -6794,9 +6832,9 @@ void write_map(entity *mapent)
     // /select common/train
     // 5->[4]
     // to set the forth selfdata of common/train to 4
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/select")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/select")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
 
       if(x.size() < 2) {
@@ -6817,16 +6855,16 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // write selfdata 5->[4]
-    if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
     {
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       int value = stoi(s.substr(0, s.find('-')));
       s.erase(0, s.find('-') + 1);
       string blockstr = s.substr(s.find('['));
@@ -6835,17 +6873,17 @@ void write_map(entity *mapent)
       int block = stoi(blockstr);
       M("Oh boy lets write some selfdata to our selected entity");
       selected->data[block] = value;
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // write random number to selfdata
     //  0-1000->[4]
-    if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
     {
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       int firstvalue = stoi(s.substr(0, s.find('-')));
       s.erase(0, s.find('-') + 1);
       int secondvalue = stoi(s.substr(0, s.find('-')));
@@ -6858,7 +6896,7 @@ void write_map(entity *mapent)
 
       selected->data[block] = rand() % (secondvalue - firstvalue + 1) + firstvalue;
       D(selected->data[block]);
-      selected->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -6876,52 +6914,52 @@ void write_map(entity *mapent)
     // It was one.
     // #
     //
-    if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("\\[[[:digit:]]+\\]")))
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]")))
     {
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
       int j = 1;
       // parse which block of memory we are interested in
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 1);
       string blockstr = s.substr(0, s.find(']'));
       int block = stoi(blockstr);
-      string res = scriptToUse->at(talker->dialogue_index + 1 + j);
+      string res = scriptToUse->at(dialogue_index + 1 + j);
       while (res.find('*') != std::string::npos)
       {
 
         // parse option
         //  *15 29 -> if data is 15, go to line 29
-        string s = scriptToUse->at(talker->dialogue_index + 1 + j);
+        string s = scriptToUse->at(dialogue_index + 1 + j);
         s.erase(0, 1);
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
         if (selected->data[block] == condition)
         {
-          selected->dialogue_index = jump - 3;
+          dialogue_index = jump - 3;
           this->continueDialogue();
           return;
         }
         j++;
-        res = scriptToUse->at(talker->dialogue_index + 1 + j);
+        res = scriptToUse->at(dialogue_index + 1 + j);
       }
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // comment
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 2) == "//")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 2) == "//")
     {
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // option/jump
-    if (scriptToUse->at(talker->dialogue_index + 1).at(0) == '*')
+    if (scriptToUse->at(dialogue_index + 1).at(0) == '*')
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 1);
       string condition = s.substr(0, s.find(':'));
       s.erase(0, s.find(':') + 1);
@@ -6931,14 +6969,14 @@ void write_map(entity *mapent)
         response = "";
         response_index = 0;
         playSound(-1, confirm_noise, 0);
-        talker->dialogue_index = jump - 3;
-        D(talker->dialogue_index);
-        D(scriptToUse->at(talker->dialogue_index + 1));
+        dialogue_index = jump - 3;
+        D(dialogue_index);
+        D(scriptToUse->at(dialogue_index + 1));
         this->continueDialogue();
       }
       else
       {
-        talker->dialogue_index++;
+        dialogue_index++;
         this->continueDialogue();
       }
 
@@ -6946,9 +6984,9 @@ void write_map(entity *mapent)
     }
 
     // change textbox text color
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/textcolor")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/textcolor")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       string desiredColor = x[1];
       currentTextcolor = textcolors[0].second;
@@ -6966,15 +7004,15 @@ void write_map(entity *mapent)
         quit = 1;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     //change textbox font
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/font")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/font")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       string desiredFontStr = x[1];
       currentFontStr = fonts[0].second;
@@ -6987,30 +7025,30 @@ void write_map(entity *mapent)
 
       M("set font");
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // change mapdir
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/mapdir")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/mapdir")
     {
       //M("setting mapdir");
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       g_mapdir = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // change map
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/map ")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/map ")
     {
       M("changing map");
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 5);
       string name = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
@@ -7026,7 +7064,7 @@ void write_map(entity *mapent)
 
       // close dialogue
       adventureUIManager->hideTalkingUI();
-      talker->dialogue_index = 0;
+      dialogue_index = 0;
       talker->animate = 0;
 
       clear_map(g_camera);
@@ -7048,9 +7086,9 @@ void write_map(entity *mapent)
     }
 
     // spawn entity
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 6) == "/spawn")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/spawn")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       // erase '&'
       M("spawned entity");
       s.erase(0, 7);
@@ -7067,15 +7105,15 @@ void write_map(entity *mapent)
       e->shadow->x = e->x + e->shadow->xoffset;
       e->shadow->y = e->y + e->shadow->yoffset;
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // destroy entity
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/destroy")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/destroy")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
 
       entity* hopeful = searchEntities(s, talker);
@@ -7088,16 +7126,16 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // set entity's ttl in ms
     // /setttl splatter 500
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/setttl")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/setttl")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       string name = x[1];
       string timestr = x[2];
@@ -7109,16 +7147,16 @@ void write_map(entity *mapent)
         hopful->timeToLiveMs = time;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // destroy oldest from type of entity, keeping x entities
     // if it owns an asset, just make it intagible
-    //    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/keeponly")
+    //    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/keeponly")
     //    {
-    //        string s = scriptToUse->at(talker->dialogue_index + 1);
+    //        string s = scriptToUse->at(dialogue_index + 1);
     //        // erase '&'
     //        s.erase(0, 10);
     //        vector<string> splits = splitString(s, ' ');
@@ -7128,15 +7166,15 @@ void write_map(entity *mapent)
     //
     //        }
     //
-    //        talker->dialogue_index++;
+    //        dialogue_index++;
     //        this->continueDialogue();
     //        return;
     //    }
 
     // move entity
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 6) == "/move ")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/move ")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       vector<string> x = splitString(s, ' ');
       string name = x[0];
@@ -7157,15 +7195,15 @@ void write_map(entity *mapent)
         hopeful->Destination = getNodeByPosition(p0, p1);
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // shrink entity
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/shrink")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/shrink")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       //vector<string> x = splitString(s, ' ');
       //string name = x[0];
@@ -7186,15 +7224,15 @@ void write_map(entity *mapent)
         hopeful->animspeed = 0.001;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // have entity roam
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/roam")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/roam")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       vector<string> x = splitString(s, ' ');
       string name = x[0];
@@ -7223,15 +7261,15 @@ void write_map(entity *mapent)
         E("You told an entity to roam but there are no pointOfInterest-instances.");
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // have entity patrol
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/patrol")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/patrol")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       vector<string> x = splitString(s, ' ');
       string name = x[0];
@@ -7256,15 +7294,15 @@ void write_map(entity *mapent)
         hopeful->currentPoiForPatrolling = -1;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // teleport entity
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/teleport")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/teleport")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 10);
       vector<string> x = splitString(s, ' ');
       string name = x[0];
@@ -7280,7 +7318,7 @@ void write_map(entity *mapent)
         hopeful->yvel = 0;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -7289,9 +7327,9 @@ void write_map(entity *mapent)
     //meaning, set a script which runs when the player collects X pellets from the level
     // /pelletgoal 60 finishLevel 
     // finishLevel scripts need to be local, setting the level to complete and enabling the train
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 11) == "/pelletgoal")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 11) == "/pelletgoal")
     {
-      auto x = splitString(scriptToUse->at(talker->dialogue_index + 1), ' ');
+      auto x = splitString(scriptToUse->at(dialogue_index + 1), ' ');
       if(x.size() > 2) {
         M("Adding pelletgoal for " + x[1] + " pellets");
         std::pair<int,string> a(stoi(x[1]),x[2]);
@@ -7301,16 +7339,77 @@ void write_map(entity *mapent)
         E("Not enough arguments for /pelletgoal");
       }
       
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
+    //hide pellets
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/hidepellets")
+    {
+      g_showPellets = 0;
+
+      for(auto p : g_pellets) {
+        //p->tangible = 0;
+        p->shrinking = 1;
+        p->originalWidth = p->width;
+        p->originalHeight = p->height;
+        p->width = 0;
+        p->height = 0;
+        p->shadow->visible = 0;
+      }
+      
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //show pellets
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/showpellets")
+    {
+      g_showPellets = 1;
+
+      for(auto p : g_pellets) {
+        p->tangible = 1;
+        p->curwidth = 0;
+        p->curheight = 0;
+        p->width = p->originalWidth;
+        p->height = p->originalHeight;
+        p->shadow->visible = 1;
+      }
+      
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //use fademode for objective crosshair, so it only shows if the player is standing still
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 16) == "/objectivefadeon")
+    {
+      g_objectiveFadeModeOn = 1;
+      g_objectiveFadeWaitMs = g_objectiveFadeMaxWaitMs;
+      g_objectiveOpacity = 0;
+      
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 17) == "/objectivefadeoff")
+    {
+      g_objectiveFadeModeOn = 0;
+      
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
     //load/spawn particle effect
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/effect")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/effect")
     {
       
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       //       /effect smoke zombie forwards_offset rightwards_offset (duration?)
       if(x.size() >= 5) 
@@ -7345,7 +7444,7 @@ void write_map(entity *mapent)
 
       
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -7355,10 +7454,10 @@ void write_map(entity *mapent)
     //don't need to use it (e.g., in a cutscene someone disapears and you make a puff of smoke)
     //but it can be used to create lasting effects (smoke continuously billowing from a brazier)
     //putting zero for the duration will make it everlasting
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/emitter")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/emitter")
     {
       
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       //       /emitter smoke zombie xoffset yoffset zoffset duration
       if(x.size() >= 6) 
@@ -7411,16 +7510,63 @@ void write_map(entity *mapent)
 
       
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
     
 
-    // teleport entity to another entity
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 12) == "/entteleport")
+    //force entity in the direction they are facing
+    // /pushent protag 1000
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/pushent")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      if(x.size() > 2) {
+        string smokeMeStr = x[1];
+        string forceMagnitudeStr = x[2];
+        int forceMagnitude = stoi(forceMagnitudeStr);
+        entity *smokeAtMe = searchEntities(smokeMeStr);
+        if (smokeAtMe != nullptr) {
+          smokeAtMe->forwardsPushVelocity = forceMagnitude;
+          smokeAtMe->forwardsPushAngle = smokeAtMe->steeringAngle;
+        } else {
+          E("Couldn't find ent for /pushent call.");
+        }
+      } else {
+        E("Not enough args for /pushent call.");
+      }
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //make a smoke effect at an entity
+    //I'm not testing this, because I'm a rebel
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/entsmoke")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      if(x.size() > 1) {
+        string smokeMeStr = x[1];
+        entity *smokeAtMe = searchEntities(smokeMeStr);
+        if (smokeAtMe != nullptr) {
+          smokeEffect->happen(smokeAtMe->getOriginX(), smokeAtMe->getOriginY(), smokeAtMe->z);
+        } else {
+          E("Couldn't find ent for /entsmoke call.");
+        }
+      } else {
+        E("Not enough args for /entsmoke call.");
+      }
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // teleport entity to another entity
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/entteleport")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 13);
       vector<string> x = splitString(s, ' ');
       string teleportMeSTR = x[0];
@@ -7435,7 +7581,7 @@ void write_map(entity *mapent)
         teleportMe->yvel = 0;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -7443,9 +7589,9 @@ void write_map(entity *mapent)
     // spawn entity at an entity with ttl (0 for no ttl)
     // /entspawn spawnMe spawnAtMe ttlMs setDirection forwardsOffset
     // /entspawn puddle zombie 5000 1
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/entspawn")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/entspawn")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 10);
       vector<string> x = splitString(s, ' ');
       string teleportMeSTR = x[0];
@@ -7477,27 +7623,27 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // make the talker a secondary camera target (hog the camera)
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 4) == "/hog")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 4) == "/hog")
     {
       //careful
       g_hog = talker;
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 6) == "/unhog")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/unhog")
     {
       g_hog = 0;
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -7506,9 +7652,9 @@ void write_map(entity *mapent)
     //apply statuseffects
     // /inflict [entity] [status] [duration, MS] [factor]
     // /inflict target poisoned 5000 1
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/inflict")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/inflict")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
       vector<string> x = splitString(s, ' ');
       string entSTR = x[0];
@@ -7557,7 +7703,7 @@ void write_map(entity *mapent)
       }
 
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -7566,9 +7712,9 @@ void write_map(entity *mapent)
     // Doesn't pathfind
     // this entity should not have an ai file
     // /missle common/zombie-bolt fomm
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/missile") {
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/missile") {
 
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       string missileMeSTR = x[1];
       string targetMeSTR = x[2];
@@ -7584,16 +7730,16 @@ void write_map(entity *mapent)
       }
 
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // change objective
     // /setobjective heart
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 14) == "/setobjective ")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/setobjective ")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       string name = x[1];
 
@@ -7604,17 +7750,17 @@ void write_map(entity *mapent)
         adventureUIManager->crosshair->show = 1;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     //set crosshair frame
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 18) == "/setobjectivetype ")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setobjectivetype ")
     {
       M("Set objective type");
       g_usingPelletsAsObjective = 0;
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
       int frame = stoi(x[1]);
       
@@ -7625,7 +7771,7 @@ void write_map(entity *mapent)
 
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -7633,7 +7779,7 @@ void write_map(entity *mapent)
     //set pellet objective
     //until the objective is set again, when the player collects a pellet, 
     //the objective will be set to a nearby pellet
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 16) == "/pelletobjective")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 16) == "/pelletobjective")
     {
       g_usingPelletsAsObjective = 1;
       g_objective = nullptr;
@@ -7646,29 +7792,29 @@ void write_map(entity *mapent)
         E("No frame for /pelletobjective call.");
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
 
     // clear objective
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 15) == "/clearobjective")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/clearobjective")
     {
 
       g_objective = 0;
       adventureUIManager->crosshair->show = 0;
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // change cameratarget
     //  /lookat ward 0 0
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/lookat ")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/lookat ")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       string name = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
@@ -7723,16 +7869,16 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // change cameratarget
     //  /lookatall ward 0 0
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/lookatall")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/lookatall")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 11);
       string name = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
@@ -7788,7 +7934,7 @@ void write_map(entity *mapent)
       {
         // continue
         countEntities = 0;
-        talker->dialogue_index++;
+        dialogue_index++;
         this->continueDialogue();
         return;
       }
@@ -7801,16 +7947,16 @@ void write_map(entity *mapent)
         // showTalkingUI();
         // updateText();
         hideTalkingUI();
-        // talker->dialogue_index++;
+        // dialogue_index++;
 
         return;
       }
     }
 
     // spawn item in world
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/item")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/item")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       vector<string> x = splitString(s, ' ');
       string name = x[0];
@@ -7825,15 +7971,15 @@ void write_map(entity *mapent)
       M(a->x);
       M(a->y);
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // refresh a trigger by ID
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/refresh")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/refresh")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
 
       int tID = stoi(s);
@@ -7842,30 +7988,30 @@ void write_map(entity *mapent)
         g_triggers[tID]->active = 1;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // sleep
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 6) == "/sleep")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/sleep")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 7);
       string msstr = s;
       int ms = 0;
       ms = stoi(msstr);
       sleepingMS = ms;
-      talker->dialogue_index++;
+      dialogue_index++;
       sleepflag = 1;
       this->continueDialogue();
       return;
     }
 
     // mobile sleep, sleep but let the player walk
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/msleep")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/msleep")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       string msstr = s;
       int ms = 0;
@@ -7873,15 +8019,17 @@ void write_map(entity *mapent)
       sleepingMS = ms;
       sleepflag = 1;
       mobilize = 1;
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // call a script
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/script")
+    // you probably don't want to use this, or overhaul it so it makes a new script caller
+    // !!!
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/script")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       D(s);
 
@@ -7910,20 +8058,20 @@ void write_map(entity *mapent)
       parseScriptForLabels(nscript);
 
       adventureUIManager->blip = g_ui_voice;
-      adventureUIManager->sayings = &nscript;
+      adventureUIManager->ownScript = nscript;
       adventureUIManager->talker = protag;
       protag->sayings = nscript;
-      protag->dialogue_index = -1;
+      adventureUIManager->dialogue_index = -1;
       adventureUIManager->continueDialogue();
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // load savefile
     // /loadsave
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/loadsave")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/loadsave")
     {
       loadSave();
 
@@ -7931,7 +8079,7 @@ void write_map(entity *mapent)
 
       adventureUIManager->hideTalkingUI();
       // reset character's dialogue_index
-      talker->dialogue_index = 0;
+      dialogue_index = 0;
       // stop talker from bouncing
       talker->animate = 0;
 
@@ -7956,31 +8104,31 @@ void write_map(entity *mapent)
 
     // show score ui
     // /showscore
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/showscore")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/showscore")
     {
       adventureUIManager->showScoreUI();
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // hide score ui
     // /hidescore
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/hidescore")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/hidescore")
     {
       adventureUIManager->hideScoreUI();
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // increment score
     // /addscore 15
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/addscore")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/addscore")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
 
       g_score += stoi(x[1]);
@@ -7988,7 +8136,7 @@ void write_map(entity *mapent)
       string displayScore = to_string(g_score);
       scoreText->updateText(displayScore, -1, 34);
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -7996,9 +8144,9 @@ void write_map(entity *mapent)
 
     // decrement score
     // /subtractscore 15
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 14) == "/subtractscore")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/subtractscore")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
 
       g_score -= stoi(x[1]);
@@ -8006,7 +8154,7 @@ void write_map(entity *mapent)
       string displayScore = to_string(g_score);
       scoreText->updateText(displayScore, -1, 34);
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -8015,11 +8163,11 @@ void write_map(entity *mapent)
 
     // reset score
     // /resetscore
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/resetscore")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/resetscore")
     {
       g_score = 0;
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -8028,67 +8176,67 @@ void write_map(entity *mapent)
 
     // write savefile
     // /save
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/save")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/save")
     {
       writeSave();
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // change user
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/user")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/user")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       g_saveName = s;
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // check savefield
-    if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("\\{([a-zA-Z0-9_]){1,}\\}")))
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\{([a-zA-Z0-9_]){1,}\\}")))
     {
       M("Tried to check a save field");
       //
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 1);
       s.erase(s.length() - 1, 1);
 
       int value = checkSaveField(s);
 
       int j = 1;
-      string res = scriptToUse->at(talker->dialogue_index + 1 + j);
+      string res = scriptToUse->at(dialogue_index + 1 + j);
       while (res.find('*') != std::string::npos)
       {
-        string s = scriptToUse->at(talker->dialogue_index + 1 + j);
+        string s = scriptToUse->at(dialogue_index + 1 + j);
         s.erase(0, 1);
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
         if (value == condition)
         {
-          talker->dialogue_index = jump - 3;
+          dialogue_index = jump - 3;
           this->continueDialogue();
           return;
         }
         j++;
-        res = scriptToUse->at(talker->dialogue_index + 1 + j);
+        res = scriptToUse->at(dialogue_index + 1 + j);
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // write to savefield
-    if (regex_match(scriptToUse->at(talker->dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}")))
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}")))
     {
       M("tried to write to savedata");
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(s.length() - 1, 1);
 
       string valuestr = s.substr(0, s.find('-'));
@@ -8096,7 +8244,7 @@ void write_map(entity *mapent)
 
       string field = s.substr(s.find('{') + 1, s.length() - 1);
       writeSaveField(field, value);
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -8105,11 +8253,11 @@ void write_map(entity *mapent)
     //
     // /keyboard playername
     // AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrXxTtUuVvWwXxYyZz
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/keyboard")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/keyboard")
     {
       breakpoint();
 
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       auto parts = splitString(s, ' ');
       g_keyboardSaveToField = parts[1];
       g_keyboardInput = "";
@@ -8160,10 +8308,10 @@ void write_map(entity *mapent)
       Brightness      100      13
 
     */
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/settings") 
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/settings") 
     {
       M("Check dialogue index before");
-      D(adventureUIManager->talker->dialogue_index);
+      D(adventureUIManager->dialogue_index);
       //write to settingsUi from related variables
       g_settingsUI->show();
       g_inSettingsMenu = 1;
@@ -8183,9 +8331,9 @@ void write_map(entity *mapent)
     }
 
     // unconditional jump
-    if (scriptToUse->at(talker->dialogue_index + 1).at(0) == ':')
+    if (scriptToUse->at(dialogue_index + 1).at(0) == ':')
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 1);
       string DIstr = "0";
       DIstr = s.substr(0, s.find(' '));
@@ -8193,7 +8341,7 @@ void write_map(entity *mapent)
       int DI = 0;
       D(DIstr);
       DI = stoi(DIstr);
-      talker->dialogue_index = DI - 3;
+      dialogue_index = DI - 3;
       this->continueDialogue();
       return;
     }
@@ -8201,9 +8349,9 @@ void write_map(entity *mapent)
     // solidify entity
     //  /solidify door 1
     //  /solidify wall 0
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/solidify")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/solidify")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 10);
 
       entity *solidifyMe = 0;
@@ -8223,7 +8371,7 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -8232,9 +8380,9 @@ void write_map(entity *mapent)
     // semisolidify entity
     //  /semisolidify door 1
     //  /semisolidify wall 0
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 13) == "/semisolidify")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/semisolidify")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 14);
 
       entity *solidifyMe = 0;
@@ -8254,16 +8402,16 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     //change an entity's agility, max speed, and slippiness
     // /movement entity agility maxSpeed slippiness
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/movement")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/movement")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
 
 
       entity *modifyMe = 0;
@@ -8296,15 +8444,15 @@ void write_map(entity *mapent)
 
 
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // make entity disapear by floating up
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/banish")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/banish")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
 
       entity *banishMe = 0;
@@ -8366,7 +8514,7 @@ void write_map(entity *mapent)
       }
       g_force_cookies_update = 1;
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -8378,9 +8526,9 @@ void write_map(entity *mapent)
     // set msperframe to 0 to not animate
     // set frameInAnimation to -1 to not change
     // set reverse to 1 to play backwards
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/animate")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
 
@@ -8432,7 +8580,7 @@ void write_map(entity *mapent)
 
       //I("end call of /anim");
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -8440,9 +8588,9 @@ void write_map(entity *mapent)
     // play sound at an entity
     //  /entsound heavy-door-open doora
     //  /entsound croak protag
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/entsound")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/entsound")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
       string soundName = split[0];
@@ -8459,43 +8607,43 @@ void write_map(entity *mapent)
         // entity was not found, so lets not play a sound
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // play a sound that's been loaded into the level as a cue
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/mapsound")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/mapsound")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       auto x = splitString(s, ' ');
       if(x.size() > 0) {
         D(x[1]);
         playSoundByName(x[1]);
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 8) == "/nomusic")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/nomusic")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       auto x = splitString(s, ' ');
       if(x.size() > 0) {
         g_musicSilenceMs = stoi(x[1]);
       }
       Mix_FadeOutMusic(200);
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // play a sound from the disk
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 14) == "/loadplaysound")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/loadplaysound")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> split = splitString(s, ' ');
       string loadstring = "static/sounds/" + split[1] + ".wav";
 
@@ -8517,26 +8665,26 @@ void write_map(entity *mapent)
         Mix_PlayChannel(0, a, 0);
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // hide textbox
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/hideui")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/hideui")
     {
       this->hideTalkingUI();
       this->curText = "";
       this->pushedText = "";
       this->hideInventoryUI();
       inPauseMenu = 0;
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // wait for input
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 13) == "/waitforinput")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/waitforinput")
     {
       curText = "";
       pushedText = "";
@@ -8544,7 +8692,7 @@ void write_map(entity *mapent)
       // showTalkingUI();
       // updateText();
       hideTalkingUI();
-      talker->dialogue_index++;
+      dialogue_index++;
 
       return;
     }
@@ -8552,10 +8700,10 @@ void write_map(entity *mapent)
     // agro/unagro enemy
     //  /agro oilman 1
     //  /agro wubba 0
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/agro")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/agro")
     {
       M("in /agro interpreter");
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       D(s);
       string name = s.substr(0, s.find(' '));
@@ -8574,15 +8722,15 @@ void write_map(entity *mapent)
 
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // /settarget zombie fomm
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/settarget")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/settarget")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 11);
       vector<string> x = splitString(s, ' ');
       string teleportMeSTR = x[0];
@@ -8594,7 +8742,7 @@ void write_map(entity *mapent)
         changeMyTarget->target = toMe;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -8605,9 +8753,9 @@ void write_map(entity *mapent)
     //  /tangible oilman 0
     //  /tangible wubba 1
 
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 9) == "/tangible")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/tangible")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 10);
       D(s);
       string name = s.substr(0, s.find(' '));
@@ -8623,15 +8771,15 @@ void write_map(entity *mapent)
         hopeful->tangible = tangiblestate;
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // heal entity
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/heal")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/heal")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       string name = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
@@ -8649,15 +8797,15 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // /hurt entityname damage
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/hurt")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/hurt")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       string name = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
@@ -8681,15 +8829,15 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // add entity to the party
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/enlist")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/enlist")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       string name = s;
 
@@ -8701,15 +8849,15 @@ void write_map(entity *mapent)
         party.push_back(hopeful);
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // remove entity from the party
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/delist")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/delist")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 8);
       string name = s;
 
@@ -8735,35 +8883,35 @@ void write_map(entity *mapent)
         }
       }
 
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // overwrite a save
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 10) == "/clearsave")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/clearsave")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 11);
       string name = s;
       
       //for safety
       if(s.find("..") != std::string::npos) {
         E("Tried to write a save outside of user/saves directory");
-        talker->dialogue_index++;
+        dialogue_index++;
         this->continueDialogue();
         return;
       }
 
       D("trying to clear save " + s);
       filesystem::copy("user/saves/newsave.save", "user/saves/" + s + ".save", std::filesystem::copy_options::overwrite_existing);
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // quit the game
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 5) == "/quit")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/quit")
     {
       quit = 1;
       return;
@@ -8771,9 +8919,9 @@ void write_map(entity *mapent)
 
     //unlock a level by name
     // /unlock twistland
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 7) == "/unlock")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/unlocklevel")
     {
-      string s = scriptToUse->at(talker->dialogue_index + 1);
+      string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
 
       for(int i = 0; i < g_levelSequence->levelNodes.size(); i++) {
@@ -8789,14 +8937,14 @@ void write_map(entity *mapent)
 
       }
       
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     // show the level select interface
     // /levelselect
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 12) == "/levelselect")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/levelselect")
     {
       g_inventoryUiIsLevelSelect = 1;
       g_inventoryUiIsKeyboard = 0;
@@ -8825,23 +8973,44 @@ void write_map(entity *mapent)
 
 
     //if this is a label, don't print that
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 1) == "<")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 1) == "<")
     {
-      talker->dialogue_index++;
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
 
     //display fancytext
-    if (scriptToUse->at(talker->dialogue_index + 1).substr(0, 1) == "`")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 1) == "`")
     {
-      talker->dialogue_index++;
+      dialogue_index++;
       pushFancyText(talker);
       return;
     }
 
+    //give the player a new usable, which will later be written to their save file
+    // /unlockusable cicada
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/unlockusable")
+    {
+      M("/unlockusable");
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      
+      if(x.size() <= 1) { E("Not enough args for /unlockusable call");}
+      
+      string nameOfUsable = x[1];
+
+      //make sure we haven't already unlocked it
+      
+      usable* newUsable = new usable(nameOfUsable);
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
     // default - keep talking
-    talker->dialogue_index++;
+    dialogue_index++;
     pushText(talker);
   }
 

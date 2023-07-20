@@ -18,6 +18,8 @@
 #include <limits>
 #include <stdlib.h>
 
+#include <filesystem> //checking if a usable dir exists
+
 #include "globals.h"
 #include "lightcookietesting.h"
 
@@ -2759,6 +2761,7 @@ void fancychar::render() {
 
 class adventureUI {
   public:
+    int dialogue_index = 0;
 
     bool playersUI = 1; //is this the UI the player will use
     //for talking, using items, etc?
@@ -2778,7 +2781,7 @@ class adventureUI {
 
     ui* talkingBox = 0;
     ui* talkingBoxTexture = 0;
-
+    
    
 
     SDL_Color currentTextcolor = {155, 115, 115};
@@ -2876,7 +2879,8 @@ class adventureUI {
     bool typing = false; //true if text is currently being typed out to the window.
     Mix_Chunk* blip =  Mix_LoadWAV( "sounds/voice-bogged.wav" );
     Mix_Chunk* confirm_noise = Mix_LoadWAV( "sounds/peg.wav" );
-    vector<string>* sayings;
+    //vector<string>* sayings;
+    vector<string>* scriptToUse;
     entity* talker = 0;
     entity* selected = nullptr; //this is used for setting selfdata, instead of just using the talker pointer (that was limited)
     bool askingQuestion = false; //set if current cue is a question
@@ -2892,6 +2896,7 @@ class adventureUI {
 
     ui* crosshair = 0; //for guiding player to objectives
     
+                        
     textbox* healthText = 0;
     bool light = 0;
 
@@ -2899,6 +2904,16 @@ class adventureUI {
 
     int countEntities = 0; //used now for /lookatall to count how many entities we've looked at
                            
+    ui* hotbar = 0; //this is a little box which contains the player's usables
+                    //when the player holds the inventory button, it widens and 
+                    //the player can select a different item with the movement keys
+   
+    ui* thisUsableIcon = 0;
+    ui* nextUsableIcon = 0;
+    ui* prevUsableIcon = 0;
+    SDL_Texture* noIconTexture = 0; //set the backpack icon uis to this if we have no texture
+                                    //for them, to prevent crashing
+
     void showTalkingUI();
     void hideTalkingUI();
 
@@ -2910,8 +2925,10 @@ class adventureUI {
     void hideInventoryUI();
 
     adventureUI(SDL_Renderer* renderer, bool plight = 0);
-
+ 
     ~adventureUI();
+
+    void initFullUI();
 
     void pushText(entity* ftalker);
 
@@ -3111,7 +3128,7 @@ class entity:public actor {
   public:
     //dialogue
 
-    int dialogue_index = 0;
+    //int dialogue_index = 0; //we really don't want to use a dialogue_index in 2023
 
     //sounds
     Mix_Chunk* footstep;
@@ -3150,6 +3167,10 @@ class entity:public actor {
     // e.g., targetSteeringAngle is set for the protag when a movement key is pressed,
     // and steeringAngle is slowly interpolated to that angle, used for both
     // the frame chosen and the actual force of movement on the protag.
+    
+    //I want to make entities be forced in the direction they are facing, so this is used for that
+    float forwardsPushVelocity = 0;
+    float forwardsPushAngle = 0;
 
     //this is for making entities point where they are trying to walk
     float walkingxaccel = 0;
@@ -3410,6 +3431,7 @@ class entity:public actor {
       //M("entity()" );
     }
 
+    //entity constructor
     entity(SDL_Renderer * renderer, string filename, float sizeForDefaults = 1) {
       //M("entity()");
 
@@ -4282,7 +4304,7 @@ class entity:public actor {
         if(RectOverlap(obj, cam)) {
 
           //set visual direction
-          if(forwardsVelocity > 0 && !this->wasPellet) {
+          if(forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet) {
             animation = convertAngleToFrame(steeringAngle);
             flip = SDL_FLIP_NONE;
             if(yframes < 8) {
@@ -4726,7 +4748,7 @@ class entity:public actor {
         }
 
         if(!dynamic && !CalcDynamicForOneFrame) { return nullptr; }
-        if(CalcDynamicForOneFrame) { M("Calct for one frame");}
+        //if(CalcDynamicForOneFrame) { M("Calct for one frame");}
         CalcDynamicForOneFrame = 0;
 
         //wait until turned to walk
@@ -4747,9 +4769,15 @@ class entity:public actor {
           }
         }
 
+        forwardsPushVelocity *= 0.8;
+        if(forwardsPushVelocity < 0) {
+          forwardsPushVelocity = 0;
+        }
+
         //set xaccel and yaccel from forwardsVelocity
         xaccel = cos(steeringAngle) * forwardsVelocity;
         yaccel = -sin(steeringAngle) * forwardsVelocity;
+
 
         //keep pellets moving
         if(this->wasPellet && this->usingTimeToLive) {
@@ -4825,6 +4853,12 @@ class entity:public actor {
         }
         if(yaccel != 0) {
           yaccel /=vectorlen;
+        }
+
+        xaccel += cos(forwardsPushAngle) * forwardsPushVelocity;
+        yaccel += -sin(forwardsPushAngle) * forwardsPushVelocity;
+
+        if(yaccel != 0) {
           yaccel /= p_ratio;
         }
 
@@ -5707,7 +5741,7 @@ class entity:public actor {
                 this->myScriptCaller->ownScript = x.script;
 
                 this->myScriptCaller->executingScript = 1;
-                this->dialogue_index = -1;
+                this->myScriptCaller->dialogue_index = -1;
                 this->myScriptCaller->talker = this;
                 this->myScriptCaller->continueDialogue();
                 if(x.upperCooldownBound - x.lowerCooldownBound <= 0) {
@@ -5728,7 +5762,7 @@ class entity:public actor {
                 
 
                 this->myScriptCaller->executingScript = 1;
-                this->dialogue_index = -1;
+                this->myScriptCaller->dialogue_index = -1;
                 this->myScriptCaller->talker = this;
                 //this->myScriptCaller->continueDialogue();
                 if(x.upperCooldownBound - x.lowerCooldownBound <= 0) {
@@ -5826,8 +5860,8 @@ class entity:public actor {
               adventureUI scripter(renderer, 1);
               scripter.playersUI = 0;
               scripter.talker = x;
-              scripter.sayings = &x->contactScript;
-              x->dialogue_index = -1;
+              scripter.ownScript = x->contactScript;
+              scripter.dialogue_index = -1;
               x->target = this;
               x->sayings = x->contactScript;
               scripter.continueDialogue();
@@ -6606,7 +6640,7 @@ int loadSave() {
     entity* a = new entity(renderer, spinEntFilename);
     g_spin_entity = a;
     g_spin_entity->visible = 0;
-    g_spin_entity->msPerFrame = 50;
+    g_spin_entity->msPerFrame = 100; //after moving dialogue_index to adventureUI class from entity, this was effectively doubled... memory error? Was 50
     g_spin_entity->loopAnimation = 1;
   }
 
@@ -6841,8 +6875,9 @@ void entity::shoot() {
   }
 }
 
+//shadow render
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
-  if(!owner->tangible) {return;}
+  if(!owner->tangible || !this->visible) {return;}
   if(!owner->visible) {
     //show the protags shadow whilst spinning
     if(!(owner == protag && g_spinning_duration > -16)) {
@@ -7149,21 +7184,23 @@ class ui {
     float targetx = -1; //for gliding to a position
     float targety = -1;
 
-    float xagil;
+    float xagil = 0;
 
 
-    float xaccel;
-    float yaccel;
+    float xaccel = 0;
+    float yaccel = 0;
 
-    float xvel;
-    float yvel;
+    float xvel = 0;
+    float yvel = 0;
 
-    float xmaxspeed;
+    float xmaxspeed = 10;
 
     float width = 0.5;
     float height = 0.5;
 
-    float friction;
+    float friction = 0;
+
+    float opacity = 25500; //out of 25500
 
     bool show = true;
     SDL_Surface* image;
@@ -7200,6 +7237,7 @@ class ui {
     ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float fwidth, float fheight, int fpriority) {
       //M("ui()" );
       filename = ffilename;
+      
       image = IMG_Load(filename.c_str());
 
       width = fwidth;
@@ -7208,6 +7246,7 @@ class ui {
       y = fy;
       texture = SDL_CreateTextureFromSurface(renderer, image);
       g_ui.push_back(this);
+
       priority = fpriority;
       SDL_FreeSurface(image);
     }
@@ -7230,8 +7269,7 @@ class ui {
       }
 
       if(this->show) {
-
-
+        SDL_SetTextureAlphaMod(texture, opacity/100);
         if(is9patch) {
           int ibound = width * WIN_WIDTH;
           int jbound = height * WIN_HEIGHT;
@@ -7656,6 +7694,8 @@ class listener {
     }
 };
 
+//clear map
+//CLEAR MAP
 void clear_map(camera& cameraToReset) {
   g_budget = 0;
   enemiesMap.clear();
@@ -8147,7 +8187,6 @@ void clear_map(camera& cameraToReset) {
 
 
   //copy protag to a pointer, clear the array, and re-add protag
-  entity* hold_narra = nullptr;
   vector<entity*> persistentEnts;
   for(int i=0; i< size; i++) {
     if(g_entities[0]->inParty) {
@@ -8157,15 +8196,11 @@ void clear_map(camera& cameraToReset) {
       g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
     } else if (g_entities[0]->persistentHidden) {
       //do nothing because nar is handled differently now
-      if(hold_narra == nullptr) {
-        hold_narra = g_entities[0];
-        g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
-        g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
-
-      } else {
-        throw("critical error");
-      }
+      persistentEnts.push_back(g_entities[0]);
+      g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
+      g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
     } else if(g_entities[0]->persistentGeneral) {
+
       persistentEnts.push_back(g_entities[0]);
       g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
       g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
@@ -8173,10 +8208,10 @@ void clear_map(camera& cameraToReset) {
 
 
     } else {
-
       delete g_entities[0];
     }
   }
+
   //push back any entities that were in the party
   for (long long unsigned int i = 0; i < party.size(); i++) {
     g_entities.push_back(party[i]);
@@ -8193,9 +8228,11 @@ void clear_map(camera& cameraToReset) {
     g_actors.push_back(n);
   }
 
-  //push the narrarator back on
-  g_entities.push_back(hold_narra);
-  g_actors.push_back(hold_narra);
+  for(auto n : persistentEnts) {
+    g_entities.push_back(n);
+    g_actors.push_back(n);
+  }
+
 
   //clear lastReferencedEnt
   //possible issue with adventureUI instances of persistent ents
@@ -8217,6 +8254,8 @@ void clear_map(camera& cameraToReset) {
     delete g_navNodes[0];
   }
 
+  g_pelletGoalScripts.clear();
+ 
 
   //was there a reason to do this?
   //none of the entities which persist through map clears
@@ -8636,6 +8675,93 @@ class settingsUI {
 
 };
 
+//A usable is basically a texture, a script, a cooldown
+class usable {
+  public:
+    string filepath = "";
+    string name = "";
+
+    SDL_Texture* texture;
+
+    vector<string> script;
+
+    int maxCooldownMs = 0;
+    int cooldownMs = 0;
+
+    int specialAction = 0; //for hooking up items directly to engie code, namely spindashing
+                           //0 - nothing
+                           //1 - spin
+                           //2 - openInventory
+    
+
+    usable(string fname) {
+
+      ifstream file;
+      string loadstr;
+
+      //first check in local directory (will I ever use that?)
+//      filepath = "maps/" + g_mapdir + "/usables/" + fname + "/specs_" + fname + ".txt";
+//      if(!fileExists(filepath)) {
+//        //load from static folder
+//        if(!fileExists(filepath)) {
+//          if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(filepath); return;}
+//          return;
+//        }
+//        
+//
+//      }
+
+      string filepath = "static/usables/" + fname + "/";
+
+      //open specs file
+      loadstr = filepath + "specs_" + fname + ".txt";
+
+      file.open(loadstr);
+      if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(loadstr); return;}
+      
+      string comment;
+      
+      //display name
+      file >> comment;
+      file >> name;
+
+      //cooldownMs
+      file >> comment;
+      file >> maxCooldownMs;
+
+      //specialAction
+      file >> comment;
+      file >> specialAction;
+      
+
+      file.close();
+
+      //read script
+      loadstr = filepath + "script_" + fname + ".txt";
+      file.open(loadstr);
+      if(!file.is_open()) { E("Couldn't open Script-file for Usable with Name " + fname); E(filepath); return;}
+      
+      string line;
+      while (getline(file, line)) {
+        script.push_back(line);
+      }
+      parseScriptForLabels(script);
+
+      //load sprite
+      loadstr = filepath + "img_" + fname + ".bmp";
+      SDL_Surface* image = IMG_Load(loadstr.c_str());
+      texture = SDL_CreateTextureFromSurface(renderer,image);
+      SDL_FreeSurface(image);
+
+      g_backpack.push_back(this);
+    }
+
+    ~usable() {
+      SDL_DestroyTexture(texture);
+      g_backpack.erase(remove(g_backpack.begin(), g_backpack.end(), this), g_backpack.end());
+    }
+
+};
 
 
 #endif

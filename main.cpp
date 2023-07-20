@@ -92,7 +92,14 @@ int WinMain()
   narrarator = new entity(renderer, "engine/sp-joseph");
   narrarator->tangible = 0;
   narrarator->persistentHidden = 1;
-  // narrarator->name = "sp-narrarator";
+
+  g_pelletNarrarator = new entity(renderer, "engine/sp-joseph");
+  g_pelletNarrarator->tangible = 0;
+  g_pelletNarrarator->persistentHidden = 1;
+
+  g_backpackNarrarator = new entity(renderer, "engine/sp-joseph");
+  g_backpackNarrarator->tangible = 0;
+  g_backpackNarrarator->persistentHidden = 1;
 
   // entity* fomm;
   // //fomm = new entity(renderer, "fomm");
@@ -142,6 +149,13 @@ int WinMain()
 
   // setup UI
   adventureUIManager = new adventureUI(renderer);
+  // The adventureUI class has three major uses:
+  // The adventureUIManager points to an instance with the full UI for the player
+  // The narrarator->myScriptCaller points to an instance which might have some dialogue, so it needs some ui
+  // Many objects have a pointer to an instance which is used to just run scripts, and thus needs no dialgue box
+  // To init the UI which is wholey unqiue to the instance pointed to by the adventureUIManager, we must  wa
+  adventureUIManager->initFullUI();
+
 
   if (canSwitchOffDevMode)
   {
@@ -315,7 +329,7 @@ int WinMain()
   g_preloadedSounds.emplace_back(g_npcdamage, "static/sounds/npcdamage.wav");
   g_s_playerdeath = Mix_LoadWAV("static/sounds/playerdeath.wav");
   g_preloadedSounds.emplace_back(g_s_playerdeath, "static/sounds/playerdeath.wav");
-  g_land = Mix_LoadWAV("static/sounds/step2.wav");
+  g_land = Mix_LoadWAV("static/sounds/land.wav");
   g_preloadedSounds.emplace_back(g_land, "static/sounds/step2.wav");
   g_footstep_a = Mix_LoadWAV("static/sounds/protag-step-1.wav");
   g_preloadedSounds.emplace_back(g_footstep_a, "static/sounds/protag-step-1.wav");
@@ -479,6 +493,13 @@ int WinMain()
   //This is used to call scripts triggered by pellet goals
   g_pelletGoalScriptCaller = new adventureUI(renderer, 1);
   g_pelletGoalScriptCaller->playersUI = 0;
+  g_pelletGoalScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
+  g_pelletGoalScriptCaller->talker = narrarator;
+
+  //this is used for calling scripts from items in the backpack
+  g_backpackScriptCaller = new adventureUI(renderer, 1);
+  g_backpackScriptCaller->playersUI = 0;
+  g_backpackScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
   g_pelletGoalScriptCaller->talker = narrarator;
 
   srand(time(NULL));
@@ -887,7 +908,7 @@ int WinMain()
 
 
     // spring
-    if ((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move))
+    if ((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move && !g_selectingUsable))
     {
       g_hasBeenHoldingJump = 1;
       g_afterspin_duration = 0;
@@ -1028,9 +1049,9 @@ int WinMain()
       {
         // !!! could need check that we aren't in dialogue or running a script
         adventureUIManager->blip = NULL;
-        adventureUIManager->sayings = &g_listeners[i]->script;
+        adventureUIManager->ownScript = g_listeners[i]->script;
         adventureUIManager->talker = narrarator;
-        narrarator->dialogue_index = -1;
+        adventureUIManager->dialogue_index = -1;
         narrarator->sayings = g_listeners[i]->script;
         adventureUIManager->initDialogue();
         adventureUIManager->continueDialogue();
@@ -1097,6 +1118,57 @@ int WinMain()
         g_camera.update_movement(elapsed, avgX - zoomoffsetx, ((avgY - XtoZ * g_focus->z) - zoomoffsety));
       }
     }
+
+    adventureUIManager->thisUsableIcon->texture = adventureUIManager->noIconTexture;
+    adventureUIManager->nextUsableIcon->texture = adventureUIManager->noIconTexture;
+    adventureUIManager->prevUsableIcon->texture = adventureUIManager->noIconTexture;
+    //update hotbar + graphics
+    if(g_backpack.size() > 0) {
+      adventureUIManager->thisUsableIcon->texture = g_backpack.at(g_backpackIndex)->texture;
+      adventureUIManager->nextUsableIcon->texture = g_backpack.at(g_backpackIndex)->texture;
+      adventureUIManager->prevUsableIcon->texture = g_backpack.at(g_backpackIndex)->texture;
+    }
+
+    float percentSame = 0.5 * elapsed / 16;
+    float percentDiff = 1 - percentSame;
+    if(g_selectingUsable) {
+      g_hotbarWidth = (g_hotbarWidth *percentSame) + (g_hotbarWidth_inventoryOpen*percentDiff);
+//      float totalDelta = g_hotbarNextPrevOpacityDelta * elapsed;
+//      if(g_hotbarNextPrevOpacity + totalDelta < 25500) {g_hotbarNextPrevOpacity += totalDelta;} else {g_hotbarNextPrevOpacity = 25500;}
+      g_hotbarNextPrevOpacity = (g_hotbarNextPrevOpacity * percentSame) + (25500 * percentDiff);
+
+    } else {
+      g_hotbarWidth = (g_hotbarWidth *percentSame) + (g_hotbarWidth_inventoryClosed*percentDiff);
+      g_hotbarNextPrevOpacity = (g_hotbarNextPrevOpacity * percentSame) + (0 * percentDiff);
+//      float totalDelta = g_hotbarNextPrevOpacityDelta * elapsed;
+//      if(g_hotbarNextPrevOpacity - totalDelta > 0) {g_hotbarNextPrevOpacity -= totalDelta;} else {g_hotbarNextPrevOpacity = 0;}
+    }
+    adventureUIManager->hotbar->width = g_hotbarWidth;
+    adventureUIManager->hotbar->height = 0.1/g_hotbarWidth; //maintain height despite using heightFromWidthFactor
+    //next/prev icons should move with hotbar
+    adventureUIManager->nextUsableIcon->x = 0.45 + (g_hotbarWidth - 0.1)/2;
+    adventureUIManager->prevUsableIcon->x = 0.45 - (g_hotbarWidth - 0.1)/2;
+    adventureUIManager->nextUsableIcon->opacity = g_hotbarNextPrevOpacity;
+    adventureUIManager->prevUsableIcon->opacity = g_hotbarNextPrevOpacity;
+    adventureUIManager->thisUsableIcon->opacity = 25500;
+    
+    adventureUIManager->hotbar->x = 0.5 - g_hotbarWidth / 2;
+
+    //adventureUIManager->thisUsableIcon->show = 0;
+
+    if(g_backpack.size() > 1) {
+      int nextUsableIndex = g_backpackIndex + 1; 
+      
+      if(nextUsableIndex >= g_backpack.size()) { nextUsableIndex = 0;}
+      adventureUIManager->nextUsableIcon->texture = g_backpack.at(nextUsableIndex)->texture;
+      
+      int prevUsableIndex = g_backpackIndex - 1; 
+      if(prevUsableIndex < 0) { prevUsableIndex = g_backpack.size()-1;}
+      
+      adventureUIManager->prevUsableIcon->texture = g_backpack.at(prevUsableIndex)->texture;
+    }
+
+    
 
     // update ui
     curTextWait += elapsed * text_speed_up;
@@ -2369,104 +2441,133 @@ int WinMain()
     //did the protag collect a pellet?
     float protag_x = protag->getOriginX();
     float protag_y = protag->getOriginY();
-    for(int i = 0; i < g_pellets.size(); i++) {
-      entity* x = g_pellets[i];
-
-      //well, this is shitty. Somehow I find myself in an unfortunate situation which I dont understand
-      //Somehow, I can't get pellets to appear ontopof the lowest fogsheet yet behind fomm, if he's
-      //infront.
-      //I'm going to cheat and change their sorting offset based on distance to the protag, so they'll still be jank (e.g., other enemy is close to a cupcake), but whatever, it's better than nothin
-      //and I really want pellets to stick out from fog
-      int ydiff = protag_y - x->y;
-      if(-ydiff > -85) {
-        x->sortingOffset = 30;
-      } else {
-        x->sortingOffset = 160; //pellets that are close to the fog are artificially boosted in the draw order
-      }
-
-      if(ydiff < 85 && ydiff > 0) {
-        x->sortingOffset = 30;
-      }
-      
-      
-      bool collected = 0;
-      //try to collect
-      if(devMode == 0) {
-        bool m = CylinderOverlap(protag->getMovedBounds(), x->getMovedBounds());
-        if(m) {
-          
-          playSound(4, g_pelletCollectSound, 0);
-          x->usingTimeToLive = 1;
-          x->timeToLiveMs = -1;
-          x->shadow->size = 0;
-          x->dynamic = 1;
-          x->steeringAngle = wrapAngle(atan2(protag->getOriginX() - x->getOriginX(), protag->getOriginY() - x->getOriginY()) - M_PI/2);
-          x->targetSteeringAngle = x->steeringAngle;
-          x->forwardsVelocity = 14000;
-
-          
-          g_pellets.erase(remove(g_pellets.begin(), g_pellets.end(), x), g_pellets.end());
-          x->isPellet = 0;
-          i--;
-          g_currentPelletsCollected++;
-
-          collected = 1;
-          
-          //did we collect the objective?
-          if(x == g_objective) {
-            g_objective = nullptr;
+    if(g_showPellets) {
+      for(int i = 0; i < g_pellets.size(); i++) {
+        entity* x = g_pellets[i];
+  
+        //well, this is shitty. Somehow I find myself in an unfortunate situation which I dont understand
+        //Somehow, I can't get pellets to appear ontopof the lowest fogsheet yet behind fomm, if he's
+        //infront.
+        //I'm going to cheat and change their sorting offset based on distance to the protag, so they'll still be jank (e.g., other enemy is close to a cupcake), but whatever, it's better than nothin
+        //and I really want pellets to stick out from fog
+        int ydiff = protag_y - x->y;
+        if(-ydiff > -85) {
+          x->sortingOffset = 30;
+        } else {
+          x->sortingOffset = 160; //pellets that are close to the fog are artificially boosted in the draw order
+        }
+  
+        if(ydiff < 85 && ydiff > 0) {
+          x->sortingOffset = 30;
+        }
+        
+        
+        bool collected = 0;
+        //try to collect
+        if(devMode == 0) {
+          bool m = CylinderOverlap(protag->getMovedBounds(), x->getMovedBounds());
+          if(m) {
+            
+            playSound(4, g_pelletCollectSound, 0);
+            x->usingTimeToLive = 1;
+            x->timeToLiveMs = -1;
+            x->shadow->size = 0;
+            x->dynamic = 1;
+            x->steeringAngle = wrapAngle(atan2(protag->getOriginX() - x->getOriginX(), protag->getOriginY() - x->getOriginY()) - M_PI/2);
+            x->targetSteeringAngle = x->steeringAngle;
+            x->forwardsVelocity = 14000;
+  
+            
+            g_pellets.erase(remove(g_pellets.begin(), g_pellets.end(), x), g_pellets.end());
+            x->isPellet = 0;
+            i--;
+            g_currentPelletsCollected++;
+  
+            collected = 1;
+            
+            //did we collect the objective?
+            if(x == g_objective) {
+              g_objective = nullptr;
+            }
           }
         }
-      }
+  
+        if(collected) {
+          for(auto x : g_pelletGoalScripts) {
+  
+            if(x.first <= g_currentPelletsCollected) {
+              g_pelletGoalScripts.erase(remove(g_pelletGoalScripts.begin(), g_pelletGoalScripts.end(), x), g_pelletGoalScripts.end());
+              M("Calling goalscript for " + to_string(x.first) + " pellets");
+              //M("We'll call this script: " + x.second);
+  
+              //load and call this script (this code is taken from that for the "/script" script-command
+              ifstream stream;
+              string loadstr;
+              string s = x.second;
+          
+              loadstr = "maps/" + g_map + "/scripts/" + s + ".txt";
+              const char *plik = loadstr.c_str();
+  
+              stream.open(plik);
+          
+              if (!stream.is_open())
+              {
+                stream.open("scripts/" + s + ".txt");
+              }
+              string line;
+          
+              getline(stream, line);
+          
+              vector<string> nscript;
+              while (getline(stream, line))
+              {
+                nscript.push_back(line);
+              }
+  
+              parseScriptForLabels(nscript);
+              
+              M("About to interpret goalscript.");
+  
+              g_pelletGoalScriptCaller->blip = g_ui_voice;
+              g_pelletGoalScriptCaller->ownScript = nscript;
+              g_pelletGoalScriptCaller->dialogue_index = -1;
+              g_pelletGoalScriptCaller->talker = g_pelletNarrarator;
 
-      if(collected) {
-        for(auto x : g_pelletGoalScripts) {
-
-          if(x.first <= g_currentPelletsCollected) {
-            g_pelletGoalScripts.erase(remove(g_pelletGoalScripts.begin(), g_pelletGoalScripts.end(), x), g_pelletGoalScripts.end());
-            M("Calling goalscript for " + to_string(x.first) + " pellets");
-            //M("We'll call this script: " + x.second);
-
-            //load and call this script (this code is taken from that for the "/script" script-command
-            ifstream stream;
-            string loadstr;
-            string s = x.second;
-        
-            loadstr = "maps/" + g_map + "/scripts/" + s + ".txt";
-            const char *plik = loadstr.c_str();
-
-            stream.open(plik);
-        
-            if (!stream.is_open())
-            {
-              stream.open("scripts/" + s + ".txt");
+              g_pelletGoalScriptCaller->continueDialogue();
+  
+              M("Finished interpreting goalscript.");
+  
             }
-            string line;
-        
-            getline(stream, line);
-        
-            vector<string> nscript;
-            while (getline(stream, line))
-            {
-              nscript.push_back(line);
-            }
-
-            parseScriptForLabels(nscript);
-
-            g_pelletGoalScriptCaller->blip = g_ui_voice;
-            g_pelletGoalScriptCaller->sayings = &nscript;
-            g_pelletGoalScriptCaller->talker = narrarator;
-            narrarator->sayings = nscript;
-            narrarator->dialogue_index = -1;
-            g_pelletGoalScriptCaller->continueDialogue();
-
-
+  
           }
-
+  
         }
-
       }
     }
+
+    if(g_objectiveFadeModeOn) {
+      if(abs(protag->xvel) > 2 || abs(protag->yvel) > 2) {
+        g_objectiveOpacity -= elapsed * 50;
+        g_objectiveFadeWaitMs = g_objectiveFadeMaxWaitMs;
+      } else {
+        g_objectiveFadeWaitMs -= elapsed;
+        if(g_objectiveFadeWaitMs < 0) {
+          g_objectiveOpacity += elapsed * 50;
+        } else {
+          g_objectiveOpacity -= elapsed * 50;
+        }
+
+
+      }
+      g_objectiveOpacity = min(max(g_objectiveOpacity, 0), 25500);
+      
+    } else {
+      g_objectiveOpacity = 25500;
+
+    }
+    
+    adventureUIManager->crosshair->opacity = g_objectiveOpacity;
+
     
     if(g_usingPelletsAsObjective) {
       if(g_objective == nullptr) {
@@ -2570,9 +2671,9 @@ int WinMain()
       if (RectOverlap(movedbounds, trigger) && (checkHim->z > g_triggers[i]->z && checkHim->z < g_triggers[i]->z + g_triggers[i]->zeight))
       {
         adventureUIManager->blip = g_ui_voice;
-        adventureUIManager->sayings = &g_triggers[i]->script;
+        adventureUIManager->ownScript = g_triggers[i]->script;
         adventureUIManager->talker = narrarator;
-        narrarator->dialogue_index = -1;
+        adventureUIManager->dialogue_index = -1;
         narrarator->sayings = g_triggers[i]->script;
         adventureUIManager->continueDialogue();
         // we need to break here if we loaded a new map
@@ -3028,10 +3129,10 @@ int interact(float elapsed, entity *protag)
         }
 
         adventureUIManager->blip = g_entities[i]->voice;
-        adventureUIManager->sayings = &g_entities[i]->sayings;
+        //adventureUIManager->sayings = &g_entities[i]->sayings;
         adventureUIManager->talker = g_entities[i];
         
-        adventureUIManager->talker->dialogue_index = -1;
+        adventureUIManager->dialogue_index = -1;
         g_forceEndDialogue = 0;
         adventureUIManager->continueDialogue();
         // removing this in early july to fix problem moving after a script changes map
@@ -3242,7 +3343,7 @@ void getInput(float &elapsed)
       }
       else
       {
-        if(protag_can_move) {
+        if(protag_can_move && !g_selectingUsable) {
           protag->move_up();
         }
       }
@@ -3271,7 +3372,7 @@ void getInput(float &elapsed)
       }
       else
       {
-        if(protag_can_move) {
+        if(protag_can_move && !g_selectingUsable) {
           protag->move_down();
         }
       }
@@ -3300,8 +3401,13 @@ void getInput(float &elapsed)
       }
       else
       {
-        if(protag_can_move) {
+        if(protag_can_move && !g_selectingUsable) {
           protag->move_left();
+        } else if(protag_can_move && g_selectingUsable && SoldUILeft <= 0 && !inPauseMenu) {
+          //select prev backpack item
+          g_backpackIndex --;
+          if(g_backpackIndex < 0) { g_backpackIndex = g_backpack.size()-1;}
+          SoldUILeft = (oldUILeft) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
         }
       }
       oldUILeft = 1;
@@ -3328,10 +3434,17 @@ void getInput(float &elapsed)
         }
         SoldUIRight = (oldUIRight) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
       }
+
+
       else
       {
-        if(protag_can_move) {
+        if(protag_can_move && !g_selectingUsable) {
           protag->move_right();
+        } else if(protag_can_move && g_selectingUsable && SoldUIRight <= 0 && !inPauseMenu) {
+          //select next backpack item
+          g_backpackIndex ++;
+          if(g_backpackIndex > g_backpack.size() - 1) { g_backpackIndex = 0;}
+          SoldUIRight = (oldUIRight) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
         }
       }
       oldUIRight = 1;
@@ -3372,40 +3485,59 @@ void getInput(float &elapsed)
     {
       inventorySelection = 0;
     }
-
-    if (keystate[bindings[12]] && !old_pause_value && protag_can_move)
-    {
-      // pause menu
-      if (inPauseMenu)
-      {
-        //if this is the inventory screen, close it
-        if(g_inventoryUiIsLevelSelect == 0) {
-          playSound(-1, g_menu_close_sound, 0);
-          inPauseMenu = 0;
-          elapsed = 16;
-          adventureUIManager->hideInventoryUI();
-        }
+   
+    if(keystate[bindings[12]] && protag_can_move && !inPauseMenu) {
+      //for short presses, advance inventory left rather than widening the hotbar
+      g_currentHotbarSelectMs += elapsed;
+      if(g_currentHotbarSelectMs >= g_hotbarLongSelectMs) {
+        g_selectingUsable = 1;
       }
-      else
-      {
-        playSound(-1, g_menu_open_sound, 0);
-        g_inventoryUiIsLevelSelect = 0;
-        inPauseMenu = 1;
-        g_firstFrameOfPauseMenu = 1;
-        adventureUIManager->escText->updateText("", -1, 0.9);
-        inventorySelection = 0;
-        adventureUIManager->positionInventory();
-        adventureUIManager->showInventoryUI();
+    } else {
+      if(g_currentHotbarSelectMs > 0 && g_selectingUsable == 0 && !inPauseMenu) {
+        //select next backpack item
+        g_backpackIndex ++;
+        if(g_backpackIndex > g_backpack.size() - 1) { g_backpackIndex = 0;}
       }
+      g_selectingUsable = 0;
+      g_currentHotbarSelectMs = 0;
     }
 
-    if (keystate[bindings[12]])
+
+    if (keystate[bindings[12]] && protag_can_move)
     {
-      old_pause_value = 1;
-    }
-    else
-    {
-      old_pause_value = 0;
+
+
+      //this used to be how we opened up the inventory menu which took up the whole screen
+      //now we want to just open the backpack, but the player will be able to do this by
+      //using the picnicbox, so I'm not deleting this code, just commenting it out
+     
+      //it will be exposed thru the scripting interpreter later
+//      // pause menu
+//      if (inPauseMenu)
+//      {
+//        //if this is the inventory screen, close it
+//        if(g_inventoryUiIsLevelSelect == 0) {
+//          playSound(-1, g_menu_close_sound, 0);
+//          inPauseMenu = 0;
+//          elapsed = 16;
+//          adventureUIManager->hideInventoryUI();
+//        }
+//      }
+//      else
+//      {
+//
+//        playSound(-1, g_menu_open_sound, 0);
+//        g_inventoryUiIsLevelSelect = 0;
+//        inPauseMenu = 1;
+//        g_firstFrameOfPauseMenu = 1;
+//        adventureUIManager->escText->updateText("", -1, 0.9);
+//        inventorySelection = 0;
+//        adventureUIManager->positionInventory();
+//        adventureUIManager->showInventoryUI();
+//        
+//
+//
+//      }
     }
 
   }
@@ -3610,7 +3742,7 @@ void getInput(float &elapsed)
           adventureUIManager->hideInventoryUI();
           g_settingsUI->hide();
 
-          adventureUIManager->talker->dialogue_index++;
+          adventureUIManager->dialogue_index++;
           adventureUIManager->continueDialogue();
         } else {
           for(int i = 0; i < g_settingsUI->valueTextboxes.size(); i++) {
@@ -3837,38 +3969,95 @@ void getInput(float &elapsed)
   }
 
 
-  //spinning
-  if ( ((input[13] && !oldinput[13]) || (input[13] && storedSpin) ) && protag_can_move && (protag->grounded || g_currentSpinJumpHelpMs > 0 )
-          && (g_spin_cooldown <= 0 && g_spinning_duration <= 0 + g_doubleSpinHelpMs && g_afterspin_duration <= 0 )
+  //spinning/using item
+  if( g_backpack.size() > 0 && protag_can_move && !inPauseMenu) {
+    if(g_backpack.at(g_backpackIndex)->specialAction == 1 ) { //do a spin
 
-     )
-  {
-    storedSpin = 0;
-    //propel the protag in the direction of their velocity
-    //at high speed, removing control from them
-    g_spinning_duration = g_spinning_duration_max;
-    g_spinning_xvel = protag->xvel * g_spinning_boost;
-    g_spinning_yvel = protag->yvel * g_spinning_boost;
-    g_spin_cooldown = g_spin_max_cooldown;
-  } else {
-    if(input[13] && !oldinput[13] && !protag->grounded) {
-      storedSpin = 1;
+      if ( ((input[13] && !oldinput[13]) || (input[13] && storedSpin) ) && protag_can_move && (protag->grounded || g_currentSpinJumpHelpMs > 0 )
+              && (g_spin_cooldown <= 0 && g_spinning_duration <= 0 + g_doubleSpinHelpMs && g_afterspin_duration <= 0 )
+    
+         )
+      {
+        storedSpin = 0;
+        //propel the protag in the direction of their velocity
+        //at high speed, removing control from them
+        g_spinning_duration = g_spinning_duration_max;
+        g_spinning_xvel = protag->xvel * g_spinning_boost;
+        g_spinning_yvel = protag->yvel * g_spinning_boost;
+        g_spin_cooldown = g_spin_max_cooldown;
+      } else {
+        if(input[13] && !oldinput[13] && !protag->grounded) {
+          storedSpin = 1;
+        }
+    
+      }
+      g_currentSpinJumpHelpMs-= elapsed;
+    
+      if(protag->grounded) {
+        g_currentSpinJumpHelpMs = g_spinJumpHelpMs;
+      }
+    
+      if(g_spin_enabled && g_spinning_duration >= 0 && g_spinning_duration - elapsed < 0 && protag->grounded && !g_protag_jumped_this_frame) {
+        g_afterspin_duration = g_afterspin_duration_max;
+      }
+    
+      g_spin_entity->x = protag->x;
+      g_spin_entity->y = protag->y;
+      g_spin_entity->z = protag->z;
+    
+  
+    } else if ( (input[13] && !oldinput[13]) && g_backpack.at(g_backpackIndex)->specialAction == 2) { //open inventory
+      
+      if (inPauseMenu)
+      {
+        //if this is the inventory screen, close it
+        if(g_inventoryUiIsLevelSelect == 0) {
+          playSound(-1, g_menu_close_sound, 0);
+          inPauseMenu = 0;
+          elapsed = 16;
+          adventureUIManager->hideInventoryUI();
+        }
+      }
+      else
+      {
+
+        playSound(-1, g_menu_open_sound, 0);
+        g_inventoryUiIsLevelSelect = 0;
+        inPauseMenu = 1;
+        g_firstFrameOfPauseMenu = 1;
+        adventureUIManager->escText->updateText("", -1, 0.9);
+        inventorySelection = 0;
+        adventureUIManager->positionInventory();
+        adventureUIManager->showInventoryUI();
+      }
+
+    } else if (input[13] && !oldinput[13]) { //there is an item to use, and it doesn't make the protag spin
+      M("Used item");
+      D(g_backpack.at(g_backpackIndex)->name);
+
+      //make a scriptcaller
+      adventureUI scripter(renderer, 1);
+      scripter.playersUI = 0;
+      scripter.useOwnScriptInsteadOfTalkersScript = 1;
+      scripter.talker = g_backpackNarrarator;
+      scripter.ownScript = g_backpack.at(g_backpackIndex)->script;
+      scripter.dialogue_index = -1;
+      //g_backpackNarrarator->sayings = scripter.ownScript;
+      scripter.continueDialogue();
+
     }
-
+  } else if (inPauseMenu && input[13] && !oldinput[13]) {
+    //this button should take the player out of the inventory for safety
+    //incase they somehow switch off 
+    
+    //if this is the inventory screen, close it
+    if(g_inventoryUiIsLevelSelect == 0) {
+      playSound(-1, g_menu_close_sound, 0);
+      inPauseMenu = 0;
+      elapsed = 16;
+      adventureUIManager->hideInventoryUI();
+    }
   }
-  g_currentSpinJumpHelpMs-= elapsed;
-
-  if(protag->grounded) {
-    g_currentSpinJumpHelpMs = g_spinJumpHelpMs;
-  }
-
-  if(g_spin_enabled && g_spinning_duration >= 0 && g_spinning_duration - elapsed < 0 && protag->grounded && !g_protag_jumped_this_frame) {
-    g_afterspin_duration = g_afterspin_duration_max;
-  }
-
-  g_spin_entity->x = protag->x;
-  g_spin_entity->y = protag->y;
-  g_spin_entity->z = protag->z;
 
   g_spin_cooldown -= elapsed;
   g_spinning_duration -= elapsed;
@@ -4015,7 +4204,7 @@ void getInput(float &elapsed)
               adventureUIManager->hideInventoryUI();
   
 
-              adventureUIManager->talker->dialogue_index++;
+              adventureUIManager->dialogue_index++;
               adventureUIManager->continueDialogue();
 
 
@@ -4043,9 +4232,9 @@ void getInput(float &elapsed)
         // call the item's script
         // D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);
         adventureUIManager->blip = g_ui_voice;
-        adventureUIManager->sayings = &mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script;
+        adventureUIManager->ownScript = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script;
         adventureUIManager->talker = protag;
-        protag->dialogue_index = -1;
+        adventureUIManager->dialogue_index = -1;
         protag->sayings = mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script;
         adventureUIManager->continueDialogue();
         // if we changed maps/died/whatever, close the inventory

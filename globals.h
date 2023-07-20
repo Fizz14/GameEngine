@@ -108,6 +108,8 @@ class levelNode;
 
 class levelSequence;
 
+class usable;
+
 vector<cshadow *> g_shadows;
 
 vector<entity *> g_entities;
@@ -454,7 +456,26 @@ float g_fontsize = 0.031; // 0.021 - 0.04
 float g_minifontsize = 0.01;
 float g_transitionSpeed = 3; // 3, 9
 
-// inventory
+//backpack - holds usable items on a hotbar
+int g_whichUsableSelectedIndex = 0;
+vector<usable*> g_backpack;
+adventureUI* g_backpackScriptCaller = nullptr;
+entity *g_backpackNarrarator; //script callers should have thier own ent to not mess up dialogue indexes (dumb!)
+
+int g_backpackIndex = 0; //set to 1 if the player is holding down the button
+int g_selectingUsable = 0;
+//the hotbar widens when the inventory button is held
+float g_hotbarWidth = 0.1;
+float g_hotbarWidth_inventoryOpen = 0.3;
+float g_hotbarWidth_inventoryClosed = 0.1;
+float g_hotbarNextPrevOpacity = 25500; //for fading out next/prev icons
+float g_hotbarNextPrevOpacityDelta = 250;
+//a short press of the inventory button will advance the backpack index, but
+//a longer one will let player select with the movement keys
+float g_hotbarLongSelectMs = 150;
+float g_currentHotbarSelectMs = 0;
+
+// inventory - we're switching things up. This will be the picnic-box, the inventory for consumables
 float use_cooldown = 0; // misleading, its not for attacks at all
 vector<attack *> AdventureattackSet;
 int inPauseMenu = 0;
@@ -462,7 +483,6 @@ bool g_firstFrameOfPauseMenu = 0; //true if this is the first frame of the pause
 bool g_firstFrameOfSettingsMenu = 0; //true if this is the first frame of the pause menu, for aligning the cursor
 float g_UiGlideSpeedX = 0.012;
 float g_UiGlideSpeedY; //set from g_UiGlideSpeedX based on aspect ratio
-bool old_pause_value = 1;		// wait until the user releases the button to not count extra presses
 int inventoryScroll = 0;		// how many rows in the inventory we've scrolled thru
 int inventorySelection = 1; // which item in the inventory is selected
 int itemsPerRow = ceil((0.9 - 0.05) / (0.07 + 0.01));
@@ -517,8 +537,20 @@ int g_maxPelletsInLevel = 0; //number of pellets loaded into the level
 int g_currentPelletsCollected = 0; //how many they have
 int g_pelletsNeededToProgress = 1; //player has beaten the level, just needs to leave
 vector <std::pair<int, string>> g_pelletGoalScripts; //each entry contains the path to a script which
-//
+bool g_showPellets = 1;
+
+//I want the objective to be able to be set to fade away if the player is moving and 
+//fade in if the player is standing still, to help them if they are lost
+int g_objectiveFadeModeOn = 0;
+int g_objectiveOpacity = 25500;
+int g_objectiveFadeMaxWaitMs = 2000;
+int g_objectiveFadeWaitMs = 0;
+
+//for security, scriptcallers need their own entity
+//It's kinda dumb but just go with it
 adventureUI* g_pelletGoalScriptCaller = nullptr;
+entity *g_pelletNarrarator;
+
                                      
 
 class camera
