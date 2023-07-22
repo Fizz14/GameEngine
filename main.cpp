@@ -1129,27 +1129,55 @@ int WinMain()
       adventureUIManager->prevUsableIcon->texture = g_backpack.at(g_backpackIndex)->texture;
     }
 
+    if(adventureUIManager->shiftingMs > 0) {
+      adventureUIManager->shiftingMs -= elapsed;
+    } else {
+      //reposition them
+      int i = 1;
+      for(auto x : adventureUIManager->hotbarTransitionIcons) {
+        x->x = adventureUIManager->hotbarPositions[i].first;
+        x->y = adventureUIManager->hotbarPositions[i].second;
+        x->targetx = adventureUIManager->hotbarPositions[i].first;
+        x->targety = adventureUIManager->hotbarPositions[i].second;
+        
+        if(g_backpack.size() > 0) {
+          int index = g_backpackIndex - i - 1;
+          index = index % g_backpack.size();
+          x->texture = g_backpack.at(index)->texture;
+        }
+        i++;
+      }
+
+    }
+
     float percentSame = 0.5 * elapsed / 16;
     float percentDiff = 1 - percentSame;
     if(g_selectingUsable) {
       g_hotbarWidth = (g_hotbarWidth *percentSame) + (g_hotbarWidth_inventoryOpen*percentDiff);
-//      float totalDelta = g_hotbarNextPrevOpacityDelta * elapsed;
-//      if(g_hotbarNextPrevOpacity + totalDelta < 25500) {g_hotbarNextPrevOpacity += totalDelta;} else {g_hotbarNextPrevOpacity = 25500;}
       g_hotbarNextPrevOpacity = (g_hotbarNextPrevOpacity * percentSame) + (25500 * percentDiff);
 
     } else {
       g_hotbarWidth = (g_hotbarWidth *percentSame) + (g_hotbarWidth_inventoryClosed*percentDiff);
       g_hotbarNextPrevOpacity = (g_hotbarNextPrevOpacity * percentSame) + (0 * percentDiff);
-//      float totalDelta = g_hotbarNextPrevOpacityDelta * elapsed;
-//      if(g_hotbarNextPrevOpacity - totalDelta > 0) {g_hotbarNextPrevOpacity -= totalDelta;} else {g_hotbarNextPrevOpacity = 0;}
     }
     adventureUIManager->hotbar->width = g_hotbarWidth;
     adventureUIManager->hotbar->height = 0.1/g_hotbarWidth; //maintain height despite using heightFromWidthFactor
     //next/prev icons should move with hotbar
     adventureUIManager->nextUsableIcon->x = 0.45 + (g_hotbarWidth - 0.1)/2;
     adventureUIManager->prevUsableIcon->x = 0.45 - (g_hotbarWidth - 0.1)/2;
+   
+    adventureUIManager->hotbarPositions[4].first = 0.45 - (g_hotbarWidth - 0.1)/2;
+    adventureUIManager->hotbarPositions[2].first = 0.45 + (g_hotbarWidth - 0.1)/2;
+
     adventureUIManager->nextUsableIcon->opacity = g_hotbarNextPrevOpacity;
     adventureUIManager->prevUsableIcon->opacity = g_hotbarNextPrevOpacity;
+    
+    adventureUIManager->t1->opacity = g_hotbarNextPrevOpacity;
+    adventureUIManager->t2->opacity = g_hotbarNextPrevOpacity;
+    adventureUIManager->t3->opacity = 25500;
+    adventureUIManager->t4->opacity = g_hotbarNextPrevOpacity;
+    adventureUIManager->t5->opacity = g_hotbarNextPrevOpacity;
+
     adventureUIManager->thisUsableIcon->opacity = 25500;
     
     adventureUIManager->hotbar->x = 0.5 - g_hotbarWidth / 2;
@@ -3408,6 +3436,29 @@ void getInput(float &elapsed)
           g_backpackIndex --;
           if(g_backpackIndex < 0) { g_backpackIndex = g_backpack.size()-1;}
           SoldUILeft = (oldUILeft) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+
+          adventureUIManager->hotbarPositions[4].first = 0.35;
+          adventureUIManager->hotbarPositions[2].first = 0.55;
+
+          //move icons
+          int i = 0; //shift previous
+          for(auto x : adventureUIManager->hotbarTransitionIcons) {
+            x->targetx = adventureUIManager->hotbarPositions[i].first;
+            x->targety = adventureUIManager->hotbarPositions[i].second;
+            i++;
+          }
+          i = 1;
+          for(auto x : adventureUIManager->hotbarTransitionIcons) {
+            x->x = adventureUIManager->hotbarPositions[i].first;
+            x->y = adventureUIManager->hotbarPositions[i].second;
+            if(g_backpack.size() > 0) {
+              int index = g_backpackIndex - i - 0;
+              index = index % g_backpack.size();
+              x->texture = g_backpack.at(index)->texture;
+            }
+            i++;
+          }
+          adventureUIManager->shiftingMs = adventureUIManager->maxShiftingMs;
         }
       }
       oldUILeft = 1;
@@ -3445,6 +3496,29 @@ void getInput(float &elapsed)
           g_backpackIndex ++;
           if(g_backpackIndex > g_backpack.size() - 1) { g_backpackIndex = 0;}
           SoldUIRight = (oldUIRight) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+
+          adventureUIManager->hotbarPositions[4].first = 0.35;
+          adventureUIManager->hotbarPositions[2].first = 0.55;
+
+          //move icons
+          int i = 2; //shift next
+          for(auto x : adventureUIManager->hotbarTransitionIcons) {
+            x->targetx = adventureUIManager->hotbarPositions[i].first;
+            x->targety = adventureUIManager->hotbarPositions[i].second;
+            i++;
+          }
+          i = 1;
+          for(auto x : adventureUIManager->hotbarTransitionIcons) {
+            x->x = adventureUIManager->hotbarPositions[i].first;
+            x->y = adventureUIManager->hotbarPositions[i].second;
+            if(g_backpack.size() > 0) {
+              int index = g_backpackIndex - i - 2;
+              index = index % g_backpack.size();
+              x->texture = g_backpack.at(index)->texture;
+              i++;
+            }
+          }
+          adventureUIManager->shiftingMs = adventureUIManager->maxShiftingMs;
         }
       }
       oldUIRight = 1;
@@ -3968,6 +4042,9 @@ void getInput(float &elapsed)
     input[13] = 0;
   }
 
+  if(g_backpack.size() > 0) {
+    D(g_backpack.at(g_backpackIndex)->name);
+  }
 
   //spinning/using item
   if( g_backpack.size() > 0 && protag_can_move && !inPauseMenu) {
@@ -4031,18 +4108,18 @@ void getInput(float &elapsed)
         adventureUIManager->showInventoryUI();
       }
 
-    } else if (input[13] && !oldinput[13]) { //there is an item to use, and it doesn't make the protag spin
+    } else if (input[13] && !oldinput[13] && g_backpack.at(g_backpackIndex)->cooldownMs <= 0) { //there is an item to use, and it doesn't make the protag spin
+      usable* thisUsable = g_backpack.at(g_backpackIndex); 
       M("Used item");
-      D(g_backpack.at(g_backpackIndex)->name);
+      thisUsable->cooldownMs = thisUsable->maxCooldownMs;
 
       //make a scriptcaller
       adventureUI scripter(renderer, 1);
       scripter.playersUI = 0;
       scripter.useOwnScriptInsteadOfTalkersScript = 1;
       scripter.talker = g_backpackNarrarator;
-      scripter.ownScript = g_backpack.at(g_backpackIndex)->script;
+      scripter.ownScript = thisUsable->script;
       scripter.dialogue_index = -1;
-      //g_backpackNarrarator->sayings = scripter.ownScript;
       scripter.continueDialogue();
 
     }
@@ -4058,6 +4135,9 @@ void getInput(float &elapsed)
       adventureUIManager->hideInventoryUI();
     }
   }
+
+  for(int i = 0; i < g_backpack.size(); i++) { g_backpack.at(i)->cooldownMs -= elapsed/2;}
+  if(g_backpack.size() > 0) { g_backpack.at(g_backpackIndex)->cooldownMs -= elapsed/2; } //item selected cools down faster 
 
   g_spin_cooldown -= elapsed;
   g_spinning_duration -= elapsed;

@@ -6353,6 +6353,7 @@ void write_map(entity *mapent)
     hotbar->patchscale = 0.5;
     hotbar->persistent = true;
     hotbar->heightFromWidthFactor = 1;
+    hotbar->priority = -7;
 
 
     nextUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 + 0.1, 0.85, 0.1, 1, 1);
@@ -6360,6 +6361,7 @@ void write_map(entity *mapent)
     nextUsableIcon->heightFromWidthFactor = 1;
     noIconTexture = nextUsableIcon->texture;
     nextUsableIcon->shrinkPercent = 0.01; 
+    nextUsableIcon->priority = -7;
 
     prevUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 - 0.1, 0.85, 0.1, 1, 1);
     prevUsableIcon->persistent = true;
@@ -6367,6 +6369,7 @@ void write_map(entity *mapent)
     SDL_DestroyTexture(prevUsableIcon->texture);
     prevUsableIcon->texture = noIconTexture;
     prevUsableIcon->shrinkPercent = 0.01; 
+    prevUsableIcon->priority = -7;
 
     thisUsableIcon = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
     thisUsableIcon->persistent = true;
@@ -6374,6 +6377,64 @@ void write_map(entity *mapent)
     SDL_DestroyTexture(thisUsableIcon->texture);
     thisUsableIcon->texture = noIconTexture;
     thisUsableIcon->shrinkPercent = 0.01; 
+    thisUsableIcon->priority = -7;
+
+    t1 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t1->persistent = true;
+    t1->heightFromWidthFactor = 1;
+    SDL_DestroyTexture(t1->texture);
+    t1->texture = noIconTexture;
+    t1->shrinkPercent = 0.01; 
+    t1->priority = -6;
+
+    t2 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t2->persistent = true;
+    t2->heightFromWidthFactor = 1;
+    SDL_DestroyTexture(t2->texture);
+    t2->texture = noIconTexture;
+    t2->shrinkPercent = 0.01; 
+    t2->priority = -6;
+
+    t3 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t3->persistent = true;
+    t3->heightFromWidthFactor = 1;
+    SDL_DestroyTexture(t3->texture);
+    t3->texture = noIconTexture;
+    t3->shrinkPercent = 0.01; 
+    t3->priority = -6;
+
+    t4 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t4->persistent = true;
+    t4->heightFromWidthFactor = 1;
+    SDL_DestroyTexture(t4->texture);
+    t4->texture = noIconTexture;
+    t4->shrinkPercent = 0.01; 
+    t4->priority = -6;
+
+    t5 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t5->persistent = true;
+    t5->heightFromWidthFactor = 1;
+    SDL_DestroyTexture(t5->texture);
+    t5->texture = noIconTexture;
+    t5->shrinkPercent = 0.01; 
+    t5->priority = -6;
+
+    hotbarTransitionIcons.push_back(t1);
+    hotbarTransitionIcons.push_back(t2);
+    hotbarTransitionIcons.push_back(t3);
+    hotbarTransitionIcons.push_back(t4);
+    hotbarTransitionIcons.push_back(t5);
+    
+    prevUsableIcon->show = 0;
+    thisUsableIcon->show = 0;
+    nextUsableIcon->show = 0;
+
+    for(auto x : hotbarTransitionIcons) {
+      x->opacity = 0;
+      x->xagil = 10;
+      x->targetx = x->x;
+      x->targety = x->y;
+    }
   }
 
   adventureUI::~adventureUI()

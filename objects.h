@@ -2914,6 +2914,37 @@ class adventureUI {
     SDL_Texture* noIconTexture = 0; //set the backpack icon uis to this if we have no texture
                                     //for them, to prevent crashing
 
+    //eugh, here we go
+    //here is the begining of my attempt at making icons appear to move when the user switches
+    //with a full hotbar (held press)
+    //these elements will be on top of the others and change positions when we cycle through items
+    //the idea is that with five, we have an extra two for when icons should go offscreen
+    ui* t1 = 0; //offscreen left
+    ui* t2 = 0; //left
+    ui* t3 = 0; //middle
+    ui* t4 = 0; //right
+    ui* t5 = 0; //offscreen right
+
+    //so basically, the icons will get snapped to their position, then during a shift they will glide to an adjacent position
+
+    bool shiftDirection = 0; //0 for left, 1 for right
+    int shiftingMs = 0;
+    int maxShiftingMs = 100;
+
+
+    //positions for gliding transition icons to 
+    vector<std::pair<float, float>> hotbarPositions = {
+      {0.55, 1},
+      {0.55, 1},
+      {0.55, 0.85},
+      {0.45, 0.85},
+      {0.35, 0.85},
+      {0.35, 1},
+      {0.35, 1}
+    };
+
+    vector<ui*> hotbarTransitionIcons;
+
     void showTalkingUI();
     void hideTalkingUI();
 
