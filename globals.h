@@ -439,6 +439,7 @@ SDL_Rect FoWrect;
 int px;
 
 bool g_protagHasBeenDrawnThisFrame = 0;
+bool g_protagIsBeingDetected = 0; //used for when the protag is too close to an enemy and will soon agro that enemy
 bool g_loadingATM = 0; // are we loading a new map atm?
 SDL_Texture *g_shadowTexture;
 SDL_Texture *g_shadowTextureAlternate;
@@ -474,6 +475,7 @@ float g_hotbarNextPrevOpacityDelta = 250;
 //a longer one will let player select with the movement keys
 float g_hotbarLongSelectMs = 150;
 float g_currentHotbarSelectMs = 0;
+float g_hotbarCycleDirection = 0;
 
 // inventory - we're switching things up. This will be the picnic-box, the inventory for consumables
 float use_cooldown = 0; // misleading, its not for attacks at all
@@ -856,7 +858,7 @@ float g_jump_afterslow = 0;
 float g_jump_afterslow_seconds = 0; //make it so that the longer you bhop the longer you are slowed
 
 bool g_spin_enabled = 1;
-entity* g_spin_entity;
+entity* g_spin_entity = nullptr;
 float g_spin_cooldown = 400;
 float g_spin_max_cooldown = 100; //100, for spinning at will
 float g_spinning_duration = 0;
@@ -1059,18 +1061,19 @@ float wrapAngle(float input) {
 int convertAngleToFrame(float angle)
 {
   //up is pi/2
-  vector<float> angles = {0, (M_PI * 1) / 4, M_PI / 2, (M_PI * 3) / 4, M_PI, (M_PI * 5) / 4, (M_PI * 6) / 4, (M_PI * 7) / 4};
-  vector<int> frames = {6, 7, 0, 1, 2, 3, 4, 5};
+  vector<float> angles = {0, (M_PI * 1) / 4, M_PI / 2, (M_PI * 3) / 4, M_PI, (M_PI * 5) / 4, (M_PI * 6) / 4, (M_PI * 7) / 4, (M_PI * 2) }; //gonna guess that that last element is a bit off
+  vector<int> frames = {6, 7, 0, 1, 2, 3, 4, 5, 6};
 
   for (long long unsigned int i = 0; i < angles.size(); i++)
   {
-    if (wrapAngle(angles[i] + M_PI / 8) > angle)
+    if ((angles[i] + M_PI / 8) > angle)
     {
       return frames[i];
     }
   }
 
-  return 5;
+  //return 5; //this was a crutch
+  return 0; //shouldn't happen
 }
 
 // measures distance in the world, not by the screen.

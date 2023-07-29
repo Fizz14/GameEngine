@@ -1313,7 +1313,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   if (fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
     string loadstr = "maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
-    D(loadstr);
+    //D(loadstr);
     const char *plik = loadstr.c_str();
     ifstream stream;
     stream.open(plik);
@@ -1325,7 +1325,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     while (getline(stream, line))
     {
       script.push_back(line);
-      D(line);
+      //D(line);
     }
 
     parseScriptForLabels(script);
@@ -1349,6 +1349,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     {
       M("Doing mapinit");
       narrarator->myScriptCaller->continueDialogue();
+      M("finished mapinit");
     }
   }
   else
@@ -5018,6 +5019,7 @@ void write_map(entity *mapent)
           D(chosenEntity->dest);
           D(chosenEntity->maxStuckTime);
           D(chosenEntity->stuckTime);
+          D(chosenEntity->navblock);
           M("");
 
 
@@ -6179,6 +6181,22 @@ void write_map(entity *mapent)
 
   // specific class, the ui that the player will use 90% of the time. Should have a spot for dialogue, inventory, pause screen.
 
+  void adventureUI::hideBackpackUI() {
+    t1->show = 0;
+    t2->show = 0;
+    t3->show = 0;
+    t4->show = 0;
+    t5->show = 0;
+  }
+
+  void adventureUI::showBackpackUI() {
+    t1->show = 1;
+    t2->show = 1;
+    t3->show = 1;
+    t4->show = 1;
+    t5->show = 1;
+  }
+
   void adventureUI::showTalkingUI()
   {
     // M("showTalkingUI()");
@@ -6379,28 +6397,30 @@ void write_map(entity *mapent)
     thisUsableIcon->shrinkPercent = 0.01; 
     thisUsableIcon->priority = -7;
 
+    float shrinkPercent = 0.015;
+
     t1 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
     t1->persistent = true;
     t1->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t1->texture);
     t1->texture = noIconTexture;
-    t1->shrinkPercent = 0.01; 
-    t1->priority = -6;
+    t1->shrinkPercent = shrinkPercent; 
+    t1->priority = -7;
 
     t2 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
     t2->persistent = true;
     t2->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t2->texture);
     t2->texture = noIconTexture;
-    t2->shrinkPercent = 0.01; 
-    t2->priority = -6;
+    t2->shrinkPercent = shrinkPercent; 
+    t2->priority = -7;
 
     t3 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
     t3->persistent = true;
     t3->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t3->texture);
     t3->texture = noIconTexture;
-    t3->shrinkPercent = 0.01; 
+    t3->shrinkPercent = shrinkPercent; 
     t3->priority = -6;
 
     t4 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
@@ -6408,16 +6428,16 @@ void write_map(entity *mapent)
     t4->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t4->texture);
     t4->texture = noIconTexture;
-    t4->shrinkPercent = 0.01; 
-    t4->priority = -6;
+    t4->shrinkPercent = shrinkPercent; 
+    t4->priority = -7;
 
     t5 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
     t5->persistent = true;
     t5->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t5->texture);
     t5->texture = noIconTexture;
-    t5->shrinkPercent = 0.01; 
-    t5->priority = -6;
+    t5->shrinkPercent = shrinkPercent; 
+    t5->priority = -7;
 
     hotbarTransitionIcons.push_back(t1);
     hotbarTransitionIcons.push_back(t2);
@@ -6431,9 +6451,9 @@ void write_map(entity *mapent)
 
     for(auto x : hotbarTransitionIcons) {
       x->opacity = 0;
-      x->xagil = 10;
       x->targetx = x->x;
       x->targety = x->y;
+      x->glideSpeed = 0.3;
     }
   }
 
@@ -7291,8 +7311,10 @@ void write_map(entity *mapent)
     }
 
     // have entity roam
+    // /roam 
     if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/roam")
     {
+      M("In /roam interpreter");
       string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 6);
       vector<string> x = splitString(s, ' ');
@@ -7309,6 +7331,7 @@ void write_map(entity *mapent)
 
       if (hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0)
       {
+        M("Call to /roam worked");
         hopeful->agrod = 0;
         hopeful->target = nullptr;
         hopeful->myTravelstyle = roam;
@@ -8134,7 +8157,9 @@ void write_map(entity *mapent)
     // /loadsave
     if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/loadsave")
     {
+      M("Into loadSave");
       loadSave();
+      M("Finished loading save");
 
       // close dialogue
 
@@ -8237,9 +8262,11 @@ void write_map(entity *mapent)
 
     // write savefile
     // /save
-    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/save")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/save" || scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/writesave")
     {
+      M("in writeSave interpreter");
       writeSave();
+      M("writeSave() finished");
 
       dialogue_index++;
       this->continueDialogue();
@@ -9062,8 +9089,18 @@ void write_map(entity *mapent)
       string nameOfUsable = x[1];
 
       //make sure we haven't already unlocked it
-      
-      usable* newUsable = new usable(nameOfUsable);
+      int good = 1;
+      for(auto x: g_backpack) {
+        if(x->internalName == nameOfUsable) {
+          good = 0;
+          break;
+        }
+      }
+
+      if(good == 1) {
+        usable* newUsable = new usable(nameOfUsable);
+        adventureUIManager->showBackpackUI();
+      }
 
       dialogue_index++;
       this->continueDialogue();

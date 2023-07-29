@@ -29,6 +29,8 @@
 
 using namespace std;
 
+class usable;
+
 entity* searchEntities(string fname, entity* caller);
 entity* searchEntities(string fname);
 
@@ -311,7 +313,7 @@ class rect {
     }
 };
 
-int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer, int resolution, bool visibility);
+int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer, int resolution, bool visibility = 0, bool fogOfWar = 0);
 
 class pointOfInterest {
   public:
@@ -1544,6 +1546,9 @@ class weapon {
         if(line == "&") { break; }
         field = line.substr(0, line.find(' '));
         attack* a = new attack(line, tryToShareGraphics);
+        D(this->name);
+        D(a->name);
+
         //a->faction = faction;
         attacks.push_back(a);
       }
@@ -1554,10 +1559,14 @@ class weapon {
 
     ~weapon() {
       for(auto x: attacks) {
+        M("lets delete an attack");
+        M(x->name);
         delete x;
+        M("attack deleted successfully");
       }
       g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), this), g_weapons.end());
 
+      M("weapon deleted successfully");
     }
 };
 
@@ -2929,7 +2938,7 @@ class adventureUI {
 
     bool shiftDirection = 0; //0 for left, 1 for right
     int shiftingMs = 0;
-    int maxShiftingMs = 100;
+    int maxShiftingMs = 200;
 
 
     //positions for gliding transition icons to 
@@ -2979,6 +2988,9 @@ class adventureUI {
 
     float inventoryYStart = 0.05;
     float inventoryYEnd = 0.6;
+
+    void hideBackpackUI();
+    void showBackpackUI();
 };
 
 
@@ -3383,7 +3395,20 @@ class entity:public actor {
     //adventureUI* myFieldScriptCaller = nullptr;
 
     vector<ability> myAbilities;
+   
+    bool hasLOSToPotentialTarget = 0;
+
     float autoAgroRadius = -1;
+
+    float maxAutoAgroTime = 1000; //time needed
+    
+    float autoAgroMs = 0; //counts up if the player is in sight, counts down otherwise. If it reaches autoAgroTime (from config) the ent is agrod
+
+    int chasingMethod = 0;
+    // 0 - chase
+    // 1 - precede
+    // random movement (roaming) is used with travel nodes, and scripted de-agroing
+
     float enrageSpeedbuff = 0;
                                      
     //aiIndex is used for having AI use their own patrolPoints
@@ -3629,10 +3654,12 @@ class entity:public actor {
 
       file >> comment;
       file >> this->faction;
+      
       if(faction != -1) {
         canFight = 1;
+      } else {
+        canFight = 0;
       }
-
 
       file >> comment;
       file >> this->weaponName;
@@ -3904,7 +3931,8 @@ class entity:public actor {
         bounceindex = rand() % 8;
         wasPellet = 1;
         CalcDynamicForOneFrame = 1;
-        M("Set calcdynamic");
+        //M("Set calcdynamic"); //this is so that the shadow is calculated for pellets for one frame
+                              //i'll have to do that later
       }
 
       if(animationconfig == 0) {
@@ -3991,6 +4019,12 @@ class entity:public actor {
 
         stream >> comment; //auto_Agro_radius
         stream >> autoAgroRadius;
+
+        stream >> comment; //auto_agro_time
+        stream >> maxAutoAgroTime;
+
+        stream >> comment; //chasing_method
+        stream >> chasingMethod;
 
         stream >> comment; //enrage_speed_bonus
         stream >> enrageSpeedbuff;
@@ -4130,10 +4164,10 @@ class entity:public actor {
         file >> comment;
         file >> this->faction;
 
+
         if(faction != 0) {
           canFight = 1;
         }
-
 
         file >> comment;
         file >> this->weaponName;
@@ -4332,9 +4366,11 @@ class entity:public actor {
 
         rect cam(0, 0, fcamera.width, fcamera.height);
 
+
         if(RectOverlap(obj, cam)) {
 
           //set visual direction
+          //lil problem with this code- the zombie will face SE when he should face E
           if(forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet) {
             animation = convertAngleToFrame(steeringAngle);
             flip = SDL_FLIP_NONE;
@@ -4360,9 +4396,7 @@ class entity:public actor {
             }
 
           }
-          
-         
-        
+
           hadInput = 0;
 
 
@@ -4860,7 +4894,7 @@ class entity:public actor {
           }
         }
 
-        if( (this != protag) || ((protag_can_move) && (up || down || left || right))) {
+        if( (this != protag) || (this == protag) && ((protag_can_move) && (up || down || left || right))) {
           float amountToTurn = turningSpeed * elapsed/1000 * 2*M_PI;
           if(g_spinning_duration > 0) {
             amountToTurn = 2 * M_PI;
@@ -5703,17 +5737,41 @@ class entity:public actor {
 
           //check the auto-agro-range
           if(target == nullptr) {
+            entity* potentialTarget = nullptr;
+            hasLOSToPotentialTarget = 0;
             for(auto x : g_entities) {
               if(x->faction == this->targetFaction && this->autoAgroRadius > 0) {
                 if(XYWorldDistance(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY()) < this->autoAgroRadius * 64) {
 
                   if(LineTrace(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)) {
-                    this->traveling = 0;
-                    this->target = x;
-                    this->agrod = 1;
+                    potentialTarget = x;
+                    hasLOSToPotentialTarget = 1;
+                    if(potentialTarget == protag) {
+                      g_protagIsBeingDetected = 1;
+                    }
+                    break;
                   }
                 }
               }
+            }
+
+
+            //this is so it takes time to agro on someone
+            if(hasLOSToPotentialTarget) {
+              autoAgroMs += elapsed;
+            } else {
+              autoAgroMs -= elapsed;
+            }
+
+            if(autoAgroMs >= maxAutoAgroTime && potentialTarget != nullptr) {
+              M("That's it, I'm agroing on fomm!");
+              this->traveling = 0;
+              this->target = potentialTarget;
+              this->agrod = 1;
+            }
+
+            if(autoAgroMs < 0) {
+              autoAgroMs = 0;
             }
           }
 
@@ -6060,20 +6118,22 @@ class entity:public actor {
           }
 
           
-        } else 
-          // monster movement
+        } else {
+          // monster movement 
+          
+          float distToTarget = 10000;
           if(target != nullptr) {
             angleToTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
             angleToTarget = wrapAngle(angleToTarget);
+            distToTarget = XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY());
           }
           g_dijkstraEntity = this;
 
-          if(target !=  nullptr && target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, false)) ) {
+          if(target !=  nullptr && ( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, true)) )  || (distToTarget < 100) )) {
           //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
-          
           targetSteeringAngle = angleToTarget;
 
-          if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
+          if( distToTarget > this->hisweapon->attacks[hisweapon->combo]->range) {
             forwardsVelocity = xagil;
           } else {
             //stop if in range
@@ -6151,36 +6211,52 @@ class entity:public actor {
                 this->hisweapon->attacks[hisweapon->combo]->range = this->hisweapon->attacks[hisweapon->combo + 1]->range;
               }
 
-              //!!! some easy optimization can be done here
-              vector<int> ret;
-              if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
-                ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
-               
-                Destination = getNodeByPosition(ret[0], ret[1]);
-              } else {
-                ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
-                //T(this->hisweapon->attacks[hisweapon->combo]->range);
-  
-  
-                if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
-                  //vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
-  
-                  Destination = getNodeByPosition(ret[0], ret[1]);
-  //                T(ret[0]);
-  //                T(ret[1]);
-  //                T(target->x);
-  //                T(target->y);
-  //                T(Destination);
-                } else {
-                  //Can't get our full range, so use the values in LineTraceX and LineTraceY
-                  extern int lineTraceX, lineTraceY;
-                  //Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
-                  Destination = getNodeByPosition(lineTraceX, lineTraceY);
-  //              T(lineTraceX);
-  //              T(lineTraceY);
-  //              T(target->x);
-  //              T(target->y);
+              
+              //this code is for having the monster run straight at the player
+              //but I will soon add additional methods of chasing
+              switch(chasingMethod) {
+                case(0): { //run at them
+                  //!!! some easy optimization can be done here
+                  vector<int> ret;
+                  if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
+                    ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
+                   
+                    Destination = getNodeByPosition(ret[0], ret[1]);
+                  } else {
+                    ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
+                    //T(this->hisweapon->attacks[hisweapon->combo]->range);
+      
+      
+                    if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
+                      //vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
+      
+                      Destination = getNodeByPosition(ret[0], ret[1]);
+      //                T(ret[0]);
+      //                T(ret[1]);
+      //                T(target->x);
+      //                T(target->y);
+      //                T(Destination);
+                    } else {
+                      //Can't get our full range, so use the values in LineTraceX and LineTraceY
+                      extern int lineTraceX, lineTraceY;
+                      //Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
+                      Destination = getNodeByPosition(lineTraceX, lineTraceY);
+      //              T(lineTraceX);
+      //              T(lineTraceY);
+      //              T(target->x);
+      //              T(target->y);
+                    }
+                  }
+                  break;
                 }
+
+                case(1): { // precede
+                  //use a node where the player may go soon
+                  //How will I code this?
+
+                  break;
+                }
+                
               }
               
             }
@@ -6195,10 +6271,10 @@ class entity:public actor {
           lastx = x;
           lasty = y;
           if(stuckTime > maxStuckTime) {
-            //M("A PATHFINDER IS STUCK");
+            M("A PATHFINDER IS STUCK");
             //spring to get over obstacles
             //this->zaccel = 350;
-            //stuckTime = 0;
+            stuckTime = 0;
             current = Get_Closest_Node(g_navNodes);
             if(current != nullptr) {
               int c = rand() % current->friends.size();
@@ -6209,7 +6285,8 @@ class entity:public actor {
 
 
 
-        return nullptr;
+      }
+      return nullptr;
     }
 
     //all-purpose pathfinding function
@@ -6231,10 +6308,12 @@ class entity:public actor {
       // dest->Render(0,255,0);
       // Destination->Render(0,0,255);
 
-      float angleToTarget = atan2(dest->x - getOriginX(), dest->y - getOriginY()) - M_PI/2;
-      angleToTarget = wrapAngle(angleToTarget);
-      targetSteeringAngle = angleToTarget;
-      forwardsVelocity = xagil;
+      if(dest != nullptr) {
+        float angleToTarget = atan2(dest->x - getOriginX(), dest->y - getOriginY()) - M_PI/2;
+        angleToTarget = wrapAngle(angleToTarget);
+        targetSteeringAngle = angleToTarget;
+        forwardsVelocity = xagil;
+      }
 
       
       int prog = 0;
@@ -6572,6 +6651,95 @@ public:
 
 };
 
+//A usable is basically a texture, a script, a cooldown
+class usable {
+  public:
+    string filepath = "";
+    string internalName = "";
+    string name = "";
+
+    SDL_Texture* texture;
+
+    vector<string> script;
+
+    int maxCooldownMs = 0;
+    int cooldownMs = 0;
+
+    int specialAction = 0; //for hooking up items directly to engie code, namely spindashing
+                           //0 - nothing
+                           //1 - spin
+                           //2 - openInventory
+    
+
+    usable(string fname) {
+      internalName = fname;
+      ifstream file;
+      string loadstr;
+
+      //first check in local directory (will I ever use that?)
+//      filepath = "maps/" + g_mapdir + "/usables/" + fname + "/specs_" + fname + ".txt";
+//      if(!fileExists(filepath)) {
+//        //load from static folder
+//        if(!fileExists(filepath)) {
+//          if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(filepath); return;}
+//          return;
+//        }
+//        
+//
+//      }
+
+      string filepath = "static/usables/" + fname + "/";
+
+      //open specs file
+      loadstr = filepath + "specs_" + fname + ".txt";
+
+      file.open(loadstr);
+      if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(loadstr); return;}
+      
+      string comment;
+      
+      //display name
+      file >> comment;
+      file >> name;
+
+      //cooldownMs
+      file >> comment;
+      file >> maxCooldownMs;
+
+      //specialAction
+      file >> comment;
+      file >> specialAction;
+      
+
+      file.close();
+
+      //read script
+      loadstr = filepath + "script_" + fname + ".txt";
+      file.open(loadstr);
+      if(!file.is_open()) { E("Couldn't open Script-file for Usable with Name " + fname); E(filepath); return;}
+      
+      string line;
+      while (getline(file, line)) {
+        script.push_back(line);
+      }
+      parseScriptForLabels(script);
+
+      //load sprite
+      loadstr = filepath + "img_" + fname + ".bmp";
+      SDL_Surface* image = IMG_Load(loadstr.c_str());
+      texture = SDL_CreateTextureFromSurface(renderer,image);
+      SDL_FreeSurface(image);
+
+      g_backpack.push_back(this);
+    }
+
+    ~usable() {
+      SDL_DestroyTexture(texture);
+      g_backpack.erase(remove(g_backpack.begin(), g_backpack.end(), this), g_backpack.end());
+    }
+
+};
+
 int loadSave() {
   g_save.clear();
   ifstream file;
@@ -6580,6 +6748,7 @@ int loadSave() {
   string address = "user/saves/" + g_saveName + ".save";
   const char* plik = address.c_str();
   file.open(plik);
+  M("loadSave A");
 
   string field = "";
   string value = "";
@@ -6598,6 +6767,7 @@ int loadSave() {
 
   }
 
+  M("loadSave B");
   //load saved strings
   while(getline(file, line)) {
     if(line == "&") { break;}
@@ -6616,19 +6786,14 @@ int loadSave() {
 
   }
 
+  M("loadSave C");
   file >> g_mapOfLastSave >> g_waypointOfLastSave;
   getline(file,line);
   getline(file,line);
 
-  //delete current party
-  //int repetitions = (int) party.size();
-  // for(auto x : party) {
-  // 	//possibly unsafe
-  // 	//delete x;
-  // }
-  party.clear();
 
-  //M("Lets load the party");
+  party.clear();
+  delete protag;
 
   bool setMainProtag = 0;
   //load party
@@ -6646,13 +6811,15 @@ int loadSave() {
     party.push_back(a);
     a->tangible = 0;
     a->inParty = 1;
-    //M("added an entity to the party " + name);
+    M("added an entity to the party " + name);
     if(a->essential) {
       mainProtag = a;
       setMainProtag = 1;
     }
+    
   }
 
+  M("loadSave D");
   party[0]->tangible = 1;
   if(setMainProtag) {
     protag = mainProtag;
@@ -6665,24 +6832,33 @@ int loadSave() {
 
   g_focus = protag;
 
+  M("loadSave E");
   //load spin entity
-  if(g_spin_enabled) {
+  if(g_spin_enabled && g_spin_entity == nullptr) {
+    // !!! delete old spin ent
+    
     string spinEntFilename = protag->name + "-spin";
     entity* a = new entity(renderer, spinEntFilename);
     g_spin_entity = a;
     g_spin_entity->visible = 0;
     g_spin_entity->msPerFrame = 100; //after moving dialogue_index to adventureUI class from entity, this was effectively doubled... memory error? Was 50
     g_spin_entity->loopAnimation = 1;
+    g_spin_entity->canFight = 0;
   }
+
+  M("loadSave C");
 
   //load inventory
   while(getline(file, line)) {
     if(line == "&") { break;}
+
     field = line.substr(0, line.find(' '));
     value = line.substr(line.find(" "), line.length()-1);
     indexItem* a = new indexItem(field, 0);
     protag->getItem(a, stoi(value));
   }
+
+  M("loadSave D");
 
   //load which levels are unlocked, as a list of lowercase names
   //M("LETS UNLOCK LEVELS");
@@ -6703,11 +6879,41 @@ int loadSave() {
 
   }
 
+  M("loadSave E");
+  //delete all usables
+  for(int i = 0; i < g_backpack.size(); i++) {
+    delete g_backpack[0];
+  }
+  
+  adventureUIManager->hideBackpackUI();
+    
+
+  //load protag's usables
+  while(getline(file, line)) {
+    if(line == "&") { break;}
+    int good = 1;
+    for(auto x: g_backpack) {
+      if(x->internalName == line) {
+        good = 0;
+        break;
+      }
+    }
+
+    if(good == 1) {
+      M("Adding a new usable");
+      usable* newUsable = new usable(line);
+      adventureUIManager->showBackpackUI();
+    }
+
+  }
+  M("loadSave F");
+
   file.close();
 
   for(auto x : g_entities) {
     x->children.clear(); // might be a leak here
   }
+  M("loadSave G");
 
   //re-attach persistent orbitals
   for(auto x : g_entities) {
@@ -6721,6 +6927,7 @@ int loadSave() {
 
     }
   }
+  M("loadSave H");
 
   return 0;
 }
@@ -6758,6 +6965,7 @@ int writeSave() {
     file << x->name << " " << x->level << " " << x->hp << endl;
   }
   file << "&" << endl;
+ 
   //write protag's inventory
   extern entity* protag;
   for(auto x : protag->inventory) {
@@ -6774,7 +6982,15 @@ int writeSave() {
   }
 
   file << "&" << endl; //token to stop writing unlocked levels
-                       
+  
+  //write protag's usables
+  for(auto x : g_backpack) {
+    file << x->internalName << endl;
+  }
+  
+  file << "&" << endl; //token to stop writing usables
+
+
   file.close();
   return 0;
 }
@@ -6963,7 +7179,7 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 
 //returns true if there was no hit
 //visibility is 1 to check for just navblock (very solid) entities
-int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0, int resolution = 10, bool visibility = 0) {
+int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0, int resolution = 10, bool visibility, bool fogOfWar) {
   //float resolution = 10;
 
   if(display) {
@@ -6980,13 +7196,13 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, i
       SDL_RenderDrawRect(renderer, &b);
     }
 
-
-    for(auto x : g_large_entities) {
-
-      if(RectOverlap(a, x->getMovedBounds())) {
-        lineTraceX = a.x + a.width/2;
-        lineTraceY = a.y + a.height/2;
-        return -1;
+    if(fogOfWar) {
+      for(auto x : g_large_entities) {
+        if(RectOverlap(a, x->getMovedBounds())) {
+          lineTraceX = a.x + a.width/2;
+          lineTraceY = a.y + a.height/2;
+          return true;
+        }
       }
     }
 
@@ -7010,12 +7226,6 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, i
       }
     }
 
-
-
-
-
-
-    //check for large entities
 
   }
   return true;
@@ -7211,20 +7421,11 @@ class ui {
   public:
     float x;
     float y;
-
+    
     float targetx = -1; //for gliding to a position
     float targety = -1;
 
-    float xagil = 0;
-
-
-    float xaccel = 0;
-    float yaccel = 0;
-
-    float xvel = 0;
-    float yvel = 0;
-
-    float xmaxspeed = 10;
+    float glideSpeed = 0.5;
 
     float width = 0.5;
     float height = 0.5;
@@ -7292,11 +7493,13 @@ class ui {
     void render(SDL_Renderer * renderer, camera fcamera) {
       //proportional gliding
       if(targetx >= 0) {
-        x = (targetx + x) / 2;
+        //x = (targetx + x) / 2;
+        x = (targetx * glideSpeed) + (x * (1-glideSpeed));
       }
-
+  
       if(targety >= 0) {
-        y = (targety + y) / 2;
+        //y = (targety + y) / 2;
+        y = (targety * glideSpeed) + (y * (1-glideSpeed));
       }
 
       if(this->show) {
@@ -7428,30 +7631,30 @@ class ui {
       }
     }
 
-    virtual void update_movement(vector<box*> boxs, float elapsed) {
-      if(xaccel > 0 /*&& xvel < xmaxspeed*/) {
-        xvel += xaccel * ((double) elapsed / 256.0);
-      }
-
-      if(xaccel < 0 /*&& xvel > -1 * xmaxspeed*/) {
-        xvel += xaccel * ((double) elapsed / 256.0);
-      }
-
-      if(yaccel > 0 /*&& yvel < ymaxspeed*/) {
-        yvel += yaccel* ((double) elapsed / 256.0);
-      }
-
-      if(yaccel < 0 /*&& yvel > -1 * ymaxspeed*/) {
-        yvel += yaccel* ((double) elapsed / 256.0);
-      }
-
-      rect movedbounds;
-      //bool ycollide = 0;
-      //bool xcollide = 0;
-      y+= yvel * ((double) elapsed / 256.0);
-      x+= xvel * ((double) elapsed / 256.0);
-
-    }
+//    virtual void update_movement(vector<box*> boxs, float elapsed) {
+//      if(xaccel > 0 /*&& xvel < xmaxspeed*/) {
+//        xvel += xaccel * ((double) elapsed / 256.0);
+//      }
+//
+//      if(xaccel < 0 /*&& xvel > -1 * xmaxspeed*/) {
+//        xvel += xaccel * ((double) elapsed / 256.0);
+//      }
+//
+//      if(yaccel > 0 /*&& yvel < ymaxspeed*/) {
+//        yvel += yaccel* ((double) elapsed / 256.0);
+//      }
+//
+//      if(yaccel < 0 /*&& yvel > -1 * ymaxspeed*/) {
+//        yvel += yaccel* ((double) elapsed / 256.0);
+//      }
+//
+//      rect movedbounds;
+//      //bool ycollide = 0;
+//      //bool xcollide = 0;
+//      y+= yvel * ((double) elapsed / 256.0);
+//      x+= xvel * ((double) elapsed / 256.0);
+//
+//    }
 };
 
 
@@ -8205,7 +8408,6 @@ void clear_map(camera& cameraToReset) {
     SDL_GL_SetSwapInterval(1);
   }
 
-
   cameraToReset.resetCamera();
   int size;
   size = (int)g_entities.size();
@@ -8368,24 +8570,28 @@ void clear_map(camera& cameraToReset) {
 
   g_particles.clear();
                        
-  size = g_attacks.size();
-  bool contflag = 0;
-  for(int i = 0; i < size; i++) {
-    for(auto x : protag->hisweapon->attacks) {
-      if(x == g_attacks[0]) {
-        swap(g_attacks[0], g_attacks[g_attacks.size()-1]);
-        contflag = 1;
-        break;
+  //used to delete attacks and then weapons
+  //but that's going to cause a segfault since weapons
+  //delete their own attacks
+//  size = g_attacks.size();
+//  bool contflag = 0;
+//  for(int i = 0; i < size; i++) {
+//    for(auto x : protag->hisweapon->attacks) {
+//      if(x == g_attacks[0]) {
+//        swap(g_attacks[0], g_attacks[g_attacks.size()-1]);
+//        contflag = 1;
+//        break;
+//
+//
+//      }
+//
+//    }
+//    if(!contflag) {
+//      delete g_attacks[0];
+//    }
+//  }
 
-
-      }
-
-    }
-    if(!contflag) {
-      delete g_attacks[0];
-    }
-  }
-
+  M("clear_map got here");
   vector<weapon*> persistentweapons;
   size = (int)g_weapons.size();
   for(int i = 0; i < size; i++) {
@@ -8394,15 +8600,22 @@ void clear_map(camera& cameraToReset) {
     for(auto x: party) {
       if(x->hisweapon->name == g_weapons[0]->name) {
         partyOwned = true;
+        M("Found a partymember's weapon");
       }
     }
     if(partyOwned) {
+      M("Lets save a weapon");
       persistentweapons.push_back(g_weapons[0]);
       g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), g_weapons[0]), g_weapons.end());
     } else {
+      M("Lets delete a weapon");
+      D(g_weapons.size());
+      D(g_weapons[0]->name);
       delete g_weapons[0];
+      M("deletion was successful");
     }
   }
+  M("clear_map didnt get here");
 
   for(auto x : persistentweapons) {
     g_weapons.push_back(x);
@@ -8706,93 +8919,6 @@ class settingsUI {
 
 };
 
-//A usable is basically a texture, a script, a cooldown
-class usable {
-  public:
-    string filepath = "";
-    string name = "";
-
-    SDL_Texture* texture;
-
-    vector<string> script;
-
-    int maxCooldownMs = 0;
-    int cooldownMs = 0;
-
-    int specialAction = 0; //for hooking up items directly to engie code, namely spindashing
-                           //0 - nothing
-                           //1 - spin
-                           //2 - openInventory
-    
-
-    usable(string fname) {
-
-      ifstream file;
-      string loadstr;
-
-      //first check in local directory (will I ever use that?)
-//      filepath = "maps/" + g_mapdir + "/usables/" + fname + "/specs_" + fname + ".txt";
-//      if(!fileExists(filepath)) {
-//        //load from static folder
-//        if(!fileExists(filepath)) {
-//          if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(filepath); return;}
-//          return;
-//        }
-//        
-//
-//      }
-
-      string filepath = "static/usables/" + fname + "/";
-
-      //open specs file
-      loadstr = filepath + "specs_" + fname + ".txt";
-
-      file.open(loadstr);
-      if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(loadstr); return;}
-      
-      string comment;
-      
-      //display name
-      file >> comment;
-      file >> name;
-
-      //cooldownMs
-      file >> comment;
-      file >> maxCooldownMs;
-
-      //specialAction
-      file >> comment;
-      file >> specialAction;
-      
-
-      file.close();
-
-      //read script
-      loadstr = filepath + "script_" + fname + ".txt";
-      file.open(loadstr);
-      if(!file.is_open()) { E("Couldn't open Script-file for Usable with Name " + fname); E(filepath); return;}
-      
-      string line;
-      while (getline(file, line)) {
-        script.push_back(line);
-      }
-      parseScriptForLabels(script);
-
-      //load sprite
-      loadstr = filepath + "img_" + fname + ".bmp";
-      SDL_Surface* image = IMG_Load(loadstr.c_str());
-      texture = SDL_CreateTextureFromSurface(renderer,image);
-      SDL_FreeSurface(image);
-
-      g_backpack.push_back(this);
-    }
-
-    ~usable() {
-      SDL_DestroyTexture(texture);
-      g_backpack.erase(remove(g_backpack.begin(), g_backpack.end(), this), g_backpack.end());
-    }
-
-};
 
 
 #endif

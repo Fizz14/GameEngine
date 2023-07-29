@@ -727,6 +727,7 @@ int WinMain()
 
   while (!quit)
   {
+    M("In main loop");
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -1255,7 +1256,7 @@ int WinMain()
                 // g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) g_sc[i][j] = 0;
                 g_sc[i][j] = 0;
               }
-              else if (LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, g_focus->stableLayer, 15, 1))
+              else if (LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, g_focus->stableLayer, 15, 1, 1))
               {
                 g_fogcookies[i][j] = 255;
                 g_fc[i][j] = 255;
@@ -1354,11 +1355,11 @@ int WinMain()
               bool blocked = 1;
               if (g_fogIgnoresLOS)
               {
-                blocked = LineTrace(xpos, ypos, xpos, ypos, 0, 6, g_focus->stableLayer + 1, 15, 1);
+                blocked = LineTrace(xpos, ypos, xpos, ypos, 0, 6, g_focus->stableLayer + 1, 15, 1, 1);
               }
               else
               {
-                blocked = LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 1, g_focus->stableLayer + 1, 15, 1);
+                blocked = LineTrace(functionalX, functionalY + 3, xpos, ypos, 0, 1, g_focus->stableLayer + 1, 15, 1, 1);
               }
 
               int yBoost = 0;  //you could debate this, but since the block closest to the bottom of the screen is hidden by the shadow-cookie above it, I'll give the player an extra block of vision towards the bottom of the screen
@@ -1440,8 +1441,8 @@ int WinMain()
           }
           if (j + 1 < g_fogcookies.size() && g_fc[i][j + 1] > 0)
           {
-            bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, g_focus->stableLayer + 1, 2, 1);
-            bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos + 55, 0, 15, g_focus->stableLayer + 1, 2, 1);
+            bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, g_focus->stableLayer + 1, 2, 1, 1);
+            bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos + 55, 0, 15, g_focus->stableLayer + 1, 2, 1, 1);
             rect a = {xpos, ypos, 5, 5};
 
             // for large entities
@@ -2383,6 +2384,8 @@ int WinMain()
     {
       g_elapsed_accumulator -= 1800;
     }
+
+    g_protagIsBeingDetected = 0; //this will be set in the entity update loop
 
     // ENTITY MOVEMENT (ENTITY UPDATE)
     // dont update movement while transitioning
@@ -3434,6 +3437,7 @@ void getInput(float &elapsed)
         } else if(protag_can_move && g_selectingUsable && SoldUILeft <= 0 && !inPauseMenu) {
           //select prev backpack item
           g_backpackIndex --;
+          g_hotbarCycleDirection = 1;
           if(g_backpackIndex < 0) { g_backpackIndex = g_backpack.size()-1;}
           SoldUILeft = (oldUILeft) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
 
@@ -3494,6 +3498,7 @@ void getInput(float &elapsed)
         } else if(protag_can_move && g_selectingUsable && SoldUIRight <= 0 && !inPauseMenu) {
           //select next backpack item
           g_backpackIndex ++;
+          g_hotbarCycleDirection = 0;
           if(g_backpackIndex > g_backpack.size() - 1) { g_backpackIndex = 0;}
           SoldUIRight = (oldUIRight) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
 
@@ -3574,6 +3579,27 @@ void getInput(float &elapsed)
       }
       g_selectingUsable = 0;
       g_currentHotbarSelectMs = 0;
+
+      //end animation quickly
+//      adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->hotbarPositions[3].first;
+//      adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarPositions[3].second;
+      adventureUIManager->hotbarTransitionIcons[2]->targetx = adventureUIManager->hotbarPositions[3].first;
+      adventureUIManager->hotbarTransitionIcons[2]->targety = adventureUIManager->hotbarPositions[3].second;
+     
+      //this moves it to where it should be (other side), and then it glides to the middle
+      if(adventureUIManager->shiftingMs < 150) {
+        if(g_hotbarCycleDirection) {
+          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->hotbarTransitionIcons[3]->x;
+          adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[3]->y;
+        } else {
+          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->hotbarTransitionIcons[1]->x;
+          adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[1]->y;
+        }
+      }
+
+      if(g_backpack.size() > 0) {
+        adventureUIManager->hotbarTransitionIcons[2]->texture = g_backpack.at(g_backpackIndex)->texture;
+      }
     }
 
 
@@ -4042,9 +4068,6 @@ void getInput(float &elapsed)
     input[13] = 0;
   }
 
-  if(g_backpack.size() > 0) {
-    D(g_backpack.at(g_backpackIndex)->name);
-  }
 
   //spinning/using item
   if( g_backpack.size() > 0 && protag_can_move && !inPauseMenu) {
@@ -4306,7 +4329,6 @@ void getInput(float &elapsed)
       } else {
       // select item in pausemenu
       // only if we arent running a script
-      D(mainProtag->inventory.size());
       if (protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory.size() > 0 && mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script.size() > 0)
       {
         // call the item's script
