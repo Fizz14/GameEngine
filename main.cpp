@@ -14,6 +14,8 @@
 
 using namespace std;
 
+void flushInput();
+
 void getInput(float &elapsed);
 
 void toggleDevmode();
@@ -727,7 +729,6 @@ int WinMain()
 
   while (!quit)
   {
-    M("In main loop");
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -1746,6 +1747,68 @@ int WinMain()
       }
     }
 
+    //update cooldown indicator
+    if(g_backpack.size() > 0){
+      adventureUIManager->cooldownIndicator->show = 1;
+      auto x = g_backpack.at(g_backpackIndex);
+      float percentage = (float)x->cooldownMs / ((float)x->maxCooldownMs);
+      percentage *= 48;
+      bool useReady = 0;
+      if(percentage <= 0) { useReady = 1;}
+      int frame = 48 - round(percentage);
+      adventureUIManager->cooldownIndicator->frame = frame;
+
+      if(adventureUIManager->cooldownIndicator->frame >= adventureUIManager->cooldownIndicator->xframes) {
+        adventureUIManager->cooldownIndicator->frame = adventureUIManager->cooldownIndicator->xframes - 1;
+
+      } else {
+        if(adventureUIManager->cooldownIndicator->frame < 0) {
+          adventureUIManager->cooldownIndicator->frame = 0;
+        }
+
+      }
+      if(useReady) {
+        adventureUIManager->cooldownIndicator->frame = 24;
+        adventureUIManager->cooldownIndicator->show = 0;
+      }
+
+      
+
+    } else {
+      adventureUIManager->cooldownIndicator->show = 0;
+
+    }
+
+    //find preceeding-spots, for entities which
+    //try to preced the player
+    {
+      summationXVel += protag->xvel;
+      summationYVel += protag->yvel;
+     
+      precedeCalcMs += elapsed;
+      if(precedeCalcMs > maxPrecedeCalcMs) {
+        precedeCalcMs = 0;
+
+        summationXVel /= maxPrecedeCalcMs;
+        summationYVel /= maxPrecedeCalcMs;
+        
+        //these are an interface for monsters 
+        //to use as they wish to try to predict where the
+        //protag is going
+        effectiveSummationXVel = summationXVel;
+        effectiveSummationYVel = summationYVel;
+
+        
+        D(summationXVel);
+        D(summationYVel);
+        D(precedeProtagNode);
+
+        summationXVel = 0;
+        summationYVel = 0;
+      }
+
+    }
+
     // tiles
     for (long long unsigned int i = 0; i < g_tiles.size(); i++)
     {
@@ -1859,6 +1922,14 @@ int WinMain()
         nodeInfoText->y = obj.y - 20;
         nodeInfoText->updateText(g_worldsounds[i]->name, -1, 15);
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
+
+      //draw precede node(s)
+      if(precedeProtagNode != nullptr) {
+        SDL_Rect obj = { precedeProtagNode->x, precedeProtagNode->y, 40, 40};
+
+        obj = transformRect(obj);
+        SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
       }
 
       for (long long unsigned int i = 0; i < g_musicNodes.size(); i++)
@@ -2140,7 +2211,7 @@ int WinMain()
             SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
   
 
-            if (i == inventorySelection)
+            if (i == inventorySelection || g_firstFrameOfPauseMenu)
             {
             // this item should have the marker
             inventoryMarker->show = 1;
@@ -2154,6 +2225,8 @@ int WinMain()
               //now that it's a hand
               inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
               inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->targetx = inventoryMarker->x;
+              inventoryMarker->targety = inventoryMarker->y;
               g_firstFrameOfPauseMenu = 0;
             } else {
               inventoryMarker->targetx = x / WIN_WIDTH;
@@ -2226,7 +2299,7 @@ int WinMain()
               inventoryText->show = 0;
             }
     
-            if (i == inventorySelection)
+            if (i == inventorySelection || g_firstFrameOfPauseMenu)
             {
               // this item should have the marker
               inventoryMarker->show = 1;
@@ -2240,6 +2313,8 @@ int WinMain()
                 //now that it's a hand
                 inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
                 inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targetx = inventoryMarker->x;
+                inventoryMarker->targety = inventoryMarker->y;
                 g_firstFrameOfPauseMenu = 0;
               } else {
                 inventoryMarker->targetx = x / WIN_WIDTH;
@@ -2323,6 +2398,8 @@ int WinMain()
                 //now that it's a hand
                 inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
                 inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targetx = inventoryMarker->x;
+                inventoryMarker->targety = inventoryMarker->y;
                 g_firstFrameOfPauseMenu = 0;
               } else {
                 inventoryMarker->targetx = x / WIN_WIDTH;
@@ -2927,7 +3004,7 @@ int WinMain()
 
 int interact(float elapsed, entity *protag)
 {
-  // M("interact()");
+  M("interact()");
   SDL_Rect srect;
   switch (protag->animation)
   {
@@ -3169,6 +3246,8 @@ int interact(float elapsed, entity *protag)
         // removing this in early july to fix problem moving after a script changes map
         // may cause unexpected problems
         // protag_is_talking = 1;
+        M("continueDialogue() finished, returning from interact()");
+        g_ignoreInput = 1;
         return 0;
       }
     }
@@ -3212,6 +3291,15 @@ void getInput(float &elapsed)
   }
 
   SDL_PollEvent(&event);
+
+  //don't take input the frame after a mapload to prevent
+  //talking to an ent instantly
+  //even tho the player didnt press anything
+  if(g_ignoreInput) {
+    g_ignoreInput = 0;
+    M("ignoring input for this frame");
+    return;
+  }
 
 
   //for portability, use the input[] array to drive controls
@@ -3434,7 +3522,7 @@ void getInput(float &elapsed)
       {
         if(protag_can_move && !g_selectingUsable) {
           protag->move_left();
-        } else if(protag_can_move && g_selectingUsable && SoldUILeft <= 0 && !inPauseMenu) {
+        } else if(protag_can_move && g_selectingUsable && SoldUILeft <= 0 && !inPauseMenu && g_spinning_duration <= 0 ) {
           //select prev backpack item
           g_backpackIndex --;
           g_hotbarCycleDirection = 1;
@@ -3495,7 +3583,7 @@ void getInput(float &elapsed)
       {
         if(protag_can_move && !g_selectingUsable) {
           protag->move_right();
-        } else if(protag_can_move && g_selectingUsable && SoldUIRight <= 0 && !inPauseMenu) {
+        } else if(protag_can_move && g_selectingUsable && SoldUIRight <= 0 && !inPauseMenu && g_spinning_duration <= 0) {
           //select next backpack item
           g_backpackIndex ++;
           g_hotbarCycleDirection = 0;
@@ -3572,7 +3660,7 @@ void getInput(float &elapsed)
         g_selectingUsable = 1;
       }
     } else {
-      if(g_currentHotbarSelectMs > 0 && g_selectingUsable == 0 && !inPauseMenu) {
+      if(g_currentHotbarSelectMs > 0 && g_selectingUsable == 0 && !inPauseMenu && g_spinning_duration <= 0) {
         //select next backpack item
         g_backpackIndex ++;
         if(g_backpackIndex > g_backpack.size() - 1) { g_backpackIndex = 0;}
@@ -4078,6 +4166,7 @@ void getInput(float &elapsed)
     
          )
       {
+        g_backpack.at(g_backpackIndex)->cooldownMs = g_backpack.at(g_backpackIndex)->maxCooldownMs;
         storedSpin = 0;
         //propel the protag in the direction of their velocity
         //at high speed, removing control from them
@@ -4106,7 +4195,7 @@ void getInput(float &elapsed)
       g_spin_entity->z = protag->z;
     
   
-    } else if ( (input[13] && !oldinput[13]) && g_backpack.at(g_backpackIndex)->specialAction == 2) { //open inventory
+    } else if ( (input[13] && !oldinput[13]) && g_backpack.at(g_backpackIndex)->specialAction == 2 && g_backpack.at(g_backpackIndex)->cooldownMs <= 0) { //open inventory
       
       if (inPauseMenu)
       {
@@ -4120,7 +4209,8 @@ void getInput(float &elapsed)
       }
       else
       {
-
+        usable* thisUsable = g_backpack.at(g_backpackIndex); 
+        thisUsable->cooldownMs = thisUsable->maxCooldownMs;
         playSound(-1, g_menu_open_sound, 0);
         g_inventoryUiIsLevelSelect = 0;
         inPauseMenu = 1;
@@ -4133,8 +4223,9 @@ void getInput(float &elapsed)
 
     } else if (input[13] && !oldinput[13] && g_backpack.at(g_backpackIndex)->cooldownMs <= 0) { //there is an item to use, and it doesn't make the protag spin
       usable* thisUsable = g_backpack.at(g_backpackIndex); 
-      M("Used item");
       thisUsable->cooldownMs = thisUsable->maxCooldownMs;
+      M("Used item");
+      //thisUsable->cooldownMs = thisUsable->maxCooldownMs;
 
       //make a scriptcaller
       adventureUI scripter(renderer, 1);
@@ -4387,7 +4478,7 @@ void getInput(float &elapsed)
   dialogue_cooldown -= elapsed;
 
 
-  if (keystate[bindings[11]] && !inPauseMenu)
+  if (keystate[bindings[11]] && !inPauseMenu && !transition)
   {
     if (protag_is_talking == 1)
     { // advance or speedup diaglogue

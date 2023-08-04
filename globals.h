@@ -440,6 +440,23 @@ int px;
 
 bool g_protagHasBeenDrawnThisFrame = 0;
 bool g_protagIsBeingDetected = 0; //used for when the protag is too close to an enemy and will soon agro that enemy
+
+float oldSummationXVel = 0;
+float oldSummationYVel = 0;
+float summationXVel = 0;
+float summationYVel = 0;
+float effectiveSummationXVel = 0;
+float effectiveSummationYVel = 0;
+int maxPrecedeCalcMs = 8000;
+int precedeCalcMs = 0; //counts up to maxPrecedeCalcMs, and at that point, resets summationNVel. Old values are passed to oldSummationNVel
+
+//so these ones are quite important, these are for
+//precisely how far ahead the monster wishes to plan,
+//how far the 
+
+navNode* precedeProtagNode = nullptr; //set in main loop, used by some monsters.
+                                      
+                                      
 bool g_loadingATM = 0; // are we loading a new map atm?
 SDL_Texture *g_shadowTexture;
 SDL_Texture *g_shadowTextureAlternate;
@@ -696,6 +713,7 @@ string g_waypointOfLastSave = "a";
 // input
 const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 bool devinput[60] = {false};
+bool g_ignoreInput = 1;
 
 //these are meant to make it easy to port bindable inputs
 bool input[16] = {false};

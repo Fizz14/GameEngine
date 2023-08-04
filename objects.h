@@ -1546,8 +1546,8 @@ class weapon {
         if(line == "&") { break; }
         field = line.substr(0, line.find(' '));
         attack* a = new attack(line, tryToShareGraphics);
-        D(this->name);
-        D(a->name);
+//        D(this->name);
+//        D(a->name);
 
         //a->faction = faction;
         attacks.push_back(a);
@@ -2920,6 +2920,7 @@ class adventureUI {
     ui* thisUsableIcon = 0;
     ui* nextUsableIcon = 0;
     ui* prevUsableIcon = 0;
+    ui* cooldownIndicator = 0;
     SDL_Texture* noIconTexture = 0; //set the backpack icon uis to this if we have no texture
                                     //for them, to prevent crashing
 
@@ -2991,6 +2992,7 @@ class adventureUI {
 
     void hideBackpackUI();
     void showBackpackUI();
+    void resetBackpackUITextures();
 };
 
 
@@ -3409,6 +3411,12 @@ class entity:public actor {
     // 1 - precede
     // random movement (roaming) is used with travel nodes, and scripted de-agroing
 
+    //set from the config, larger values make the 
+    //monster precede the player by greater distance
+    //don't go too high
+    float precedeConstant = 1;
+
+
     float enrageSpeedbuff = 0;
                                      
     //aiIndex is used for having AI use their own patrolPoints
@@ -3763,8 +3771,8 @@ class entity:public actor {
         //this may have unwanted consequences for engine sprites, e.g. lighting
         if(!blurPixelsForScaling) {
           SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-          M("Some entity is using pixel perfect rendering");
-          D(name);
+          //M("Some entity is using pixel perfect rendering");
+          //D(name);
         } else {
           SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
         }
@@ -4026,6 +4034,9 @@ class entity:public actor {
         stream >> comment; //chasing_method
         stream >> chasingMethod;
 
+        stream >> comment; //precede_constant
+        stream >> precedeConstant;
+
         stream >> comment; //enrage_speed_bonus
         stream >> enrageSpeedbuff;
 
@@ -4267,6 +4278,12 @@ class entity:public actor {
         for(auto x : this->children) {
           x->tangible = 0;
         }
+
+//        //delete inventory
+//        for(auto x : inventory) {
+//          delete x.first;
+//        }
+//        inventory.clear();
 
         g_entities.erase(remove(g_entities.begin(), g_entities.end(), this), g_entities.end());
 
@@ -6129,7 +6146,7 @@ class entity:public actor {
           }
           g_dijkstraEntity = this;
 
-          if(target !=  nullptr && ( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, true)) )  || (distToTarget < 100) )) {
+          if((target !=  nullptr && ( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, true)) )  || (distToTarget < 100) )) && chasingMethod == 0) {
           //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
           targetSteeringAngle = angleToTarget;
 
@@ -6216,7 +6233,6 @@ class entity:public actor {
               //but I will soon add additional methods of chasing
               switch(chasingMethod) {
                 case(0): { //run at them
-                  //!!! some easy optimization can be done here
                   vector<int> ret;
                   if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
                     ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
@@ -6224,36 +6240,26 @@ class entity:public actor {
                     Destination = getNodeByPosition(ret[0], ret[1]);
                   } else {
                     ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
-                    //T(this->hisweapon->attacks[hisweapon->combo]->range);
-      
       
                     if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
-                      //vector<int> ret = getCardinalPoint(target->x, target->y, 200, index);
       
                       Destination = getNodeByPosition(ret[0], ret[1]);
-      //                T(ret[0]);
-      //                T(ret[1]);
-      //                T(target->x);
-      //                T(target->y);
-      //                T(Destination);
                     } else {
                       //Can't get our full range, so use the values in LineTraceX and LineTraceY
                       extern int lineTraceX, lineTraceY;
-                      //Destination = getNodeByPosition(target->getOriginX(), target->getOriginY());
                       Destination = getNodeByPosition(lineTraceX, lineTraceY);
-      //              T(lineTraceX);
-      //              T(lineTraceY);
-      //              T(target->x);
-      //              T(target->y);
                     }
                   }
                   break;
                 }
 
                 case(1): { // precede
-                  //use a node where the player may go soon
-                  //How will I code this?
+                    //use a node where the player may go soon
+                    //How will I code this?
+                    precedeProtagNode = getNodeByPosition(protag->x + (effectiveSummationXVel * precedeConstant), protag->y + (effectiveSummationYVel * precedeConstant));
 
+                    Destination = precedeProtagNode;
+                  
                   break;
                 }
                 
@@ -6748,7 +6754,6 @@ int loadSave() {
   string address = "user/saves/" + g_saveName + ".save";
   const char* plik = address.c_str();
   file.open(plik);
-  M("loadSave A");
 
   string field = "";
   string value = "";
@@ -6767,7 +6772,6 @@ int loadSave() {
 
   }
 
-  M("loadSave B");
   //load saved strings
   while(getline(file, line)) {
     if(line == "&") { break;}
@@ -6786,7 +6790,6 @@ int loadSave() {
 
   }
 
-  M("loadSave C");
   file >> g_mapOfLastSave >> g_waypointOfLastSave;
   getline(file,line);
   getline(file,line);
@@ -6811,7 +6814,6 @@ int loadSave() {
     party.push_back(a);
     a->tangible = 0;
     a->inParty = 1;
-    M("added an entity to the party " + name);
     if(a->essential) {
       mainProtag = a;
       setMainProtag = 1;
@@ -6819,7 +6821,6 @@ int loadSave() {
     
   }
 
-  M("loadSave D");
   party[0]->tangible = 1;
   if(setMainProtag) {
     protag = mainProtag;
@@ -6832,7 +6833,6 @@ int loadSave() {
 
   g_focus = protag;
 
-  M("loadSave E");
   //load spin entity
   if(g_spin_enabled && g_spin_entity == nullptr) {
     // !!! delete old spin ent
@@ -6841,12 +6841,19 @@ int loadSave() {
     entity* a = new entity(renderer, spinEntFilename);
     g_spin_entity = a;
     g_spin_entity->visible = 0;
-    g_spin_entity->msPerFrame = 100; //after moving dialogue_index to adventureUI class from entity, this was effectively doubled... memory error? Was 50
+    g_spin_entity->msPerFrame = 50; //after moving dialogue_index to adventureUI class from entity, this was effectively doubled... memory error? Was 50.
+                                     //Now, later, it's 100 and seems slow, changing it back to 50. That was after I fixed a memory issue, but it still should be unrelated...
     g_spin_entity->loopAnimation = 1;
     g_spin_entity->canFight = 0;
   }
 
-  M("loadSave C");
+
+  int indexItemsSize = g_indexItems.size();
+  for(int i = 0; i < indexItemsSize; i++) {
+    delete g_indexItems[0];
+  }
+
+  inventorySelection = 0;
 
   //load inventory
   while(getline(file, line)) {
@@ -6858,7 +6865,6 @@ int loadSave() {
     protag->getItem(a, stoi(value));
   }
 
-  M("loadSave D");
 
   //load which levels are unlocked, as a list of lowercase names
   //M("LETS UNLOCK LEVELS");
@@ -6879,14 +6885,17 @@ int loadSave() {
 
   }
 
-  M("loadSave E");
   //delete all usables
-  for(int i = 0; i < g_backpack.size(); i++) {
+  int size = g_backpack.size();
+  for(int i = 0; i < size; i++) {
     delete g_backpack[0];
   }
-  
+  g_backpack.clear();
+
   adventureUIManager->hideBackpackUI();
+  adventureUIManager->resetBackpackUITextures();
     
+  g_backpackIndex = 0; //otherwise we might segfault
 
   //load protag's usables
   while(getline(file, line)) {
@@ -6900,20 +6909,17 @@ int loadSave() {
     }
 
     if(good == 1) {
-      M("Adding a new usable");
       usable* newUsable = new usable(line);
       adventureUIManager->showBackpackUI();
     }
 
   }
-  M("loadSave F");
 
   file.close();
 
   for(auto x : g_entities) {
     x->children.clear(); // might be a leak here
   }
-  M("loadSave G");
 
   //re-attach persistent orbitals
   for(auto x : g_entities) {
@@ -6927,7 +6933,6 @@ int loadSave() {
 
     }
   }
-  M("loadSave H");
 
   return 0;
 }

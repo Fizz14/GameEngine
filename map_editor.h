@@ -24,6 +24,8 @@ int width, height;                              // for selection display
 int selectIndex = 0;                            // select entity
 bool tiling = 1;                                // make current texture tile
 bool drawhitboxes = 0;                          // devMode; //visualize hitboxes in map editor with command
+bool drawNavMesh = 0; //I'm tired of the navmesh slowing down the framerate so much, this will be toggled separately
+
 int debug_r = 255, debug_g = 255, debug_b = 50; // for draw color
 int shine = 0;
 bool occlusion = 0;                             // visualize occlusion (crappily) when map editing
@@ -1888,31 +1890,33 @@ void write_map(entity *mapent)
       t->render(renderer);
     }
 
-    // draw navNodes
-    for (long long unsigned int i = 0; i < g_navNodes.size(); i++)
-    {
-      // SDL_Rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
-      // SDL_RenderCopy(renderer, navNodeIcon->texture, NULL, &obj);
-      SDL_SetRenderDrawColor(renderer, 0, 100, 150, 255);
-      for (long long unsigned int j = 0; j < g_navNodes[i]->friends.size(); j++)
+    if(drawNavMesh) {
+      // draw navNodes
+      for (long long unsigned int i = 0; i < g_navNodes.size(); i++)
       {
-        float x1 = (g_navNodes[i]->x - g_camera.x) * g_camera.zoom;
-        float y1 = (g_navNodes[i]->y - g_camera.y - XtoZ * (g_navNodes[i]->z + 32)) * g_camera.zoom;
-        float x2 = (g_navNodes[i]->friends[j]->x - g_camera.x) * g_camera.zoom;
-        float y2 = (g_navNodes[i]->friends[j]->y - g_camera.y - XtoZ * (g_navNodes[i]->friends[j]->z + 32)) * g_camera.zoom;
-        int colo = 0;
-        if (g_navNodes[i]->z + g_navNodes[i]->friends[j]->z > 0)
+        // SDL_Rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+        // SDL_RenderCopy(renderer, navNodeIcon->texture, NULL, &obj);
+        SDL_SetRenderDrawColor(renderer, 0, 100, 150, 255);
+        for (long long unsigned int j = 0; j < g_navNodes[i]->friends.size(); j++)
         {
-          colo = 255;
+          float x1 = (g_navNodes[i]->x - g_camera.x) * g_camera.zoom;
+          float y1 = (g_navNodes[i]->y - g_camera.y - XtoZ * (g_navNodes[i]->z + 32)) * g_camera.zoom;
+          float x2 = (g_navNodes[i]->friends[j]->x - g_camera.x) * g_camera.zoom;
+          float y2 = (g_navNodes[i]->friends[j]->y - g_camera.y - XtoZ * (g_navNodes[i]->friends[j]->z + 32)) * g_camera.zoom;
+          int colo = 0;
+          if (g_navNodes[i]->z + g_navNodes[i]->friends[j]->z > 0)
+          {
+            colo = 255;
+          }
+          // dont draw disabled nodes. pretty janky
+          if (g_navNodes[i]->enabled && g_navNodes[i]->friends[j]->enabled)
+          {
+            SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
+            SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
+          }
         }
-        // dont draw disabled nodes. pretty janky
-        if (g_navNodes[i]->enabled && g_navNodes[i]->friends[j]->enabled)
-        {
-          SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
-          SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
-        }
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
       }
-      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     }
   }
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -3102,10 +3106,20 @@ void write_map(entity *mapent)
         drawhitboxes = !drawhitboxes;
         break;
       }
+      if (word == "nm")
+      {
+        drawNavMesh = !drawNavMesh;
+        break;
+      }
       if (word == "show")
       {
         line >> word;
         if (word == "hitboxes")
+        {
+          drawhitboxes = !drawhitboxes;
+          break;
+        }
+        if (word == "navmesh")
         {
           drawhitboxes = !drawhitboxes;
           break;
@@ -6197,6 +6211,14 @@ void write_map(entity *mapent)
     t5->show = 1;
   }
 
+  void adventureUI::resetBackpackUITextures() {
+    t1->texture = noIconTexture;
+    t2->texture = noIconTexture;
+    t3->texture = noIconTexture;
+    t4->texture = noIconTexture;
+    t5->texture = noIconTexture;
+  }
+
   void adventureUI::showTalkingUI()
   {
     // M("showTalkingUI()");
@@ -6374,6 +6396,7 @@ void write_map(entity *mapent)
     hotbar->priority = -7;
 
 
+
     nextUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 + 0.1, 0.85, 0.1, 1, 1);
     nextUsableIcon->persistent = true;
     nextUsableIcon->heightFromWidthFactor = 1;
@@ -6448,6 +6471,14 @@ void write_map(entity *mapent)
     prevUsableIcon->show = 0;
     thisUsableIcon->show = 0;
     nextUsableIcon->show = 0;
+
+    cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.bmp", 0.45, 0.85, 0.03, 1, 1);
+    cooldownIndicator->priority = -6;
+    cooldownIndicator->persistent = 1;
+    cooldownIndicator->heightFromWidthFactor = 1;
+    cooldownIndicator->xframes = 48;
+    cooldownIndicator->framewidth = 64;
+    cooldownIndicator->frameheight = 64;
 
     for(auto x : hotbarTransitionIcons) {
       x->opacity = 0;
@@ -7151,7 +7182,6 @@ void write_map(entity *mapent)
       clear_map(g_camera);
       g_map = name;
       const string toMap = "maps/" + g_mapdir + "/" + g_map + ".map";
-      ;
       load_map(renderer, toMap, dest_waypoint);
 
       // //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
@@ -8157,9 +8187,7 @@ void write_map(entity *mapent)
     // /loadsave
     if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/loadsave")
     {
-      M("Into loadSave");
       loadSave();
-      M("Finished loading save");
 
       // close dialogue
 
@@ -8183,6 +8211,9 @@ void write_map(entity *mapent)
       {
         init_map_writing(renderer);
       }
+
+      breakpoint();
+
       protag_is_talking = 0;
       protag_can_move = 1;
       return;
