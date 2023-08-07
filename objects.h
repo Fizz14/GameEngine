@@ -6841,7 +6841,7 @@ int loadSave() {
     entity* a = new entity(renderer, spinEntFilename);
     g_spin_entity = a;
     g_spin_entity->visible = 0;
-    g_spin_entity->msPerFrame = 50; //after moving dialogue_index to adventureUI class from entity, this was effectively doubled... memory error? Was 50.
+    g_spin_entity->msPerFrame = 100; //after moving dialogue_index to adventureUI class from entity, this was effectively doubled... memory error? Was 50.
                                      //Now, later, it's 100 and seems slow, changing it back to 50. That was after I fixed a memory issue, but it still should be unrelated...
     g_spin_entity->loopAnimation = 1;
     g_spin_entity->canFight = 0;

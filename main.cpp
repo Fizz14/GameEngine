@@ -1798,16 +1798,13 @@ int WinMain()
         effectiveSummationXVel = summationXVel;
         effectiveSummationYVel = summationYVel;
 
-        
-        D(summationXVel);
-        D(summationYVel);
-        D(precedeProtagNode);
-
         summationXVel = 0;
         summationYVel = 0;
       }
 
     }
+
+    D(g_spin_entity->msPerFrame);
 
     // tiles
     for (long long unsigned int i = 0; i < g_tiles.size(); i++)
