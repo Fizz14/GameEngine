@@ -1798,13 +1798,14 @@ int WinMain()
         effectiveSummationXVel = summationXVel;
         effectiveSummationYVel = summationYVel;
 
+        savedPrecedePlayerX = protag->x;
+        savedPrecedePlayerY = protag->y;
+
         summationXVel = 0;
         summationYVel = 0;
       }
 
     }
-
-    D(g_spin_entity->msPerFrame);
 
     // tiles
     for (long long unsigned int i = 0; i < g_tiles.size(); i++)
@@ -2060,30 +2061,135 @@ int WinMain()
     {
       // !!! segfaults on mapload sometimes
       adventureUIManager->healthText->updateText(to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), -1, 0.9);
-      adventureUIManager->healthText->show = g_showHealthbar;
+      adventureUIManager->healthText->show = 1;
+
+      adventureUIManager->hungerText->updateText(to_string((int)((float)(min(g_foodpoints, g_maxVisibleFoodpoints) * 100) / (float)g_maxVisibleFoodpoints)) + '%', -1, 0.9);
+      adventureUIManager->hungerText->show = 1;
+   
+      //animate the guts sometimes
+      //heart shake
+//      adventureUIManager->heartShakeIntervalMs -= elapsed;
+//      if(adventureUIManager->heartShakeIntervalMs < 0) {
+//        //make the heart shake back and forth briefly
+//        adventureUIManager->heartShakeDurationMs = adventureUIManager->maxHeartShakeDurationMs;
+//
+//        adventureUIManager->heartShakeIntervalMs = adventureUIManager->maxHeartShakeIntervalMs + rand() % adventureUIManager->heartShakeIntervalRandomMs;
+//      }
+//
+//      if(adventureUIManager->heartShakeDurationMs > 0) {
+//        adventureUIManager->heartShakeDurationMs -= elapsed;
+//
+//        if(adventureUIManager->heartShakeDurationMs % 400 > 200) {
+//          //move left
+//          adventureUIManager->healthPicture->targetx = -0.04 - 0.005;
+//
+//        } else {
+//          //move right
+//          adventureUIManager->healthPicture->targetx = -0.04 + 0.005;
+//
+//        }
+//
+//      } else {
+//        //move the heart back to its normal position
+//        adventureUIManager->healthPicture->targetx = -0.04;
+//
+//      }
+
+      //stomach shake
+      adventureUIManager->stomachShakeIntervalMs -= elapsed;
+      if(adventureUIManager->stomachShakeIntervalMs < 0) {
+        //make the stomach shake back and forth briefly
+        adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
+
+        float hungerratio = ((float)(min(g_foodpoints, g_maxVisibleFoodpoints) / (float)g_maxVisibleFoodpoints));
+        D(hungerratio);
+
+        //stomach grumbles less when the protag is less hungry
+        adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs * hungerratio + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
+      }
+
+      if(adventureUIManager->stomachShakeDurationMs > 0) {
+        adventureUIManager->stomachShakeDurationMs -= elapsed;
+
+        if(adventureUIManager->stomachShakeDurationMs % 400 > 200) {
+          //move left
+          adventureUIManager->hungerPicture->targetx = 0.8 - 0.005;
+
+        } else {
+          //move right
+          adventureUIManager->hungerPicture->targetx = 0.8 + 0.005;
+
+        }
+
+      } else {
+        //move the stomach back to its normal position
+        adventureUIManager->hungerPicture->targetx = 0.8;
+
+      }
+
+      //heart beating
+      adventureUIManager->heartbeatDurationMs -= elapsed;
+      if(adventureUIManager->heartbeatDurationMs > 200) {
+          //expand
+          adventureUIManager->healthPicture->targetwidth = 0.25;
+
+      } else {
+          //contract
+          adventureUIManager->healthPicture->targetwidth = 0.25 - 0.015;
+
+      }
+      if(adventureUIManager->heartbeatDurationMs < 0) {
+        adventureUIManager->heartbeatDurationMs = (adventureUIManager->maxHeartbeatDurationMs - 300) * ((float)protag->hp / (float)protag->maxhp) + 300;
+        float hpratio = ((float)protag->hp / (float)protag->maxhp);
+        if(hpratio < 0.6) {
+        adventureUIManager->healthPicture->widthGlideSpeed = 0.1 + min(0.2, 0.3 *((float)protag->hp / (float)protag->maxhp));
+        } else {
+          adventureUIManager->healthPicture->widthGlideSpeed = 0.1;
+
+        }
+      }
+
+
     }
     else
     {
       adventureUIManager->healthText->show = 0;
+      adventureUIManager->hungerText->show = 0;
     }
 
+    //get hungry
+    if(g_currentFoodpointsDecreaseIntervalMs < 0) {
+      g_currentFoodpointsDecreaseIntervalMs = g_foodpointsDecreaseIntervalMs;
+      g_foodpoints -= g_foodpointsDecreaseAmount;
+      if(g_foodpoints < 0) { g_foodpoints = 0; }
+    }
+    g_currentFoodpointsDecreaseIntervalMs -= elapsed;
+
     // move the healthbar properly to the protagonist
-    rect obj; // = {( , (((protag->y - ((protag->height))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom, (protag->width * g_camera.zoom), (protag->height * g_camera.zoom))};
-    obj.x = ((protag->x - g_camera.x) * g_camera.zoom);
-    obj.y = (((protag->y - ((floor(protag->height) * 0.9))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom;
-    obj.width = (protag->width * g_camera.zoom);
-    obj.height = (floor(protag->height) * g_camera.zoom);
+    //rect obj; // = {( , (((protag->y - ((protag->height))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom, (protag->width * g_camera.zoom), (protag->height * g_camera.zoom))};
+//    obj.x = ((protag->x - g_camera.x) * g_camera.zoom);
+//    obj.y = (((protag->y - ((floor(protag->height) * 0.9))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom;
+//    obj.width = (protag->width * g_camera.zoom);
+//    obj.height = (floor(protag->height) * g_camera.zoom);
+//
+//    protagHealthbarA->x = (((float)obj.x + obj.width / 2) / (float)WIN_WIDTH) - protagHealthbarA->width / 2.0;
+//    protagHealthbarA->y = ((float)obj.y) / (float)WIN_HEIGHT;
+//    protagHealthbarB->x = protagHealthbarA->x;
+//    protagHealthbarB->y = protagHealthbarA->y;
+//
+//    protagHealthbarC->x = protagHealthbarA->x;
+//    protagHealthbarC->y = protagHealthbarA->y;
+//    protagHealthbarC->width = (protag->hp / protag->maxhp) * 0.05;
+//    adventureUIManager->healthText->boxX = protagHealthbarA->x + protagHealthbarA->width / 2;
+//    adventureUIManager->healthText->boxY = protagHealthbarA->y - 0.005;
 
-    protagHealthbarA->x = (((float)obj.x + obj.width / 2) / (float)WIN_WIDTH) - protagHealthbarA->width / 2.0;
-    protagHealthbarA->y = ((float)obj.y) / (float)WIN_HEIGHT;
-    protagHealthbarB->x = protagHealthbarA->x;
-    protagHealthbarB->y = protagHealthbarA->y;
-
-    protagHealthbarC->x = protagHealthbarA->x;
-    protagHealthbarC->y = protagHealthbarA->y;
-    protagHealthbarC->width = (protag->hp / protag->maxhp) * 0.05;
-    adventureUIManager->healthText->boxX = protagHealthbarA->x + protagHealthbarA->width / 2;
-    adventureUIManager->healthText->boxY = protagHealthbarA->y - 0.005;
+    //bottom-most layer of ui
+    for (long long unsigned int i = 0; i < g_ui.size(); i++)
+    {
+      if(g_ui[i]->layer0) {
+        g_ui[i]->render(renderer, g_camera);
+      }
+    }
 
     for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
     {
@@ -2094,7 +2200,7 @@ int WinMain()
 
     for (long long unsigned int i = 0; i < g_ui.size(); i++)
     {
-      if(!g_ui[i]->renderOverText) {
+      if(!g_ui[i]->renderOverText && !g_ui[i]->layer0) {
         g_ui[i]->render(renderer, g_camera);
       }
     }
@@ -4171,6 +4277,7 @@ void getInput(float &elapsed)
         g_spinning_xvel = protag->xvel * g_spinning_boost;
         g_spinning_yvel = protag->yvel * g_spinning_boost;
         g_spin_cooldown = g_spin_max_cooldown;
+        g_spin_entity->frameInAnimation = 0;
       } else {
         if(input[13] && !oldinput[13] && !protag->grounded) {
           storedSpin = 1;

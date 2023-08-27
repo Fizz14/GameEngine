@@ -447,6 +447,8 @@ float summationXVel = 0;
 float summationYVel = 0;
 float effectiveSummationXVel = 0;
 float effectiveSummationYVel = 0;
+float savedPrecedePlayerX = 0;
+float savedPrecedePlayerY = 0;
 int maxPrecedeCalcMs = 8000;
 int precedeCalcMs = 0; //counts up to maxPrecedeCalcMs, and at that point, resets summationNVel. Old values are passed to oldSummationNVel
 
@@ -789,7 +791,15 @@ float text_speed_up = 1; // speed up text if player holds button. set to 1 if th
 float curTextWait = 0;
 bool old_z_value = 1; // the last value of the z key. used for advancing dialogue, i.e. z key was down and is now up or was up and is now down if old_z_value != SDL[SDL_SCANCODE_Z]
 float g_healthbarBorderSize = 0;
-bool g_showHUD = 0;
+bool g_showHUD = 1;
+
+//for hungersystem
+int g_foodpoints = 100;
+int g_maxFoodpoints = 150; //150 foodpoints means the player can't possibly eat more, but they won't realize they're hungry until they get down to 100 points (they're wellfed, which is good)
+int g_maxVisibleFoodpoints = 100;
+int g_foodpointsDecreaseIntervalMs = 40000;
+int g_foodpointsDecreaseAmount = 1;
+int g_currentFoodpointsDecreaseIntervalMs = 0;
 
 bool g_inventoryUiIsLevelSelect = 0; //set to 1 to repurpose to inventory UI for level select UI
 

@@ -5075,6 +5075,20 @@ void write_map(entity *mapent)
 
       }
 
+      if(word == "entities" || word == "ents" || word == "entlist" || word == "debug all" || word == "debug ents" || word == "debug entities") {
+        //debug g_entities instead of a particular entity
+        M("Entities List:");
+        M("{");
+        for(int i = 0; i < g_entities.size(); i++){
+          if("engine" != g_entities[i]->name.substr(0,6)) {
+            string iAsString = to_string(i);
+            string printMe = "g_entities[" + iAsString + "]->name: " + g_entities[i]->name;
+            M(printMe);
+          }
+        }
+        M("}");
+      }
+
       // roam zombie 0 -> make zombie roam poi 0
       if (word == "roam")
       {
@@ -6314,7 +6328,7 @@ void write_map(entity *mapent)
       scoreText->width = 0.95;
       scoreText->boxHeight = 0;
       scoreText->boxX = 0.05;
-      scoreText->boxY = 0.05;
+      scoreText->boxY = 1 - 0.15;
       scoreText->worldspace = 1;
       scoreText->align = 0; // center
       scoreText->dropshadow = 1;
@@ -6342,16 +6356,32 @@ void write_map(entity *mapent)
       crosshair->xframes = 4;
       crosshair->framewidth = 128;
       crosshair->frameheight = 128;
+      crosshair->priority = -5; //crosshair goes ontop usable icons
+      
 
-      healthText = new textbox(renderer, "", 30 * g_minifontsize, 0, 0, 0.9);
+      healthText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
       healthText->boxWidth = 0.95;
       healthText->width = 0.95;
-      healthText->boxHeight = 0.25;
-      healthText->boxX = 0.1;
-      healthText->boxY = 0.015;
-      healthText->worldspace = 0;
+      healthText->boxHeight = 0;
+      healthText->boxX = 0.05;
+      healthText->boxY = 0.3;
+      healthText->worldspace = 1;
       healthText->show = 1;
-      healthText->align = 2;
+      healthText->align = 0;
+      healthText->dropshadow = 1;
+      healthText->layer0 = 1;
+
+      hungerText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
+      hungerText->boxWidth = 0.95;
+      hungerText->width = 0.95;
+      hungerText->boxHeight = 0;
+      hungerText->boxX = 1 - 0.05;
+      hungerText->boxY = 1 - 0.15;
+      hungerText->worldspace = 1;
+      hungerText->show = 1;
+      hungerText->align = 1;
+      hungerText->dropshadow = 1;
+      hungerText->layer0 = 1;
 
       escText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
 
@@ -6361,7 +6391,7 @@ void write_map(entity *mapent)
       escText->boxHeight = 0.25 - 0.02;
       escText->worldspace = 0;
       escText->show = 1;
-      escText->align = 2;
+      escText->align = 0;
       escText->dropshadow = 1; 
 
       inputText = new textbox(renderer, "", 1700 * g_fontsize * 1.4, 0, 0, 0.9);
@@ -6387,6 +6417,41 @@ void write_map(entity *mapent)
   }
 
   void adventureUI::initFullUI() {
+
+    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0, 0.72, 0.18, 1, -15);
+    tastePicture->persistent = 1;
+    tastePicture->heightFromWidthFactor = 1;
+    tastePicture->show = 1;
+    tastePicture->framewidth = 410;
+    tastePicture->frameheight = 465;
+    tastePicture->layer0 = 1;
+    tastePicture->glideSpeed = 0.1;
+    tastePicture->widthGlideSpeed = 0.1;
+    tastePicture->priority = -10; //taste is behind everything
+
+    hungerPicture = new ui(renderer, "static/ui/hunger.bmp", 0.8, 0.6, 0.25, 1, -15);
+    hungerPicture->persistent = 1;
+    hungerPicture->heightFromWidthFactor = 1;
+    hungerPicture->show = 1;
+    hungerPicture->framewidth = 410;
+    hungerPicture->frameheight = 465;
+    hungerPicture->layer0 = 1;
+    hungerPicture->glideSpeed = 0.1;
+    hungerPicture->widthGlideSpeed = 0.1;
+    hungerPicture->priority = -10; //hunger is behind everything
+
+
+    healthPicture = new ui(renderer, "static/ui/health.bmp", -0.04, -0.09, 0.25, 1, -15);
+    healthPicture->persistent = 1;
+    healthPicture->heightFromWidthFactor = 1;
+    healthPicture->show = 1;
+    healthPicture->framewidth = 410;
+    healthPicture->frameheight = 465;
+    healthPicture->layer0 = 1;
+    healthPicture->glideSpeed = 0.1;
+    healthPicture->widthGlideSpeed = 0.1;
+    healthPicture->priority = -10; //health is behind everything
+
     hotbar = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 0.1, 1);
     hotbar->is9patch = true;
     hotbar->patchwidth = 213;
@@ -6659,7 +6724,7 @@ void write_map(entity *mapent)
       if (sleepflag)
       {
         mobilize = 0;
-        this->showTalkingUI();
+        //this->showTalkingUI();
         sleepflag = 0;
       }
     }

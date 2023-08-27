@@ -2907,6 +2907,30 @@ class adventureUI {
     
                         
     textbox* healthText = 0;
+    textbox* hungerText = 0;
+
+    ui* healthPicture = 0; //picture of a heart
+    ui* hungerPicture = 0; //picture of a heart
+    ui* tastePicture = 0; //picture of a tung
+
+    //for making the heart shake every now and then
+    int heartShakeIntervalMs = 12000;
+    int heartShakeIntervalRandomMs = 5000;
+    int maxHeartShakeIntervalMs = 12000;
+    int heartShakeDurationMs = 0;
+    int maxHeartShakeDurationMs = 1100;
+
+    //for making the heart beat
+    int heartbeatDurationMs = 1000;
+    int maxHeartbeatDurationMs = 1000;
+
+    //stomach shake (rumbling)
+    int stomachShakeIntervalMs = 12000;
+    int stomachShakeIntervalRandomMs = 5000;
+    int maxstomachShakeIntervalMs = 12000;
+    int stomachShakeDurationMs = 0;
+    int maxstomachShakeDurationMs = 1100;
+
     bool light = 0;
 
     textbox* scoreText = 0;
@@ -4494,6 +4518,7 @@ class entity:public actor {
       }
 
       void move_up() {
+        //M("move_up()"); was having problems walking in devmode ;_;
         if(stunned) {return;}
         forwardsVelocity = (xagil * (100 - statusSlownPercent));
         //y-=xagil;
@@ -4502,6 +4527,8 @@ class entity:public actor {
         up = true;
         down = false;
         hadInput = 1;
+
+        //M("move_up() completed");
       }
 
       void stop_verti() {
@@ -4731,6 +4758,7 @@ class entity:public actor {
           msTilNextFrame += elapsed;
           if(msTilNextFrame > msPerFrame && xframes > 1) {
             msTilNextFrame = 0;
+           
             if(reverseAnimation) {
               frameInAnimation--;
               if(frameInAnimation < 0) {
@@ -4764,7 +4792,6 @@ class entity:public actor {
                   scriptedAnimation = 0;
                 }
               }
-
             }
           }
         }
@@ -6836,13 +6863,15 @@ int loadSave() {
   //load spin entity
   if(g_spin_enabled && g_spin_entity == nullptr) {
     // !!! delete old spin ent
+    M(" ");
+    M("Making a new spin ent");
+    M(" ");
     
     string spinEntFilename = protag->name + "-spin";
     entity* a = new entity(renderer, spinEntFilename);
     g_spin_entity = a;
     g_spin_entity->visible = 0;
-    g_spin_entity->msPerFrame = 100; //after moving dialogue_index to adventureUI class from entity, this was effectively doubled... memory error? Was 50.
-                                     //Now, later, it's 100 and seems slow, changing it back to 50. That was after I fixed a memory issue, but it still should be unrelated...
+    g_spin_entity->msPerFrame = 50;
     g_spin_entity->loopAnimation = 1;
     g_spin_entity->canFight = 0;
   }
@@ -7249,7 +7278,9 @@ class textbox {
     int width = 0;
     int height = 0;
     bool show = true;
-    int align = 0;
+    int align = 0;  //0 - left
+                    //1 - right
+                    //2 - center
 
     float fontsize = 0;
 
@@ -7427,10 +7458,12 @@ class ui {
     float x;
     float y;
     
-    float targetx = -1; //for gliding to a position
-    float targety = -1;
-
+    float targetx = -10; //for gliding to a position
+    float targety = -10;
     float glideSpeed = 0.5;
+
+    float targetwidth = -10; //added to animate the heart
+    float widthGlideSpeed = 0.5;
 
     float width = 0.5;
     float height = 0.5;
@@ -7460,7 +7493,9 @@ class ui {
 
     bool persistent = 0;
     int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
-    bool renderOverText = 0;
+    bool layer0 = 0; //lowest possible layer of ui, render before layer0 text
+    bool renderOverText = 0; //highest possible layer of ui, render after all text
+                             //what a shitty system lol
 
     int worldspace = 0;
 
@@ -7497,14 +7532,16 @@ class ui {
 
     void render(SDL_Renderer * renderer, camera fcamera) {
       //proportional gliding
-      if(targetx >= 0) {
-        //x = (targetx + x) / 2;
+      if(targetx != -10) {
         x = (targetx * glideSpeed) + (x * (1-glideSpeed));
       }
   
-      if(targety >= 0) {
-        //y = (targety + y) / 2;
+      if(targety != -10) {
         y = (targety * glideSpeed) + (y * (1-glideSpeed));
+      }
+
+      if(targetwidth != -10) {
+        width = (targetwidth * widthGlideSpeed) + (width * (1-widthGlideSpeed));
       }
 
       if(this->show) {
@@ -8461,11 +8498,6 @@ void clear_map(camera& cameraToReset) {
   }
 
   //push back any ents that were persisent (arms)
-  for(auto n : persistentEnts) {
-    g_entities.push_back(n);
-    g_actors.push_back(n);
-  }
-
   for(auto n : persistentEnts) {
     g_entities.push_back(n);
     g_actors.push_back(n);
