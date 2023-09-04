@@ -17,6 +17,7 @@
 #include <ctime>	//debug clock
 #include <string>
 #include <map> //saves
+#include <ctime> //clock display
 
 // this is unique to the windowsport
 #include "windowsinclude.h"
@@ -797,9 +798,10 @@ bool g_showHUD = 1;
 int g_foodpoints = 100;
 int g_maxFoodpoints = 150; //150 foodpoints means the player can't possibly eat more, but they won't realize they're hungry until they get down to 100 points (they're wellfed, which is good)
 int g_maxVisibleFoodpoints = 100;
-int g_foodpointsDecreaseIntervalMs = 40000;
+int g_foodpointsDecreaseIntervalMs = 1000;
 int g_foodpointsDecreaseAmount = 1;
 int g_currentFoodpointsDecreaseIntervalMs = 0;
+int g_starvingFoodpoints = 20; //need 20 or more foodpoints to use items
 
 bool g_inventoryUiIsLevelSelect = 0; //set to 1 to repurpose to inventory UI for level select UI
 
@@ -828,6 +830,8 @@ vector<float> g_alphabet_upper_widths;
 int g_keyboardInputLength = 12;
 string g_keyboardSaveToField = ""; //the save-field to write keyboard input to, when ready
 SDL_Color g_textcolor = { 155, 115, 115 };
+SDL_Color g_healthtextcolor = { 220, 203, 25 };
+SDL_Color g_healthtextlowcolor = { 25, 25, 220 };
 
 string g_levelSequenceName = "default"; //use the default level sequence for the base game by default
 levelSequence* g_levelSequence;

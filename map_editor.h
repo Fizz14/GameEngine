@@ -6324,15 +6324,26 @@ void write_map(entity *mapent)
                                
 
       scoreText = new textbox(renderer, "Yes", 1700 * g_fontsize, 0, 0, 0.9);
-      scoreText->boxWidth = 0.95;
+      scoreText->boxWidth = 0;
       scoreText->width = 0.95;
       scoreText->boxHeight = 0;
-      scoreText->boxX = 0.05;
-      scoreText->boxY = 1 - 0.15;
+      scoreText->boxX = 0.2;
+      scoreText->boxY = 1-0.1;
       scoreText->worldspace = 1;
-      scoreText->align = 0; // center
+      scoreText->align = 1; // right
       scoreText->dropshadow = 1;
       scoreText->layer0 = 1;
+
+      systemClock = new textbox(renderer, "Yes", 1700 * g_fontsize, 0, 0, 0.9);
+      systemClock->boxWidth = 1;
+      systemClock->width = 0.95;
+      systemClock->boxHeight = 0;
+      systemClock->boxX = 1 -0.2;
+      systemClock->boxY = 1-0.1;
+      systemClock->worldspace = 1;
+      systemClock->align = 2; // left
+      systemClock->dropshadow = 1;
+      systemClock->layer0 = 1;
 
 
       inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
@@ -6364,7 +6375,7 @@ void write_map(entity *mapent)
       healthText->width = 0.95;
       healthText->boxHeight = 0;
       healthText->boxX = 0.05;
-      healthText->boxY = 0.3;
+      healthText->boxY = 0.15; //0.3 to get it under the heart
       healthText->worldspace = 1;
       healthText->show = 1;
       healthText->align = 0;
@@ -6418,7 +6429,18 @@ void write_map(entity *mapent)
 
   void adventureUI::initFullUI() {
 
-    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0, 0.72, 0.18, 1, -15);
+//    thoughtPicture = new ui(renderer, "static/ui/brain9patch.bmp", 0.82, -0.09, 0.23, 1, -15);
+//    thoughtPicture->persistent = 1;
+//    thoughtPicture->heightFromWidthFactor = 1;
+//    thoughtPicture->show = 1;
+//    thoughtPicture->framewidth = 410;
+//    thoughtPicture->frameheight = 465;
+//    thoughtPicture->layer0 = 1;
+//    thoughtPicture->glideSpeed = 0.1;
+//    thoughtPicture->widthGlideSpeed = 0.1;
+//    thoughtPicture->priority = -10; //thought is behind everything
+
+    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
     tastePicture->persistent = 1;
     tastePicture->heightFromWidthFactor = 1;
     tastePicture->show = 1;
@@ -6428,18 +6450,25 @@ void write_map(entity *mapent)
     tastePicture->glideSpeed = 0.1;
     tastePicture->widthGlideSpeed = 0.1;
     tastePicture->priority = -10; //taste is behind everything
+    
 
-    hungerPicture = new ui(renderer, "static/ui/hunger.bmp", 0.8, 0.6, 0.25, 1, -15);
-    hungerPicture->persistent = 1;
-    hungerPicture->heightFromWidthFactor = 1;
-    hungerPicture->show = 1;
-    hungerPicture->framewidth = 410;
-    hungerPicture->frameheight = 465;
-    hungerPicture->layer0 = 1;
-    hungerPicture->glideSpeed = 0.1;
-    hungerPicture->widthGlideSpeed = 0.1;
-    hungerPicture->priority = -10; //hunger is behind everything
+    adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
+    adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
 
+//    hungerPicture = new ui(renderer, "static/ui/hunger.bmp", 0.8, 0.6, 0.25, 1, -15);
+//    hungerPicture->persistent = 1;
+//    hungerPicture->heightFromWidthFactor = 1;
+//    hungerPicture->show = 1;
+//    hungerPicture->framewidth = 410;
+//    hungerPicture->frameheight = 465;
+//    hungerPicture->layer0 = 1;
+//    hungerPicture->glideSpeed = 0.1;
+//    hungerPicture->widthGlideSpeed = 0.1;
+//    hungerPicture->priority = -10; //hunger is behind everything
+//    hungerPicture->show = 0;
+    
+    adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
+    adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
 
     healthPicture = new ui(renderer, "static/ui/health.bmp", -0.04, -0.09, 0.25, 1, -15);
     healthPicture->persistent = 1;

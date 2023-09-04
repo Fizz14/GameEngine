@@ -2912,6 +2912,7 @@ class adventureUI {
     ui* healthPicture = 0; //picture of a heart
     ui* hungerPicture = 0; //picture of a heart
     ui* tastePicture = 0; //picture of a tung
+    ui* thoughtPicture = 0; //picture of a brain
 
     //for making the heart shake every now and then
     int heartShakeIntervalMs = 12000;
@@ -2923,6 +2924,7 @@ class adventureUI {
     //for making the heart beat
     int heartbeatDurationMs = 1000;
     int maxHeartbeatDurationMs = 1000;
+    float heartShrinkPercent = 0.01;
 
     //stomach shake (rumbling)
     int stomachShakeIntervalMs = 12000;
@@ -2931,9 +2933,19 @@ class adventureUI {
     int stomachShakeDurationMs = 0;
     int maxstomachShakeDurationMs = 1100;
 
+    //tung shake (swallowing)
+    int tungShakeIntervalMs = 42500; //swallow every 45 seconds, or after eating
+    int tungShakeIntervalRandomMs = 5000;
+    int maxTungShakeIntervalMs = 12000;
+    int tungShakeDurationMs = 0;
+    int maxTungShakeDurationMs = 1100;
+
+
     bool light = 0;
 
     textbox* scoreText = 0;
+
+    textbox* systemClock = 0;
 
     int countEntities = 0; //used now for /lookatall to count how many entities we've looked at
                            
@@ -5007,6 +5019,155 @@ class entity:public actor {
           }
         }
 
+        //we need to detect not if the entity will collide into solid objects with their current
+        //velocity, but if they are within solid objects now
+        //in that case, set velocity to zero and look for a way to "jiggle" the entity
+        //to get them out
+        vector<pair<int,int>> jiggleOptions = { 
+                                                {0,0},
+                                                {0,1},
+                                                {0,-1},
+                                                {1,0},
+                                                {-1,0},
+                                                {1,1},
+                                                {-1,-1},
+                                                {1,-1},
+                                                {-1,1},
+                                                {0,2},
+                                                {0,-2},
+                                                {2,0},
+                                                {-2,0},
+                                                {2,2},
+                                                {-2,-2},
+                                                {2,-2},
+                                                {-2,2}
+                                              };
+        int jiggleOptionIndex = 0;
+        if(!devMode) {
+          for(;;) {
+            //does jiggleOptions[jiggleOptionIndex] work for us?
+            int experimentalXOffset = jiggleOptions[jiggleOptionIndex].first;
+            int experimentalYOffset = jiggleOptions[jiggleOptionIndex].second;
+  
+            bool inCollision = 0;
+  
+            //might be able to delete these two lines
+            layer = max(z /64, 0.0f);
+            layer = min(layer, (int)g_boxs.size() - 1);
+  
+            { //collision checking
+              rect movedbounds = rect(bounds.x + x + experimentalXOffset, bounds.y + y + experimentalYOffset, bounds.width, bounds.height);
+  
+              //check for map collisions
+              for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
+                //don't worry about boxes if we're not even close
+                rect sleepbox = rect(g_boxs[layer].at(i)->bounds.x - 150, g_boxs[layer].at(i)->bounds.y-150, g_boxs[layer].at(i)->bounds.width+300, g_boxs[layer].at(i)->bounds.height+300);
+                if(!RectOverlap(sleepbox, movedbounds)) {continue;}
+                if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
+                  inCollision = 1;
+                  break;
+                }
+  
+              }
+  
+              if(!inCollision) { //shortcut if already in collision
+                //check with solid ents
+                //potentially not perfect, since this doesn't consider their velocities, but
+                //solid ents aren't really supposed to move
+                for (auto n : g_solid_entities) {
+                  if(n == this) {continue;}
+                  if(!n->tangible) {continue;}
+                  //update bounds with new pos
+                  rect thatmovedbounds = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
+                  //uh oh, did we collide with something?
+                  if(RectOverlap(movedbounds, thatmovedbounds)) {
+                    inCollision = 1;
+                    break;
+                  }
+                }
+              }
+  
+  
+              //check for implied slopes
+              //might be much better to just stop xcollide from being set to 1 if grounded
+  //            if(!inCollision) { //shortcut if already in collision
+  //              
+  //              for(auto i : g_impliedSlopes) {
+  //                rect simslope = rect(0,0,0,0);
+  //                
+  //                bool overlapY = RectOverlap(movedbounds, i->bounds);
+  //    
+  //                float heightFactor;
+  //                if(i->bounds.z >= this->z) {
+  //                  heightFactor = 1;
+  //                } else if (this->z - 63 > i->bounds.z) {
+  //                  heightFactor = 0;
+  //                } else {
+  //                  heightFactor = 1 - ((this->z - i->bounds.z) /63);
+  //                }
+  //    
+  //                if(overlapY) {
+  //                  rect simslope = rect(i->bounds.x, i->bounds.y + (16 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
+  //                  if(heightFactor < 0.95 && heightFactor > 0 && RectOverlap(simslope, movedbounds)) {
+  //                    heightFactor = pow(heightFactor, 2);
+  //    
+  //                    if(heightFactor < 0.3) {
+  //                      inCollision = 1;
+  //                    }
+  //                  }
+  //                }
+  //    
+  //                if(heightFactor > 0) {
+  //                  
+  //                  if(overlapY) {
+  //                    bool overlapX = RectOverlap(movedbounds, simslope);
+  //      
+  //                    if(overlapX) {
+  //                      inCollision = 1;
+  //                    }
+  //      
+  //                  } else {
+  //                    movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
+  //                    bool overlapX = RectOverlap(movedbounds, i->bounds);
+  //     
+  //                    if(overlapX) {
+  //                      inCollision = 1;
+  //                    }
+  //      
+  //                  }
+  //                }
+  //              }
+  //            }
+  
+  
+            }
+  
+            if(!inCollision) {
+              //cool, we checked everything and the entity isn't stuck inside a collision
+              //now break and apply the jiggleOption to the ent's position, and they're free!
+              break;
+            }
+   
+  
+            //try the next jiggleOption
+            jiggleOptionIndex++;
+            if(jiggleOptionIndex > jiggleOptions.size() -1) {
+              E("Couldn't jiggle an entity, it's stuck in collisionboxes with solid entities/map geo.");
+              D(this->name);
+  
+            }
+          }
+  
+          if(jiggleOptionIndex != 0) { //this ent will be moved some dist to get it out of collisions
+            this->x += jiggleOptions[jiggleOptionIndex].first;
+            this->y += jiggleOptions[jiggleOptionIndex].second;
+  //          this->xvel = 0;
+  //          this->yvel = 0;
+  //          M("Jiggled an ent out of collisions with solid entities/map geo");
+  //          D(jiggleOptionIndex);
+          }
+        }
+
         rect movedbounds;
         bool ycollide = 0;
         bool xcollide = 0;
@@ -5324,7 +5485,9 @@ class entity:public actor {
                 yvel = 0;
                 xaccel = 0;
                 if(heightFactor < 0.3) {
-                  xcollide = 1;
+                  if(this->z > 1) {
+                    xcollide = 1;
+                  }
                 }
 
 
@@ -5344,7 +5507,9 @@ class entity:public actor {
                 bool overlapX = RectOverlap(movedbounds, simslope);
   
                 if(overlapX) {
-                  xcollide = 1;
+                  if(this->z > 1) {
+                    xcollide = 1;
+                  }
                 }
   
               } else {
@@ -5352,7 +5517,9 @@ class entity:public actor {
                 bool overlapX = RectOverlap(movedbounds, i->bounds);
  
                 if(overlapX) {
-                  xcollide = 1;
+                  if(this->z > 1) {
+                    xcollide = 1;
+                  }
                 }
   
               }
@@ -7490,6 +7657,7 @@ class ui {
     bool is9patch = 0;
     int patchwidth = 256; //213
     float patchscale = 0.4;
+    float patchfactor = 1;
 
     bool persistent = 0;
     int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
@@ -7560,7 +7728,7 @@ class ui {
             patchscale = WIN_WIDTH;
             patchscale /= 4000;
           }
-          int scaledpatchwidth = patchwidth * patchscale;
+          int scaledpatchwidth = patchwidth * patchscale * patchfactor;
           int i = 0;
           while (i < ibound) {
             int j = 0;

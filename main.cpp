@@ -2060,11 +2060,16 @@ int WinMain()
     if (!inPauseMenu && g_showHUD)
     {
       // !!! segfaults on mapload sometimes
-      adventureUIManager->healthText->updateText(to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), -1, 0.9);
+      
+      SDL_Color useThisColor = g_healthtextcolor;
+      if(protag->hp < 5) {
+        useThisColor = g_healthtextlowcolor;
+      }
+      adventureUIManager->healthText->updateText(to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), -1, 0.9,  useThisColor);
       adventureUIManager->healthText->show = 1;
 
-      adventureUIManager->hungerText->updateText(to_string((int)((float)(min(g_foodpoints, g_maxVisibleFoodpoints) * 100) / (float)g_maxVisibleFoodpoints)) + '%', -1, 0.9);
-      adventureUIManager->hungerText->show = 1;
+      //adventureUIManager->hungerText->updateText(to_string((int)((float)(min(g_foodpoints, g_maxVisibleFoodpoints) * 100) / (float)g_maxVisibleFoodpoints)) + '%', -1, 0.9);
+      adventureUIManager->hungerText->show = 0;
    
       //animate the guts sometimes
       //heart shake
@@ -2095,37 +2100,60 @@ int WinMain()
 //
 //      }
 
-      //stomach shake
-      adventureUIManager->stomachShakeIntervalMs -= elapsed;
-      if(adventureUIManager->stomachShakeIntervalMs < 0) {
-        //make the stomach shake back and forth briefly
-        adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
+      //stomach shaking
+//      adventureUIManager->stomachShakeIntervalMs -= elapsed;
+//      if(adventureUIManager->stomachShakeIntervalMs < 0) {
+//        //make the stomach shake back and forth briefly
+//        adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
+//
+//        float hungerratio = ((float)(min(g_foodpoints, g_maxVisibleFoodpoints) / (float)g_maxVisibleFoodpoints));
+//        D(hungerratio);
+//
+//        //stomach grumbles less when the protag is less hungry
+//        adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs * hungerratio + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
+//      }
 
-        float hungerratio = ((float)(min(g_foodpoints, g_maxVisibleFoodpoints) / (float)g_maxVisibleFoodpoints));
-        D(hungerratio);
+//      if(adventureUIManager->stomachShakeDurationMs > 0) {
+//        adventureUIManager->stomachShakeDurationMs -= elapsed;
+//
+//        if(adventureUIManager->stomachShakeDurationMs % 400 > 200) {
+//          //move left
+//          adventureUIManager->hungerPicture->targetx = 0.8 - 0.005;
+//
+//        } else {
+//          //move right
+//          adventureUIManager->hungerPicture->targetx = 0.8 + 0.005;
+//
+//        }
+//
+//      } else {
+//        //move the stomach back to its normal position
+//        adventureUIManager->hungerPicture->targetx = 0.8;
+//
+//      }
 
-        //stomach grumbles less when the protag is less hungry
-        adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs * hungerratio + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
-      }
-
-      if(adventureUIManager->stomachShakeDurationMs > 0) {
-        adventureUIManager->stomachShakeDurationMs -= elapsed;
-
-        if(adventureUIManager->stomachShakeDurationMs % 400 > 200) {
-          //move left
-          adventureUIManager->hungerPicture->targetx = 0.8 - 0.005;
-
-        } else {
-          //move right
-          adventureUIManager->hungerPicture->targetx = 0.8 + 0.005;
-
-        }
-
-      } else {
-        //move the stomach back to its normal position
-        adventureUIManager->hungerPicture->targetx = 0.8;
-
-      }
+//      //tongue swallowing
+//      adventureUIManager->tungShakeIntervalMs -= elapsed;
+//      if(adventureUIManager->tungShakeIntervalMs < 0) {
+//        //make the tung shake back and forth briefly
+//        adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
+//
+//        adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
+//      }
+//
+//      if(adventureUIManager->tungShakeDurationMs > 0) {
+//        adventureUIManager->tungShakeDurationMs -= elapsed;
+//
+//        //move tung up
+//        adventureUIManager->tastePicture->targety = 0.75 - 0.01;
+//        adventureUIManager->tastePicture->targetx = 0 - 0.01;
+//
+//      } else {
+//        //move the tung back to its normal position
+//        adventureUIManager->tastePicture->targetx = 0;
+//        adventureUIManager->tastePicture->targety = 0.75;
+//
+//      }
 
       //heart beating
       adventureUIManager->heartbeatDurationMs -= elapsed;
@@ -2135,7 +2163,7 @@ int WinMain()
 
       } else {
           //contract
-          adventureUIManager->healthPicture->targetwidth = 0.25 - 0.015;
+          adventureUIManager->healthPicture->targetwidth = 0.25 - adventureUIManager->heartShrinkPercent;
 
       }
       if(adventureUIManager->heartbeatDurationMs < 0) {
@@ -2158,12 +2186,12 @@ int WinMain()
     }
 
     //get hungry
-    if(g_currentFoodpointsDecreaseIntervalMs < 0) {
-      g_currentFoodpointsDecreaseIntervalMs = g_foodpointsDecreaseIntervalMs;
-      g_foodpoints -= g_foodpointsDecreaseAmount;
-      if(g_foodpoints < 0) { g_foodpoints = 0; }
-    }
-    g_currentFoodpointsDecreaseIntervalMs -= elapsed;
+//    if(g_currentFoodpointsDecreaseIntervalMs < 0) {
+//      g_currentFoodpointsDecreaseIntervalMs = g_foodpointsDecreaseIntervalMs;
+//      g_foodpoints -= g_foodpointsDecreaseAmount;
+//      if(g_foodpoints < 0) { g_foodpoints = 0; }
+//    }
+//    g_currentFoodpointsDecreaseIntervalMs -= elapsed;
 
     // move the healthbar properly to the protagonist
     //rect obj; // = {( , (((protag->y - ((protag->height))) - protag->z * XtoZ) - g_camera.y) * g_camera.zoom, (protag->width * g_camera.zoom), (protag->height * g_camera.zoom))};
@@ -2678,6 +2706,10 @@ int WinMain()
         if(devMode == 0) {
           bool m = CylinderOverlap(protag->getMovedBounds(), x->getMovedBounds());
           if(m) {
+            //make tung image do swallow animation
+            adventureUIManager->tungShakeIntervalMs = 500; //swallow 500ms after eating this
+            adventureUIManager->tungShakeDurationMs = 0;
+            
             
             playSound(4, g_pelletCollectSound, 0);
             x->usingTimeToLive = 1;
@@ -2813,6 +2845,24 @@ int WinMain()
 
     adventureUIManager->scoreText->updateText(scorePrint, -1, 1);
     adventureUIManager->showScoreUI();
+
+    //system clock display
+    string systemTimePrint = "";
+    time_t ttime = time(0);
+    tm *local_time = localtime(&ttime);
+    
+    int useHour = local_time->tm_hour;
+    if(useHour == 0) {useHour = 12;}
+    systemTimePrint+= to_string(useHour%12) + ":" + to_string(local_time->tm_min);
+    
+    if(local_time->tm_hour >=12){
+      systemTimePrint += " PM";
+    } else {
+      systemTimePrint += " AM";
+    }
+
+    adventureUIManager->systemClock->updateText(systemTimePrint, -1, 1);
+
 
     //show dijkstra debugging sprites
 //    if(devMode && g_dijkstraEntity != nullptr) {
@@ -4326,19 +4376,28 @@ void getInput(float &elapsed)
       }
 
     } else if (input[13] && !oldinput[13] && g_backpack.at(g_backpackIndex)->cooldownMs <= 0) { //there is an item to use, and it doesn't make the protag spin
-      usable* thisUsable = g_backpack.at(g_backpackIndex); 
-      thisUsable->cooldownMs = thisUsable->maxCooldownMs;
-      M("Used item");
-      //thisUsable->cooldownMs = thisUsable->maxCooldownMs;
+      
+      //is the player too hungry to use an item?
+      if(g_foodpoints < g_starvingFoodpoints) {
+        //make the stomach shake
+        adventureUIManager->stomachShakeIntervalMs = 0;
+        adventureUIManager->stomachShakeDurationMs = 0;
 
-      //make a scriptcaller
-      adventureUI scripter(renderer, 1);
-      scripter.playersUI = 0;
-      scripter.useOwnScriptInsteadOfTalkersScript = 1;
-      scripter.talker = g_backpackNarrarator;
-      scripter.ownScript = thisUsable->script;
-      scripter.dialogue_index = -1;
-      scripter.continueDialogue();
+      } else {
+        
+        usable* thisUsable = g_backpack.at(g_backpackIndex); 
+        thisUsable->cooldownMs = thisUsable->maxCooldownMs;
+  
+        //make a scriptcaller
+        adventureUI scripter(renderer, 1);
+        scripter.playersUI = 0;
+        scripter.useOwnScriptInsteadOfTalkersScript = 1;
+        scripter.talker = g_backpackNarrarator;
+        scripter.ownScript = thisUsable->script;
+        scripter.dialogue_index = -1;
+        scripter.continueDialogue();
+
+      }
 
     }
   } else if (inPauseMenu && input[13] && !oldinput[13]) {
