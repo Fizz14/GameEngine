@@ -115,6 +115,10 @@ vector<cshadow *> g_shadows;
 
 vector<entity *> g_entities;
 
+vector<entity *> g_boardableEntities;
+
+vector<entity*> g_ai;
+
 vector<entity *> g_pellets; //for making pellets bounce and squash
 
 vector<entity *> g_solid_entities;
@@ -198,8 +202,11 @@ map<string, int> enemiesMap; // stores (file,cost) for enemies to be spawned pro
 int g_budget = 0;						 // how many points this map can spend on enemies;
 
 bool boxsenabled = 1; // affects both map editor and full game. Dont edit here
+bool g_collisionResolverOn = 1; //also referred to as "jiggling" ents out of solid collisions
+bool g_showCRMessages = 0; //collisionResolver messages
 
 bool onionmode = 0; // hide custom graphics
+
 bool genericmode = 0;
 bool freecamera = 0;
 bool devMode = 0;
@@ -296,6 +303,7 @@ int g_brightness = 100; // brightness of map
 // x length times x_z_ratio is proper screen length in z
 float XtoZ = 0.496; // 4/2.31, arctan (4/ 3.21) = 60 deg
 float XtoY = 0.866;
+float YtoX = 1/XtoY;
 float g_ratio = 1.618;
 bool transition = 0;
 int g_walldarkness = 55;			// 65, 75. could be controlled by the map unless you get crafty with recycling textures across maps
@@ -305,6 +313,7 @@ float g_extraShadowSize = 20; // how much bigger are shadows in comparison to th
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
 bool g_showHealthbar = 0;
+effectIndex *smokeEffect;
 
 // for fow
 SDL_Texture *result;
@@ -450,8 +459,8 @@ float effectiveSummationXVel = 0;
 float effectiveSummationYVel = 0;
 float savedPrecedePlayerX = 0;
 float savedPrecedePlayerY = 0;
-int maxPrecedeCalcMs = 8000;
-int precedeCalcMs = 0; //counts up to maxPrecedeCalcMs, and at that point, resets summationNVel. Old values are passed to oldSummationNVel
+int maxNavCalcMs = 4000;
+int navCalcMs = 0; //counts up to maxPrecedeCalcMs, and at that point, resets summationNVel. Old values are passed to oldSummationNVel
 
 //so these ones are quite important, these are for
 //precisely how far ahead the monster wishes to plan,
@@ -482,6 +491,8 @@ int g_whichUsableSelectedIndex = 0;
 vector<usable*> g_backpack;
 adventureUI* g_backpackScriptCaller = nullptr;
 entity *g_backpackNarrarator; //script callers should have thier own ent to not mess up dialogue indexes (dumb!)
+const float g_backpackHorizontalOffset = 0.35;
+const float g_hotbarX = 0.45; //don't change this, to move it horizontally change g_backpackHorizontalOffset
 
 int g_backpackIndex = 0; //set to 1 if the player is holding down the button
 int g_selectingUsable = 0;
@@ -560,6 +571,12 @@ int g_currentPelletsCollected = 0; //how many they have
 int g_pelletsNeededToProgress = 1; //player has beaten the level, just needs to leave
 vector <std::pair<int, string>> g_pelletGoalScripts; //each entry contains the path to a script which
 bool g_showPellets = 1;
+
+//for the boarding to entities
+entity* g_boardedEntity = 0;
+int g_protagIsWithinBoardable = 0;
+int g_boardingCooldownMs = 0;
+const int g_maxBoardingCooldownMs = 2000;
 
 //I want the objective to be able to be set to fade away if the player is moving and 
 //fade in if the player is standing still, to help them if they are lost
@@ -681,6 +698,10 @@ camera g_camera(0, 0);
 entity *protag;
 entity *mainProtag; // for letting other entities use this ones inventory; game ends when this one dies
 entity * g_hog=0;
+entity* g_behemoth0=0;
+entity* g_behemoth1=0;
+entity* g_behemoth2=0;
+entity* g_behemoth3=0;
 
 // zoom is planned to be 1.0 for a resolution of 1920 pixels across
 float g_defaultZoom = 0.85;
@@ -1230,6 +1251,25 @@ int yesNoPrompt(string msg)
 // TUDO:
 // set minimum window width and height to prevent crashes wenn the window is very small
 
-effectIndex *smokeEffect;
+
+
+template <class T>
+T* getNodeByPos(vector<T*> array, int x, int y) {
+  float min_dist = 0;
+  T* ret = nullptr;
+  bool flag = 1;
+
+  //todo check for boxs
+  if(array.size() == 0) {return nullptr;}
+  for (long long unsigned int i = 0; i < array.size(); i++) {
+    float dist = Distance(x, y, array[i]->x, array[i]->y);
+    if(dist < min_dist || flag) {
+      min_dist = dist;
+      ret = array[i];
+      flag = 0;
+    }
+  }
+  return ret;
+}
 
 #endif

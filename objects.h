@@ -156,6 +156,10 @@ class navNode {
     vector<float> costs;
     float costFromSource = 0; //updated with dijkstras algorithm
     navNode* prev = nullptr; //updated with dijkstras algorithm
+    
+    int costFromUsage = 0; //used to make nodes less appealing if
+                             //another entity is using them
+
     string name = "";
     bool enabled = 1; //closing doors can disable navNodes, so that entities will try to find another way
 
@@ -1606,10 +1610,18 @@ class actor {
 
 
     int getOriginX() {
+//      if(cachedOriginX == numeric_limits<float>::infinity()) {
+//        cachedOriginX = x + bounds.x + bounds.width/2;
+//      }
+//      return cachedOriginX;
       return  x + bounds.x + bounds.width/2;
     }
 
     int getOriginY() {
+//      if(cachedOriginY == numeric_limits<float>::infinity()) {
+//        cachedOriginY = y + bounds.y + bounds.height/2;
+//      }
+//      return cachedOriginY;
       return y + bounds.y + bounds.height/2;
     }
 
@@ -2904,8 +2916,14 @@ class adventureUI {
     ui* inventoryB = 0; //small box, which will let the player quit or close the inventory
 
     ui* crosshair = 0; //for guiding player to objectives
-    
-                        
+   
+    //a ui element for each behemoth, for pointing towards them similar to the crosshair
+    ui* b0_element = 0; 
+    ui* b1_element = 0;
+    ui* b2_element = 0;
+    ui* b3_element = 0;
+
+
     textbox* healthText = 0;
     textbox* hungerText = 0;
 
@@ -2953,6 +2971,9 @@ class adventureUI {
                     //when the player holds the inventory button, it widens and 
                     //the player can select a different item with the movement keys
    
+    ui* hotbarFocus = 0; //I can't remember to choose my item based on the center one, 
+                         //so I need this
+
     ui* thisUsableIcon = 0;
     ui* nextUsableIcon = 0;
     ui* prevUsableIcon = 0;
@@ -2980,14 +3001,24 @@ class adventureUI {
 
     //positions for gliding transition icons to 
     vector<std::pair<float, float>> hotbarPositions = {
-      {0.55, 1},
-      {0.55, 1},
-      {0.55, 0.85},
-      {0.45, 0.85},
-      {0.35, 0.85},
-      {0.35, 1},
-      {0.35, 1}
+      {0.55 + g_backpackHorizontalOffset, 1},
+      {0.55 + g_backpackHorizontalOffset, 1},
+      {0.55 + g_backpackHorizontalOffset, 0.85},
+      {0.45 + g_backpackHorizontalOffset, 0.85},
+      {0.35 + g_backpackHorizontalOffset, 0.85},
+      {0.35 + g_backpackHorizontalOffset, 1},
+      {0.35 + g_backpackHorizontalOffset, 1}
     };
+    //these were for when the bar was centered
+//    vector<std::pair<float, float>> hotbarPositions = {
+//      {0.55, 1},
+//      {0.55, 1},
+//      {0.55, 0.85},
+//      {0.45, 0.85},
+//      {0.35, 0.85},
+//      {0.35, 1},
+//      {0.35, 1}
+//    };
 
     vector<ui*> hotbarTransitionIcons;
 
@@ -3211,6 +3242,12 @@ class entity:public actor {
 
     //int dialogue_index = 0; //we really don't want to use a dialogue_index in 2023
 
+    //"cache" values for originX and originY to save time
+    int cachedOriginX = 0;
+    int cachedOriginY = 0;
+
+    bool cachedOriginValsAreGood = 0;
+
     //sounds
     Mix_Chunk* footstep;
     Mix_Chunk* footstep2;
@@ -3311,7 +3348,7 @@ class entity:public actor {
     int msTilNextFrame = 0; //accumulater, when it reaches msPerFrame we advance frame
     int frameInAnimation = 0; //current frame in ANIMATION
     bool loopAnimation = 1; //start over after we finish
-    int animation = 4; //current animation, or the column of the spritesheet
+    int animation = 4; //current animation, or the row of the spritesheet
     int defaultAnimation = 4;
     bool scriptedAnimation = 0; //0 means the character is animated based on movement. 1 means the character is animated based on a script.
     int reverseAnimation = 0; //step backwards with frames instead of forwards, and end
@@ -3356,6 +3393,12 @@ class entity:public actor {
     bool isPellet = 0; //this is turned off
     bool wasPellet = 0; //this is true if something was ever a pellet
 
+    //for boarding
+    bool isBoardable = 0;
+    bool usesBoardingScript = 0;
+    string boardingScriptName;
+    vector<string> boardingScript;
+
     //change pixel drawing method 
     bool blurPixelsForScaling = 0;
  
@@ -3380,6 +3423,7 @@ class entity:public actor {
     bool invincible = 0;
     //float invincibleMS = 0; //ms before setting invincible to 0
     bool agrod = 0; //are they fighting a target?
+    float hearingRadius = 0;
     bool missile = 0; //should we directly pursue an entity like a missle?
     bool phasedMovement = 0; //do walls stop this ent?
     bool fragileMovement = 0; //do walls destroy this ent?
@@ -3442,15 +3486,17 @@ class entity:public actor {
     
     float autoAgroMs = 0; //counts up if the player is in sight, counts down otherwise. If it reaches autoAgroTime (from config) the ent is agrod
 
-    int chasingMethod = 0;
+    int customMovement = 0;
     // 0 - chase
     // 1 - precede
-    // random movement (roaming) is used with travel nodes, and scripted de-agroing
+    // 2 - corner
+    // 3 - random
+
+    int movementTypeSwitchRadius = 64 * 5; //if closer than this to target, chase them, regardless of what custom movement setting is
 
     //set from the config, larger values make the 
     //monster precede the player by greater distance
     //don't go too high
-    float precedeConstant = 1;
 
 
     float enrageSpeedbuff = 0;
@@ -3571,10 +3617,13 @@ class entity:public actor {
         spritefilevar = "static/sprites/" + temp + ".bmp";
       }
 
+
       //check local folder
       if(fileExists("maps/" + g_mapdir + "/sprites/" + filename + ".bmp")) {spritefilevar = "maps/" + g_mapdir + "/sprites/" + filename + ".bmp";}
 
       //D(spritefilevar);
+      
+      if(onionmode) {spritefilevar = "engine/onion.bmp";}
 
       const char* spritefile = spritefilevar.c_str();
       float size;
@@ -3970,6 +4019,38 @@ class entity:public actor {
       file >> comment;
       file >> isPellet;
 
+      //boardable?
+      file >> comment;
+      file >> isBoardable;
+      
+      if(isBoardable) {
+        g_boardableEntities.push_back(this);
+
+      }
+      
+      //script-on-boarding
+      file >> comment;
+      file >> boardingScriptName;
+
+      if(boardingScriptName != "0") {
+        usesBoardingScript = 1;
+        string txtfilename = "";
+        if (fileExists("maps/" + g_mapdir + "/scripts/" + boardingScriptName + ".txt")) {
+          txtfilename = "maps/" + g_mapdir + "/scripts/" + boardingScriptName + ".txt";
+        } else {
+          txtfilename = "static/scripts/" + boardingScriptName + ".txt";
+        }
+        ifstream nfile(txtfilename);
+        string line;
+
+        while(getline(nfile, line)) {
+          boardingScript.push_back(line);
+        }
+        parseScriptForLabels(boardingScript);
+
+      }
+
+
       if(isPellet) {
         g_pellets.push_back(this);
         bounceindex = rand() % 8;
@@ -4000,7 +4081,7 @@ class entity:public actor {
         AIloadstr = "static/ai/" + filename + ".ai";
       }
       if(this->isAI) {
-
+        g_ai.push_back(this);
         ifstream stream;
         const char* plik = AIloadstr.c_str();
         stream.open(plik);
@@ -4061,17 +4142,32 @@ class entity:public actor {
         stream >> comment; //ai_index
         stream >> this->aiIndex;
 
+        if(aiIndex == 0) {
+          g_behemoth0 = this;
+        } else if(aiIndex == 1) {
+          g_behemoth1 = this;
+        } else if(aiIndex == 2) {
+          g_behemoth2 = this;
+        } else if(aiIndex == 3) {
+          g_behemoth3 = this;
+        }
+
         stream >> comment; //auto_Agro_radius
         stream >> autoAgroRadius;
 
         stream >> comment; //auto_agro_time
         stream >> maxAutoAgroTime;
 
-        stream >> comment; //chasing_method
-        stream >> chasingMethod;
+        stream >> comment; //hearing_radius
+        stream >> hearingRadius;
+        hearingRadius *= 64;
 
-        stream >> comment; //precede_constant
-        stream >> precedeConstant;
+        stream >> comment; //chasing_method
+        stream >> customMovement;
+
+        stream >> comment;
+        stream >> movementTypeSwitchRadius;
+        movementTypeSwitchRadius *= 64;
 
         stream >> comment; //enrage_speed_bonus
         stream >> enrageSpeedbuff;
@@ -4112,6 +4208,10 @@ class entity:public actor {
 
         //!!! do something else if there's none, use a generic image or smt
         spritefilevar = "static/items/" + texturename + ".bmp";
+        
+
+        if(onionmode) {spritefilevar = "engine/onion.bmp";}
+
         SDL_Surface* image = IMG_Load(spritefilevar.c_str());
         texture = SDL_CreateTextureFromSurface(renderer, image);
         //M(spritefilevar );
@@ -4325,12 +4425,31 @@ class entity:public actor {
 
       }
 
-      float getOriginX() {
-        return x + bounds.x + bounds.width/2;
-      }
+//      float getOriginX() {
+//        return x + bounds.x + bounds.width/2;
+//      }
+//
+//      float getOriginY() {
+//        return y + bounds.y + bounds.height/2;
+//      }
 
-      float getOriginY() {
-        return y + bounds.y + bounds.height/2;
+      int getOriginX() {
+        if(!cachedOriginValsAreGood) {
+          cachedOriginX = x + bounds.x + bounds.width/2;
+          cachedOriginY = y + bounds.y + bounds.height/2;
+          cachedOriginValsAreGood = 1;
+        }
+        return cachedOriginX;
+        //return  x + bounds.x + bounds.width/2;
+      }
+  
+      int getOriginY() {
+        if(!cachedOriginValsAreGood ) {
+          cachedOriginX = x + bounds.x + bounds.width/2;
+          cachedOriginY = y + bounds.y + bounds.height/2;
+          cachedOriginValsAreGood = 1;
+        }        return cachedOriginY;
+        //return y + bounds.y + bounds.height/2;
       }
 
       rect getMovedBounds() {
@@ -4636,8 +4755,8 @@ class entity:public actor {
         int cacheY = getOriginY();
 
         if(useVelocity) {
-          cacheX += xaccel * 3;
-          cacheY += yaccel * 3;
+          cacheX += xvel * 15; //this might need to be parametrized and unique to each behemoth
+          cacheY += yvel * 15;
         }
 
         //todo check for boxs
@@ -4658,7 +4777,9 @@ class entity:public actor {
       //returns a pointer to a door that the player used
       virtual door* update(vector<door*> doors, float elapsed) {
         if(!tangible) {return nullptr;}
-
+        
+        //unset these so they update
+        cachedOriginValsAreGood = 0;
         
         if(usingTimeToLive) {
           timeToLiveMs -= elapsed;
@@ -5043,7 +5164,7 @@ class entity:public actor {
                                                 {-2,2}
                                               };
         int jiggleOptionIndex = 0;
-        if(!devMode) {
+        if(boxsenabled && g_collisionResolverOn) {
           for(;;) {
             //does jiggleOptions[jiggleOptionIndex] work for us?
             int experimentalXOffset = jiggleOptions[jiggleOptionIndex].first;
@@ -5152,19 +5273,25 @@ class entity:public actor {
             //try the next jiggleOption
             jiggleOptionIndex++;
             if(jiggleOptionIndex > jiggleOptions.size() -1) {
-              E("Couldn't jiggle an entity, it's stuck in collisionboxes with solid entities/map geo.");
-              D(this->name);
+              if(g_showCRMessages) {
+                E("Couldn't jiggle an entity, it's stuck in collisionboxes with solid entities/map geo.");
+                D(this->name);
+              }
+              break;
   
             }
           }
   
-          if(jiggleOptionIndex != 0) { //this ent will be moved some dist to get it out of collisions
+          if(jiggleOptionIndex != 0 && jiggleOptionIndex < jiggleOptions.size() - 1) { //this ent will be moved some dist to get it out of collisions
             this->x += jiggleOptions[jiggleOptionIndex].first;
             this->y += jiggleOptions[jiggleOptionIndex].second;
   //          this->xvel = 0;
   //          this->yvel = 0;
-  //          M("Jiggled an ent out of collisions with solid entities/map geo");
-  //          D(jiggleOptionIndex);
+
+            if(g_showCRMessages) {
+              M("Jiggled an ent out of collisions with solid entities/map geo");
+              D(jiggleOptionIndex);
+            }
           }
         }
 
@@ -5472,6 +5599,11 @@ class entity:public actor {
               heightFactor = 1 - ((this->z - i->bounds.z) /63);
             }
 
+
+            float yDiff = 0; //this is used to compare the ycoords of the ent and the slope, so if the ent has lower y than the slope, we can just treat it as a wall
+            yDiff = (this->y + bounds.y + this->bounds.height) - i->bounds.y;
+
+
             if(overlapY) {
               rect simslope = rect(i->bounds.x, i->bounds.y + (16 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
               if(heightFactor < 0.95 && heightFactor > 0 && RectOverlap(simslope, movedbounds)) {
@@ -5507,7 +5639,7 @@ class entity:public actor {
                 bool overlapX = RectOverlap(movedbounds, simslope);
   
                 if(overlapX) {
-                  if(this->z > 1) {
+                  if(this->z > 1 || yDiff < 10) {
                     xcollide = 1;
                   }
                 }
@@ -5517,7 +5649,7 @@ class entity:public actor {
                 bool overlapX = RectOverlap(movedbounds, i->bounds);
  
                 if(overlapX) {
-                  if(this->z > 1) {
+                  if(this->z > 1 || yDiff > 10) {
                     xcollide = 1;
                   }
                 }
@@ -5793,9 +5925,31 @@ class entity:public actor {
 
           zaccel -= g_gravity * ((double) elapsed / 256.0);
           grounded = 0;
+
+
         } else {
           // !!! maybe revisit this to let "character" entities have fallsounds
-          if(grounded == 0 && this == protag) {
+          if(grounded == 0 && this == protag && g_boardingCooldownMs < 0) {
+            //need to check if we landed in a boardable entity
+            
+            rect thisMovedBounds = rect(this->bounds.x + this->x, this->bounds.y + this->y, this->bounds.width, this->bounds.height);
+            for(auto n : g_boardableEntities) {
+              if(n->tangible && n->grounded) {
+                rect thatMovedBounds = {n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height};
+                if(RectOverlap(thisMovedBounds, thatMovedBounds) && (abs(this->z - n->z) < 32 )) {
+                  M("Protag boarded entity named " + n->name);
+                  g_protagIsWithinBoardable = 1;
+                  g_boardedEntity = n;
+                  protag->tangible = 0;
+                  protag->setOriginX(n->getOriginX());
+                  protag->setOriginY(n->getOriginY());
+                  smokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z);
+                  break;
+                }
+              }
+
+            }
+
             //play landing sound
             playSound(-1, g_land, 0);
 
@@ -6259,6 +6413,7 @@ class entity:public actor {
           //here's the code for roaming/patrolling
           //we aren't agrod.
           if(traveling) {
+            M("This entity is traveling");
             if(readyForNextTravelInstruction && g_setsOfInterest.at(poiIndex).size() != 0) {
               readyForNextTravelInstruction = 0;
               if(myTravelstyle == roam) {
@@ -6278,6 +6433,8 @@ class entity:public actor {
                 readyForNextTravelInstruction = 1;
               }
             }
+
+              BasicNavigate(Destination);
           }
         }
 
@@ -6329,40 +6486,67 @@ class entity:public actor {
           }
 
           
-        } else {
+        } else if (target != nullptr && agrod) {
           // monster movement 
           
           float distToTarget = 10000;
-          if(target != nullptr) {
-            angleToTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
-            angleToTarget = wrapAngle(angleToTarget);
-            distToTarget = XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY());
-          }
+          angleToTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
+          angleToTarget = wrapAngle(angleToTarget);
+          distToTarget = XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY());
           g_dijkstraEntity = this;
 
-          if((target !=  nullptr && ( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, true)) )  || (distToTarget < 100) )) && chasingMethod == 0) {
-          //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
-          targetSteeringAngle = angleToTarget;
+          //chase if custommovement type is 0 or we are within movementTypeSwitchRadius
+          //to target
+          if(customMovement == 0 || distToTarget < movementTypeSwitchRadius)
+          { //blindrun movement
+            if(( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, true)) )  || (distToTarget < 100) ) ) {
+            //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
+            targetSteeringAngle = angleToTarget;
+  
+            if( distToTarget > this->hisweapon->attacks[hisweapon->combo]->range) {
+              forwardsVelocity = xagil;
+            } else {
+              //stop if in range
+              forwardsVelocity = 0;
+            }
 
-          if( distToTarget > this->hisweapon->attacks[hisweapon->combo]->range) {
-            forwardsVelocity = xagil;
+            //not calling BasicNavigate, so we need to set nearby nodes to indicate that they're being used
+            //we have LOS so this trick really isn't a hack
+            
+            int xval = getOriginX() + 15 * xvel;
+            int yval = getOriginY() + 15 * yvel;
+            navNode* closestNode = getNodeByPos(g_navNodes, xval, yval);
+            for(auto u : closestNode->friends) {
+              u->costFromUsage = 1000000;
+//              for(auto y : u->friends) {
+//                y->costFromUsage = 10000;
+//              }
+            }
+
+  
+            //recalculate current when we lose los
+            current = nullptr;
+            dest = nullptr;
+            Destination = nullptr;
+            timeSinceLastDijkstra = -1;
+  
+  
           } else {
-            //stop if in range
-            forwardsVelocity = 0;
+            if(Destination != nullptr) {
+              BasicNavigate(Destination);
+            }
           }
-
-          //recalculate current when we lose los
-          current = nullptr;
-          dest = nullptr;
-          Destination = nullptr;
-          timeSinceLastDijkstra = -1;
-
-
-        } else {
+        } else if( customMovement == 1) 
+        { //precede
+          
+          //BasicNavigate();
+        } else if(customMovement == 2)
+        { //corner
           if(Destination != nullptr) {
             BasicNavigate(Destination);
           }
         }
+
 
         //walking ai
         if(agrod) {
@@ -6423,40 +6607,22 @@ class entity:public actor {
               }
 
               
-              //this code is for having the monster run straight at the player
-              //but I will soon add additional methods of chasing
-              switch(chasingMethod) {
-                case(0): { //run at them
-                  vector<int> ret;
-                  if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
-                    ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
-                   
-                    Destination = getNodeByPosition(ret[0], ret[1]);
-                  } else {
-                    ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
+              vector<int> ret;
+              if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
+                ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
+               
+                Destination = getNodeByPosition(ret[0], ret[1]);
+              } else {
+                ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), this->hisweapon->attacks[hisweapon->combo]->range, index);
       
-                    if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
+                if( LineTrace(ret[0], ret[1], target->getOriginX(), target->getOriginY(), false, 30, 0, 10, 0) && abs(target->z- verticalRayCast(ret[0], ret[1])) < 32 ) {
       
-                      Destination = getNodeByPosition(ret[0], ret[1]);
-                    } else {
-                      //Can't get our full range, so use the values in LineTraceX and LineTraceY
-                      extern int lineTraceX, lineTraceY;
-                      Destination = getNodeByPosition(lineTraceX, lineTraceY);
-                    }
-                  }
-                  break;
+                  Destination = getNodeByPosition(ret[0], ret[1]);
+                } else {
+                  //Can't get our full range, so use the values in LineTraceX and LineTraceY
+                  extern int lineTraceX, lineTraceY;
+                  Destination = getNodeByPosition(lineTraceX, lineTraceY);
                 }
-
-                case(1): { // precede
-                    //use a node where the player may go soon
-                    //How will I code this?
-                    precedeProtagNode = getNodeByPosition(protag->x + (effectiveSummationXVel * precedeConstant), protag->y + (effectiveSummationYVel * precedeConstant));
-
-                    Destination = precedeProtagNode;
-                  
-                  break;
-                }
-                
               }
               
             }
@@ -6499,8 +6665,11 @@ class entity:public actor {
         //way around to get to the player
         //i suspect this line of code is the problem, so im changing the second
         //parameter from 1 to 0
+        
+        //sometime after that I started using the second node in the path, but that still hasn't quite solved it
+        //i'll try re-enabling the useVelocity param and trying to fix it
 
-        current = Get_Closest_Node(g_navNodes, 0);
+        current = Get_Closest_Node(g_navNodes, 1);
         dest = current;
       }
 
@@ -6545,11 +6714,11 @@ class entity:public actor {
         }
 
         current->costFromSource = 0;
-        int overflow = 500;
+        int overflow = 2500; //seems that 500 is too small for medium-sized maps
 
         while(bag.size() > 0) {
           overflow --;
-          if(overflow < 0) { break; }
+          if(overflow < 0) { E("Dijkstra Overflow"); break; } //might be worth de-agroing in case of a dijkstra overflow
 
 
           navNode* u;
@@ -6573,6 +6742,14 @@ class entity:public actor {
             //could issue an error msg
             break;
           }
+              
+//          if(customMovement == 0) {
+//            if(u->costFromUsage >= 50) {
+//              u->costFromUsage -= 50;
+//            } else {
+//              u->costFromUsage = 0;
+//            }
+//          }
 
           //u is closest node in bag
           bag.erase(remove(bag.begin(), bag.end(), u), bag.end());
@@ -6580,6 +6757,13 @@ class entity:public actor {
             if(u->enabled) {
 
               float alt = u->costFromSource + u->costs[i];
+              
+              //if our customMovement is set to corner, 
+              //penalize nodes which were used by another behemoth
+              if(customMovement == 2) {
+                alt += u->costFromUsage;
+              }
+
               if(alt < u->friends[i]->costFromSource && (u->friends[i]->z + 64 >= u->z)) {
                 if(u->friends[i]->enabled) {
                   u->friends[i]->costFromSource = alt; 
@@ -6617,6 +6801,23 @@ class entity:public actor {
           }
         }
 
+        //path is considered "valid"
+        //we should penalize all nodes in the path, and all nodes connected
+        //so that other ents don't use them
+        if(customMovement == 0) {
+          int enough = 0;
+          for(auto x : path) {
+            enough++;
+            if(enough < 1) {continue;}
+            if(enough > 5) {break;}
+
+            x->costFromUsage = 1000000;
+            for(auto y : x->friends) {
+              y->costFromUsage = 1000000;
+            }
+          }
+        }
+
         dest = path.at(path.size() - 1); 
         if( path.size() > 0) {
           //take next node in path
@@ -6629,6 +6830,12 @@ class entity:public actor {
       }
       
     }
+
+    //I want something like BasicNavigate, but increase node cost in some way to 
+    //penalize going near other entities
+    //the idea is that two entities blocking the same route is a poor allocation of resources, 
+    //for the behemoths as a team
+    //really, it has nothing to do with distance, but rather the topology of the map (routes)
 
     //functions for inv
     //add an item to an entities
@@ -6752,6 +6959,10 @@ public:
         [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } ); //I convinced c++ that e is a number for this uber-efficient line of code
 
     string loadSTR = "levelsequence/icons/" + lowerName + ".bmp";
+
+
+    if(onionmode) {loadSTR = "engine/onion.bmp";}
+
     SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
     if(loadMe == NULL) {
       E("Error loading level selection icon.");
@@ -6926,6 +7137,10 @@ class usable {
 
       //load sprite
       loadstr = filepath + "img_" + fname + ".bmp";
+
+
+      if(onionmode) {loadstr = "engine/onion.bmp";}
+
       SDL_Surface* image = IMG_Load(loadstr.c_str());
       texture = SDL_CreateTextureFromSurface(renderer,image);
       SDL_FreeSurface(image);
@@ -7514,6 +7729,10 @@ class textbox {
           if(align == 1) {
             //right
             SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, (float)width,  (float)thisrect.h};
+            dstrect.x /= g_zoom_mod;
+            dstrect.y /= g_zoom_mod;
+            dstrect.w /= g_zoom_mod;
+            dstrect.x /= g_zoom_mod;
             if(dropshadow) {
               SDL_FRect shadowRect = dstrect;
               float booshAmount = g_textDropShadowDist * fontsize;
@@ -7528,6 +7747,10 @@ class textbox {
             if(align == 0) {
               //left
               SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
+              dstrect.x /= g_zoom_mod;
+              dstrect.y /= g_zoom_mod;
+              dstrect.w /= g_zoom_mod;
+              dstrect.h /= g_zoom_mod;
               if(dropshadow) {
                 SDL_FRect shadowRect = dstrect;
                 float booshAmount = g_textDropShadowDist * fontsize;
@@ -7542,6 +7765,10 @@ class textbox {
             } else {
               //center text
               SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, (float)width,  (float)thisrect.h};
+              dstrect.x /= g_zoom_mod;
+              dstrect.y /= g_zoom_mod;
+              dstrect.w /= g_zoom_mod;
+              dstrect.h /= g_zoom_mod;
               if(dropshadow) {
                 SDL_FRect shadowRect = dstrect;
                 float booshAmount = g_textDropShadowDist * fontsize;
@@ -7559,6 +7786,10 @@ class textbox {
         } else {
           if(align == 1) {
             SDL_FRect dstrect = {(boxX * winwidth)-width, boxY * winheight, (float)width,  (float)thisrect.h};
+            dstrect.x /= g_zoom_mod;
+            dstrect.y /= g_zoom_mod;
+            dstrect.w /= g_zoom_mod;
+            dstrect.h /= g_zoom_mod;
             if(dropshadow) {
               SDL_FRect shadowRect = dstrect;
               float booshAmount = g_textDropShadowDist * fontsize;
@@ -7572,6 +7803,10 @@ class textbox {
           } else {
             if(align == 0) {
               SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
+              dstrect.x /= g_zoom_mod;
+              dstrect.y /= g_zoom_mod;
+              dstrect.w /= g_zoom_mod;
+              dstrect.h /= g_zoom_mod;
               if(dropshadow) {
                 SDL_FRect shadowRect = dstrect;
                 float booshAmount = g_textDropShadowDist * fontsize;
@@ -7585,6 +7820,10 @@ class textbox {
             } else {
               //center text
               SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, (float)width,  (float)thisrect.h};
+              dstrect.x /= g_zoom_mod;
+              dstrect.y /= g_zoom_mod;
+              dstrect.w /= g_zoom_mod;
+              dstrect.h /= g_zoom_mod;
               if(dropshadow) {
                 SDL_FRect shadowRect = dstrect;
                 float booshAmount = g_textDropShadowDist * fontsize;
@@ -7678,7 +7917,11 @@ class ui {
       //M("ui()" );
       filename = ffilename;
       
-      image = IMG_Load(filename.c_str());
+      string spritefilevar = filename;
+
+      if(onionmode) {spritefilevar = "engine/onion.bmp";}
+      
+      image = IMG_Load(spritefilevar.c_str());
 
       width = fwidth;
       height = fheight;
@@ -7718,6 +7961,11 @@ class ui {
           int ibound = width * WIN_WIDTH;
           int jbound = height * WIN_HEIGHT;
 
+          ibound /= g_zoom_mod;
+          jbound /= g_zoom_mod;
+          float tempx = x / g_zoom_mod;
+          float tempy = y / g_zoom_mod;
+
           if(heightFromWidthFactor) {
             jbound = ibound * height;
           }
@@ -7733,7 +7981,7 @@ class ui {
           while (i < ibound) {
             int j = 0;
             while (j < jbound) {
-              SDL_FRect dstrect = {i + (x * WIN_WIDTH), j + (y * WIN_HEIGHT), (float)scaledpatchwidth, (float)scaledpatchwidth}; //change patchwidth in this declaration for sprite scale
+              SDL_FRect dstrect = {i + (tempx * WIN_WIDTH), j + (tempy * WIN_HEIGHT), (float)scaledpatchwidth, (float)scaledpatchwidth}; //change patchwidth in this declaration for sprite scale
               SDL_Rect srcrect;
               srcrect.h = patchwidth;
               srcrect.w = patchwidth;
@@ -7791,6 +8039,12 @@ class ui {
         } else {
           if(worldspace) {
             SDL_FRect dstrect = {x, y, width, height};
+            
+//            dstrect.x *= g_camera.zoom;
+//            dstrect.y *= g_camera.zoom;
+//            dstrect.w *= g_camera.zoom;
+//            dstrect.h *= g_camera.zoom;
+
             dstrect = transformRect( dstrect );
             if(dropshadow) {
               SDL_FRect shadowRect = dstrect;
@@ -7815,6 +8069,11 @@ class ui {
                 SDL_SetTextureColorMod(texture, 255,255,255);
               }
 
+              dstrect.x /= g_zoom_mod;
+              dstrect.y /= g_zoom_mod;
+              dstrect.w /= g_zoom_mod;
+              dstrect.h /= g_zoom_mod;
+
 
               if(xframes > 1) {
                 SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
@@ -7834,6 +8093,12 @@ class ui {
                 SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
                 SDL_SetTextureColorMod(texture, 255,255,255);
               }
+
+              dstrect.x /= g_zoom_mod;
+              dstrect.y /= g_zoom_mod;
+              dstrect.w /= g_zoom_mod;
+              dstrect.h /= g_zoom_mod;
+
               SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
             }
           }
@@ -8143,9 +8408,15 @@ class listener {
 void clear_map(camera& cameraToReset) {
   g_budget = 0;
   enemiesMap.clear();
+  g_ai.clear();
   g_musicalEntities.clear();
+  g_boardableEntities.clear();
   Mix_FadeOutMusic(1000);
   g_objective = 0;
+  g_behemoth0 = 0;
+  g_behemoth1 = 0;
+  g_behemoth2 = 0;
+  g_behemoth3 = 0;
   adventureUIManager->crosshair->show = 0;
   {
 

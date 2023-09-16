@@ -25,6 +25,8 @@ int selectIndex = 0;                            // select entity
 bool tiling = 1;                                // make current texture tile
 bool drawhitboxes = 0;                          // devMode; //visualize hitboxes in map editor with command
 bool drawNavMesh = 0; //I'm tired of the navmesh slowing down the framerate so much, this will be toggled separately
+bool drawNavMeshEdges = 0; //really, drawing the nodes is fine and helpful for debugging, but the computational cost
+                           //of drawing the edges is way too much on bigger maps (and should be contrained to camera dimensions
 
 int debug_r = 255, debug_g = 255, debug_b = 50; // for draw color
 int shine = 0;
@@ -68,7 +70,9 @@ bool autoMakeWallcaps = 1;
 tile *selection;
 tile *markerz;
 tile *marker;
-tile *navNodeIcon;
+tile *navNodeIconBlue;
+tile *navNodeIconRed;
+tile *navNodeIconYellow;
 tile *worldsoundIcon;
 tile *listenerIcon;
 tile *musicIcon;
@@ -1731,7 +1735,9 @@ void init_map_writing(SDL_Renderer *renderer)
   markerz = new tile(renderer, "engine/marker.bmp", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
   worldsoundIcon = new tile(renderer, "engine/speaker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   listenerIcon = new tile(renderer, "engine/listener.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-  navNodeIcon = new tile(renderer, "engine/walker.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+  navNodeIconBlue = new tile(renderer, "engine/walkerBlue.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+  navNodeIconRed = new tile(renderer, "engine/walkerRed.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+  navNodeIconYellow = new tile(renderer, "engine/walkerYellow.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   musicIcon = new tile(renderer, "engine/music.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   cueIcon = new tile(renderer, "engine/cue.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   waypointIcon = new tile(renderer, "engine/waypoint.bmp", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
@@ -1744,7 +1750,9 @@ void init_map_writing(SDL_Renderer *renderer)
   markerz->software = 1;
   worldsoundIcon->software = 1;
   listenerIcon->software = 1;
-  navNodeIcon->software = 1;
+  navNodeIconBlue->software = 1;
+  navNodeIconRed->software = 1;
+  navNodeIconYellow->software = 1;
   musicIcon->software = 1;
   cueIcon->software = 1;
   waypointIcon->software = 1;
@@ -1768,9 +1776,9 @@ void init_map_writing(SDL_Renderer *renderer)
 
   if (devMode)
   {
-    floortexDisplay->show = 1;
-    captexDisplay->show = 1;
-    walltexDisplay->show = 1;
+//    floortexDisplay->show = 1;
+//    captexDisplay->show = 1;
+//    walltexDisplay->show = 1;
   }
   else
   {
@@ -1890,29 +1898,47 @@ void write_map(entity *mapent)
       t->render(renderer);
     }
 
-    if(drawNavMesh) {
+    if(1) {
       // draw navNodes
       for (long long unsigned int i = 0; i < g_navNodes.size(); i++)
       {
-        // SDL_Rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
-        // SDL_RenderCopy(renderer, navNodeIcon->texture, NULL, &obj);
-        SDL_SetRenderDrawColor(renderer, 0, 100, 150, 255);
-        for (long long unsigned int j = 0; j < g_navNodes[i]->friends.size(); j++)
-        {
-          float x1 = (g_navNodes[i]->x - g_camera.x) * g_camera.zoom;
-          float y1 = (g_navNodes[i]->y - g_camera.y - XtoZ * (g_navNodes[i]->z + 32)) * g_camera.zoom;
-          float x2 = (g_navNodes[i]->friends[j]->x - g_camera.x) * g_camera.zoom;
-          float y2 = (g_navNodes[i]->friends[j]->y - g_camera.y - XtoZ * (g_navNodes[i]->friends[j]->z + 32)) * g_camera.zoom;
-          int colo = 0;
-          if (g_navNodes[i]->z + g_navNodes[i]->friends[j]->z > 0)
-          {
-            colo = 255;
+        rect cam(0, 0, g_camera.width, g_camera.height);
+        rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+        if(!RectOverlap(obj,cam)) {continue;} //finally
+//         SDL_Rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+//         SDL_RenderCopy(renderer, navNodeIconBlue->texture, NULL, &obj);
+        //int redness = (g_navNodes[i]->costFromUsage / 10000) * 255;
+        //SDL_SetRenderDrawColor(renderer, redness, 100, 150, 255);
+        
+        if(drawNavMesh) {
+          if(g_navNodes[i]->costFromUsage > 1000) {
+             SDL_Rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+             SDL_RenderCopy(renderer, navNodeIconBlue->texture, NULL, &obj);
+          } else {
+             SDL_Rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
+             SDL_RenderCopy(renderer, navNodeIconRed->texture, NULL, &obj);
+  
           }
-          // dont draw disabled nodes. pretty janky
-          if (g_navNodes[i]->enabled && g_navNodes[i]->friends[j]->enabled)
+        }
+        
+        if(drawNavMeshEdges) {
+          for (long long unsigned int j = 0; j < g_navNodes[i]->friends.size(); j++)
           {
-            SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
-            SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
+            float x1 = (g_navNodes[i]->x - g_camera.x) * g_camera.zoom;
+            float y1 = (g_navNodes[i]->y - g_camera.y - XtoZ * (g_navNodes[i]->z + 32)) * g_camera.zoom;
+            float x2 = (g_navNodes[i]->friends[j]->x - g_camera.x) * g_camera.zoom;
+            float y2 = (g_navNodes[i]->friends[j]->y - g_camera.y - XtoZ * (g_navNodes[i]->friends[j]->z + 32)) * g_camera.zoom;
+            int colo = 0;
+            if (g_navNodes[i]->z + g_navNodes[i]->friends[j]->z > 0)
+            {
+              colo = 255;
+            }
+            // dont draw disabled nodes. pretty janky
+            if (g_navNodes[i]->enabled && g_navNodes[i]->friends[j]->enabled)
+            {
+              //SDL_SetRenderDrawColor(renderer, colo, 100, 150, 255);
+              SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
+            }
           }
         }
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -2409,7 +2435,7 @@ void write_map(entity *mapent)
   }
 
   if (devinput[4] && !olddevinput[4])
-  {
+  { //search terms: delete button, delete functionality, manual delete
     if (nudge != 0)
     {
       nudge = 0;
@@ -2443,6 +2469,10 @@ void write_map(entity *mapent)
           {
             delete n;
             if(n == g_objective) { g_objective = nullptr;}
+            if(n == g_behemoth0) { g_behemoth0 = nullptr;}
+            if(n == g_behemoth1) { g_behemoth1 = nullptr;}
+            if(n == g_behemoth2) { g_behemoth2 = nullptr;}
+            if(n == g_behemoth3) { g_behemoth3 = nullptr;}
             deleteflag = 0;
             break;
           }
@@ -3101,14 +3131,31 @@ void write_map(entity *mapent)
 
     while (line >> word)
     {
+      M("Commandline interpreter");
       if (word == "sb")
       {
         drawhitboxes = !drawhitboxes;
+        if(drawhitboxes) {
+          floortexDisplay->show = 1;
+          captexDisplay->show = 1;
+          walltexDisplay->show = 1;
+
+        } else {
+          floortexDisplay->show = 0;
+          captexDisplay->show = 0;
+          walltexDisplay->show = 0;
+
+        }
         break;
       }
       if (word == "nm")
       {
         drawNavMesh = !drawNavMesh;
+        break;
+      }
+      if(word == "nme")
+      { 
+        drawNavMeshEdges = !drawNavMeshEdges;
         break;
       }
       if (word == "show")
@@ -4484,9 +4531,13 @@ void write_map(entity *mapent)
         populateMapWithEntities();
         break;
       }
-      if (word == "ghost" || word == "geist")
+      if (word == "ghost" || word == "geist" || word == "noclip")
       {
         boxsenabled = !boxsenabled;
+        break;
+      }
+      if(word == "togglecollsionresolver" || word == "tcr") {
+        g_collisionResolverOn = !g_collisionResolverOn;
         break;
       }
       if(word == "status")
@@ -4526,10 +4577,28 @@ void write_map(entity *mapent)
         }
         break;
       }
+      M("Are we getting here?");
       if (word == "set" || word == "s")
       {
         line >> word;
         D(word);
+        if(word == "collisionresolver" || word == "cr") {
+          line >> word;
+          int val = stoi(word);
+          M(val);
+          if(val != 0) {
+            g_collisionResolverOn = 1;
+          } else {
+            g_collisionResolverOn = 0;
+          }
+          
+          if(val == 2) {
+            g_showCRMessages = 1;
+          } else {
+            g_showCRMessages = 0;
+          }
+          break;
+        }
         if (word == "protag" || word == "me")
         {
           line >> word;
@@ -4931,6 +5000,47 @@ void write_map(entity *mapent)
         }
       }
 
+      if (word == "deagro")
+      {
+        line >> word;
+        entity *hopeful = searchEntities(word);
+        if (hopeful != nullptr)
+        {
+          hopeful->agrod = 0;
+        }
+      }
+
+      if (word == "agroall")
+      {
+        for(auto x : g_entities) {
+          if(x->dynamic && x->targetFaction == protag->faction) {
+            x->agrod = 1;
+          }
+        }
+      }
+
+      if(word == "deagroall")
+      {
+        for(auto x : g_entities) {
+          if(x->dynamic) {
+            x->agrod = 0;
+          }
+        }
+      }
+
+      if(word == "patrolall")
+      {
+        for(auto x : g_entities) {
+          if(x->dynamic) {
+            x->target = nullptr;
+            x->myTravelstyle = patrol;
+            x->poiIndex = 0;
+            x->traveling = 1;
+            x->readyForNextTravelInstruction = 1;
+          }
+        }
+      }
+
       if(word == "break" || word == "breakpoint") 
       {
         breakpoint();
@@ -5112,11 +5222,13 @@ void write_map(entity *mapent)
       if (word == "patrol")
       {
         line >> word;
-        int p0;
+        int p0 = 0;
         line >> p0;
         entity *hopeful = searchEntities(word);
         if (hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0)
         {
+          M("Made someone patrol on " + p0);
+          D(hopeful->name);
           hopeful->agrod = 0;
           hopeful->target = nullptr;
           hopeful->myTravelstyle = patrol;
@@ -6333,6 +6445,7 @@ void write_map(entity *mapent)
       scoreText->align = 1; // right
       scoreText->dropshadow = 1;
       scoreText->layer0 = 1;
+      scoreText->show = 0;
 
       systemClock = new textbox(renderer, "Yes", 1700 * g_fontsize, 0, 0, 0.9);
       systemClock->boxWidth = 1;
@@ -6344,6 +6457,7 @@ void write_map(entity *mapent)
       systemClock->align = 2; // left
       systemClock->dropshadow = 1;
       systemClock->layer0 = 1;
+      systemClock->show = 0;
 
 
       inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
@@ -6360,7 +6474,7 @@ void write_map(entity *mapent)
       inventoryB->persistent = true;
       inventoryB->priority = -4;
 
-      crosshair = new ui(renderer, "engine/crosshair.bmp", 0, 0, 0.05, 0.05, -15);
+      crosshair = new ui(renderer, "static/ui/crosshair.bmp", 0, 0, 0.05, 0.05, -15);
       crosshair->persistent = 1;
       crosshair->heightFromWidthFactor = 1;
       crosshair->show = 0;
@@ -6369,6 +6483,24 @@ void write_map(entity *mapent)
       crosshair->frameheight = 128;
       crosshair->priority = -5; //crosshair goes ontop usable icons
       
+      b0_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+      b0_element->persistent = 1;
+      b0_element->heightFromWidthFactor = 1;
+      b0_element->show = 0;
+      b0_element->xframes = 4;
+      b0_element->framewidth = 128;
+      b0_element->frameheight = 128;
+      b0_element->priority = -5; //crosshair goes ontop usable icons
+
+      b1_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+      b1_element->persistent = 1;
+      b1_element->heightFromWidthFactor = 1;
+      b1_element->show = 0;
+      b1_element->xframes = 4;
+      b1_element->frame = 1;
+      b1_element->framewidth = 128;
+      b1_element->frameheight = 128;
+      b1_element->priority = -5; //crosshair goes ontop usable icons
 
       healthText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
       healthText->boxWidth = 0.95;
@@ -6450,7 +6582,7 @@ void write_map(entity *mapent)
     tastePicture->glideSpeed = 0.1;
     tastePicture->widthGlideSpeed = 0.1;
     tastePicture->priority = -10; //taste is behind everything
-    
+    tastePicture->show = 1;
 
     adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
     adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
@@ -6481,13 +6613,18 @@ void write_map(entity *mapent)
     healthPicture->widthGlideSpeed = 0.1;
     healthPicture->priority = -10; //health is behind everything
 
-    hotbar = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 0.1, 1);
+    hotbar = new ui(renderer, "static/ui/menu9patchblack.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.85, 0.1, 0.1, 1);
     hotbar->is9patch = true;
     hotbar->patchwidth = 213;
     hotbar->patchscale = 0.5;
     hotbar->persistent = true;
     hotbar->heightFromWidthFactor = 1;
-    hotbar->priority = -7;
+    hotbar->priority = -8;
+
+    hotbarFocus = new ui(renderer, "static/ui/hotbar_focus.bmp", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.85 + 0.005, 0.1-0.01, 0.1-0.01, 1);
+    hotbarFocus->persistent = true;
+    hotbarFocus->heightFromWidthFactor = 1;
+    hotbarFocus->priority = -7;
 
 
 
@@ -6566,7 +6703,7 @@ void write_map(entity *mapent)
     thisUsableIcon->show = 0;
     nextUsableIcon->show = 0;
 
-    cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.bmp", 0.45, 0.85, 0.03, 1, 1);
+    cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.85, 0.03, 1, 1);
     cooldownIndicator->priority = -6;
     cooldownIndicator->persistent = 1;
     cooldownIndicator->heightFromWidthFactor = 1;
@@ -7475,6 +7612,7 @@ void write_map(entity *mapent)
     }
 
     // have entity patrol
+    // /patrol common/zombie 0
     if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/patrol")
     {
       string s = scriptToUse->at(dialogue_index + 1);

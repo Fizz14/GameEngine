@@ -22,11 +22,15 @@ void toggleDevmode();
 
 void toggleFullscreen();
 
+void protagMakesNoise();
+
 int WinMain()
 {
 
-  //devMode = 0; canSwitchOffDevMode = 0;
-  devMode = 1; canSwitchOffDevMode = 1;
+  //devMode = 0;
+  devMode = 1;
+
+  canSwitchOffDevMode = devMode;
 
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
@@ -891,6 +895,7 @@ int WinMain()
     musicUpdateTimer += elapsed;
     g_blinkingMS += elapsed;
     g_jumpGaranteedAccelMs -= elapsed;
+    g_boardingCooldownMs -= elapsed;
     // g_dash_cooldown -= elapsed;
     
     if(g_blinkingMS >= g_maxBlinkingMS) {
@@ -912,6 +917,7 @@ int WinMain()
     // spring
     if ((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move && !g_selectingUsable))
     {
+      protagMakesNoise();
       g_hasBeenHoldingJump = 1;
       g_afterspin_duration = 0;
       g_spinning_duration = 0;
@@ -920,9 +926,25 @@ int WinMain()
       g_jumpGaranteedAccelMs = g_maxJumpGaranteedAccelMs;
       storedJump = 0;
       breakpoint();
-    }
-    else
-    {
+      
+      //if we're boarded within an entity, unboard
+      if(g_protagIsWithinBoardable) {
+        M("Unboarded");
+        smokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z);
+        g_protagIsWithinBoardable = 0;
+        g_boardedEntity->semisolidwaittoenable = 1;
+        g_boardedEntity->semisolid = 0;
+        g_boardedEntity->storedSemisolidValue = 1;
+        protag->xvel = 0;
+        protag->yvel = 200;
+        g_boardedEntity = 0;
+        protag->tangible = 1;    
+        //protag->y += 45; //push us out of the boarded entity in a consistent way
+        g_boardingCooldownMs = g_maxBoardingCooldownMs;
+      }                          
+    }                            
+    else                         
+    {                            
       g_protag_jumped_this_frame = 0;
       if (input[8] && !oldinput[8] && !protag->grounded)
       {
@@ -1165,11 +1187,11 @@ int WinMain()
     adventureUIManager->hotbar->width = g_hotbarWidth;
     adventureUIManager->hotbar->height = 0.1/g_hotbarWidth; //maintain height despite using heightFromWidthFactor
     //next/prev icons should move with hotbar
-    adventureUIManager->nextUsableIcon->x = 0.45 + (g_hotbarWidth - 0.1)/2;
-    adventureUIManager->prevUsableIcon->x = 0.45 - (g_hotbarWidth - 0.1)/2;
+    adventureUIManager->nextUsableIcon->x = g_hotbarX + (g_hotbarWidth - 0.1)/2;
+    adventureUIManager->prevUsableIcon->x = g_hotbarX - (g_hotbarWidth - 0.1)/2;
    
-    adventureUIManager->hotbarPositions[4].first = 0.45 - (g_hotbarWidth - 0.1)/2;
-    adventureUIManager->hotbarPositions[2].first = 0.45 + (g_hotbarWidth - 0.1)/2;
+    adventureUIManager->hotbarPositions[4].first = g_hotbarX - (g_hotbarWidth - 0.1)/2 + g_backpackHorizontalOffset;
+    adventureUIManager->hotbarPositions[2].first = g_hotbarX + (g_hotbarWidth - 0.1)/2 + g_backpackHorizontalOffset;
 
     adventureUIManager->nextUsableIcon->opacity = g_hotbarNextPrevOpacity;
     adventureUIManager->prevUsableIcon->opacity = g_hotbarNextPrevOpacity;
@@ -1182,7 +1204,10 @@ int WinMain()
 
     adventureUIManager->thisUsableIcon->opacity = 25500;
     
-    adventureUIManager->hotbar->x = 0.5 - g_hotbarWidth / 2;
+    adventureUIManager->hotbar->x = 0.65 - g_hotbarWidth + g_backpackHorizontalOffset;
+    adventureUIManager->hotbarPositions[3].first = 0.1 + (g_hotbarX - (g_hotbarWidth - 0.1)/2 + g_backpackHorizontalOffset);
+    adventureUIManager->hotbarFocus->x = 0.1 + 0.005 + (g_hotbarX - (g_hotbarWidth - 0.1)/2 + g_backpackHorizontalOffset);
+    adventureUIManager->cooldownIndicator->x = adventureUIManager->hotbarPositions[3].first;
 
     //adventureUIManager->thisUsableIcon->show = 0;
 
@@ -1703,48 +1728,159 @@ int WinMain()
           g_objective = 0;
         }
 
-        // update crosshair to current objective
-        int ox = g_objective->getOriginX();
-        int oy = g_objective->getOriginY();
-
-        rect objectiverect = {ox, oy - (XtoZ * ((g_objective->bounds.zeight / 2) + g_objective->z)), 1, 1};
+        float ox = g_objective->getOriginX();
+        float oy = g_objective->getOriginY();
         
-        if(g_objective->isPellet) { //pellets have very short bounds.zeight values
-          objectiverect.y -= 40;
-        }
-        objectiverect = transformRect(objectiverect);
-        // is the x offscreen? let's adjust it somewhat
-        const float margin = 0.1;
-
-        float crossx = (float)objectiverect.x / (float)WIN_WIDTH;
-        float crossy = (float)objectiverect.y / (float)WIN_HEIGHT;
-
-        // make vector from the middle of the screen to the position of the obj
-        float vx = crossx - 0.5;
-        float vy = crossy - 0.5;
-
-        float vectorlen = pow(pow(vx, 2) + pow(vy, 2), 0.5);
-        if (vectorlen * 2.2 > 1)
-        {
-          vx /= vectorlen * 2.2;
-          vy /= vectorlen * 2.2;
-          // vy /= WIN_WIDTH/ WIN_HEIGHT;
-        }
-        crossx = vx + 0.5;
-        crossy = vy + 0.5;
+        float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+        // update crosshair to current objective
+        //
+        
+        float crossx = 0;
+        float crossy = 0;
 
         // hide crosshair if we are close
-        if(XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY()) < pow(64*5.5,2))
-        //if (vectorlen < 0.25)
+        if(distToObj < pow(64*5.5,2))
         {
           crossx = 5;
           crossy = 5;
+        } else {
+          //crosshair should point to the object
+          float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+          angleToObj += M_PI/2;
+          float magnitude = 0.43;
+          crossx = 0.5;
+          crossy = 0.5;
+          float w = WIN_WIDTH;
+          float h = WIN_HEIGHT;
+
+          //Since the camera is angled, a world block appears wider than it is tall
+          //And so I want the reticles to travel around an elipse rather than a sphere
+          //it's not perfectly simple to accomodate for this here, though
+          //Let's do math to find the difference between the radius of a circle
+          //and of an elipse
+          
+          float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+          float b = 1;
+          float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+          magnitude *=ellipseRadius;
+
+          crossx += (-cos(angleToObj) * magnitude) * h/w;
+          crossy += sin(angleToObj) * magnitude;
         }
 
-        adventureUIManager->crosshair->x = crossx - adventureUIManager->crosshair->width / 2;
 
-        adventureUIManager->crosshair->y = crossy - adventureUIManager->crosshair->height / 2;
+
+        adventureUIManager->crosshair->x = crossx - adventureUIManager->crosshair->width / 2;
+        adventureUIManager->crosshair->y = crossy - adventureUIManager->crosshair->height;
       }
+    }
+
+
+    { //behemoth ui
+      if(g_behemoth0 != nullptr && g_behemoth0->tangible) {
+        adventureUIManager->b0_element->show = 1;
+        
+        float ox = g_behemoth0->getOriginX();
+        float oy = g_behemoth0->getOriginY();
+        
+        float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+        // update crosshair to current objective
+        //
+        
+        float crossx = 0;
+        float crossy = 0;
+
+        // hide crosshair if we are close
+        if(distToObj < pow(64*5.5,2))
+        {
+          crossx = 5;
+          crossy = 5;
+        } else {
+          //crosshair should point to the object
+          float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+          angleToObj += M_PI/2;
+          float magnitude = 0.43;
+
+          crossx = 0.5;
+          crossy = 0.5;
+          float w = WIN_WIDTH;
+          float h = WIN_HEIGHT;
+          
+          //Since the camera is angled, a world block appears wider than it is tall
+          //And so I want the reticles to travel around an elipse rather than a sphere
+          //it's not perfectly simple to accomodate for this here, though
+          //Let's do math to find the difference between the radius of a circle
+          //and of an elipse
+          
+          float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+          float b = 1;
+          float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+          magnitude *=ellipseRadius;
+
+          crossx += (-cos(angleToObj) * magnitude) * h/w;
+          crossy += sin(angleToObj) * magnitude;
+        }
+
+
+
+        adventureUIManager->b0_element->x = crossx - adventureUIManager->crosshair->width / 2;
+        adventureUIManager->b0_element->y = crossy - adventureUIManager->crosshair->height;
+
+      } else {
+        adventureUIManager->b0_element->show = 0;
+      }
+      if(g_behemoth1 != nullptr && g_behemoth1->tangible) {
+        adventureUIManager->b1_element->show = 1;
+        
+        float ox = g_behemoth1->getOriginX();
+        float oy = g_behemoth1->getOriginY();
+        
+        float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+        // update crosshair to current objective
+        //
+        
+        float crossx = 0;
+        float crossy = 0;
+
+        // hide crosshair if we are close
+        if(distToObj < pow(64*5.5,2))
+        {
+          crossx = 5;
+          crossy = 5;
+        } else {
+          //crosshair should point to the object
+          float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+          angleToObj += M_PI/2;
+          float magnitude = 0.43;
+          crossx = 0.5;
+          crossy = 0.5;
+          float w = WIN_WIDTH;
+          float h = WIN_HEIGHT;
+
+          //Since the camera is angled, a world block appears wider than it is tall
+          //And so I want the reticles to travel around an elipse rather than a sphere
+          //it's not perfectly simple to accomodate for this here, though
+          //Let's do math to find the difference between the radius of a circle
+          //and of an elipse
+          
+          float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+          float b = 1;
+          float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+          magnitude *=ellipseRadius;
+
+          crossx += (-cos(angleToObj) * magnitude) * h/w;
+          crossy += sin(angleToObj) * magnitude;
+        }
+
+
+
+        adventureUIManager->b1_element->x = crossx - adventureUIManager->crosshair->width / 2;
+        adventureUIManager->b1_element->y = crossy - adventureUIManager->crosshair->height;
+
+      } else {
+        adventureUIManager->b1_element->show = 0;
+      }
+
     }
 
     //update cooldown indicator
@@ -1779,30 +1915,33 @@ int WinMain()
 
     }
 
-    //find preceeding-spots, for entities which
-    //try to preced the player
-    {
-      summationXVel += protag->xvel;
-      summationYVel += protag->yvel;
+    //do global nav calcs (shared intelligence for behemoths)
+    if(protag != nullptr) {
      
-      precedeCalcMs += elapsed;
-      if(precedeCalcMs > maxPrecedeCalcMs) {
-        precedeCalcMs = 0;
+      navCalcMs += elapsed;
+      if(navCalcMs > maxNavCalcMs) {
+        navCalcMs = 0;
+        //precedeProtagNode = Get_Closest_Node(g_navNodes, protag->x, protag->y);
 
-        summationXVel /= maxPrecedeCalcMs;
-        summationYVel /= maxPrecedeCalcMs;
-        
-        //these are an interface for monsters 
-        //to use as they wish to try to predict where the
-        //protag is going
-        effectiveSummationXVel = summationXVel;
-        effectiveSummationYVel = summationYVel;
+        for(auto u : g_navNodes) {
+          u->costFromUsage = 0;
+        }
 
-        savedPrecedePlayerX = protag->x;
-        savedPrecedePlayerY = protag->y;
+        for(auto x : g_entities) {
+          if(x->aiIndex > 0 && x->customMovement == 0) {
+            x->timeSinceLastDijkstra = -1; //force a dijkstra update
+            //navNode* zombieNode = x->Get_Closest_Node(g_navNodes);
+            //navNode* zombieNode = Get_Closest_Node(g_navNodes, x->getOriginX() + 15*x->xvel, x->getOriginY() + 15*x->yvel);
+            //zombieNode->costFromUsage = 10000;
+//            for(auto u : zombieNode->friends) {
+//              u->costFromUsage = 10000;
+//              for(auto y : u->friends) {
+//                y->costFromUsage = 10000;
+//              }
+//            }
+          }
+        }
 
-        summationXVel = 0;
-        summationYVel = 0;
       }
 
     }
@@ -1963,6 +2102,7 @@ int WinMain()
 
       for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
       {
+        if(!drawhitboxes) {break;}
         SDL_Rect obj = {(int)((g_waypoints[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
         SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
         SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
@@ -2853,7 +2993,13 @@ int WinMain()
     
     int useHour = local_time->tm_hour;
     if(useHour == 0) {useHour = 12;}
-    systemTimePrint+= to_string(useHour%12) + ":" + to_string(local_time->tm_min);
+    string useMinString = to_string(local_time->tm_min);
+    if(useMinString.size() == 1) { 
+      useMinString = "0" + useMinString;
+    }
+    string useHourString = to_string(useHour%12);
+    if(useHourString == "0") {useHourString = "12";}
+    systemTimePrint+= useHourString + ":" + useMinString;
     
     if(local_time->tm_hour >=12){
       systemTimePrint += " PM";
@@ -3389,6 +3535,8 @@ int interact(float elapsed, entity *protag)
           }
         }
 
+        protagMakesNoise();
+
         adventureUIManager->blip = g_entities[i]->voice;
         //adventureUIManager->sayings = &g_entities[i]->sayings;
         adventureUIManager->talker = g_entities[i];
@@ -3682,8 +3830,8 @@ void getInput(float &elapsed)
           if(g_backpackIndex < 0) { g_backpackIndex = g_backpack.size()-1;}
           SoldUILeft = (oldUILeft) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
 
-          adventureUIManager->hotbarPositions[4].first = 0.35;
-          adventureUIManager->hotbarPositions[2].first = 0.55;
+          adventureUIManager->hotbarPositions[4].first = 0.35 + g_backpackHorizontalOffset;
+          adventureUIManager->hotbarPositions[2].first = 0.55 + g_backpackHorizontalOffset;
 
           //move icons
           int i = 0; //shift previous
@@ -3743,8 +3891,8 @@ void getInput(float &elapsed)
           if(g_backpackIndex > g_backpack.size() - 1) { g_backpackIndex = 0;}
           SoldUIRight = (oldUIRight) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
 
-          adventureUIManager->hotbarPositions[4].first = 0.35;
-          adventureUIManager->hotbarPositions[2].first = 0.55;
+          adventureUIManager->hotbarPositions[4].first = 0.35 + g_backpackHorizontalOffset;
+          adventureUIManager->hotbarPositions[2].first = 0.55 + g_backpackHorizontalOffset;
 
           //move icons
           int i = 2; //shift next
@@ -4320,6 +4468,7 @@ void getInput(float &elapsed)
          )
       {
         g_backpack.at(g_backpackIndex)->cooldownMs = g_backpack.at(g_backpackIndex)->maxCooldownMs;
+        protagMakesNoise();
         storedSpin = 0;
         //propel the protag in the direction of their velocity
         //at high speed, removing control from them
@@ -4363,6 +4512,7 @@ void getInput(float &elapsed)
       }
       else
       {
+        protagMakesNoise();
         usable* thisUsable = g_backpack.at(g_backpackIndex); 
         thisUsable->cooldownMs = thisUsable->maxCooldownMs;
         playSound(-1, g_menu_open_sound, 0);
@@ -4384,6 +4534,7 @@ void getInput(float &elapsed)
         adventureUIManager->stomachShakeDurationMs = 0;
 
       } else {
+        protagMakesNoise();
         
         usable* thisUsable = g_backpack.at(g_backpackIndex); 
         thisUsable->cooldownMs = thisUsable->maxCooldownMs;
@@ -4982,8 +5133,8 @@ void toggleFullscreen() {
       if (x->mask_fileaddress != "&")
       {
         x->reloadTexture();
-        I("reloaded a texture of mask");
-        I(x->mask_fileaddress);
+//        I("reloaded a texture of mask");
+//        I(x->mask_fileaddress);
       }
     }
 
@@ -5067,4 +5218,22 @@ void toggleDevmode() {
     // float scaley = scalex;
     SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
   }
+}
+
+//when the protag jumps, uses an item, collects a pellet, or talks to someone
+//nearby behemoths will agro on him
+//but, nearby isn't defined by g_earshot but rather the behemoth's hearingRadius
+void protagMakesNoise() {
+  for(auto x : g_ai) {
+    float distToProtag = XYWorldDistanceSquared(protag->getOriginX(), protag->getOriginY(), x->getOriginX(), x->getOriginY());
+    float maxHearingDist = pow(x->hearingRadius,2);
+
+    if(distToProtag <= maxHearingDist) {
+      if(x->targetFaction == protag->faction) {
+        x->agrod = 1;
+        x->target = protag;
+      }
+    }
+  }
+
 }
