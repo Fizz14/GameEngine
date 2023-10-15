@@ -33,6 +33,7 @@ class usable;
 
 entity* searchEntities(string fname, entity* caller);
 entity* searchEntities(string fname);
+void debugUI();
 
 /*
  *         pi/2 up
@@ -56,6 +57,17 @@ bool getTurningDirection(float a, float b) {
   } else {
     return 0;
   }
+}
+
+float angleMod(float a, float n) {
+  return a - floor(a/n) * n;
+}
+
+//get difference between angles
+float angleDiff(float a, float b) {
+  float c = b - a;
+  c = angleMod((c + M_PI) , (M_PI * 2)) - (M_PI);
+  return c;
 }
 
 
@@ -1584,6 +1596,7 @@ class actor {
     float height = 0;
     float zeight = 0;
     float sortingOffset = 0;
+    float bonusSortingOffset = 0; //added oct 2023 to make fogslates look better when there's just a bit of fog but it gets rendered above an ent and the fogslate behind renders behind that ent, but the slates are meant to blend out
     float baseSortingOffset = 0;
     SDL_Texture* texture;
     rect bounds = {0, 0, 10, 10};
@@ -1637,7 +1650,7 @@ class actor {
 };
 
 inline int compare_ent (actor* a, actor* b) {
-  return a->y + a->z + a->sortingOffset < b->y + b->z + b->sortingOffset;
+  return a->y + a->z + a->sortingOffset + a->bonusSortingOffset < b->y + b->z + b->sortingOffset + b->bonusSortingOffset;
 }
 
 void sort_by_y(vector<actor*> &g_entities) {
@@ -2923,6 +2936,11 @@ class adventureUI {
     ui* b2_element = 0;
     ui* b3_element = 0;
 
+    //this element is shown when the player is within hearing range to a behemoth
+    ui* hearingDetectable = 0;
+    
+    //shown when a behemoth is finding the player by sight
+    ui* seeingDetectable = 0;
 
     textbox* healthText = 0;
     textbox* hungerText = 0;
@@ -3009,6 +3027,7 @@ class adventureUI {
       {0.35 + g_backpackHorizontalOffset, 1},
       {0.35 + g_backpackHorizontalOffset, 1}
     };
+    float smallBarStableX = hotbarPositions[0].first;
     //these were for when the bar was centered
 //    vector<std::pair<float, float>> hotbarPositions = {
 //      {0.55, 1},
@@ -3299,7 +3318,8 @@ class entity:public actor {
     int stableLayer = 0; //layer, but only if it's been held for some ms
     bool grounded = 1; //is standing on ground
     float xmaxspeed = 0;
-    //float ymaxspeed = 0;
+    float baseMaxSpeed = 0;
+    float bonusSpeed = 0;
     float friction = 0;
     float baseFriction = 0;
     int recalcAngle = 0; //a timer for when to draw sprites with diff angle
@@ -3332,6 +3352,7 @@ class entity:public actor {
                             //to the floor or to their center?
     float curwidth = 0;
     float curheight = 0;
+    int sizeRestoreMs = 0; //this is set for boardables to recover their size if protag leaves
     float originalWidth = 0; //for shrink effect
     float originalHeight = 0; 
     bool shrinking = 0; //used to animate entities shrinking away
@@ -3375,6 +3396,10 @@ class entity:public actor {
     cshadow * shadow = 0;
     bool rectangularshadow = 0;
     bool isAI = 0;
+    int lostHimSequence = 0; //this is for making entities react nicely to when the protag hides
+    int lostHimX = 0;
+    int lostHimY = 0;
+    int lostHimMs = 0;
     statusComponent hisStatusComponent;
     int timeToLiveMs = 0;  //or ttl, time updated and when <=0 ent is destroyed
     bool usingTimeToLive = 0;
@@ -3395,6 +3420,7 @@ class entity:public actor {
 
     //for boarding
     bool isBoardable = 0;
+    bool isHidingSpot = 0;
     bool usesBoardingScript = 0;
     string boardingScriptName;
     vector<string> boardingScript;
@@ -3477,14 +3503,21 @@ class entity:public actor {
     //adventureUI* myFieldScriptCaller = nullptr;
 
     vector<ability> myAbilities;
+
+    entity* potentialTarget = nullptr;
    
-    bool hasLOSToPotentialTarget = 0;
+    bool smellsPotentialTarget = 0;
+    bool seesPotentialTarget = 0;
 
-    float autoAgroRadius = -1;
 
-    float maxAutoAgroTime = 1000; //time needed
-    
-    float autoAgroMs = 0; //counts up if the player is in sight, counts down otherwise. If it reaches autoAgroTime (from config) the ent is agrod
+
+    float smellAgroRadius = -1;
+    float maxSmellAgroMs = 1000; //time needed
+    float smellAgroMs = 0;
+                           
+    float visionRadius = 0;
+    float visionTime = 0; //time needed
+    float seeAgroMs = 0;
 
     int customMovement = 0;
     // 0 - chase
@@ -3494,13 +3527,6 @@ class entity:public actor {
 
     int movementTypeSwitchRadius = 64 * 5; //if closer than this to target, chase them, regardless of what custom movement setting is
 
-    //set from the config, larger values make the 
-    //monster precede the player by greater distance
-    //don't go too high
-
-
-    float enrageSpeedbuff = 0;
-                                     
     //aiIndex is used for having AI use their own patrolPoints
     //and not someone-else's
     //use -1 for things which call scripts but don't have targets (fleshpit)
@@ -3551,6 +3577,8 @@ class entity:public actor {
 
     //used for atomically lighting large entities, e.g stalkers
     bool large = 0;
+
+    bool boxy = 0;
 
     //worlditem
     bool isWorlditem = 0;
@@ -3644,6 +3672,7 @@ class entity:public actor {
 
       file >> comment;
       file >> this->xmaxspeed;
+      baseMaxSpeed = xmaxspeed;
 
       file >> comment;
       file >> this->friction;
@@ -3729,6 +3758,9 @@ class entity:public actor {
 
       file >> comment;
       file >> large;
+
+      file >> comment;
+      file >> boxy;
 
       if(large) {
         g_large_entities.push_back(this);
@@ -4022,6 +4054,10 @@ class entity:public actor {
       //boardable?
       file >> comment;
       file >> isBoardable;
+
+      //hidingspot
+      file >> comment;
+      file >> isHidingSpot;
       
       if(isBoardable) {
         g_boardableEntities.push_back(this);
@@ -4144,33 +4180,47 @@ class entity:public actor {
 
         if(aiIndex == 0) {
           g_behemoth0 = this;
+          g_behemoths.push_back(this);
         } else if(aiIndex == 1) {
           g_behemoth1 = this;
+          g_behemoths.push_back(this);
         } else if(aiIndex == 2) {
           g_behemoth2 = this;
+          g_behemoths.push_back(this);
         } else if(aiIndex == 3) {
           g_behemoth3 = this;
+          g_behemoths.push_back(this);
         }
 
-        stream >> comment; //auto_Agro_radius
-        stream >> autoAgroRadius;
+        //ai index of -1 won't be a behemoth, for instance, but will still be ai (e.g. fleshpit, it can run a script to animate.)
 
-        stream >> comment; //auto_agro_time
-        stream >> maxAutoAgroTime;
+        stream >> comment; //smell_radius
+        stream >> smellAgroRadius;
+        smellAgroRadius*= 64;
+
+        stream >> comment; //smell_time
+        stream >> maxSmellAgroMs;
 
         stream >> comment; //hearing_radius
         stream >> hearingRadius;
         hearingRadius *= 64;
 
-        stream >> comment; //chasing_method
+        stream >> comment; //vision_radius
+        stream >> visionRadius;
+        visionRadius *= 64;
+
+        stream >> comment; //vision_time
+        stream >> visionTime;
+
+        stream >> comment; //custom_movement
         stream >> customMovement;
 
-        stream >> comment;
+        stream >> comment; //movement_type_switch_radius_blocks
         stream >> movementTypeSwitchRadius;
         movementTypeSwitchRadius *= 64;
 
-        stream >> comment; //enrage_speed_bonus
-        stream >> enrageSpeedbuff;
+        stream >> comment; //bonus_speed
+        stream >> bonusSpeed;
 
         stream >> comment; //target_faction
         stream >> targetFaction;
@@ -4448,8 +4498,19 @@ class entity:public actor {
           cachedOriginX = x + bounds.x + bounds.width/2;
           cachedOriginY = y + bounds.y + bounds.height/2;
           cachedOriginValsAreGood = 1;
-        }        return cachedOriginY;
+        }        
+        return cachedOriginY;
         //return y + bounds.y + bounds.height/2;
+      }
+
+      void setOriginX(float fx) {
+        x = fx - bounds.x - bounds.width/2;
+        cachedOriginValsAreGood = 0;
+      }
+  
+      void setOriginY(float fy) {
+        y = fy - bounds.y - bounds.height/2;
+        cachedOriginValsAreGood = 0;
       }
 
       rect getMovedBounds() {
@@ -4535,6 +4596,13 @@ class entity:public actor {
           }
         }
 
+        if(sizeRestoreMs > 0) {
+          sizeRestoreMs -= elapsed;
+          curwidth = (width + curwidth) / 2;
+          curheight = (height + curheight) / 2;
+
+        }
+
 
         rect cam(0, 0, fcamera.width, fcamera.height);
 
@@ -4543,7 +4611,11 @@ class entity:public actor {
 
           //set visual direction
           //lil problem with this code- the zombie will face SE when he should face E
-          if(forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet) {
+          if(
+              (forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet)
+              ||
+              this->lostHimSequence == 2
+              ) {
             animation = convertAngleToFrame(steeringAngle);
             flip = SDL_FLIP_NONE;
             if(yframes < 8) {
@@ -4890,7 +4962,7 @@ class entity:public actor {
         if(msPerFrame != 0) {
           msTilNextFrame += elapsed;
           if(msTilNextFrame > msPerFrame && xframes > 1) {
-            msTilNextFrame = 0;
+            msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
            
             if(reverseAnimation) {
               frameInAnimation--;
@@ -5073,7 +5145,7 @@ class entity:public actor {
 
         if( (this != protag) || (this == protag) && ((protag_can_move) && (up || down || left || right))) {
           float amountToTurn = turningSpeed * elapsed/1000 * 2*M_PI;
-          if(g_spinning_duration > 0) {
+          if(this == protag && g_spinning_duration > 0) {
             amountToTurn = 2 * M_PI;
           }
           if( abs(targetSteeringAngle - steeringAngle) < amountToTurn) {
@@ -5087,6 +5159,9 @@ class entity:public actor {
           }
           steeringAngle = wrapAngle(steeringAngle);
         }
+
+        if(agrod) {xmaxspeed = baseMaxSpeed + bonusSpeed;} else 
+        {xmaxspeed = baseMaxSpeed;}
 
         //normalize accel vector
         float vectorlen = pow( pow(xaccel, 2) + pow(yaccel, 2), 0.5) / (xmaxspeed * (1 - statusSlownPercent));
@@ -5182,13 +5257,28 @@ class entity:public actor {
               //check for map collisions
               for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
                 //don't worry about boxes if we're not even close
-                rect sleepbox = rect(g_boxs[layer].at(i)->bounds.x - 150, g_boxs[layer].at(i)->bounds.y-150, g_boxs[layer].at(i)->bounds.width+300, g_boxs[layer].at(i)->bounds.height+300);
-                if(!RectOverlap(sleepbox, movedbounds)) {continue;}
+                //no point for a sleepbox if we're only doing one check
+                //rect sleepbox = rect(g_boxs[layer].at(i)->bounds.x - 150, g_boxs[layer].at(i)->bounds.y-150, g_boxs[layer].at(i)->bounds.width+300, g_boxs[layer].at(i)->bounds.height+300);
+                //if(!RectOverlap(sleepbox, movedbounds)) {continue;}
                 if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
                   inCollision = 1;
                   break;
                 }
   
+              }
+
+              if(g_useSimpleImpliedGeometry) {
+                for(auto x : g_impliedSlopes) {
+                //rect sleepbox = rect(x->bounds.x - 150, x->bounds.y-150, x->bounds.width+300, x->bounds.height+300);
+                //if(!RectOverlap(sleepbox, movedbounds)) {continue;}
+                if(RectOverlap(movedbounds, x->bounds)) {
+                  inCollision = 1;
+                  break;
+                }
+
+
+                }
+
               }
   
               if(!inCollision) { //shortcut if already in collision
@@ -5354,7 +5444,6 @@ class entity:public actor {
             for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
 
               //update bounds with new pos
-
               rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
 
               //don't worry about boxes if we're not even close
@@ -5394,6 +5483,48 @@ class entity:public actor {
                 continue;
               }
             }
+
+            //now do that for implied slopes if I've chosen to treat them as regular collisions
+            if(g_useSimpleImpliedGeometry) {
+              for(auto n : g_impliedSlopes) {
+                //update bounds with new pos
+                rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+  
+                //don't worry about boxes if we're not even close
+                rect sleepbox = rect(n->bounds.x - 150, n->bounds.y-150, n->bounds.width+300, n->bounds.height+300);
+                if(!RectOverlap(sleepbox, movedbounds)) {continue;}
+  
+                //uh oh, did we collide with something?
+                if(RectOverlap(movedbounds, n->bounds)) {
+                  ycollide = true;
+                  yvel = 0;
+                }
+                //update bounds with new pos
+                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+                //uh oh, did we collide with something?
+                if(RectOverlap(movedbounds, n->bounds)) {
+                  //box detected
+                  xcollide = true;
+                  xvel = 0;
+                }
+
+                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+                //uh oh, did we collide with something?
+                if(RectOverlap(movedbounds, n->bounds)) {
+                  //box detected
+                  xcollide = true;
+                  ycollide = true;
+                  xvel = 0;
+                  yvel = 0;
+                  continue;
+                }
+  
+  
+  
+  
+                }
+            }
+
           } else {
             for (int i = 0; i < (int)boxesToUse.size(); i++) {
 
@@ -5502,22 +5633,89 @@ class entity:public actor {
           }
 
           //test for triangular implied slopes
-          for(auto n : g_impliedSlopeTris) {
-            rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-
-            float heightFactor = 0;
-
-            if(n->layer * 64 >= this->z) {
-              heightFactor = 1;
-            } else if (this->z - 63 > n->layer * 64) {
-              heightFactor = 0;
-            } else {
-              heightFactor = 1 - ((this->z - n->layer * 64) /63);
-            }
-
-            //behaves as a triangle if heightFactor is nearly 1
-            if(heightFactor > 0.95) {
+          if(g_useSimpleImpliedGeometry == 0) {
+            for(auto n : g_impliedSlopeTris) {
+              rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
   
+              float heightFactor = 0;
+  
+              if(n->layer * 64 >= this->z) {
+                heightFactor = 1;
+              } else if (this->z - 63 > n->layer * 64) {
+                heightFactor = 0;
+              } else {
+                heightFactor = 1 - ((this->z - n->layer * 64) /63);
+              }
+  
+              //behaves as a triangle if heightFactor is nearly 1
+              if(heightFactor > 0.95) {
+    
+                if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+                  //if we move the player one pixel up will we still overlap?
+                  if(n->type == 3 || n->type == 2)  {
+                    xpush = jerk;
+                  }
+    
+                  if(n->type == 0 || n->type == 1) {
+                    xpush = -jerk; ;
+                  }
+    
+    
+                  //ycollide = true;
+                  yvel = 0;
+    
+                }
+    
+                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+                if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+                  //if we move the player one pixel up will we still overlap?
+                  if(n->type == 1 || n->type == 2) {
+                    ypush = jerk;
+                  }
+    
+                  if(n->type == 0 || n->type == 3){
+                    ypush = -jerk;
+                  }
+    
+                  //xcollide = true;
+                  xvel = 0;
+    
+                }
+    
+                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+                if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+  //                xcollide = true;
+  //                ycollide = true;
+                  xvel = 0;
+                  yvel = 0;
+                  //continue;
+    
+    
+                }
+              }
+  
+              //find modified bounds for player collision based on height
+              //I guess, simulate this by moving movedbounds up based on heighFactor
+              movedbounds.y -= (1-heightFactor) * 64;
+  
+              //push the player away 
+              if(heightFactor > 0 && ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+  
+                if(n->type == 1) {
+                  this->y-=2;
+                  this->x+=2;
+                } else {
+                  this->y-=2;
+                  this->x-=2;
+                }
+  
+                zvel = max(zvel, -1.0f);
+              }
+            } 
+          } else {
+            //treat t implied slopes just like tris
+            for(auto n : g_impliedSlopeTris){
+              rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
               if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
                 //if we move the player one pixel up will we still overlap?
                 if(n->type == 3 || n->type == 2)  {
@@ -5529,7 +5727,7 @@ class entity:public actor {
                 }
   
   
-                //ycollide = true;
+                ycollide = true;
                 yvel = 0;
   
               }
@@ -5545,119 +5743,104 @@ class entity:public actor {
                   ypush = -jerk;
                 }
   
-                //xcollide = true;
+                xcollide = true;
                 xvel = 0;
   
               }
   
               movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
               if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
-//                xcollide = true;
-//                ycollide = true;
+                xcollide = true;
+                ycollide = true;
                 xvel = 0;
                 yvel = 0;
-                //continue;
+                continue;
   
   
               }
+  
             }
 
-            //find modified bounds for player collision based on height
-            //I guess, simulate this by moving movedbounds up based on heighFactor
-            movedbounds.y -= (1-heightFactor) * 64;
-
-            //push the player away 
-            if(heightFactor > 0 && ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
-
-              if(n->type == 1) {
-                this->y-=2;
-                this->x+=2;
-              } else {
-                this->y-=2;
-                this->x-=2;
-              }
-
-              zvel = max(zvel, -1.0f);
-            }
           }
 
 
           //test for implied slopes
-          for(auto i : g_impliedSlopes) {
-            rect movedbounds;
-            rect simslope = rect(0,0,0,0);
-            movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-            
-            bool overlapY = RectOverlap(movedbounds, i->bounds);
-
-            float heightFactor;
-            if(i->bounds.z >= this->z) {
-              heightFactor = 1;
-            } else if (this->z - 63 > i->bounds.z) {
-              heightFactor = 0;
-            } else {
-              heightFactor = 1 - ((this->z - i->bounds.z) /63);
-            }
-
-
-            float yDiff = 0; //this is used to compare the ycoords of the ent and the slope, so if the ent has lower y than the slope, we can just treat it as a wall
-            yDiff = (this->y + bounds.y + this->bounds.height) - i->bounds.y;
-
-
-            if(overlapY) {
-              rect simslope = rect(i->bounds.x, i->bounds.y + (16 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
-              if(heightFactor < 0.95 && heightFactor > 0 && RectOverlap(simslope, movedbounds)) {
-                heightFactor = pow(heightFactor, 2);
-                //yvel = -1 * ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (64 * (1- heightFactor) )) );
-
-                float difference = ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (8 * (1- heightFactor) )) );
-                //y += -1 * difference;
-                //yvel = -1 * difference;
-                y-=2;
-                yvel = 0;
-                xaccel = 0;
-                if(heightFactor < 0.3) {
-                  if(this->z > 1) {
-                    xcollide = 1;
-                  }
-                }
-
-
-                //zaccel -= -1;
-                zvel = max(zvel, -1.0f);
-                //ycollide = 1;
-
-                rect movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y  , bounds.width, bounds.height);
-              }
-            }
-
-            if(heightFactor > 0) {
+          if(g_useSimpleImpliedGeometry == 0) {
+            for(auto i : g_impliedSlopes) {
+              rect movedbounds;
+              rect simslope = rect(0,0,0,0);
+              movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
               
-              if(overlapY) {
-                ycollide = 1;
-                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
-                bool overlapX = RectOverlap(movedbounds, simslope);
+              bool overlapY = RectOverlap(movedbounds, i->bounds);
   
-                if(overlapX) {
-                  if(this->z > 1 || yDiff < 10) {
-                    xcollide = 1;
-                  }
-                }
-  
+              float heightFactor;
+              if(i->bounds.z >= this->z) {
+                heightFactor = 1;
+              } else if (this->z - 63 > i->bounds.z) {
+                heightFactor = 0;
               } else {
-                movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
-                bool overlapX = RectOverlap(movedbounds, i->bounds);
- 
-                if(overlapX) {
-                  if(this->z > 1 || yDiff > 10) {
-                    xcollide = 1;
-                  }
-                }
-  
+                heightFactor = 1 - ((this->z - i->bounds.z) /63);
               }
-            }
+  
+  
+              float yDiff = 0; //this is used to compare the ycoords of the ent and the slope, so if the ent has lower y than the slope, we can just treat it as a wall
+              yDiff = (this->y + bounds.y + this->bounds.height) - i->bounds.y;
+  
+  
+              if(overlapY) {
+                rect simslope = rect(i->bounds.x, i->bounds.y + (16 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
+                if(heightFactor < 0.95 && heightFactor > 0 && RectOverlap(simslope, movedbounds)) {
+                  heightFactor = pow(heightFactor, 2);
+                  //yvel = -1 * ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (64 * (1- heightFactor) )) );
+  
+                  float difference = ( (y + bounds.y + this->bounds.height) - (i->bounds.y + (8 * (1- heightFactor) )) );
+                  //y += -1 * difference;
+                  //yvel = -1 * difference;
+                  y-=2;
+                  yvel = 0;
+                  xaccel = 0;
+                  if(heightFactor < 0.3) {
+                    if(this->z > 1) {
+                      xcollide = 1;
+                    }
+                  }
+  
+  
+                  //zaccel -= -1;
+                  zvel = max(zvel, -1.0f);
+                  //ycollide = 1;
+  
+                  rect movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y  , bounds.width, bounds.height);
+                }
+              }
+  
+              if(heightFactor > 0) {
+                
+                if(overlapY) {
+                  ycollide = 1;
+                  movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
+                  bool overlapX = RectOverlap(movedbounds, simslope);
+    
+                  if(overlapX) {
+                    if(this->z > 1 || yDiff < 10) {
+                      xcollide = 1;
+                    }
+                  }
+    
+                } else {
+                  movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
+                  bool overlapX = RectOverlap(movedbounds, i->bounds);
+   
+                  if(overlapX) {
+                    if(this->z > 1 || yDiff > 10) {
+                      xcollide = 1;
+                    }
+                  }
+    
+                }
+              }
+            } 
           }
-
           yvel += ypush;
           xvel += xpush;
         }
@@ -5938,12 +6121,54 @@ class entity:public actor {
                 rect thatMovedBounds = {n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height};
                 if(RectOverlap(thisMovedBounds, thatMovedBounds) && (abs(this->z - n->z) < 32 )) {
                   M("Protag boarded entity named " + n->name);
+                  
+                  //decide to de-agro entities
+                  if(n->isHidingSpot) {
+                    for(auto x:g_ai) {
+                      if(x->target == protag) {
+                        //I want a "realistic" or clever way of de-agroing enemies
+                        //I could make it so that there's a timer after fomm is last in listening range of an agrod enemy
+                        if(!g_protagIsInHearingRange) {
+                          //x->poiIndex = 0;
+                          // i want to have a fun way of having the enemy de-agro
+                          // I want them to approach the hiding spot and stare at it for a moment
+                          // before a "?" appears above their head and they then wander off
+
+                          //this makes them instantly give up the moment the protag hides
+                          x->agrod = 0;
+                          x->smellAgroMs = 0;
+                          x->target = nullptr;
+
+                          //x->myTravelstyle = patrol;
+                          //x->traveling = 1;
+                          //x->readyForNextTravelInstruction = 1;
+                          M("begin losthim sequence");
+                          
+                          x->lostHimSequence = 1;
+                          
+                          //we want to pick the node closest to the edge of the hs,
+                          //in the direction of the behemoth
+                          //so get the angle from the hs to the behemoth
+                          
+                          float angleToBehemoth = atan2(x->getOriginX() - n->getOriginX(), x->getOriginY() - n->getOriginY()) - M_PI/2;
+                          angleToBehemoth = wrapAngle(angleToBehemoth);
+
+                          float interestingX = n->getOriginX() + cos(angleToBehemoth) * n->bounds.width/2;
+                          float interestingY = n->getOriginY() + sin(angleToBehemoth) * n->bounds.width/2;
+
+                          Destination = getNodeByPosition(x->lostHimX, x->lostHimY);
+                          x->lostHimX = n->getOriginX();
+                          x->lostHimY = n->getOriginY();
+                        }
+                      }
+                    }
+                  }
+
                   g_protagIsWithinBoardable = 1;
                   g_boardedEntity = n;
+                  g_msSinceBoarding = 0;
                   protag->tangible = 0;
-                  protag->setOriginX(n->getOriginX());
-                  protag->setOriginY(n->getOriginY());
-                  smokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z);
+                  smokeEffect->happen(n->getOriginX(), n->getOriginY(), protag->z);
                   break;
                 }
               }
@@ -6099,45 +6324,119 @@ class entity:public actor {
         }
 
         if(isAI) {
-
           //check the auto-agro-range
+          potentialTarget = nullptr;
+          smellsPotentialTarget = 0;
+          seesPotentialTarget = 0;
           if(target == nullptr) {
-            entity* potentialTarget = nullptr;
-            hasLOSToPotentialTarget = 0;
-            for(auto x : g_entities) {
-              if(x->faction == this->targetFaction && this->autoAgroRadius > 0) {
-                if(XYWorldDistance(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY()) < this->autoAgroRadius * 64) {
 
-                  if(LineTrace(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)) {
-                    potentialTarget = x;
-                    hasLOSToPotentialTarget = 1;
-                    if(potentialTarget == protag) {
-                      g_protagIsBeingDetected = 1;
+            //could make this a bit nicer by splitting into finding a potential target and progressing towards detection for that target instead of having them together like this
+            for(auto x : g_entities) {
+              if(x->faction == this->targetFaction) {
+                //detect instantly, as if by hearing breath
+                if(XYWorldDistance(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY()) < 4 * 64) {
+                  if(LineTrace(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)) 
+                  {
+                    if(!devMode 
+                        && 
+                        !g_ninja
+                        &&
+                        !g_protagIsWithinBoardable
+                        )  {
+                      M("I felt fomm's breath!");
+                      //close and have LOS - detection
+                      this->target = x;
+                      this->traveling = 0;
+                      this->agrod = 1;
                     }
-                    break;
+                  }
+                
+                }
+
+                //can it smell fomm?
+                if(XYWorldDistance(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY()) < this->smellAgroRadius) {
+
+                  { //check for smell
+                    potentialTarget = x;
+                    smellsPotentialTarget = 1;
+                    if(potentialTarget == protag) {
+                      
+                      g_protagIsBeingDetectedBySmell = 1;
+                    }
+                  }
+                }
+
+                //can it see fomm?
+                if(XYWorldDistance(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY()) < this->visionRadius) {
+
+                  if(
+                      LineTrace(x->getOriginX(), x->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)
+                      &&
+                      x->tangible
+
+
+                      ) 
+                  {
+                    if(x == protag && g_protagIsWithinBoardable) { break;}
+
+                    //is the monster facing the target? compare angle to target to this steeringangel
+
+                    float angleToPotTarget = atan2(x->getOriginX() - getOriginX(), x->getOriginY() - getOriginY()) - M_PI/2;
+                    angleToPotTarget = wrapAngle(angleToPotTarget);
+                    if(abs(angleDiff(angleToPotTarget, this->steeringAngle)) < 0.8) {
+                      potentialTarget = x;
+                      if(potentialTarget == protag) {
+                        g_protagIsBeingDetectedBySight = 1;
+                      }
+                      seesPotentialTarget = 1;
+                      break;
+                    }
+
+                    
+
+
                   }
                 }
               }
             }
 
 
-            //this is so it takes time to agro on someone
-            if(hasLOSToPotentialTarget) {
-              autoAgroMs += elapsed;
-            } else {
-              autoAgroMs -= elapsed;
-            }
+          }
 
-            if(autoAgroMs >= maxAutoAgroTime && potentialTarget != nullptr) {
-              M("That's it, I'm agroing on fomm!");
-              this->traveling = 0;
-              this->target = potentialTarget;
-              this->agrod = 1;
-            }
+          //this is so it takes time to agro on someone
+          if(smellsPotentialTarget && !devMode) {
+            smellAgroMs += elapsed;
+          } else {
+            smellAgroMs -= elapsed;
+          }
 
-            if(autoAgroMs < 0) {
-              autoAgroMs = 0;
-            }
+          if(smellAgroMs >= maxSmellAgroMs && potentialTarget != nullptr && !devMode && !g_ninja) {
+            M("I smelled fomm!");
+            this->traveling = 0;
+            this->target = potentialTarget;
+            this->agrod = 1;
+          }
+
+
+          if(smellAgroMs < 0) {
+            smellAgroMs = 0;
+          }
+
+          if(seesPotentialTarget && !devMode) {
+            seeAgroMs += elapsed;
+          } else {
+            seeAgroMs -= elapsed;
+          }
+
+          if(seeAgroMs >= visionTime && potentialTarget != nullptr && !devMode && !g_ninja) {
+            M("I saw fomm!");
+            this->traveling = 0;
+            this->target = potentialTarget;
+            this->agrod = 1;
+          }
+
+          if(seeAgroMs < 0) {
+            seeAgroMs = 0;
           }
 
           //is out scriptcaller sleeping? Lets update it, and maybe wake it up
@@ -6338,7 +6637,7 @@ class entity:public actor {
           //do we have a target?
           if(target != nullptr) {
             //check if target is still valid
-            if(target->hp <= 0 || !target->tangible) {
+            if(target->hp <= 0 || (!target->tangible && !(target == protag && g_protagIsWithinBoardable))) {
               //can we get a new target from the same faction that we are agrod against?
               bool setNewTarget = 0;
               for(auto x : g_entities) {
@@ -6413,7 +6712,6 @@ class entity:public actor {
           //here's the code for roaming/patrolling
           //we aren't agrod.
           if(traveling) {
-            M("This entity is traveling");
             if(readyForNextTravelInstruction && g_setsOfInterest.at(poiIndex).size() != 0) {
               readyForNextTravelInstruction = 0;
               if(myTravelstyle == roam) {
@@ -6427,6 +6725,7 @@ class entity:public actor {
                 pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(currentPoiForPatrolling);
                 Destination = getNodeByPosition(targetDest->x, targetDest->y);
               }
+              M("Finished giving next travel instruction");
             } else {
               //should we be ready for our next travel-instruction?
               if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 32) {
@@ -6434,7 +6733,9 @@ class entity:public actor {
               }
             }
 
-              BasicNavigate(Destination);
+            M("Lets do basic navigate");
+            BasicNavigate(Destination);
+            M("Finished with BasicNavigate");
           }
         }
 
@@ -6553,7 +6854,7 @@ class entity:public actor {
           if(timeSinceLastDijkstra - elapsed < 0) {
             //need to update our Destination member variable, dijkstra will
             //be called this frame
-            if(target != nullptr && target->tangible) {
+            if(target != nullptr && (target->tangible || target == protag && g_protagIsWithinBoardable)) {
               //requirements for a valid place to navigate to
               //must be
               //1 - in range
@@ -6651,7 +6952,43 @@ class entity:public actor {
 
 
 
+      } else if (Destination != nullptr) {
+        //this is used for very intentional movement (pathing but not to an entity (agro) and not to a poi (traveling) 
+        //e.g. pathing to a hidingspot after protag hides, scripted pathing
+        BasicNavigate(Destination);
+
+        if(XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 32) {
+          Destination = 0;
+          if(lostHimSequence == 1) {
+            lostHimMs = 4000;
+            lostHimSequence = 2;
+          }
+        }
+
+
       }
+      
+      if(lostHimMs > 0) {
+        lostHimMs -= elapsed;
+        float angleToTarget = atan2(lostHimX - getOriginX(), lostHimY - getOriginY()) - M_PI/2;
+        angleToTarget = wrapAngle(angleToTarget);
+        targetSteeringAngle = angleToTarget;
+      } else {
+        if(lostHimSequence == 2) {
+          lostHimSequence = 3;
+        }
+      }
+
+      if(lostHimSequence == 3) {
+        lostHimSequence = 0;
+        //myTravelstyle = patrol;
+        traveling = 1;
+        readyForNextTravelInstruction = 1;
+
+      }
+
+      
+
       return nullptr;
     }
 
@@ -6817,17 +7154,21 @@ class entity:public actor {
             }
           }
         }
+        D("H");
 
         dest = path.at(path.size() - 1); 
+        D("I");
         if( path.size() > 0) {
           //take next node in path
           current = dest;
           dest = path.at(path.size() - 1);
           path.erase(path.begin() + path.size()-1);
         }
+        D("J");
       } else {
         timeSinceLastDijkstra -= elapsed;
       }
+      D("K");
       
     }
 
@@ -6894,7 +7235,7 @@ entity* searchEntities(string fname, entity* caller) {
     return protag;
   }
   if(caller != 0 && fname == "target") {
-    if(caller->target != nullptr && caller->target->tangible);
+    if(caller->target != nullptr && (caller->target->tangible || caller->target == protag && g_protagIsWithinBoardable));
     return caller->target;
   }
   if(caller != 0 && (fname ==  "this" || fname == "me") ) {
@@ -6903,11 +7244,10 @@ entity* searchEntities(string fname, entity* caller) {
 
 
   for(auto n : g_entities) {
-    if(n->name == fname && n->tangible) {
+    if(n->name == fname && (n->tangible || n == protag && g_protagIsWithinBoardable)) {
       return n;
     }
   }
-
 
   return nullptr;
 }
@@ -6917,7 +7257,7 @@ entity* searchEntities(string fname) {
     return protag;
   }
   for(auto n : g_entities) {
-    if(n->name == fname && n->tangible) {
+    if(n->name == fname && (n->tangible || n == protag && g_protagIsWithinBoardable)) {
       return n;
     }
   }
@@ -6928,7 +7268,7 @@ entity* searchEntities(string fname) {
 vector<entity*> gatherEntities(string fname) {
   vector<entity*> ret = {};
   for(auto n : g_entities) {
-    if(n->name == fname && n->tangible) {
+    if(n->name == fname && (n->tangible || n == protag && g_protagIsWithinBoardable)) {
       ret.push_back(n);
     }
   }
@@ -7891,6 +8231,8 @@ class ui {
     int xframes = 1;
     int framewidth = 0;
     int frameheight = 0;
+    int msPerFrame = 0; //set this to positive int to animate the UI element
+    int msTilNextFrame = 0;
 
     //for 9patch
     bool is9patch = 0;
@@ -7941,7 +8283,7 @@ class ui {
       g_ui.erase(remove(g_ui.begin(), g_ui.end(), this), g_ui.end());
     }
 
-    void render(SDL_Renderer * renderer, camera fcamera) {
+    void render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
       //proportional gliding
       if(targetx != -10) {
         x = (targetx * glideSpeed) + (x * (1-glideSpeed));
@@ -8076,6 +8418,16 @@ class ui {
 
 
               if(xframes > 1) {
+                if(msPerFrame != 0) {
+                  msTilNextFrame += elapsed;
+                  if(msTilNextFrame > msPerFrame && xframes > 1) {
+                    frame++;
+                    msTilNextFrame = 0; //bad but w/e
+                    if(frame >= xframes) {
+                      frame = 0;
+                    }
+                  }
+                }
                 SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
                 SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
               } else {
@@ -8099,7 +8451,22 @@ class ui {
               dstrect.w /= g_zoom_mod;
               dstrect.h /= g_zoom_mod;
 
-              SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+              if(xframes > 1) {
+                if(msPerFrame != 0) {
+                  msTilNextFrame += elapsed;
+                  if(msTilNextFrame > msPerFrame && xframes > 1) {
+                    frame++;
+                    msTilNextFrame = 0; //bad but w/e
+                    if(frame >= xframes) {
+                      frame = 0;
+                    }
+                  }
+                }
+                SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
+                SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+              } else {
+                SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+              }
             }
           }
         }
@@ -8258,7 +8625,7 @@ void playSoundByName(string fname) {
     }
   }
   if(sound == NULL) {
-    E("Soundcue " + fname + " not found in level." + " Not critical.");
+    E("Soundcue " + fname + " not found in level.");
   }
 
   if(!g_mute && sound != NULL) {
@@ -8410,6 +8777,7 @@ void clear_map(camera& cameraToReset) {
   enemiesMap.clear();
   g_ai.clear();
   g_musicalEntities.clear();
+  g_behemoths.clear();
   g_boardableEntities.clear();
   Mix_FadeOutMusic(1000);
   g_objective = 0;
@@ -8638,7 +9006,7 @@ void clear_map(camera& cameraToReset) {
       for (long long unsigned int i = 0; i < g_ui.size(); i++)
       {
         if(!g_ui[i]->renderOverText) {
-          g_ui[i]->render(renderer, g_camera);
+          g_ui[i]->render(renderer, g_camera, 0);
         }
       }
       for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
@@ -8650,7 +9018,7 @@ void clear_map(camera& cameraToReset) {
       for (long long unsigned int i = 0; i < g_ui.size(); i++)
       {
         if(g_ui[i]->renderOverText) {
-          g_ui[i]->render(renderer, g_camera);
+          g_ui[i]->render(renderer, g_camera, 0);
         }
       }
 
@@ -8807,7 +9175,7 @@ void clear_map(camera& cameraToReset) {
         }
   
         //re-render inventory reticle so it goes on top of the items/level icons
-        inventoryMarker->render(renderer, g_camera);
+        inventoryMarker->render(renderer, g_camera, 1);
         inventoryMarker->show = 0;
       }
       else
@@ -9097,6 +9465,7 @@ void clear_map(camera& cameraToReset) {
     g_weapons.push_back(x);
   }
 
+
   vector<ui*> persistentui;
   size = (int)g_ui.size();
   for(int i = 0; i < size; i++) {
@@ -9111,6 +9480,7 @@ void clear_map(camera& cameraToReset) {
   for(auto x : persistentui) {
     g_ui.push_back(x);
   }
+
 
   g_solid_entities.clear();
 
@@ -9135,6 +9505,8 @@ void clear_map(camera& cameraToReset) {
     delete x;
   }
   g_collisionZones.clear();
+
+  M("Did we get here?");
 
   //clear layers of boxes and triangles
   for(long long unsigned int i = 0; i < g_boxs.size(); i++) {
@@ -9395,6 +9767,14 @@ class settingsUI {
 
 };
 
+
+//I added this to help debug a problem with multiple copies of UI elements
+void debugUI() {
+  D(g_ui.size());
+  for(auto x : g_ui) {
+    D(x->filename);
+  }
+}
 
 
 #endif

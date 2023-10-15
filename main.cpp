@@ -896,6 +896,17 @@ int WinMain()
     g_blinkingMS += elapsed;
     g_jumpGaranteedAccelMs -= elapsed;
     g_boardingCooldownMs -= elapsed;
+    if(g_protagIsWithinBoardable) { 
+      g_msSinceBoarding += elapsed;
+    
+      if(g_msSinceBoarding < 500) {
+        g_boardedEntity->curwidth = g_boardedEntity->width + 10 * abs(sin( ((float)g_msSinceBoarding)/50.0));
+        g_boardedEntity->curheight = g_boardedEntity->height + 10 * abs(sin( ((float)g_msSinceBoarding)/50.0));
+      } else {
+        g_boardedEntity->sizeRestoreMs = 1000;
+      }
+    }
+
     // g_dash_cooldown -= elapsed;
     
     if(g_blinkingMS >= g_maxBlinkingMS) {
@@ -914,6 +925,18 @@ int WinMain()
 
 
 
+    //lerp protag to boarded ent smoothly
+    if(g_protagIsWithinBoardable) {
+      float px = protag->getOriginX();
+      float py = protag->getOriginY();
+      float tx = g_boardedEntity->getOriginX();
+      float ty = g_boardedEntity->getOriginY();
+      protag->setOriginX( (px + tx)/2 );
+      protag->setOriginY( (py + ty)/2);
+      //protag->z = (protag->z + g_boardedEntity->z) /2;
+
+    }
+
     // spring
     if ((input[8] && !oldinput[8] && protag->grounded && protag_can_move) || (input[8] && storedJump && protag->grounded && protag_can_move && !g_selectingUsable))
     {
@@ -930,11 +953,27 @@ int WinMain()
       //if we're boarded within an entity, unboard
       if(g_protagIsWithinBoardable) {
         M("Unboarded");
+        
+        //if the protag was currently duping a behemoth and hopped out, re-agro that behemoth
+        for(auto x : g_ai) {
+          if(x->lostHimSequence != 0) {
+            x->agrod = 1;
+            x->target = protag;
+
+          }
+
+        }
+
         smokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z);
         g_protagIsWithinBoardable = 0;
         g_boardedEntity->semisolidwaittoenable = 1;
         g_boardedEntity->semisolid = 0;
+        g_boardedEntity->sizeRestoreMs = 1000;
         g_boardedEntity->storedSemisolidValue = 1;
+        protag->steeringAngle = wrapAngle(-M_PI/2);
+        protag->animation = 4;
+        protag->animation = 4;
+        protag->flip = SDL_FLIP_NONE;
         protag->xvel = 0;
         protag->yvel = 200;
         g_boardedEntity = 0;
@@ -1881,6 +1920,142 @@ int WinMain()
         adventureUIManager->b1_element->show = 0;
       }
 
+
+      if(g_behemoth2 != nullptr && g_behemoth2->tangible) {
+        adventureUIManager->b2_element->show = 1;
+        
+        float ox = g_behemoth2->getOriginX();
+        float oy = g_behemoth2->getOriginY();
+        
+        float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+        // update crosshair to current objective
+        //
+        
+        float crossx = 0;
+        float crossy = 0;
+
+        // hide crosshair if we are close
+        if(distToObj < pow(64*5.5,2))
+        {
+          crossx = 5;
+          crossy = 5;
+        } else {
+          //crosshair should point to the object
+          float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+          angleToObj += M_PI/2;
+          float magnitude = 0.43;
+          crossx = 0.5;
+          crossy = 0.5;
+          float w = WIN_WIDTH;
+          float h = WIN_HEIGHT;
+
+          //Since the camera is angled, a world block appears wider than it is tall
+          //And so I want the reticles to travel around an elipse rather than a sphere
+          //it's not perfectly simple to accomodate for this here, though
+          //Let's do math to find the difference between the radius of a circle
+          //and of an elipse
+          
+          float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+          float b = 1;
+          float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+          magnitude *=ellipseRadius;
+
+          crossx += (-cos(angleToObj) * magnitude) * h/w;
+          crossy += sin(angleToObj) * magnitude;
+        }
+
+
+
+        adventureUIManager->b2_element->x = crossx - adventureUIManager->crosshair->width / 2;
+        adventureUIManager->b2_element->y = crossy - adventureUIManager->crosshair->height;
+
+      } else {
+        adventureUIManager->b2_element->show = 0;
+      }
+
+
+      if(g_behemoth3 != nullptr && g_behemoth3->tangible) {
+        M("B3 element positioning");
+        adventureUIManager->b3_element->show = 1;
+
+        
+        float ox = g_behemoth3->getOriginX();
+        float oy = g_behemoth3->getOriginY();
+        
+        float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+        // update crosshair to current objective
+        //
+        
+        float crossx = 0;
+        float crossy = 0;
+
+        // hide crosshair if we are close
+        if(distToObj < pow(64*5.5,2))
+        {
+          crossx = 5;
+          crossy = 5;
+        } else {
+          //crosshair should point to the object
+          float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+          angleToObj += M_PI/2;
+          float magnitude = 0.43;
+          crossx = 0.5;
+          crossy = 0.5;
+          float w = WIN_WIDTH;
+          float h = WIN_HEIGHT;
+
+          //Since the camera is angled, a world block appears wider than it is tall
+          //And so I want the reticles to travel around an elipse rather than a sphere
+          //it's not perfectly simple to accomodate for this here, though
+          //Let's do math to find the difference between the radius of a circle
+          //and of an elipse
+          
+          float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+          float b = 1;
+          float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+          magnitude *=ellipseRadius;
+
+          crossx += (-cos(angleToObj) * magnitude) * h/w;
+          crossy += sin(angleToObj) * magnitude;
+        }
+
+
+
+        adventureUIManager->b3_element->x = crossx - adventureUIManager->crosshair->width / 2;
+        adventureUIManager->b3_element->y = crossy - adventureUIManager->crosshair->height;
+
+      } else {
+        adventureUIManager->b3_element->show = 0;
+      }
+
+    }
+
+    //check if protag is within hearing-range of any behemoths
+    adventureUIManager->hearingDetectable->show = 0;
+    //M("Cool, we hid the hearingDetectable ui element");
+    breakpoint2();
+    for(auto x : g_behemoths) {
+      float hearingRadiusSquared = pow(x->hearingRadius, 2);
+      float distToProtagSquared = XYWorldDistanceSquared(x->getOriginX(), x->getOriginY(), protag->getOriginX(), protag->getOriginY());
+//      D(distToProtagSquared);
+//      D(hearingRadiusSquared);
+
+      if(distToProtagSquared <= hearingRadiusSquared) {
+        adventureUIManager->hearingDetectable->show = 1;
+        g_protagIsInHearingRange = 1;
+        break;
+
+      } else {
+        g_protagIsInHearingRange = 0;
+      }
+
+    }
+
+    //should we should the visionDetectable?
+    adventureUIManager->seeingDetectable->show = 0;
+    if(g_protagIsBeingDetectedBySight) {
+      adventureUIManager->seeingDetectable->show = 1;
+      adventureUIManager->hearingDetectable->show = 0;
     }
 
     //update cooldown indicator
@@ -2184,10 +2359,10 @@ int WinMain()
     if (g_fogofwarEnabled && !devMode)
     {
       // black bars
-      SDL_Rect topbar = {px, FoWrect.y - 1000, 1500, 1000};
-      //SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
+      SDL_Rect topbar = {px, FoWrect.y - 990, 1500, 1000};
+      SDL_RenderCopy(renderer, blackbarTexture, NULL, &topbar);
       SDL_Rect botbar = {px, FoWrect.y + g_fogheight * 55 + 10, 2000, 1000};
-      //SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
+      SDL_RenderCopy(renderer, blackbarTexture, NULL, &botbar);
 
       SDL_Rect leftbar = {px-800, FoWrect.y, 1000, 1500};
       //SDL_RenderCopy(renderer, blackbarTexture, NULL, &leftbar);
@@ -2355,7 +2530,7 @@ int WinMain()
     for (long long unsigned int i = 0; i < g_ui.size(); i++)
     {
       if(g_ui[i]->layer0) {
-        g_ui[i]->render(renderer, g_camera);
+        g_ui[i]->render(renderer, g_camera, elapsed);
       }
     }
 
@@ -2369,7 +2544,7 @@ int WinMain()
     for (long long unsigned int i = 0; i < g_ui.size(); i++)
     {
       if(!g_ui[i]->renderOverText && !g_ui[i]->layer0) {
-        g_ui[i]->render(renderer, g_camera);
+        g_ui[i]->render(renderer, g_camera, elapsed);
       }
     }
 
@@ -2384,7 +2559,7 @@ int WinMain()
     for (long long unsigned int i = 0; i < g_ui.size(); i++)
     {
       if(g_ui[i]->renderOverText) {
-        g_ui[i]->render(renderer, g_camera);
+        g_ui[i]->render(renderer, g_camera, elapsed);
       }
     }
 
@@ -2707,7 +2882,7 @@ int WinMain()
         }
   
         //re-render inventory reticle so it goes on top of the items/level icons
-        inventoryMarker->render(renderer, g_camera);
+        inventoryMarker->render(renderer, g_camera, 0);
         inventoryMarker->show = 0;
       
     }
@@ -2733,7 +2908,8 @@ int WinMain()
       g_elapsed_accumulator -= 1800;
     }
 
-    g_protagIsBeingDetected = 0; //this will be set in the entity update loop
+    g_protagIsBeingDetectedBySmell = 0; //this will be set in the entity update loop
+    g_protagIsBeingDetectedBySight = 0;
 
     // ENTITY MOVEMENT (ENTITY UPDATE)
     // dont update movement while transitioning
@@ -3121,11 +3297,9 @@ int WinMain()
         transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
         for (int x = 0; x < transitionImageWidth; x++)
         {
-          //!!! this is for a debuggingsession for windows, take it out soon
           for (int y = 0; y < transitionImageHeight; y++)
           {
             int dest = (y * transitionImageWidth) + x;
-            // int src =  (y * transitionImageWidth) + x;
 
             if (pow(pow(transitionImageWidth / 2 - x, 2) + pow(transitionImageHeight + y, 2), 0.5) < transitionDelta)
             {
@@ -3133,11 +3307,7 @@ int WinMain()
             }
             else
             {
-              // if(pow(pow(transitionImageWidth/2 - x,2) + pow(transitionImageHeight + y,2),0.5) < 10 + transitionDelta) {
-              // 	pixels[dest] = halftone;
-              // } else {
               pixels[dest] = transparent;
-              // }
             }
           }
         }
@@ -3256,7 +3426,7 @@ int WinMain()
           }
         }
       }
-      if (fadeFlag && musicFadeTimer > 1000 /*&& newClosest != 0*/)
+      if (fadeFlag && musicFadeTimer > 1000 && newClosest != 0)
       {
         fadeFlag = 0;
         Mix_HaltMusic();
@@ -3976,13 +4146,23 @@ void getInput(float &elapsed)
       adventureUIManager->hotbarTransitionIcons[2]->targety = adventureUIManager->hotbarPositions[3].second;
      
       //this moves it to where it should be (other side), and then it glides to the middle
+      //since the hotbar was moved to the right side of the screen it was adjusted 
+//      if(adventureUIManager->shiftingMs < 150) {
+//        if(g_hotbarCycleDirection) {
+//          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->hotbarTransitionIcons[3]->x;
+//          adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[3]->y;
+//        } else {
+//          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->hotbarTransitionIcons[1]->x;
+//          adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[1]->y;
+//        }
+//      }
       if(adventureUIManager->shiftingMs < 150) {
         if(g_hotbarCycleDirection) {
-          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->hotbarTransitionIcons[3]->x;
-          adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[3]->y;
+          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->smallBarStableX;
+          //adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[3]->y;
         } else {
-          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->hotbarTransitionIcons[1]->x;
-          adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[1]->y;
+          adventureUIManager->hotbarTransitionIcons[2]->x = adventureUIManager->smallBarStableX;
+          //adventureUIManager->hotbarTransitionIcons[2]->y = adventureUIManager->hotbarTransitionIcons[1]->y;
         }
       }
 
@@ -5205,15 +5385,19 @@ void toggleDevmode() {
   }
   if (devMode)
   {
-    floortexDisplay->show = 1;
-    captexDisplay->show = 1;
-    walltexDisplay->show = 1;
+    if(drawhitboxes) {
+      floortexDisplay->show = 1;
+      captexDisplay->show = 1;
+      walltexDisplay->show = 1;
+    }
+    boxsenabled = 0;
   }
   else
   {
     floortexDisplay->show = 0;
     captexDisplay->show = 0;
     walltexDisplay->show = 0;
+    boxsenabled = 1;
     // float scalex = ((float)WIN_WIDTH / 1920) * g_defaultZoom;
     // float scaley = scalex;
     SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
@@ -5224,6 +5408,8 @@ void toggleDevmode() {
 //nearby behemoths will agro on him
 //but, nearby isn't defined by g_earshot but rather the behemoth's hearingRadius
 void protagMakesNoise() {
+  if(g_ninja || devMode) { return;}
+  M("Fomm made a noise");
   for(auto x : g_ai) {
     float distToProtag = XYWorldDistanceSquared(protag->getOriginX(), protag->getOriginY(), x->getOriginX(), x->getOriginY());
     float maxHearingDist = pow(x->hearingRadius,2);

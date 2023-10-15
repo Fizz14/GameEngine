@@ -207,6 +207,17 @@ bool g_showCRMessages = 0; //collisionResolver messages
 
 bool onionmode = 0; // hide custom graphics
 
+
+//I worked to make implied slopes and triangular slopes to work realistically, in 
+//that they would push the player away like walls but if the player jumped they could
+//jump on top of the slope, and that would be best for 3d levels
+//since I'm not making 3d levels and they're too demanding for users to play anyways
+//I'm simplifying the code which considers collisions with IS and IST
+//now they'll just be like regular geometry
+//if you ever want to reenable this, it should be easier to toggle this value
+const bool g_useSimpleImpliedGeometry = 1;
+
+
 bool genericmode = 0;
 bool freecamera = 0;
 bool devMode = 0;
@@ -277,7 +288,13 @@ void I(T msg, bool disableNewline = 0)
 
 void breakpoint()
 {
-  //I("Have broken");
+  //I("First breakpoint");
+  return;
+}
+
+void breakpoint2()
+{
+  //I("Second breakpoint");
   return;
 }
 
@@ -449,7 +466,9 @@ SDL_Rect FoWrect;
 int px;
 
 bool g_protagHasBeenDrawnThisFrame = 0;
-bool g_protagIsBeingDetected = 0; //used for when the protag is too close to an enemy and will soon agro that enemy
+bool g_protagIsBeingDetectedBySmell = 0; //used for when the protag is too close to an enemy and will soon agro that enemy
+bool g_protagIsBeingDetectedBySight = 0;
+bool g_protagIsInHearingRange = 0;
 
 float oldSummationXVel = 0;
 float oldSummationYVel = 0;
@@ -577,6 +596,8 @@ entity* g_boardedEntity = 0;
 int g_protagIsWithinBoardable = 0;
 int g_boardingCooldownMs = 0;
 const int g_maxBoardingCooldownMs = 2000;
+//for animating the boardable
+int g_msSinceBoarding = 0; //counts up from 0 after boarding
 
 //I want the objective to be able to be set to fade away if the player is moving and 
 //fade in if the player is standing still, to help them if they are lost
@@ -702,6 +723,7 @@ entity* g_behemoth0=0;
 entity* g_behemoth1=0;
 entity* g_behemoth2=0;
 entity* g_behemoth3=0;
+vector<entity*> g_behemoths;
 
 // zoom is planned to be 1.0 for a resolution of 1920 pixels across
 float g_defaultZoom = 0.85;
@@ -871,6 +893,7 @@ ui* g_dijkstraDebugRed;
 ui* g_dijkstraDebugBlue;
 ui* g_dijkstraDebugYellow;
 entity* g_dijkstraEntity;
+bool g_ninja = 0;
 
 // world
 int g_layers = 12;							 // max blocks in world
@@ -1098,6 +1121,64 @@ float convertFrameToAngle(int frame, bool flipped)
 
   return 0;
 }
+
+
+//idk why i have two
+//this is for steeringAngle
+//the only difference is that "flipped" is treated oppositely
+float convertFrameToAngleNew(int frame, bool flipped)
+{
+  if (!flipped)
+  {
+    if (frame == 0)
+    {
+      return M_PI / 2;
+    }
+    if (frame == 1)
+    {
+      return (M_PI * 3) / 4;
+    }
+    if (frame == 2)
+    {
+      return M_PI;
+    }
+    if (frame == 3)
+    {
+      return (M_PI * 5) / 4;
+    }
+    if (frame == 4)
+    {
+      return (M_PI * 6) / 4;
+    }
+  }
+  else
+  {
+    if (frame == 0)
+    {
+      return M_PI / 2;
+    }
+    if (frame == 1)
+    {
+      return (M_PI * 1) / 4;
+    }
+    if (frame == 2)
+    {
+      return 0;
+    }
+    if (frame == 3)
+    {
+      return (M_PI * 7) / 4;
+    }
+    if (frame == 4)
+    {
+      return (M_PI * 6) / 4;
+    }
+  }
+
+  return 0;
+}
+
+
 
 //wrap an angle so that it is within the range of 0 and 2pi radians
 float wrapAngle(float input) {

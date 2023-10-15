@@ -287,6 +287,12 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       {
         e->flip = SDL_FLIP_HORIZONTAL;
       }
+      e->steeringAngle = convertFrameToAngleNew(e->animation, e->flip == SDL_FLIP_HORIZONTAL);
+      e->targetSteeringAngle = e->steeringAngle;
+      if(e->aiIndex == 0) {
+        D(e->name);
+        D(e->steeringAngle);
+      }
 
       
       if(e->parent != nullptr) {
@@ -1316,7 +1322,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
   // call map's init-script
   // seemingly crashes the game sometimes
-  if (fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
+  // don't run the init-script if we're in devmode
+  if (!devMode && fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
     string loadstr = "maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
     //D(loadstr);
@@ -1338,7 +1345,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
     if (narrarator->myScriptCaller == nullptr)
     {
-      narrarator->myScriptCaller = new adventureUI(renderer);
+      narrarator->myScriptCaller = new adventureUI(renderer, 1);
       narrarator->myScriptCaller->playersUI = 0;
       narrarator->myScriptCaller->talker = narrarator;
     }
@@ -1360,7 +1367,9 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   }
   else
   {
-    M("MAPINIT NOT FOUND");
+    if(!devMode) {
+      M("Map's initscript not found.");
+    }
   }
 
   g_maxPelletsInLevel = g_pellets.size();
@@ -1535,7 +1544,7 @@ bool mapeditor_save_map(string word)
 
   for (auto x : g_ui)
   {
-    if (x->mapSpecific)
+    if (x->mapSpecific && !x->persistent)
     {
       ofile << "ui " << x->filename << " " << x->x << " " << x->y << " " << x->width << " " << x->height << " " << x->priority << endl;
     }
@@ -1713,12 +1722,9 @@ bool mapeditor_save_map(string word)
 
   if (narrarator->myScriptCaller == nullptr)
   {
-    M("Must make scriptcaller");
-    narrarator->myScriptCaller = new adventureUI(renderer);
-    narrarator->myScriptCaller->playersUI = 0;
+    narrarator->myScriptCaller = new adventureUI(renderer, 1);
     narrarator->myScriptCaller->talker = narrarator;
 
-    M("made scriptcaller");
   }
 
   M("Done with recent code");
@@ -1759,6 +1765,8 @@ void init_map_writing(SDL_Renderer *renderer)
   poiIcon->software = 1;
   doorIcon->software = 1;
   triggerIcon->software = 1;
+
+  //i thought i was leaking data but its okay since all tiles are deleted in clear_map();
 
   floortexDisplay = new ui(renderer, floortex.c_str(), 0.0, 0, 0.1, 0.1, -100);
   walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, -100);
@@ -2450,6 +2458,15 @@ void write_map(entity *mapent)
       }
       else
       {
+
+        //delete functionality
+        //delete objects
+        //delete feature
+        //map editor delete
+        //map delete
+        //dev delete
+        //right click delete
+        //delete lists
         bool deleteflag = 1;
         for (auto n : g_entities)
         {
@@ -2483,7 +2500,30 @@ void write_map(entity *mapent)
         vector<ramp *> deleteRamps;
         vector<trigger *> deleteTriggers;
         vector<door *> deleteDoors;
+        vector<impliedSlopeTri*> deleteIST;
+        vector<impliedSlope*> deleteIS;
         rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
+
+        //delete IS
+        for (auto n : g_impliedSlopes)
+        {
+          if (RectOverlap(markerrect, n->bounds))
+          {
+            deleteIS.push_back(n);
+            deleteflag = 0;
+          }
+        }
+        
+        for (auto n : g_impliedSlopeTris)
+        {
+          if (ITriRectOverlap(n, markerrect.x, markerrect.y, markerrect.width, markerrect.height))
+          {
+            deleteIST.push_back(n);
+            deleteflag = 0;
+          }
+        }
+        
+
         // delete block at position
         for (long long unsigned int i = 0; i < g_boxs.size(); i++)
         {
@@ -2593,6 +2633,16 @@ void write_map(entity *mapent)
         }
 
         for (auto x : deleteDoors)
+        {
+          delete x;
+        }
+
+        for (auto x : deleteIST) 
+        {
+          delete x;
+        }
+
+        for (auto x : deleteIS) 
         {
           delete x;
         }
@@ -4404,8 +4454,19 @@ void write_map(entity *mapent)
           }
         }
       }
+      if (word == "ninja") 
+      {
+        if(line >> word) {
+          g_ninja = stoi(word);
+          D(g_ninja);
+        } else {
+          g_ninja = 1;
+          M("Turned on ninjamode");
+        }
+      }
       if (word == "reload")
       {
+
         if (g_map != "")
         {
           mapeditor_save_map(g_map);
@@ -4467,6 +4528,29 @@ void write_map(entity *mapent)
       {
         if (line >> word)
         {
+          // must close file before renaming it
+          ofile.close();
+          string theme = word;
+          word = "maps/" + g_mapdir + "/" + word + ".map";
+          
+          clear_map(g_camera);
+          load_map(renderer, word.c_str(), "a");
+
+          init_map_writing(renderer);
+          if (g_autoSetThemesFromMapDirectory)
+          {
+            changeTheme(g_mapdir);
+          }
+
+          break;
+        }
+      }
+      if(word == "play") //load a map in game-mode
+                         //this probably breaks lots of stuff
+      {
+        if (line >> word)
+        {
+          devMode = 0;
           // must close file before renaming it
           ofile.close();
           string theme = word;
@@ -5093,6 +5177,8 @@ void write_map(entity *mapent)
           D(chosenEntity->navblock);
           D(chosenEntity->xmaxspeed);
           D(chosenEntity->friction);
+          D(chosenEntity->steeringAngle);
+          D(chosenEntity->targetSteeringAngle);
           M("");
 
           M("Visual Data:");
@@ -5130,7 +5216,9 @@ void write_map(entity *mapent)
 
           M("Combat Data:");
           D(chosenEntity->faction);
-          D(chosenEntity->autoAgroRadius);
+          D(chosenEntity->visionRadius);
+          D(chosenEntity->visionTime);
+          D(chosenEntity->hearingRadius);
           D(chosenEntity->invincible);
           D(chosenEntity->hp);
           D(chosenEntity->maxhp);
@@ -5145,6 +5233,30 @@ void write_map(entity *mapent)
           D(chosenEntity->stuckTime);
           D(chosenEntity->navblock);
           M("");
+
+          M("AI");
+          for(auto x :g_ai) {
+            D(x->name);
+            D(x->aiIndex);
+            D(x->targetFaction);
+            D(x->customMovement);
+            D(x->hearingRadius);
+            D(x->movementTypeSwitchRadius);
+            D(x->agrod);
+            M("");
+          }
+
+          M("Behemoths:");
+          for(auto x :g_behemoths) {
+            D(x->name);
+            D(x->aiIndex);
+            D(x->targetFaction);
+            D(x->customMovement);
+            D(x->hearingRadius);
+            D(x->movementTypeSwitchRadius);
+            D(x->agrod);
+            M("");
+          }
 
 
           M("Scripting:");
@@ -6400,7 +6512,7 @@ void write_map(entity *mapent)
     }
   }
 
-  adventureUI::adventureUI(SDL_Renderer *renderer, bool plight)
+  adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, but due to the declaration plight is 0 by default
   {
     this->light = plight;
     if(!light) {
@@ -6457,7 +6569,7 @@ void write_map(entity *mapent)
       systemClock->align = 2; // left
       systemClock->dropshadow = 1;
       systemClock->layer0 = 1;
-      systemClock->show = 0;
+      //systemClock->show = 0;
 
 
       inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
@@ -6501,6 +6613,45 @@ void write_map(entity *mapent)
       b1_element->framewidth = 128;
       b1_element->frameheight = 128;
       b1_element->priority = -5; //crosshair goes ontop usable icons
+
+
+      b2_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+      b2_element->persistent = 1;
+      b2_element->heightFromWidthFactor = 1;
+      b2_element->show = 0;
+      b2_element->xframes = 4;
+      b2_element->frame = 2;
+      b2_element->framewidth = 128;
+      b2_element->frameheight = 128;
+      b2_element->priority = -5; //crosshair goes ontop usable icons
+
+      b3_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+      b3_element->persistent = 1;
+      b3_element->heightFromWidthFactor = 1;
+      b3_element->show = 0;
+      b3_element->xframes = 4;
+      b3_element->frame = 3;
+      b3_element->framewidth = 128;
+      b3_element->frameheight = 128;
+      b3_element->priority = -5; //crosshair goes ontop usable icons
+      
+      hearingDetectable = new ui(renderer, "static/ui/detection-hearing.bmp", 0.85, 0.05, 0.1, 1, -10);
+      hearingDetectable->persistent = 1;
+      hearingDetectable->heightFromWidthFactor = 1.3392;
+      hearingDetectable->show = 1;
+      hearingDetectable->priority = -3;
+
+      seeingDetectable = new ui(renderer, "static/ui/detection-seeing.bmp", 0.85, 0.075, 0.1, 1, -10);
+      seeingDetectable->persistent = 1;
+      seeingDetectable->heightFromWidthFactor = 1;
+      seeingDetectable->xframes = 8;
+      seeingDetectable->msPerFrame = 100;
+      seeingDetectable->framewidth = 256;
+      seeingDetectable->frameheight = 256;
+      seeingDetectable->show = 1;
+      seeingDetectable->priority = -2;
+
+
 
       healthText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
       healthText->boxWidth = 0.95;
@@ -7514,6 +7665,7 @@ void write_map(entity *mapent)
     //    }
 
     // move entity
+    // "move"
     if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/move ")
     {
       string s = scriptToUse->at(dialogue_index + 1);
