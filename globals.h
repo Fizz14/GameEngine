@@ -487,7 +487,6 @@ int navCalcMs = 0; //counts up to maxPrecedeCalcMs, and at that point, resets su
 
 navNode* precedeProtagNode = nullptr; //set in main loop, used by some monsters.
                                       
-                                      
 bool g_loadingATM = 0; // are we loading a new map atm?
 SDL_Texture *g_shadowTexture;
 SDL_Texture *g_shadowTextureAlternate;
@@ -593,6 +592,11 @@ bool g_showPellets = 1;
 
 //for the boarding to entities
 entity* g_boardedEntity = 0;
+entity* g_formerBoardedEntity = 0; //when transfering, this points to the entity were are transfering from
+bool g_transferingByBoardable = 0; //set to true when protag entered a transfering boardable ent, and set to false when the protag has reached the other entity
+float g_transferingByBoardableTime = 0; //ms left before arriving at the destination boardable.
+float g_maxTransferingByBoardableTime = 0; //set at the same time g_transferingByBoardableTime is, and used in comparison to set protag's position (even though they won't see anything, they will see the indicators and it will also affect audio)
+
 int g_protagIsWithinBoardable = 0;
 int g_boardingCooldownMs = 0;
 const int g_maxBoardingCooldownMs = 2000;
@@ -826,7 +830,7 @@ std::map<string, Mix_Chunk> g_static_sounds = {};
 
 // ui
 int g_textDropShadowColor = 100;
-float g_textDropShadowDist = 0.05; //this is the pixels of the texture, for better or worse
+float g_textDropShadowDist = 0.04; //this is the pixels of the texture, for better or worse
 bool protag_can_move = true;
 int protag_is_talking = 0; // 0 - not talking 1 - talking 2 - about to stop talking
 adventureUI *adventureUIManager;
@@ -894,6 +898,9 @@ ui* g_dijkstraDebugBlue;
 ui* g_dijkstraDebugYellow;
 entity* g_dijkstraEntity;
 bool g_ninja = 0;
+
+//temporary debug stuff
+int fdebug = -1;
 
 // world
 int g_layers = 12;							 // max blocks in world

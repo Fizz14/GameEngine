@@ -731,8 +731,18 @@ int WinMain()
 
   g_loadingATM = 0;
 
+
   while (!quit)
   {
+    if(fdebug < 2) {
+      M("print from main");
+      entity* ins = searchEntities("common/doora");
+      D(ins->y);
+      D(ins->bounds.y);
+      fdebug ++;
+    }
+
+
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -927,13 +937,29 @@ int WinMain()
 
     //lerp protag to boarded ent smoothly
     if(g_protagIsWithinBoardable) {
-      float px = protag->getOriginX();
-      float py = protag->getOriginY();
-      float tx = g_boardedEntity->getOriginX();
-      float ty = g_boardedEntity->getOriginY();
-      protag->setOriginX( (px + tx)/2 );
-      protag->setOriginY( (py + ty)/2);
-      //protag->z = (protag->z + g_boardedEntity->z) /2;
+      if(g_transferingByBoardable) {
+        g_transferingByBoardableTime += elapsed;
+        if(g_transferingByBoardableTime >= g_maxTransferingByBoardableTime) {
+          g_transferingByBoardable = 0;
+        }
+        float px = g_formerBoardedEntity->getOriginX();
+        float py = g_formerBoardedEntity->getOriginY();
+        float tx = g_boardedEntity->getOriginX();
+        float ty = g_boardedEntity->getOriginY();
+        float completion = g_transferingByBoardableTime / g_maxTransferingByBoardableTime;
+        protag->setOriginX( px * (1-completion) + tx *(completion) );
+        protag->setOriginY( py * (1-completion) + ty *(completion) );
+
+      } else {
+        //this is just a visual effect
+        float px = protag->getOriginX();
+        float py = protag->getOriginY();
+        float tx = g_boardedEntity->getOriginX();
+        float ty = g_boardedEntity->getOriginY();
+        protag->setOriginX( (px + tx)/2 );
+        protag->setOriginY( (py + ty)/2);
+        //protag->z = (protag->z + g_boardedEntity->z) /2;
+      }
 
     }
 
@@ -951,7 +977,7 @@ int WinMain()
       breakpoint();
       
       //if we're boarded within an entity, unboard
-      if(g_protagIsWithinBoardable) {
+      if(g_protagIsWithinBoardable && !g_transferingByBoardable) {
         M("Unboarded");
         
         //if the protag was currently duping a behemoth and hopped out, re-agro that behemoth

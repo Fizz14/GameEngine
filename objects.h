@@ -3337,6 +3337,7 @@ class entity:public actor {
     //are low-level, and updated fickely.
     //destination will be pursued via pathfinding each frame, if set.
     navNode* Destination = nullptr;
+    int lastTargetDestIndex = -1;
     float angleToTarget = 0;
 
 
@@ -3421,6 +3422,9 @@ class entity:public actor {
     //for boarding
     bool isBoardable = 0;
     bool isHidingSpot = 0;
+    string transportEnt = "";
+    float transportRate = 0;
+    entity* transportEntPtr = nullptr;
     bool usesBoardingScript = 0;
     string boardingScriptName;
     vector<string> boardingScript;
@@ -3517,6 +3521,17 @@ class entity:public actor {
                            
     float visionRadius = 0;
     float visionTime = 0; //time needed
+    float roamRate = 0;
+    int minPatrolPerRoam = 2;
+    int curPatrolPerRoam = 0;
+    //roamRate == 0 -> never roam
+    //roamRate == 1 -> always roam
+    //roamRate == 0.2 -> 20% of the time, visit a random POI instead of the next in the sequence
+    int patrolDirection = 0;
+    //if going to a random node makes the behemoth turn around,
+    //if we then start patrolling, patrol backwards
+
+
     float seeAgroMs = 0;
 
     int customMovement = 0;
@@ -3688,6 +3703,7 @@ class entity:public actor {
       bounds.zeight = tzeight * 64;
 
 
+      //bounds_offset
       file >> comment;
       file >> this->bounds.x;
       file >> this->bounds.y;
@@ -4058,12 +4074,19 @@ class entity:public actor {
       //hidingspot
       file >> comment;
       file >> isHidingSpot;
-      
+
       if(isBoardable) {
         g_boardableEntities.push_back(this);
-
       }
-      
+
+      //transport_ent
+      file >> comment;
+      file >> transportEnt;
+
+      //transport_rate
+      file >> comment;
+      file >> transportRate;
+
       //script-on-boarding
       file >> comment;
       file >> boardingScriptName;
@@ -4211,6 +4234,12 @@ class entity:public actor {
 
         stream >> comment; //vision_time
         stream >> visionTime;
+
+        stream >> comment; //roam-rate
+        stream >> roamRate;
+
+        stream >> comment;
+        stream >> minPatrolPerRoam;
 
         stream >> comment; //custom_movement
         stream >> customMovement;
@@ -6164,8 +6193,20 @@ class entity:public actor {
                     }
                   }
 
+                  if(n->transportEntPtr != nullptr) {
+                    g_boardedEntity = n->transportEntPtr;
+                    g_formerBoardedEntity = n;
+                    g_transferingByBoardable = 1;
+                    g_maxTransferingByBoardableTime = XYWorldDistance(n->getOriginX(), n->getOriginY(), g_boardedEntity->getOriginX(), g_boardedEntity->getOriginY()) / n->transportRate;
+                    D(g_maxTransferingByBoardableTime);
+                    g_transferingByBoardableTime = 0;
+                  } else {
+                    g_boardedEntity = n;
+                    g_transferingByBoardable = 0;
+                  }
+
+
                   g_protagIsWithinBoardable = 1;
-                  g_boardedEntity = n;
                   g_msSinceBoarding = 0;
                   protag->tangible = 0;
                   smokeEffect->happen(n->getOriginX(), n->getOriginY(), protag->z);
@@ -6383,7 +6424,7 @@ class entity:public actor {
 
                     float angleToPotTarget = atan2(x->getOriginX() - getOriginX(), x->getOriginY() - getOriginY()) - M_PI/2;
                     angleToPotTarget = wrapAngle(angleToPotTarget);
-                    if(abs(angleDiff(angleToPotTarget, this->steeringAngle)) < 0.8) {
+                    if(abs(angleDiff(angleToPotTarget, this->steeringAngle)) < 1.6) {
                       potentialTarget = x;
                       if(potentialTarget == protag) {
                         g_protagIsBeingDetectedBySight = 1;
@@ -6714,28 +6755,95 @@ class entity:public actor {
           if(traveling) {
             if(readyForNextTravelInstruction && g_setsOfInterest.at(poiIndex).size() != 0) {
               readyForNextTravelInstruction = 0;
+
+              float r = ((double) rand() / RAND_MAX);
+              if(curPatrolPerRoam < minPatrolPerRoam) {
+                myTravelstyle = patrol;
+                curPatrolPerRoam++;
+                M("Can't roam now");
+              } else {
+                if(r >= roamRate) {
+                  myTravelstyle = patrol;
+                } else {
+                  myTravelstyle = roam;
+                  curPatrolPerRoam = 0;
+                }
+              }
               if(myTravelstyle == roam) {
                 //generate random number corresponding to an index of our poi vector
-                int random = rand() % (int)g_setsOfInterest.at(poiIndex).size();
+                int random = rand() % ((int)g_setsOfInterest.at(poiIndex).size() - 1);
                 pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(random);
+                if(random == lastTargetDestIndex) {
+                  random++;
+                  targetDest = g_setsOfInterest.at(poiIndex).at(random);
+                }
+                D(random);
+                D(lastTargetDestIndex);
+                if(random == lastTargetDestIndex) {
+                  M("They're equal, this shouldn't happen");
+                } 
+//                else if(random < lastTargetDestIndex) {
+//                  patrolDirection = 1; //patrol decreasingly
+//                  M("New direction is Clock.");
+//                } else {
+//                  patrolDirection = 0; //patrol increasingly
+//                  M("New direction is Ounter.");
+//                }
+                //set new direction to clock if it's faster to go clockwise
+                int numPoiNodes = ((int)g_setsOfInterest.at(poiIndex).size());
+
+                //get the distance by counting upwards (ounter)
+                int ounterDistance = 0;
+                int thisSpot = lastTargetDestIndex;
+                while(thisSpot != random) {
+                  thisSpot++;
+                  ounterDistance++;
+                  if(thisSpot > numPoiNodes) {thisSpot = 0;}
+                }
+
+                int clockDistance = numPoiNodes - ounterDistance;
+
+                D(ounterDistance);
+                D(clockDistance);
+                if(ounterDistance < clockDistance) {
+                  patrolDirection = 0;
+                  M("New Direction is Ounter");
+                } else {
+                  patrolDirection = 1;
+                  M("New Direction is Clock");
+
+                }
+
+
+                lastTargetDestIndex = random;
+                currentPoiForPatrolling = random;
                 Destination = getNodeByPosition(targetDest->x, targetDest->y);
               } else if(myTravelstyle == patrol) {
-                currentPoiForPatrolling++;
+                if(patrolDirection == 0) {
+                  currentPoiForPatrolling++;
+                  M("Going Ounter...");
+                } else {
+                  currentPoiForPatrolling--;
+                  M("Going Clock...");
+                }
                 if(currentPoiForPatrolling > (int)g_setsOfInterest.at(poiIndex).size()-1) {currentPoiForPatrolling = 0;}
+                if(currentPoiForPatrolling < 0) {currentPoiForPatrolling = g_setsOfInterest.at(poiIndex).size()-1;}
+
                 pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(currentPoiForPatrolling);
+                lastTargetDestIndex = currentPoiForPatrolling;
                 Destination = getNodeByPosition(targetDest->x, targetDest->y);
               }
-              M("Finished giving next travel instruction");
             } else {
               //should we be ready for our next travel-instruction?
+              if(Destination == nullptr) {
+                Destination = getNodeByPosition(getOriginX(), getOriginY());
+              }
               if(Destination != nullptr && XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 32) {
                 readyForNextTravelInstruction = 1;
               }
             }
 
-            M("Lets do basic navigate");
             BasicNavigate(Destination);
-            M("Finished with BasicNavigate");
           }
         }
 
@@ -7154,21 +7262,20 @@ class entity:public actor {
             }
           }
         }
-        D("H");
-
-        dest = path.at(path.size() - 1); 
-        D("I");
+        if(path.size() != 0) {
+          dest = path.at(path.size() - 1); 
+        } else {
+          dest = getNodeByPosition(getOriginX(), getOriginY());
+        }
         if( path.size() > 0) {
           //take next node in path
           current = dest;
           dest = path.at(path.size() - 1);
           path.erase(path.begin() + path.size()-1);
         }
-        D("J");
       } else {
         timeSinceLastDijkstra -= elapsed;
       }
-      D("K");
       
     }
 

@@ -289,10 +289,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       }
       e->steeringAngle = convertFrameToAngleNew(e->animation, e->flip == SDL_FLIP_HORIZONTAL);
       e->targetSteeringAngle = e->steeringAngle;
-      if(e->aiIndex == 0) {
-        D(e->name);
-        D(e->steeringAngle);
-      }
 
       
       if(e->parent != nullptr) {
@@ -407,6 +403,12 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
           }
         }
       }
+      if(e->name == "common/doora") {
+        breakpoint();
+        D(e->y);
+        D(e->bounds.y);
+      }
+
     }
     if (word == "item")
     {
@@ -1380,6 +1382,13 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 //  } else {
 //    g_pelletTexture = nullptr;
 //  }
+  
+  //link together transport ents
+  for(auto x : g_boardableEntities) {
+    if(x->transportEnt != "0" || x->transportEnt != "") {
+      x->transportEntPtr = searchEntities(x->transportEnt);
+    }
+  }
 
   g_loadingATM = 0;
 }
@@ -4528,6 +4537,7 @@ void write_map(entity *mapent)
       {
         if (line >> word)
         {
+          fdebug = -1;
           // must close file before renaming it
           ofile.close();
           string theme = word;
@@ -5212,6 +5222,8 @@ void write_map(entity *mapent)
           D(chosenEntity->isWorlditem);
           D(chosenEntity->isAI);
           D(chosenEntity->aiIndex);
+          D(chosenEntity->isBoardable);
+          D(chosenEntity->transportEntPtr);
           M("");
 
           M("Combat Data:");
@@ -6776,6 +6788,7 @@ void write_map(entity *mapent)
     hotbarFocus->persistent = true;
     hotbarFocus->heightFromWidthFactor = 1;
     hotbarFocus->priority = -7;
+    hotbarFocus->dropshadow = 1;
 
 
 
@@ -7439,6 +7452,7 @@ void write_map(entity *mapent)
       }
       dialogue_index++;
       this->continueDialogue();
+      M("selfdatacheckingcode complete");
       return;
     }
 
@@ -8854,6 +8868,7 @@ void write_map(entity *mapent)
     //  /solidify wall 0
     if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/solidify")
     {
+      M("/solidify");
       string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 10);
 
@@ -9028,9 +9043,11 @@ void write_map(entity *mapent)
     // set direction to -1 to not set the direction
     // set msperframe to 0 to not animate
     // set frameInAnimation to -1 to not change
+    // set looppAnimation to loop after done
     // set reverse to 1 to play backwards
     if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
     {
+      M("Animate interpreter");
       string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
@@ -9047,8 +9064,8 @@ void write_map(entity *mapent)
       else
       {
         ent = searchEntities(split[0], talker);
-//        M("Searched for ent");
-//        D(ent->name);
+        M("Searched for ent");
+        D(ent->name);
       }
       if (ent != 0)
       {
@@ -9056,34 +9073,35 @@ void write_map(entity *mapent)
         if (animationset != -1)
         {
           ent->animation = stoi(split[1]);
-//          I("Set animation to ");
-//          I(ent->animation);
+          I("Set animation to ");
+          I(ent->animation);
         }
         ent->msPerFrame = stoi(split[2]);
-//        I("Set msPerFrame to");
-//        I(ent->msPerFrame);
+        I("Set msPerFrame to");
+        I(ent->msPerFrame);
 
         int frameset = stoi(split[3]);
         if(frameset != -1) {
           ent->frameInAnimation = stoi(split[3]);
-//          I("Set frameInAnimation to ");
-//          I(ent->frameInAnimation);
+          I("Set frameInAnimation to ");
+          I(ent->frameInAnimation);
         }
 
         ent->loopAnimation = stoi(split[4]);
-//        I("Set loopAnimation to ");
-//        I(ent->loopAnimation);
+        I("Set loopAnimation to ");
+        I(ent->loopAnimation);
         
         ent->reverseAnimation = stoi(split[5]);
-//        I("Set reverseAnimation to ");
-//        I(ent->reverseAnimation);
+        I("Set reverseAnimation to ");
+        I(ent->reverseAnimation);
 
         ent->scriptedAnimation = 1;
       } 
 
-      //I("end call of /anim");
+      I("end call of /anim");
 
       dialogue_index++;
+      M("Animate complete");
       this->continueDialogue();
       return;
     }
@@ -9091,7 +9109,7 @@ void write_map(entity *mapent)
     // play sound at an entity
     //  /entsound heavy-door-open doora
     //  /entsound croak protag
-    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/entsound")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/entsound")
     {
       string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
