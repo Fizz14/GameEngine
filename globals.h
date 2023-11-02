@@ -234,6 +234,21 @@ bool showImportantMessages = 1;
   std::cout << #a << ": " << (a) << endl; \
 }
 
+// like D, but dont do newline
+#define Dnn(a) \
+  if (canSwitchOffDevMode && showDevMessages)           \
+{                                         \
+  std::cout << #a << ": " << (a); \
+}
+
+//print a spacing symbol, no newline
+#define Snn() \
+  if (canSwitchOffDevMode && showDevMessages)           \
+{                                         \
+  std::cout << "  "; \
+}
+
+
 #define ID(a)                                \
 {                                         \
   std::cout << #a << ": " << (a) << endl; \
@@ -418,7 +433,7 @@ std::vector<std::vector<int>>g_fog_window = {
 //  {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
 //  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 //};
-//
+
 
 
 bool g_fogIgnoresLOS = 0;

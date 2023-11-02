@@ -2366,6 +2366,7 @@ void write_map(entity *mapent)
           rect noderect = {(int)(g_navNodes[i]->x - cullingdiameter / 2), (int)(g_navNodes[i]->y - cullingdiameter / 2), (int)(cullingdiameter), (int)(cullingdiameter * XtoY)};
           noderect.z = g_navNodes[i]->z + 30;
           noderect.zeight = 1;
+          bool breakflag = 0;
           for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++)
           {
             //    M(g_boxs[layer][j]->bounds.x);
@@ -2377,9 +2378,22 @@ void write_map(entity *mapent)
             {
               delete g_navNodes[i];
               i--;
+              breakflag = 1;
               break;
             }
           }
+          if(breakflag) {break;}
+          //do the same for implied geometry
+          for(auto x : g_impliedSlopes) {
+            if(RectOverlap(noderect, x->bounds))
+            {
+              delete g_navNodes[i];
+              i--;
+              break;
+            }
+          }
+          
+          
           // break;//temp
         }
         for (long long unsigned int i = 0; i < g_navNodes.size(); i++)
@@ -2509,9 +2523,20 @@ void write_map(entity *mapent)
         vector<ramp *> deleteRamps;
         vector<trigger *> deleteTriggers;
         vector<door *> deleteDoors;
+        vector<pointOfInterest *> deletePois;
         vector<impliedSlopeTri*> deleteIST;
         vector<impliedSlope*> deleteIS;
         rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
+
+        for(auto x : g_setsOfInterest) {
+          for(auto n : x) {
+            rect poirect = {n->x, n->y, 10, 10};
+            if( RectOverlap(markerrect, poirect) ) {
+              deletePois.push_back(n);
+              deleteflag = 0;
+            }
+          }
+        }
 
         //delete IS
         for (auto n : g_impliedSlopes)
@@ -2647,6 +2672,11 @@ void write_map(entity *mapent)
         }
 
         for (auto x : deleteIST) 
+        {
+          delete x;
+        }
+
+        for (auto x : deletePois)
         {
           delete x;
         }
@@ -5049,6 +5079,7 @@ void write_map(entity *mapent)
           if (line >> num)
           {
             g_mute = num;
+            Mix_VolumeMusic(0);
           }
           if (num == 1)
           {
@@ -5113,10 +5144,21 @@ void write_map(entity *mapent)
         }
       }
 
+      if(word =="fuckoff")
+      {
+        for(auto x : g_entities) {
+          if(x->dynamic && x->targetFaction == protag->faction) {
+            x->agrod = 0;
+            x->tangible = 0;
+          }
+        }
+
+      }
+
       if(word == "deagroall")
       {
         for(auto x : g_entities) {
-          if(x->dynamic) {
+          if(x->dynamic && x->targetFaction == protag->faction) {
             x->agrod = 0;
           }
         }
@@ -6697,7 +6739,7 @@ void write_map(entity *mapent)
       escText->boxHeight = 0.25 - 0.02;
       escText->worldspace = 0;
       escText->show = 1;
-      escText->align = 0;
+      escText->align = 2;
       escText->dropshadow = 1; 
 
       inputText = new textbox(renderer, "", 1700 * g_fontsize * 1.4, 0, 0, 0.9);
@@ -6735,17 +6777,17 @@ void write_map(entity *mapent)
 //    thoughtPicture->widthGlideSpeed = 0.1;
 //    thoughtPicture->priority = -10; //thought is behind everything
 
-    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
-    tastePicture->persistent = 1;
-    tastePicture->heightFromWidthFactor = 1;
-    tastePicture->show = 1;
-    tastePicture->framewidth = 410;
-    tastePicture->frameheight = 465;
-    tastePicture->layer0 = 1;
-    tastePicture->glideSpeed = 0.1;
-    tastePicture->widthGlideSpeed = 0.1;
-    tastePicture->priority = -10; //taste is behind everything
-    tastePicture->show = 1;
+//    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
+//    tastePicture->persistent = 1;
+//    tastePicture->heightFromWidthFactor = 1;
+//    tastePicture->show = 1;
+//    tastePicture->framewidth = 410;
+//    tastePicture->frameheight = 465;
+//    tastePicture->layer0 = 1;
+//    tastePicture->glideSpeed = 0.1;
+//    tastePicture->widthGlideSpeed = 0.1;
+//    tastePicture->priority = -10; //taste is behind everything
+//    tastePicture->show = 1;
 
     adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
     adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;

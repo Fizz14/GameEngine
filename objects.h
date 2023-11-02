@@ -3299,7 +3299,7 @@ class entity:public actor {
     float targetSteeringAngle = 0; //degrees
     float turningSpeed = 1; //turns per second
 
-    float forwardsVelocity; //set by inputting movement, this will be converted to xvel and yvel based on to feed back into the old system.
+    float forwardsVelocity = 0; //set by inputting movement, this will be converted to xvel and yvel based on to feed back into the old system.
 
     // e.g., targetSteeringAngle is set for the protag when a movement key is pressed,
     // and steeringAngle is slowly interpolated to that angle, used for both
@@ -3426,7 +3426,7 @@ class entity:public actor {
     float transportRate = 0;
     entity* transportEntPtr = nullptr;
     bool usesBoardingScript = 0;
-    string boardingScriptName;
+    string boardingScriptName = "";
     vector<string> boardingScript;
 
     //change pixel drawing method 
@@ -3654,11 +3654,11 @@ class entity:public actor {
       string temp;
       file >> temp;
       string spritefilevar;
-      if(temp.substr(0,3) == "sp-") {
-        spritefilevar = "engine/" + temp + ".bmp";
-      } else {
+//      if(temp.substr(0,3) == "sp-") {
+//        spritefilevar = "engine/" + temp + ".bmp";
+//      } else {
         spritefilevar = "static/sprites/" + temp + ".bmp";
-      }
+      //}
 
 
       //check local folder
@@ -4918,65 +4918,69 @@ class entity:public actor {
             }
           }
 
-          //update shadow
-          float heightfloor = 0;
-          layer = max(z /64, 0.0f);
-          layer = min(layer, (int)g_boxs.size() - 1);
+          //I think I added this check for the ent's floor to let the protag walk up
+          //slopes, but i'll disable it since i don't really use slopes (Nov 2023)
+          //There's another one 1000 lines later
 
-          //should we fall?
-          //bool should_fall = 1;
-          float floor = 0;
-          if(layer > 0) {
-            //!!!
-            rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
-            //rect thisMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
-            for (auto n : g_boxs[layer - 1]) {
-              if(RectOverlap(n->bounds, thisMovedBounds)) {
-                floor = 64 * (layer);
-                break;
-              }
-            }
-            for (auto n : g_triangles[layer - 1]) {
-              if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
-                floor = 64 * (layer);
-                break;
-              }
-
-            }
-
-
-            float shadowFloor = floor;
-            floor = max(floor, heightfloor);
-
-            bool breakflag = 0;
-            for(int i = layer - 1; i >= 0; i--) {
-              for (auto n : g_boxs[i]) {
-                if(RectOverlap(n->bounds, thisMovedBounds)) {
-                  shadowFloor = 64 * (i + 1);
-                  breakflag = 1;
-                  break;
-                }
-              }
-              if(breakflag) {break;}
-              for (auto n : g_triangles[i]) {
-                if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
-                  shadowFloor = 64 * (i + 1);
-                  breakflag = 1;
-                  break;
-                }
-
-              }
-              if(breakflag) {break;}
-            }
-            if(breakflag == 0) {
-              //just use heightmap
-              shadowFloor = floor;
-            }
-            this->shadow->z = shadowFloor;
-          } else {
-            this->shadow->z = heightfloor;
-            floor = heightfloor;
-          }
+//          //update shadow
+//          float heightfloor = 0;
+//          layer = max(z /64, 0.0f);
+//          layer = min(layer, (int)g_boxs.size() - 1);
+//
+//          //should we fall?
+//          //bool should_fall = 1;
+//          float floor = 0;
+//          if(layer > 0) {
+//            //!!!
+//            rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+//            //rect thisMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
+//            for (auto n : g_boxs[layer - 1]) {
+//              if(RectOverlap(n->bounds, thisMovedBounds)) {
+//                floor = 64 * (layer);
+//                break;
+//              }
+//            }
+//            for (auto n : g_triangles[layer - 1]) {
+//              if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
+//                floor = 64 * (layer);
+//                break;
+//              }
+//
+//            }
+//
+//
+//            float shadowFloor = floor;
+//            floor = max(floor, heightfloor);
+//
+//            bool breakflag = 0;
+//            for(int i = layer - 1; i >= 0; i--) {
+//              for (auto n : g_boxs[i]) {
+//                if(RectOverlap(n->bounds, thisMovedBounds)) {
+//                  shadowFloor = 64 * (i + 1);
+//                  breakflag = 1;
+//                  break;
+//                }
+//              }
+//              if(breakflag) {break;}
+//              for (auto n : g_triangles[i]) {
+//                if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
+//                  shadowFloor = 64 * (i + 1);
+//                  breakflag = 1;
+//                  break;
+//                }
+//
+//              }
+//              if(breakflag) {break;}
+//            }
+//            if(breakflag == 0) {
+//              //just use heightmap
+//              shadowFloor = floor;
+//            }
+//            this->shadow->z = shadowFloor;
+//          } else {
+//            this->shadow->z = heightfloor;
+//            floor = heightfloor;
+//          }
           shadow->x = x + shadow->xoffset;
           shadow->y = y + shadow->yoffset;
 
@@ -5193,7 +5197,7 @@ class entity:public actor {
         {xmaxspeed = baseMaxSpeed;}
 
         //normalize accel vector
-        float vectorlen = pow( pow(xaccel, 2) + pow(yaccel, 2), 0.5) / (xmaxspeed * (1 - statusSlownPercent));
+        float vectorlen = pow( pow(xaccel, 2) + pow(yaccel, 2), 0.5) /(xmaxspeed * (1 - statusSlownPercent));
         if(xaccel != 0) {
           xaccel /=vectorlen;
         }
@@ -5282,6 +5286,8 @@ class entity:public actor {
   
             { //collision checking
               rect movedbounds = rect(bounds.x + x + experimentalXOffset, bounds.y + y + experimentalYOffset, bounds.width, bounds.height);
+              movedbounds.z = z;
+              movedbounds.zeight = bounds.zeight;
   
               //check for map collisions
               for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
@@ -5319,8 +5325,10 @@ class entity:public actor {
                   if(!n->tangible) {continue;}
                   //update bounds with new pos
                   rect thatmovedbounds = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
+                  thatmovedbounds.z = bounds.z;
+                  thatmovedbounds.zeight = bounds.zeight;
                   //uh oh, did we collide with something?
-                  if(RectOverlap(movedbounds, thatmovedbounds)) {
+                  if(RectOverlap3d(movedbounds, thatmovedbounds)) {
                     inCollision = 1;
                     break;
                   }
@@ -5421,6 +5429,13 @@ class entity:public actor {
         int oxvel = xvel;
         int oyvel = yvel;
 
+        //observed problem - sometimes the zombie gets stuck trying to go thru a narrow doorway
+        //For instance, the zombie is trying to move left and up to pass thru a doorway
+        //But the horizontal component of his velocity is much greater than the vertical component
+        //the vertical component of velocity is negated due to friction
+        //but the horizontal component is negated due to normal force, and thus, the zombie is eternally stuck
+        //idea - if an entity's xcomp of velocity is reduced to zero, increase the y comp to their full agility value
+
 
         //turn off boxs if using the map-editor
         if(boxsenabled) {
@@ -5441,16 +5456,26 @@ class entity:public actor {
             if(!n->tangible) {continue;}
             //update bounds with new pos
             rect thismovedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+            thismovedbounds.z = z;
+            thismovedbounds.zeight = bounds.zeight;
+
             rect thatmovedbounds = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
+            thatmovedbounds.z = n->z;
+            thatmovedbounds.zeight = n->bounds.zeight;
+
             //uh oh, did we collide with something?
-            if(RectOverlap(thismovedbounds, thatmovedbounds)) {
+            if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
               ycollide = true;
               yvel = 0;
             }
+
             //update bounds with new pos
             thismovedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+            thismovedbounds.z = z;
+            thismovedbounds.zeight = bounds.zeight;
+
             //uh oh, did we collide with something?
-            if(RectOverlap(thismovedbounds, thatmovedbounds)) {
+            if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
               xcollide = true;
               xvel = 0;
             }
@@ -5883,6 +5908,26 @@ class entity:public actor {
           //playSound(-1, g_bonk, 0);
         }
 
+        //if we had a collision on X but not Y, increase yvel to what it would have been without
+        //the x component (help ents get thru narrow doorways)
+//        if(xcollide) {
+//          yvel -= yaccel * ((double) elapsed / 256.0);
+//          if(yaccel > 0) {
+//            yvel += (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
+//          } else if (yaccel < 0) {
+//            yvel -= (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
+//          }
+//        }
+//
+//        if(ycollide) {
+//          xvel -= xaccel * ((double) elapsed / 256.0);
+//          if(xaccel > 0) {
+//            xvel += (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
+//          } else if (xaccel < 0) {
+//            xvel -= (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
+//          }
+//        }
+
         if(!ycollide && !transition) {
           y+= yvel * ((double) elapsed / 256.0);
         }
@@ -6127,6 +6172,29 @@ class entity:public actor {
                     }
                   }
                 }
+              }
+            }
+          }
+        }
+
+        //look for solid entities (new as of Nov 2023 for the bed)
+        if(this == protag) { //seems to be causing slowdown
+          for(auto n : g_solid_entities) {
+            if(XYWorldDistanceSquared(this->x, this->y, n->x, n->y) < 102400) //arbitrary distance chosen for optimization, it indicates a origin-to-origin distance of five blocks which is usually enough
+            {
+              rect thisb = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+              thisb.z = z;
+              thisb.zeight = bounds.zeight;
+  
+              rect that = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
+              that.z = n->z;
+              that.zeight = n->bounds.zeight;
+  
+  
+              if(RectOverlap(thisb,that) && (thisb.z >= that.z + that.zeight)) {
+                floor = that.z + that.zeight + 0.1;
+                this->shadow->z = floor + 1;
+  
               }
             }
           }
@@ -6622,11 +6690,10 @@ class entity:public actor {
 
           for(auto x : g_entities) {
             if(this == x) {continue;}
-            bool m = CylinderOverlap(this->getMovedBounds(), x->getMovedBounds());
 
             //entities with a semisolid value of 2 are only solid to the player
             bool solidfits = 0;
-
+  
             //this is not a silly check
             if(this == protag) {
               solidfits = x->semisolid;
@@ -6634,32 +6701,59 @@ class entity:public actor {
               solidfits = (x->semisolid == 1);
             }
 
-            if(solidfits && x->tangible && m) {
-              //push this one slightly away from x
-              float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
-              float mag =  30000/r;
-              float xdif = (this->getOriginX() - x->getOriginX());
-              float ydif = (this->getOriginY() - x->getOriginY());
-              float len = pow( pow(xdif, 2) + pow(ydif, 2), 0.5);
-              float normx = xdif/len;
-              float normy = ydif/len;
+            //entities with a semisolid value of 3 are semisolid with a square collision
+            bool semisolidsquare = x->semisolid == 3;
+            if(semisolidsquare) {
+              bool m = RectOverlap(this->getMovedBounds(), x->getMovedBounds());
+              if(m && x->tangible && solidfits) {
+                float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
+                float mag =  30000/r;
+                float xdif = (this->getOriginX() - x->getOriginX());
+                float ydif = (this->getOriginY() - x->getOriginY());
+                float len = pow( pow(xdif, 2) + pow(ydif, 2), 0.5);
+                float normx = xdif * 0.1;
+                float normy = ydif * 0.1;
+  
+                if(!isnan(mag * normx) && !isnan(mag * normy)) {
+                  xvel += normx * mag;
+                  yvel += normy * mag;
+                }
 
-              if(!isnan(mag * normx) && !isnan(mag * normy)) {
-                xvel += normx * mag;
-                yvel += normy * mag;
+
               }
 
-            } else if(m && x->usesContactScript && x->contactReadyToProc && x->tangible && this->faction != x->faction) {
-              //make a scriptcaller
-              adventureUI scripter(renderer, 1);
-              scripter.playersUI = 0;
-              scripter.talker = x;
-              scripter.ownScript = x->contactScript;
-              scripter.dialogue_index = -1;
-              x->target = this;
-              x->sayings = x->contactScript;
-              scripter.continueDialogue();
+            } else {
 
+              bool m = CylinderOverlap(this->getMovedBounds(), x->getMovedBounds());
+  
+  
+              if(solidfits && x->tangible && m) {
+                //push this one slightly away from x
+                float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
+                float mag =  30000/r;
+                float xdif = (this->getOriginX() - x->getOriginX());
+                float ydif = (this->getOriginY() - x->getOriginY());
+                float len = pow( pow(xdif, 2) + pow(ydif, 2), 0.5);
+                float normx = xdif/len;
+                float normy = ydif/len;
+  
+                if(!isnan(mag * normx) && !isnan(mag * normy)) {
+                  xvel += normx * mag;
+                  yvel += normy * mag;
+                }
+  
+              } else if(m && x->usesContactScript && x->contactReadyToProc && x->tangible && this->faction != x->faction) {
+                //make a scriptcaller
+                adventureUI scripter(renderer, 1);
+                scripter.playersUI = 0;
+                scripter.talker = x;
+                scripter.ownScript = x->contactScript;
+                scripter.dialogue_index = -1;
+                x->target = this;
+                x->sayings = x->contactScript;
+                scripter.continueDialogue();
+  
+              }
             }
           }
         }
@@ -7691,10 +7785,6 @@ int loadSave() {
 
   //load spin entity
   if(g_spin_enabled && g_spin_entity == nullptr) {
-    // !!! delete old spin ent
-    M(" ");
-    M("Making a new spin ent");
-    M(" ");
     
     string spinEntFilename = protag->name + "-spin";
     entity* a = new entity(renderer, spinEntFilename);
@@ -8067,6 +8157,15 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, i
           return true;
         }
       }
+    } else {
+      for (long long unsigned int j = 0; j < g_impliedSlopes.size(); j++) {
+        if(RectOverlap(a, g_impliedSlopes[j]->bounds)) {
+          lineTraceX = a.x + a.width/2;
+          lineTraceY = a.y + a.height/2;
+          return false;
+        }
+      }
+
     }
 
 
@@ -8077,6 +8176,7 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, i
         return false;
       }
     }
+
 
     for(auto x : g_solid_entities) {
       if(visibility) {
@@ -8497,7 +8597,7 @@ class ui {
             dstrect = transformRect( dstrect );
             if(dropshadow) {
               SDL_FRect shadowRect = dstrect;
-                float booshAmount = g_textDropShadowDist * 30;
+              float booshAmount = g_textDropShadowDist * 30;
               shadowRect.x += booshAmount;
               shadowRect.y += booshAmount;
               SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
@@ -8508,9 +8608,13 @@ class ui {
           } else {
             if(heightFromWidthFactor != 0) {
               SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
+              dstrect.x /= g_zoom_mod;
+              dstrect.y /= g_zoom_mod;
+              dstrect.w /= g_zoom_mod;
+              dstrect.h /= g_zoom_mod;
               if(dropshadow) {
                 SDL_FRect shadowRect = dstrect;
-                float booshAmount = g_textDropShadowDist * 30;
+                float booshAmount = g_textDropShadowDist * 40;
                 shadowRect.x += booshAmount;
                 shadowRect.y += booshAmount;
                 SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
@@ -8518,10 +8622,6 @@ class ui {
                 SDL_SetTextureColorMod(texture, 255,255,255);
               }
 
-              dstrect.x /= g_zoom_mod;
-              dstrect.y /= g_zoom_mod;
-              dstrect.w /= g_zoom_mod;
-              dstrect.h /= g_zoom_mod;
 
 
               if(xframes > 1) {
@@ -9542,7 +9642,6 @@ void clear_map(camera& cameraToReset) {
 //    }
 //  }
 
-  M("clear_map got here");
   vector<weapon*> persistentweapons;
   size = (int)g_weapons.size();
   for(int i = 0; i < size; i++) {
@@ -9551,22 +9650,15 @@ void clear_map(camera& cameraToReset) {
     for(auto x: party) {
       if(x->hisweapon->name == g_weapons[0]->name) {
         partyOwned = true;
-        M("Found a partymember's weapon");
       }
     }
     if(partyOwned) {
-      M("Lets save a weapon");
       persistentweapons.push_back(g_weapons[0]);
       g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), g_weapons[0]), g_weapons.end());
     } else {
-      M("Lets delete a weapon");
-      D(g_weapons.size());
-      D(g_weapons[0]->name);
       delete g_weapons[0];
-      M("deletion was successful");
     }
   }
-  M("clear_map didnt get here");
 
   for(auto x : persistentweapons) {
     g_weapons.push_back(x);
@@ -9612,8 +9704,6 @@ void clear_map(camera& cameraToReset) {
     delete x;
   }
   g_collisionZones.clear();
-
-  M("Did we get here?");
 
   //clear layers of boxes and triangles
   for(long long unsigned int i = 0; i < g_boxs.size(); i++) {
@@ -9753,15 +9843,15 @@ class settingsUI {
       optionStrings.push_back("Down");
       optionStrings.push_back("Left");
       optionStrings.push_back("Right");
-      optionStrings.push_back("Jump");
+      optionStrings.push_back("Spring");
       optionStrings.push_back("Interact");
-      optionStrings.push_back("Inventory");
-      optionStrings.push_back("Spin/Use Item");
+      optionStrings.push_back("Select Item");
+      optionStrings.push_back("Use Item");
 
-      optionStrings.push_back("Fullscreen");
+      optionStrings.push_back("Maximize");
       optionStrings.push_back("Music Volume");
       optionStrings.push_back("Sounds Volume");
-      optionStrings.push_back("Graphics Quality");
+      optionStrings.push_back("Graphical Quality");
       optionStrings.push_back("Brightness");
 
       numLines = optionStrings.size();

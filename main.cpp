@@ -121,19 +121,19 @@ int WinMain()
   // g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
 
   // protag healthbar
-  ui *protagHealthbarA = new ui(renderer, "static/ui/healthbarA.bmp", 0, 0, 0.05, 0.02, -3);
-  protagHealthbarA->persistent = 1;
-  ui *protagHealthbarB = new ui(renderer, "static/ui/healthbarB.bmp", 0, 0, 0.05, 0.02, -2);
-  protagHealthbarB->persistent = 1;
-  protagHealthbarB->shrinkPixels = 1;
-
-  ui *protagHealthbarC = new ui(renderer, "static/ui/healthbarC.bmp", 0, 0, 0.05, 0.02, -1);
-  protagHealthbarC->persistent = 1;
-  protagHealthbarC->shrinkPixels = 1;
-
-  protagHealthbarA->show = g_showHealthbar;
-  protagHealthbarB->show = g_showHealthbar;
-  protagHealthbarC->show = g_showHealthbar;
+//  ui *protagHealthbarA = new ui(renderer, "static/ui/healthbarA.bmp", 0, 0, 0.05, 0.02, -3);
+//  protagHealthbarA->persistent = 1;
+//  ui *protagHealthbarB = new ui(renderer, "static/ui/healthbarB.bmp", 0, 0, 0.05, 0.02, -2);
+//  protagHealthbarB->persistent = 1;
+//  protagHealthbarB->shrinkPixels = 1;
+//
+//  ui *protagHealthbarC = new ui(renderer, "static/ui/healthbarC.bmp", 0, 0, 0.05, 0.02, -1);
+//  protagHealthbarC->persistent = 1;
+//  protagHealthbarC->shrinkPixels = 1;
+//
+//  protagHealthbarA->show = g_showHealthbar;
+//  protagHealthbarB->show = g_showHealthbar;
+//  protagHealthbarC->show = g_showHealthbar;
 
 
   // for transition
@@ -169,7 +169,7 @@ int WinMain()
     // done once, because textboxes aren't cleared during clear_map()
     nodeInfoText = new textbox(renderer, "",  g_fontsize, 0, 0, WIN_WIDTH);
     g_config = "edit";
-    nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walker.bmp"));
+    nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walkerYellow.bmp"));
   }
 
   // set bindings from file
@@ -562,26 +562,18 @@ int WinMain()
  
 
   // This stuff is for the FoW mechanic
-
   // engine/resolution.bmp has resolution 1920 x 1200
   SDL_Surface *SurfaceA = IMG_Load("engine/resolution.bmp");
-  // SDL_Surface* SurfaceB = IMG_Load("engine/b.bmp");
 
   TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
   TextureD = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 
-  // SDL_Texture* TextureA = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
-  // TextureB = SDL_CreateTextureFromSurface(renderer, SurfaceB);
-
   SDL_FreeSurface(SurfaceA);
-  // SDL_FreeSurface(SurfaceB);
 
   SDL_Surface *blackbarSurface = IMG_Load("engine/black.bmp");
   blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
 
   SDL_FreeSurface(blackbarSurface);
-
-  // SDL_Texture* TextureC;
 
   result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
   result_c = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
@@ -596,8 +588,24 @@ int WinMain()
   // SDL_SetTextureBlendMode(TextureB, SDL_BLENDMODE_NONE);
 
   // init fogslates
+  
+  //strange displacement in debugger vs standalone
+  //in debugger g_fc[20][19] = g_fc[20][20] = -1414812757
+  //but standalone = 0
+  //?
+  for(int i = 0; i < g_fogcookies.size(); i++) {
+    for(int j = 0; j < g_fogcookies.size(); j++) {
+      g_fc[i][j] = 0;
+      g_sc[i][j] = 0;
+      g_fogcookies[i][j] = 0;
+    }
+  }
 
-  entity *s;
+
+  entity *s = nullptr;
+//  s->dynamic = 0;
+//  s->width = 0;
+
   for (size_t i = 0; i < 19; i++)
   {
     s = new entity(renderer, "engine/sp-fogslate");
@@ -635,6 +643,7 @@ int WinMain()
     s->shadow->width = 0;
     s->dynamic = 0;
     s->sortingOffset = 165; // -65 55
+    //s->width = 0;
   }
 
   for (size_t i = 0; i < 19; i++)
@@ -654,6 +663,7 @@ int WinMain()
     s->shadow->width = 0;
     s->dynamic = 0;
     s->sortingOffset = 45000; // !!! might need to be bigger
+    //s->width = 0;
   }
 
   SDL_DestroyTexture(s->texture);
@@ -724,25 +734,13 @@ int WinMain()
   SDL_FreeSurface(lightDSri);
 
 
-  for (auto x : g_fogslates)
-  {
-    x->texture = TextureC;
-  }
+
 
   g_loadingATM = 0;
 
 
   while (!quit)
   {
-    if(fdebug < 2) {
-      M("print from main");
-      entity* ins = searchEntities("common/doora");
-      D(ins->y);
-      D(ins->bounds.y);
-      fdebug ++;
-    }
-
-
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -1347,7 +1345,12 @@ int WinMain()
                 // g_sc[i][j] -= g_tile_fade_speed; if (g_sc[i][j] < 0) g_sc[i][j] = 0;
                 g_sc[i][j] = 0;
               }
-              else if (LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, g_focus->stableLayer, 15, 1, 1))
+              else if (
+                  LineTrace(functionalX, functionalY, xpos, ypos, 0, 35, g_focus->stableLayer, 15, 1, 1) 
+                  &&
+                  !g_transferingByBoardable
+
+                  )
               {
                 g_fogcookies[i][j] = 255;
                 g_fc[i][j] = 255;
@@ -1457,7 +1460,7 @@ int WinMain()
               if(ypos < functionalY) {yBoost = 55;}
 
               //if (!(XYWorldDistance(functionalX, functionalY + yBoost, xpos, ypos) > g_viewdist) && blocked)
-              if(g_fog_window[i][j] && blocked)
+              if(g_fog_window[i][j] && blocked && !g_transferingByBoardable)
               {
 
                 g_fogcookies[i][j] += g_tile_fade_speed * (elapsed / 60);
@@ -1662,6 +1665,23 @@ int WinMain()
       // px = 64 - px - 64;
       // py = 55 - py - 55;
       //  50 50
+      
+//      M("--\n");
+//      for(int i = 0; i < g_fogcookies.size(); i++) {
+//        for(int j = 0; j < g_fogcookies.size(); j++) {
+//          Dnn(i); Snn(); Dnn(j); Snn(); D(g_sc[i][j]);
+//        }
+//      }
+//      M("--\n");
+//      M("--\n");
+//      for(int i = 0; i < 19; i++) {
+//        Dnn(i); Snn();
+//        Dnn(g_fogslates[i]->animation); Snn();
+//        D(g_fogslates[i]->texture);
+//      }
+//      M("--\n");
+
+
       addTextures(renderer, g_fc, canvas, light, 500, 500, 250, 250, 0); //g_fc is normal
 
       TextureC = IlluminateTexture(renderer, TextureD, canvas, result_c);
@@ -1674,6 +1694,7 @@ int WinMain()
       {
         x->texture = TextureC;
       }
+
 
       for (size_t i = 0; i < g_fogslates.size(); i++)
       {
@@ -2248,19 +2269,20 @@ int WinMain()
 
         SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
 
-        SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-        SDL_FreeSurface(textsurface);
-        SDL_DestroyTexture(texttexture);
+        //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+//        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+//
+//        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+//
+//        SDL_FreeSurface(textsurface);
+//        SDL_DestroyTexture(texttexture);
 
         nodeInfoText->x = obj.x;
         nodeInfoText->y = obj.y - 20;
         nodeInfoText->updateText(g_worldsounds[i]->name, -1, 15);
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
+
 
       //draw precede node(s)
       if(precedeProtagNode != nullptr) {
@@ -2349,6 +2371,7 @@ int WinMain()
         nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
+
 
       for (long long unsigned int i = 0; i < g_triggers.size(); i++)
       {
@@ -2929,9 +2952,9 @@ int WinMain()
     g_itemsines[6] = ( sin((g_elapsed_accumulator + (235 * 6) ) / 300) * 10 + 30);
     g_itemsines[7] = ( sin((g_elapsed_accumulator + (235 * 7) ) / 300) * 10 + 30);
 
-    if (g_elapsed_accumulator > 1800)
+    if (g_elapsed_accumulator > 1800 * M_PI)
     {
-      g_elapsed_accumulator -= 1800;
+      g_elapsed_accumulator -= 1800* M_PI;
     }
 
     g_protagIsBeingDetectedBySmell = 0; //this will be set in the entity update loop
@@ -3794,7 +3817,6 @@ void getInput(float &elapsed)
   //even tho the player didnt press anything
   if(g_ignoreInput) {
     g_ignoreInput = 0;
-    M("ignoring input for this frame");
     return;
   }
 
