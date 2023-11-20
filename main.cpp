@@ -347,8 +347,8 @@ int WinMain()
   g_preloadedSounds.emplace_back(g_menu_open_sound, "static/sounds/open-menu.wav");
   g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
   g_preloadedSounds.emplace_back(g_menu_close_sound, "static/sounds/close-menu.wav");
-  g_ui_voice = Mix_LoadWAV("static/sounds/voice-normal.wav");
-  g_preloadedSounds.emplace_back(g_ui_voice, "static/sounds/voice-normal.wav");
+  g_ui_voice = Mix_LoadWAV("static/sounds/voice-low.wav");
+  g_preloadedSounds.emplace_back(g_ui_voice, "static/sounds/voice-low.wav");
   g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
   g_preloadedSounds.emplace_back(g_menu_manip_sound, "static/sounds/manip-menu.wav");
   g_pelletCollectSound = Mix_LoadWAV("static/sounds/pellet.wav");
@@ -477,6 +477,8 @@ int WinMain()
 
   //init options menu
   g_settingsUI = new settingsUI();
+
+  g_escapeUI = new escapeUI();
   
   { //load static textures
     string loadSTR = "levelsequence/icons/locked.bmp";
@@ -733,14 +735,18 @@ int WinMain()
   lightdri = SDL_CreateTextureFromSurface(renderer, lightDSri);
   SDL_FreeSurface(lightDSri);
 
-
-
-
   g_loadingATM = 0;
 
 
   while (!quit)
   {
+    for(auto x : g_ai) {
+      if(x->name == "common/zombie") {
+        // print any debug info
+        //D(x->aggressiveness);
+      }
+    }
+
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -1172,6 +1178,24 @@ int WinMain()
 
     WIN_WIDTH /= scalex;
     WIN_HEIGHT /= scaley;
+
+    //animate dialogproceedarrow
+    {
+      adventureUIManager->c_dpiDesendMs += elapsed;
+      if(adventureUIManager->c_dpiDesendMs > adventureUIManager->dpiDesendMs) {
+        adventureUIManager->c_dpiDesendMs = 0;
+        adventureUIManager->c_dpiAsending = !adventureUIManager->c_dpiAsending;
+  
+      }
+      
+      if(adventureUIManager->c_dpiAsending) {
+        adventureUIManager->dialogProceedIndicator->y += adventureUIManager->dpiAsendSpeed;
+      } else {
+        adventureUIManager->dialogProceedIndicator->y -= adventureUIManager->dpiAsendSpeed;
+
+      }
+    }
+
     if (devMode)
     {
 
@@ -2613,7 +2637,7 @@ int WinMain()
     }
 
     //render fancybox
-    g_fancybox->render();
+    //g_fancybox->render();
 
     // settings menu
     if (g_inSettingsMenu) 
@@ -2635,7 +2659,6 @@ int WinMain()
           = g_settingsUI->markerFingerX;
 
 
-
       } else {
         float ww = WIN_WIDTH;
         float wh = WIN_HEIGHT;
@@ -2653,6 +2676,40 @@ int WinMain()
         g_settingsUI->handMarker->y = g_settingsUI->handMarker->targety;
         g_settingsUI->fingerMarker->x = g_settingsUI->fingerMarker->targetx;
         g_settingsUI->fingerMarker->y = g_settingsUI->fingerMarker->targety;
+
+      }
+
+    }
+
+    //this is the menu for quitting or going back to the "overworld"
+    if (g_inEscapeMenu) 
+    {
+      //move reticle to the correct position
+      g_escapeUI->handMarker->targety
+        = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+        + (g_escapeUI->handOffset);
+
+      g_escapeUI->handMarker->targetx
+        = g_escapeUI->markerHandX;
+
+      g_escapeUI->fingerMarker->targety
+        = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+        + (g_escapeUI->fingerOffset);
+
+      float ww = WIN_WIDTH;
+      float fwidth = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->width;
+      g_escapeUI->fingerMarker->targetx
+        = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxX + 
+          fwidth / ww / 2;
+      
+
+
+      if(g_firstFrameOfSettingsMenu) {
+        g_firstFrameOfSettingsMenu = 0;
+        g_escapeUI->handMarker->x = g_escapeUI->handMarker->targetx;
+        g_escapeUI->handMarker->y = g_escapeUI->handMarker->targety;
+        g_escapeUI->fingerMarker->x = g_escapeUI->fingerMarker->targetx;
+        g_escapeUI->fingerMarker->y = g_escapeUI->fingerMarker->targety;
 
       }
 
@@ -2988,7 +3045,7 @@ int WinMain()
 
           // render this frame
 
-          clear_map(g_camera);
+          //clear_map(g_camera);
           load_map(renderer, savemap, dest_waypoint);
 
           // clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
@@ -4455,12 +4512,9 @@ void getInput(float &elapsed)
           g_inventoryUiIsKeyboard = 0;
           g_inSettingsMenu = 0;
           inPauseMenu = 0;
-
-          adventureUIManager->hideInventoryUI();
           g_settingsUI->hide();
+          protag_is_talking = 0;
 
-          adventureUIManager->dialogue_index++;
-          adventureUIManager->continueDialogue();
         } else {
           for(int i = 0; i < g_settingsUI->valueTextboxes.size(); i++) {
             //g_settingsUI->valueTextboxes[i]->blinking = 0;
@@ -4614,6 +4668,110 @@ void getInput(float &elapsed)
 
       if(g_settingsUI->positionOfCursor < g_settingsUI->minPositionOfCursor) {
         g_settingsUI->positionOfCursor = g_settingsUI->minPositionOfCursor;
+      } else {
+
+      }
+    }
+    if(g_inEscapeMenu) {
+      //menu up
+      if (staticInput[0])
+      {
+        if(SoldUIUp <= 0)
+        {
+          
+          if(!g_awaitSwallowedKey && !g_escapeUI->modifyingValue) {
+            if(g_escapeUI->positionOfCursor == 0) {
+            g_escapeUI->positionOfCursor = g_escapeUI->maxPositionOfCursor;
+            } else {
+              g_escapeUI->positionOfCursor--;
+            }
+          }
+          SoldUIUp = (oldStaticInput[0]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+        } else {
+          SoldUIUp--;
+        }
+      } else {
+        SoldUIUp = 0; 
+      }
+
+      //menu down
+      if (staticInput[1]) {
+        if(SoldUIDown <= 0 )
+        {
+          if(!g_awaitSwallowedKey && !g_escapeUI->modifyingValue) { 
+            if(g_escapeUI->positionOfCursor == g_escapeUI->maxPositionOfCursor) {
+              g_escapeUI->positionOfCursor = 0;
+            } else {
+              g_escapeUI->positionOfCursor++;
+            }
+          }
+          SoldUIDown = (oldStaticInput[1]) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
+        } else {
+          SoldUIDown--;
+        }
+      } else {
+        SoldUIDown = 0; 
+      }
+
+      //menu select
+      if (staticInput[4] && !oldStaticInput[4] && !g_swallowedAKeyThisFrame)
+      {
+        g_inEscapeMenu = 0;
+        //inPauseMenu = 0;
+        protag_is_talking = 0;
+  
+        g_escapeUI->hide();
+
+        if(g_escapeUI->positionOfCursor == 0) { //Back
+          
+        }
+  
+        if(g_escapeUI->positionOfCursor == 1) { //levelselect
+          clear_map(g_camera);
+          //load_map(renderer, "maps/base/g.map", "a");
+          //instead of loading the base, open the level-select menu
+          g_inventoryUiIsLevelSelect = 1;
+          g_inventoryUiIsKeyboard = 0;
+          inventorySelection = 0;
+          inPauseMenu = 1;
+          g_firstFrameOfPauseMenu = 1;
+          old_z_value = 1;
+          adventureUIManager->escText->updateText("", -1, 0.9);
+          adventureUIManager->positionInventory();
+          adventureUIManager->showInventoryUI();
+          adventureUIManager->hideHUD();
+        }
+  
+        if(g_escapeUI->positionOfCursor == 2) { //To desktop
+          quit = 1;
+        }
+
+        if(g_escapeUI->positionOfCursor == 3) { //Settings
+          g_settingsUI->show();
+          g_inSettingsMenu = 1;
+          g_firstFrameOfSettingsMenu = 1;
+          g_settingsUI->positionOfCursor = 0;
+          g_settingsUI->cursorIsOnBackButton = 0;
+          protag_is_talking = 1;
+        }
+  
+        
+      }
+
+      //did we swallow a keypress?
+      if(g_awaitSwallowedKey && !g_swallowAKey) {
+        //there might be a problem with this logic
+        bindings[g_pollForThisBinding] = g_swallowedKey;
+        g_awaitSwallowedKey = 0;
+        g_escapeUI->uiSelecting();
+      }
+
+      if(g_escapeUI->positionOfCursor > g_escapeUI->maxPositionOfCursor) {
+        g_escapeUI->positionOfCursor = g_escapeUI->maxPositionOfCursor;
+      }
+
+      if(g_escapeUI->positionOfCursor < g_escapeUI->minPositionOfCursor) {
+        g_escapeUI->positionOfCursor = g_escapeUI->minPositionOfCursor;
       } else {
 
       }
@@ -4886,7 +5044,7 @@ void getInput(float &elapsed)
     keyboard_marker_vertical_modifier_refresh_b = 0;
   }
 
-  if (keystate[bindings[11]] && !old_z_value && !inPauseMenu && !g_inSettingsMenu)
+  if (keystate[bindings[11]] && !old_z_value && !inPauseMenu && !g_inSettingsMenu && !g_inEscapeMenu)
   {
     if (protag_is_talking == 1)
     {
@@ -4896,7 +5054,7 @@ void getInput(float &elapsed)
       }
     }
   }
-  else if (keystate[bindings[11]] && !old_z_value && inPauseMenu)
+  else if (keystate[bindings[11]] && !old_z_value && inPauseMenu && !g_firstFrameOfPauseMenu)
   {
     if(g_inventoryUiIsLevelSelect == 0) {
 
@@ -4962,7 +5120,7 @@ void getInput(float &elapsed)
       } else {
       // select item in pausemenu
       // only if we arent running a script
-      if (protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory.size() > 0 && mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script.size() > 0)
+      if (protag_can_move && adventureUIManager->sleepingMS <= 0 && mainProtag->inventory.size() > 0 && mainProtag->inventory[mainProtag->inventory.size() - 1 - inventorySelection].first->script.size() > 0 && !g_firstFrameOfPauseMenu)
       {
         // call the item's script
         // D(mainProtag->inventory[mainProtag->inventory.size()- 1 -inventorySelection].first->name);
@@ -5010,6 +5168,7 @@ void getInput(float &elapsed)
         }
         protag_is_talking = 0;
         protag_can_move = 1;
+        adventureUIManager->showHUD();
       } else {
         //play an error noise?
   
@@ -5184,36 +5343,39 @@ void getInput(float &elapsed)
   }
 
   //make implied slope 
-  if (keystate[SDL_SCANCODE_L] && devMode)
+  if (keystate[SDL_SCANCODE_K] && devMode)
   {
     devinput[34] = 1;
   }
 
   //make triangular implied slope 
-  if (keystate[SDL_SCANCODE_K] && devMode)
+  if (keystate[SDL_SCANCODE_J] && devMode)
   {
     devinput[35] = 1;
   }
-  if (keystate[SDL_SCANCODE_J] && devMode)
+  if (keystate[SDL_SCANCODE_L] && devMode)
   {
     devinput[36] = 1;
   }
 
   if (keystate[SDL_SCANCODE_ESCAPE])
   {
+
     if (devMode)
     {
       quit = 1;
     }
     else
     {
-      quit = 1;
-      // if(inPauseMenu) {
-      // 	inPauseMenu = 0;
-      // 	adventureUIManager->hideInventoryUI();
-      // 	clear_map(g_camera);
-      // 	load_map(renderer, "maps/sp-title/sp-title.map", "a");
-      // }
+      if(!protag_is_talking && !inPauseMenu) {
+        //open escape menu
+        g_escapeUI->show();
+        g_inEscapeMenu = 1;
+        g_firstFrameOfSettingsMenu = 1;
+        g_escapeUI->positionOfCursor = 0;
+        g_escapeUI->cursorIsOnBackButton = 0;
+        protag_is_talking = 1;
+      }
     }
   }
   if (devMode)
@@ -5457,7 +5619,6 @@ void toggleDevmode() {
 //but, nearby isn't defined by g_earshot but rather the behemoth's hearingRadius
 void protagMakesNoise() {
   if(g_ninja || devMode) { return;}
-  M("Fomm made a noise");
   for(auto x : g_ai) {
     float distToProtag = XYWorldDistanceSquared(protag->getOriginX(), protag->getOriginY(), x->getOriginX(), x->getOriginY());
     float maxHearingDist = pow(x->hearingRadius,2);

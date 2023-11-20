@@ -260,8 +260,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     }
     if (word == "islope")
     {
-      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
-      impliedSlope *i = new impliedSlope(p1, p2, p3, p4, p5, p6, p7);
+      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7 >> p8;
+      impliedSlope *i = new impliedSlope(p1, p2, p3, p4, p5, p6, p7, p8);
       (void)i;
     }
     if (word == "islopet")
@@ -490,8 +490,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     }
     if (word == "waypoint")
     {
-      iss >> s0 >> s1 >> p1 >> p2 >> p3;
-      waypoint *w = new waypoint(s1, p1, p2, p3);
+      iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4;
+      waypoint *w = new waypoint(s1, p1, p2, p3, p4);
       (void)w;
     }
 
@@ -553,6 +553,11 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     {
       for (box *box : g_boxs[i])
       {
+        // don't calculate lighting by invisible walls
+        if (box->walltexture == "engine/seethru.bmp")
+        {
+          break;
+        }
         // handle rect
         child = new mapObject(renderer, box->walltexture, "&", box->bounds.x, box->bounds.y + box->bounds.height, i * 64, box->bounds.width, 55, 1);
         child->parent = box;
@@ -652,6 +657,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
    
     //add shading for implied slopes
     for (auto i : g_impliedSlopes) {
+      if(!i->shadedAtAll) {continue;}
       //all implied slopes have top shading
       child = new mapObject(renderer, "engine/OCCLUSION.bmp", "&", i->bounds.x, i->bounds.y + 19 + 2, 64 * i->layer + 2, i->bounds.width, 55);
       child->parent = i;
@@ -1311,7 +1317,29 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       protag->x = g_waypoints[i]->x - protag->width / 2;
       protag->y = g_waypoints[i]->y + protag->bounds.height;
       protag->z = g_waypoints[i]->z;
-      break;
+      protag->steeringAngle = convertFrameToAngle(g_waypoints[i]->angle, 0);
+      protag->animation = convertAngleToFrame(protag->steeringAngle);
+      protag->flip = SDL_FLIP_NONE;
+      if(protag->yframes < 8) {
+        if(protag->animation == 5) {
+          protag->animation = 3;
+          protag->flip = SDL_FLIP_HORIZONTAL;
+        } else if(protag->animation == 6) {
+          protag->animation = 2;
+          protag->flip = SDL_FLIP_HORIZONTAL;
+        } else if(protag->animation == 7) {
+          protag->animation = 1;
+          protag->flip = SDL_FLIP_HORIZONTAL;
+        }
+  
+        if(protag->animation > 5 || protag->animation < 0) {
+          protag->animation = 0;
+        }
+      }
+
+      if(protag->yframes < 2) {
+        protag->animation = 0;
+      }
     }
   }
 
@@ -1646,7 +1674,7 @@ bool mapeditor_save_map(string word)
   }
 
   for (auto i : g_impliedSlopes) {
-    ofile << "islope " << to_string(i->bounds.x) << " " << to_string(i->bounds.y) << " " << to_string(i->bounds.width) << " " << to_string(i->bounds.height) << " " << to_string(i->layer) << " " << to_string(i->shadeLeft) << " " << to_string(i->shadeRight) << endl;
+    ofile << "islope " << to_string(i->bounds.x) << " " << to_string(i->bounds.y) << " " << to_string(i->bounds.width) << " " << to_string(i->bounds.height) << " " << to_string(i->layer) << " " << to_string(i->shadeLeft) << " " << to_string(i->shadeRight) << " " << to_string(i->shadedAtAll) << endl;
   }
 
   for (auto i : g_impliedSlopeTris) {
@@ -1676,7 +1704,7 @@ bool mapeditor_save_map(string word)
   }
   for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
   {
-    ofile << "waypoint " << g_waypoints[i]->name << " " << g_waypoints[i]->x << " " << g_waypoints[i]->y << " " << g_waypoints[i]->z << endl;
+    ofile << "waypoint " << g_waypoints[i]->name << " " << g_waypoints[i]->x << " " << g_waypoints[i]->y << " " << g_waypoints[i]->z << " " << g_waypoints[i]->angle << endl;
   }
 
   for (auto x : g_setsOfInterest)
@@ -2252,40 +2280,8 @@ void write_map(entity *mapent)
       {
 
         makingbox = 0;
-        box *c = 0;
+        impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart, 0, 0, 0);
 
-        string sthwall = "engine/seethru.bmp";
-        if (makeboxs)
-        {
-          for (int i = wallstart / 64; i < wallheight / 64; i++)
-          {
-            bool fcap = (!(i + 1 < wallheight / 64)); //&& autoMakeWallcaps;
-            // bool fcap = 1;
-
-            c = new box(selection->x, selection->y, selection->width, selection->height, i, sthwall, sthwall, fcap, 0, 0, "0000");
-          }
-        }
-        // const char* plik = walltex.c_str();
-        if (autoMakeWallcaps)
-        {
-          int step = g_platformResolution;
-          for (int i = 0; i < selection->height; i += step)
-          {
-            mapObject *e = new mapObject(renderer, sthwall, "&", selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
-            c->children.push_back(e);
-            (void)e;
-          }
-        }
-
-        if (autoMakeWalls)
-        {
-          int step = 64;
-          for (int i = wallstart; i < wallheight; i += step)
-          {
-            mapObject *e = new mapObject(renderer, sthwall, "&", selection->x, selection->y + selection->height, i, selection->width, 55, 1);
-            c->children.push_back(e);
-          }
-        }
       }
     }
   }
@@ -2307,7 +2303,7 @@ void write_map(entity *mapent)
       {
 
         makingbox = 0;
-        impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart, 0, 0);
+        impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart, 0, 0, 1);
 
       }
     }
@@ -3612,9 +3608,11 @@ void write_map(entity *mapent)
               //Don't use top shading if there's an implied slope above
               //Otherwise, there will be a corner of shadow which might be displayed
               for(auto i : g_impliedSlopes) {
-                if(RectOverlap(i->bounds, uneighbor)) {
-                  b->shadeTop = false;
-
+                if(i->shadedAtAll) {
+                  if(RectOverlap(i->bounds, uneighbor)) {
+                    b->shadeTop = false;
+  
+                  }
                 }
 
               }
@@ -4627,6 +4625,12 @@ void write_map(entity *mapent)
           }
           break;
         }
+        if (word == "waypoints")
+        {
+          for(auto x : g_waypoints) {
+            delete x;
+          }
+        }
       }
       if (word == "stake")
       {
@@ -5454,6 +5458,12 @@ void write_map(entity *mapent)
         M(py);
       }
 
+      if(word == "waypointangle")
+      {
+        line >> word;
+        g_waypoints[g_waypoints.size() - 1]->angle = convertAngleToFrame(protag->steeringAngle);
+      }
+
       if (word == "possess")
       {
         line >> word;
@@ -5806,13 +5816,13 @@ void write_map(entity *mapent)
       if (word == "way" || word == "w")
       {
         line >> entstring;
-        waypoint *m = new waypoint(entstring, px + marker->width / 2, py + marker->height / 2, wallstart);
+        waypoint *m = new waypoint(entstring, px + marker->width / 2, py + marker->height / 2, wallstart, convertAngleToFrame(protag->steeringAngle));
         (void)m;
       }
       if (word == "wayatme" || word == "wam")
       {
         line >> entstring;
-        waypoint *m = new waypoint(entstring, mapent->getOriginX(), mapent->getOriginY(), mapent->z);
+        waypoint *m = new waypoint(entstring, mapent->getOriginX(), mapent->getOriginY(), mapent->z, convertAngleToFrame(protag->steeringAngle));
         (void)m;
       }
       if (word == "linkdoor" || word == "ld" || word == "door" || word == "d")
@@ -6515,6 +6525,7 @@ void write_map(entity *mapent)
   {
     // M("showTalkingUI()");
     talkingBox->show = 1;
+    //dialogProceedIndicator->show = 1;
     // talkingBoxTexture->show = 1;
     talkingText->show = 1;
     talkingText->updateText("", -1, 34);
@@ -6526,6 +6537,8 @@ void write_map(entity *mapent)
   {
     // M("hideTalkingUI()");
     talkingBox->show = 0;
+    dialogProceedIndicator->show = 0;
+    //dialogProceedIndicator->y = 0.88;
     // talkingBoxTexture->show = 0;
     talkingText->show = 0;
     currentTextcolor = defaultTextcolor;
@@ -6575,6 +6588,12 @@ void write_map(entity *mapent)
       talkingBox->patchscale = 0.4;
       talkingBox->is9patch = true;
       talkingBox->persistent = true;
+
+      dialogProceedIndicator = new ui(renderer, "static/ui/dialog_proceed.bmp", 0.92, 0.88, 0.05, 1, 0);
+      dialogProceedIndicator->heightFromWidthFactor = 1;
+      dialogProceedIndicator->persistent = true;
+      dialogProceedIndicator->priority = 8;
+      dialogProceedIndicator->dropshadow = 1;
       
 
       // talkingBoxTexture = new ui(renderer, "static/ui/ui-background.bmp", 0.1, 0.45, 0.9, 0.25, 0);
@@ -6582,8 +6601,8 @@ void write_map(entity *mapent)
       /// SDL_SetTextureBlendMode(talkingBoxTexture->texture, SDL_BLENDMODE_ADD);
 
       talkingText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
-      talkingText->boxWidth = 0.95;
-      talkingText->width = 0.95;
+      talkingText->boxWidth = 0.9;
+      talkingText->width = 0.9;
       talkingText->boxHeight = 0.25;
       talkingText->boxX = 0.05;
       talkingText->boxY = 0.7;
@@ -6818,7 +6837,7 @@ void write_map(entity *mapent)
     healthPicture->widthGlideSpeed = 0.1;
     healthPicture->priority = -10; //health is behind everything
 
-    hotbar = new ui(renderer, "static/ui/menu9patchblack.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.85, 0.1, 0.1, 1);
+    hotbar = new ui(renderer, "static/ui/menu9patchblack.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.84, 0.1, 0.1, 1);
     hotbar->is9patch = true;
     hotbar->patchwidth = 213;
     hotbar->patchscale = 0.5;
@@ -6826,7 +6845,7 @@ void write_map(entity *mapent)
     hotbar->heightFromWidthFactor = 1;
     hotbar->priority = -8;
 
-    hotbarFocus = new ui(renderer, "static/ui/hotbar_focus.bmp", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.85 + 0.005, 0.1-0.01, 0.1-0.01, 1);
+    hotbarFocus = new ui(renderer, "static/ui/hotbar_focus.bmp", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
     hotbarFocus->persistent = true;
     hotbarFocus->heightFromWidthFactor = 1;
     hotbarFocus->priority = -7;
@@ -6834,14 +6853,14 @@ void write_map(entity *mapent)
 
 
 
-    nextUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 + 0.1, 0.85, 0.1, 1, 1);
+    nextUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 + 0.1, 0.84, 0.1, 1, 1);
     nextUsableIcon->persistent = true;
     nextUsableIcon->heightFromWidthFactor = 1;
     noIconTexture = nextUsableIcon->texture;
     nextUsableIcon->shrinkPercent = 0.01; 
     nextUsableIcon->priority = -7;
 
-    prevUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 - 0.1, 0.85, 0.1, 1, 1);
+    prevUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 - 0.1, 0.84, 0.1, 1, 1);
     prevUsableIcon->persistent = true;
     prevUsableIcon->heightFromWidthFactor = 1;
     SDL_DestroyTexture(prevUsableIcon->texture);
@@ -6849,7 +6868,7 @@ void write_map(entity *mapent)
     prevUsableIcon->shrinkPercent = 0.01; 
     prevUsableIcon->priority = -7;
 
-    thisUsableIcon = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    thisUsableIcon = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
     thisUsableIcon->persistent = true;
     thisUsableIcon->heightFromWidthFactor = 1;
     SDL_DestroyTexture(thisUsableIcon->texture);
@@ -6859,7 +6878,7 @@ void write_map(entity *mapent)
 
     float shrinkPercent = 0.015;
 
-    t1 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t1 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
     t1->persistent = true;
     t1->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t1->texture);
@@ -6867,7 +6886,7 @@ void write_map(entity *mapent)
     t1->shrinkPercent = shrinkPercent; 
     t1->priority = -7;
 
-    t2 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t2 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
     t2->persistent = true;
     t2->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t2->texture);
@@ -6875,7 +6894,7 @@ void write_map(entity *mapent)
     t2->shrinkPercent = shrinkPercent; 
     t2->priority = -7;
 
-    t3 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t3 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
     t3->persistent = true;
     t3->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t3->texture);
@@ -6883,7 +6902,7 @@ void write_map(entity *mapent)
     t3->shrinkPercent = shrinkPercent; 
     t3->priority = -6;
 
-    t4 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t4 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
     t4->persistent = true;
     t4->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t4->texture);
@@ -6891,7 +6910,7 @@ void write_map(entity *mapent)
     t4->shrinkPercent = shrinkPercent; 
     t4->priority = -7;
 
-    t5 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.85, 0.1, 1, 1);
+    t5 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
     t5->persistent = true;
     t5->heightFromWidthFactor = 1;
     SDL_DestroyTexture(t5->texture);
@@ -6932,14 +6951,16 @@ void write_map(entity *mapent)
       Mix_FreeChunk(blip);
       Mix_FreeChunk(confirm_noise);
     }
-
-    delete talkingBox;
-    // delete talkingBoxTexture;
-    delete talkingText;
-    delete scoreText;
-
-    delete inventoryA;
-    delete inventoryB;
+    
+    if(!light) {
+      delete talkingBox;
+      // delete talkingBoxTexture;
+      delete talkingText;
+      delete scoreText;
+  
+      delete inventoryA;
+      delete inventoryB;
+    }
 
   }
 
@@ -7004,12 +7025,13 @@ void write_map(entity *mapent)
 
     curText = "";
     typing = true;
+    dialogProceedIndicator->show = 0;
     showTalkingUI();
   }
 
   void adventureUI::updateText()
   {
-    talkingText->updateText(curText, -1, 0.9, currentTextcolor, currentFontStr);
+    talkingText->updateText(curText, -1, 0.85, currentTextcolor, currentFontStr);
 
     //used to be code here for unsleeping the player's ui
 
@@ -7051,14 +7073,22 @@ void write_map(entity *mapent)
     else
     {
       typing = false;
+      if(!askingQuestion && this == adventureUIManager && executingScript) {
+        if(dialogProceedIndicator->show == 0) {
+          dialogProceedIndicator->show = 1;
+          dialogProceedIndicator->y = 0.9;
+          adventureUIManager->c_dpiDesendMs = 0;
+          adventureUIManager->c_dpiAsending = 0;
+        }
+      }
     }
   }
 
   void adventureUI::skipText() {
     curText = pushedText;
-    Mix_HaltChannel(6);
-    Mix_VolumeChunk(blip, 20);
-    playSound(6, blip, 0);
+//    Mix_HaltChannel(6);
+//    Mix_VolumeChunk(blip, 20);
+    //playSound(6, blip, 0);
   }
 
   //for resetting text color
@@ -7307,7 +7337,8 @@ void write_map(entity *mapent)
       return;
     }
 
-
+    // (this explanation is backwards, but the example is correct.
+    // see fleshpit_update.txt)
     // Switch-statement by distance between two entities
     // coditions are listed from least to greatest
     // the first condition taken will be the one
@@ -7375,6 +7406,147 @@ void write_map(entity *mapent)
       this->continueDialogue();
       return;
     }
+
+
+    // Switch-statement by aggressiveness of a behemoth
+    // coditions are listed from least to greatest
+    // starting from the top, I check if the aggressiveness field
+    // is less than the value after the *
+    // if it is, I take that option, if not, I proceed
+    //  /aggressiveness common/zombie
+    //  *500:chill
+    //  *1000:pissed
+    //  #
+    //  <chill>
+    //  I'm not that aggressive
+    //  #
+    //  <pissed>
+    //  I'm really aggressive!
+    //  #
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/aggressiveness")
+    {
+      //M("In /aggressivness interpreter");
+      int j = 1;
+      string s = scriptToUse->at(dialogue_index + 1);
+
+      auto x = splitString(s, ' ');
+
+      string fStr = x[1];
+    
+      entity* firstEnt = searchEntities(fStr, talker);
+
+      if(firstEnt != nullptr) {
+  
+        int agrn = firstEnt->aggressiveness;
+
+        string res = scriptToUse->at(dialogue_index + 1 + j);
+        while (res.find('*') != std::string::npos)
+        {
+          // parse option
+          //  *15:29 -> if distance is less than 15, go to line 29
+          string s = scriptToUse->at(dialogue_index + 1 + j);
+//I("s");
+          //I(s);
+          s.erase(0, 1);
+          int condition = stoi(s.substr(0, s.find(':')));
+          //I("condition");
+          //I(condition);
+          s.erase(0, s.find(':') + 1);
+          int jump = stoi(s);
+          //I("jump");
+          //I(jump);
+          //I("distance");
+          //I(distance);
+          if (agrn < condition)
+          {
+            dialogue_index = jump - 3;
+            this->continueDialogue();
+            return;
+          } 
+          j++;
+          res = scriptToUse->at(dialogue_index + 1 + j);
+        }
+  
+      } else {
+        E("/aggressiveness couldn't find entity");
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //set aggressiveness
+    // /setaggressiveness common/zombie 65
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setaggressiveness")
+    {
+      int j = 1;
+      string s = scriptToUse->at(dialogue_index + 1);
+
+      auto x = splitString(s, ' ');
+      if(x.size() < 3) {
+        E("/setaggressiveness lacks params, should have two");
+      }
+
+      string fStr = x[1];
+    
+      entity* firstEnt = searchEntities(fStr, talker);
+
+      if(firstEnt != nullptr) {
+        firstEnt->aggressiveness = stoi(x[2]);
+      } else {
+        E("/setaggressiveness couldn't find entity");
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //set cooldown of ability
+    // /setabilitycooldown [entity] [ability index] [ms]
+    // /setabilitycooldown common/zombie 0 1000
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setabilitycooldown")
+    {
+      int j = 1;
+      string s = scriptToUse->at(dialogue_index + 1);
+
+      auto x = splitString(s, ' ');
+      if(x.size() < 4) {
+        E("/setabilitycooldown lacks params, should have three");
+      }
+
+      string fStr = x[1];
+    
+      entity* firstEnt = searchEntities(fStr, talker);
+
+      if(firstEnt != nullptr) {
+        firstEnt->myAbilities[stoi(x[2])].cooldownMS = stoi(x[3]);
+      } else {
+        E("/setabilitycooldown couldn't find entity");
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //write debug message to console
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/print")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      if(x.size() >= 2) {
+        string printMe = "Print from Script: " + s.substr(7);
+        M(printMe);
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+    
 
     //change talker (useful for writing selfdata to entities from non-dialogue scripts)
     // do
@@ -8889,6 +9061,28 @@ void write_map(entity *mapent)
       return;
     }
 
+    //launch escape menu
+    //the menu the user sees when they press escape
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 11) == "/escapemenu") 
+    {
+      //write to settingsUi from related variables
+      g_escapeUI->show();
+      g_inEscapeMenu = 1;
+      g_firstFrameOfSettingsMenu = 1;
+      g_escapeUI->positionOfCursor = 0;
+      g_escapeUI->cursorIsOnBackButton = 0;
+
+      // this is the stuff we do when we read '#' (end scripting)
+      executingScript = 0;
+
+      mobilize = 0;
+      if(this == adventureUIManager) {
+        adventureUIManager->hideTalkingUI();
+      }
+
+      return;
+    }
+
     // unconditional jump
     if (scriptToUse->at(dialogue_index + 1).at(0) == ':')
     {
@@ -8901,6 +9095,52 @@ void write_map(entity *mapent)
       D(DIstr);
       DI = stoi(DIstr);
       dialogue_index = DI - 3;
+      this->continueDialogue();
+      return;
+    }
+
+    // jump based on collision between given object and any
+    // dynamic objects
+    // it's used for stopping the player from closing doors
+    // when dynamic entities are underneath
+    //
+    // /collisioncheck common/doora :malfunction
+    //
+    // -> jump to <malfunction> if common/doora overlaps a dynamic ent
+    //
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/collisioncheck") {
+      string s = scriptToUse->at(dialogue_index+1);
+      vector<string> x = splitString(s, ' ');
+      if((int)x.size() >= 3) 
+      {
+        entity *checkMyCollision = searchEntities(x[1]);
+        M("Got here");
+
+        if(checkMyCollision != nullptr) {
+        M("Got here");
+          bool collision = 0;
+          for(auto x : g_entities) {
+            if(x->dynamic && x!= checkMyCollision && RectOverlap(x->getMovedBounds(), checkMyCollision->getMovedBounds())) {
+              collision = 1;
+            }
+          }
+
+          if(collision) {
+            string DIstr = "0";
+            DIstr = x[2]; 
+            DIstr = DIstr.substr(1);
+            int DI = 0;
+            DI = stoi(DIstr);
+            dialogue_index = DI - 3;
+            this->continueDialogue();
+            return;
+          }
+        } else {
+          E("/collisioncheck error - not enough args");
+        }
+      }
+
+      dialogue_index++;
       this->continueDialogue();
       return;
     }
@@ -9089,7 +9329,7 @@ void write_map(entity *mapent)
     // set reverse to 1 to play backwards
     if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
     {
-      M("Animate interpreter");
+      //M("Animate interpreter");
       string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
@@ -9106,8 +9346,8 @@ void write_map(entity *mapent)
       else
       {
         ent = searchEntities(split[0], talker);
-        M("Searched for ent");
-        D(ent->name);
+        //M("Searched for ent");
+        //D(ent->name);
       }
       if (ent != 0)
       {
@@ -9115,35 +9355,32 @@ void write_map(entity *mapent)
         if (animationset != -1)
         {
           ent->animation = stoi(split[1]);
-          I("Set animation to ");
-          I(ent->animation);
+          //I("Set animation to ");
+          //I(ent->animation);
         }
         ent->msPerFrame = stoi(split[2]);
-        I("Set msPerFrame to");
-        I(ent->msPerFrame);
+        //I("Set msPerFrame to");
+        //I(ent->msPerFrame);
 
         int frameset = stoi(split[3]);
         if(frameset != -1) {
           ent->frameInAnimation = stoi(split[3]);
-          I("Set frameInAnimation to ");
-          I(ent->frameInAnimation);
+          //I("Set frameInAnimation to ");
+          //I(ent->frameInAnimation);
         }
 
         ent->loopAnimation = stoi(split[4]);
-        I("Set loopAnimation to ");
-        I(ent->loopAnimation);
+        //I("Set loopAnimation to ");
+        //I(ent->loopAnimation);
         
         ent->reverseAnimation = stoi(split[5]);
-        I("Set reverseAnimation to ");
-        I(ent->reverseAnimation);
+        //I("Set reverseAnimation to ");
+        //I(ent->reverseAnimation);
 
         ent->scriptedAnimation = 1;
       } 
 
-      I("end call of /anim");
-
       dialogue_index++;
-      M("Animate complete");
       this->continueDialogue();
       return;
     }
@@ -9604,6 +9841,24 @@ void write_map(entity *mapent)
     inventoryB->y = 0.76;
     inventoryA->y = 0.01;
 
+  }
+
+  //hide heart and other stuff if the player is in the menus
+  void adventureUI::hideHUD() {
+    healthPicture->show = 0;
+    healthText->show = 0;
+    hideScoreUI();
+    hotbarFocus->show = 0;
+    hotbar->show = 0;
+    cooldownIndicator->show = 0;
+  }
+
+  void adventureUI::showHUD() {
+    healthPicture->show = 1;
+    healthText->show = 1;
+    hotbarFocus->show = 1;
+    hotbar->show = 1;
+    cooldownIndicator->show = 1;
   }
 
 #endif

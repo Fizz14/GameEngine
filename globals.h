@@ -69,6 +69,8 @@ class adventureUI;
 
 class settingsUI;
 
+class escapeUI;
+
 class attack;
 
 class weapon;
@@ -584,6 +586,10 @@ const string g_negStr = "No";
 const string g_leaveStr = "Lets Leave";
 const vector<string> g_graphicsStrings = {"Very Low", "Low", "Medium", "High"};
 
+//escape menu
+bool g_inEscapeMenu = 0;
+escapeUI* g_escapeUI;
+
 //blinking text
 int g_blinkingMS = 0;
 const int g_maxBlinkingMS = 1000;
@@ -849,7 +855,7 @@ float g_textDropShadowDist = 0.04; //this is the pixels of the texture, for bett
 bool protag_can_move = true;
 int protag_is_talking = 0; // 0 - not talking 1 - talking 2 - about to stop talking
 adventureUI *adventureUIManager;
-float textWait = 50;		 // seconds to wait between typing characters of text
+float textWait = 30;		 // seconds to wait between typing characters of text
 float text_speed_up = 1; // speed up text if player holds button. set to 1 if the player isn't pressing it, or 1.5 if she is
 float curTextWait = 0;
 bool old_z_value = 1; // the last value of the z key. used for advancing dialogue, i.e. z key was down and is now up or was up and is now down if old_z_value != SDL[SDL_SCANCODE_Z]

@@ -943,8 +943,9 @@ public:
   int layer = 0;
   bool shadeLeft = 0;
   bool shadeRight = 0;
+  bool shadedAtAll = 1; //the invisible wall feature is being moved to islopes
   
-  impliedSlope(int x1, int y1, int x2, int y2, int flayer, int fsleft, int fsright) {
+  impliedSlope(int x1, int y1, int x2, int y2, int flayer, int fsleft, int fsright, int fShadedAtAll) {
     bounds.x = x1;
     bounds.y = y1;
     bounds.z = flayer * 32;
@@ -954,6 +955,7 @@ public:
     layer = flayer;
     shadeLeft = fsleft;
     shadeRight = fsright;
+    shadedAtAll = fShadedAtAll;
     g_impliedSlopes.push_back(this);
   }
 
@@ -2815,7 +2817,14 @@ class adventureUI {
 
     ui* talkingBox = 0;
     ui* talkingBoxTexture = 0;
-    
+
+    ui* dialogProceedIndicator = 0; //the arrow which appears when there's no more text to write
+    const int dpiDesendMs = 400;
+    int c_dpiDesendMs = 0;
+    int c_dpiAsendTarget = 0.9;
+    bool c_dpiAsending = 0;
+    const float dpiAsendSpeed = 0.0002;
+
    
 
     SDL_Color currentTextcolor = {155, 115, 115};
@@ -3021,9 +3030,9 @@ class adventureUI {
     vector<std::pair<float, float>> hotbarPositions = {
       {0.55 + g_backpackHorizontalOffset, 1},
       {0.55 + g_backpackHorizontalOffset, 1},
-      {0.55 + g_backpackHorizontalOffset, 0.85},
-      {0.45 + g_backpackHorizontalOffset, 0.85},
-      {0.35 + g_backpackHorizontalOffset, 0.85},
+      {0.55 + g_backpackHorizontalOffset, 0.84},
+      {0.45 + g_backpackHorizontalOffset, 0.84},
+      {0.35 + g_backpackHorizontalOffset, 0.84},
       {0.35 + g_backpackHorizontalOffset, 1},
       {0.35 + g_backpackHorizontalOffset, 1}
     };
@@ -3079,6 +3088,9 @@ class adventureUI {
     void hideBackpackUI();
     void showBackpackUI();
     void resetBackpackUITextures();
+
+    void hideHUD(); //hide heart and other stuff if the player is in the menus
+    void showHUD();
 };
 
 
@@ -3337,6 +3349,7 @@ class entity:public actor {
     //are low-level, and updated fickely.
     //destination will be pursued via pathfinding each frame, if set.
     navNode* Destination = nullptr;
+    int usingDisabledNode = 0;
     int lastTargetDestIndex = -1;
     float angleToTarget = 0;
 
@@ -3452,6 +3465,22 @@ class entity:public actor {
     bool canFight = 1;
     bool invincible = 0;
     //float invincibleMS = 0; //ms before setting invincible to 0
+    
+    bool useAgro = 0; //the switch from seeing a target and agroing on them (boring)
+                                  //to gaining aggressiveness when seeing a target and losing it
+                                  //when LOS is broken.
+                                  //if useAgro = 1, the entity can be agrod and fight if it sees a target or sees a fight between a friend or a foe
+                                  //otherwise, it's a horror-game behemoth who gets stronger by detecting the player
+    
+    //these control how a behemoth gains and loses aggressiveness
+    //by LOS to their target
+    float aggressiveness = 0;
+    float aggressivenessGain = 0.1; //per Ms
+    float aggressivenessLoss = 0.5;
+    float aggressivenessNoiseGain = 10;
+    float minAggressiveness = 0;
+    float maxAggressiveness = 100;
+
     bool agrod = 0; //are they fighting a target?
     float hearingRadius = 0;
     bool missile = 0; //should we directly pursue an entity like a missle?
@@ -3521,6 +3550,11 @@ class entity:public actor {
                            
     float visionRadius = 0;
     float visionTime = 0; //time needed
+    
+    int deagroMs = 10000; //if the behemoth doesn't perceive the player for x ms, he will de-agro
+    int c_deagroMs = 0;
+    bool perceivingProtag = 0;
+
     float roamRate = 0;
     int minPatrolPerRoam = 2;
     int curPatrolPerRoam = 0;
@@ -3654,11 +3688,11 @@ class entity:public actor {
       string temp;
       file >> temp;
       string spritefilevar;
-//      if(temp.substr(0,3) == "sp-") {
-//        spritefilevar = "engine/" + temp + ".bmp";
-//      } else {
+      if(temp.substr(0,3) == "sp-") {
+        spritefilevar = "engine/" + temp + ".bmp";
+      } else {
         spritefilevar = "static/sprites/" + temp + ".bmp";
-      //}
+      }
 
 
       //check local folder
@@ -4253,6 +4287,24 @@ class entity:public actor {
 
         stream >> comment; //target_faction
         stream >> targetFaction;
+
+        stream >> comment; //useAgro_and_not_aggressiveness
+        stream >> useAgro;
+
+        stream >> comment; //aggressiveness_gain
+        stream >> aggressivenessGain;
+                           
+        stream >> comment; //aggressiveness_loss
+        stream >> aggressivenessLoss;
+
+        stream >> comment; //aggressiveness_noise_gain
+        stream >> aggressivenessNoiseGain;
+
+        stream >> comment; //min_aggressiveness
+        stream >> minAggressiveness;
+
+        stream >> comment; //max_aggressiveness
+        stream >> maxAggressiveness;
 
         stream.close();
 
@@ -4864,7 +4916,7 @@ class entity:public actor {
         if(array.size() == 0) {return nullptr;}
         for (long long unsigned int i = 0; i < array.size(); i++) {
           float dist = Distance(cacheX, cacheY, array[i]->x, array[i]->y);
-          if(dist < min_dist || flag) {
+          if( (dist < min_dist || flag) && array[i]->enabled) {
             min_dist = dist;
             ret = array[i];
             flag = 0;
@@ -4896,6 +4948,7 @@ class entity:public actor {
 
 
           float angle = convertFrameToAngle(parent->animation, parent->flip == SDL_FLIP_HORIZONTAL);
+
 
           //orbitoffset is the number of frames, counter-clockwise from facing straight down
           float fangle = angle;
@@ -6392,10 +6445,10 @@ class entity:public actor {
               //if(this->weaponName == "unarmed") {break;} //some entities should be able to target themselves (fleshpit)
 
               //under certain conditions, agro the entity hit and set his target to the shooter
-              if(target == nullptr) {
+              if(target == nullptr && useAgro) {
                 target = x->owner;
                 targetFaction = x->owner->faction;
-                agrod = 1;
+                if (useAgro == 1) { agrod = 1;
 
                 //agro all of the boys on this's team who aren't already agrod, and set their target to a close entity from x's faction
                 //WITHIN A RADIUS, because it doesnt make sense to agro everyone on the map.
@@ -6432,7 +6485,7 @@ class entity:public actor {
           }
         }
 
-        if(isAI) {
+        if(isAI && useAgro) {
           //check the auto-agro-range
           potentialTarget = nullptr;
           smellsPotentialTarget = 0;
@@ -6510,6 +6563,57 @@ class entity:public actor {
             }
 
 
+          } else {
+            //if we are agrod on the player, check if we are perceiving him
+            perceivingProtag = 0;
+            if(target == protag) {
+              //check smell
+              if(XYWorldDistance(protag->getOriginX(), protag->getOriginY(), this->getOriginX(), this->getOriginY()) < this->smellAgroRadius) {
+
+                { //check for smell
+                  perceivingProtag = 1;
+                }
+              }
+
+
+
+              //check sight
+              if(XYWorldDistance(protag->getOriginX(), protag->getOriginY(), this->getOriginX(), this->getOriginY()) < this->visionRadius) {
+                if(
+                    LineTrace(protag->getOriginX(), protag->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)
+                    &&
+                    protag->tangible
+                    ) 
+                {
+                  if(!g_protagIsWithinBoardable) {
+  
+                    //is the monster facing the target? compare angle to target to this steeringangel
+                    float angleToPotTarget = atan2(protag->getOriginX() - getOriginX(), protag->getOriginY() - getOriginY()) - M_PI/2;
+                    angleToPotTarget = wrapAngle(angleToPotTarget);
+                    if(abs(angleDiff(angleToPotTarget, this->steeringAngle)) < 1.6) {
+                      perceivingProtag = 1;
+                    }
+                  }
+                }
+              }
+
+            }
+            if(!perceivingProtag) {
+              c_deagroMs += elapsed;
+            } else {
+              c_deagroMs -= elapsed;
+            }
+            D(c_deagroMs);
+            if(c_deagroMs > deagroMs) {
+              agrod = 0;
+              traveling = 1;
+              readyForNextTravelInstruction = 1;
+              target = nullptr;
+              M("I deagrod of fomm");
+            } else if(c_deagroMs < 0) {
+              c_deagroMs = 0;
+
+            }
           }
 
           //this is so it takes time to agro on someone
@@ -6548,17 +6652,87 @@ class entity:public actor {
             seeAgroMs = 0;
           }
 
-          //is out scriptcaller sleeping? Lets update it, and maybe wake it up
-          if(myScriptCaller != nullptr) {
-            if(myScriptCaller->sleepflag){
-              if(myScriptCaller->sleepingMS > 1) { myScriptCaller->sleepingMS -= elapsed;}
-              else {myScriptCaller->sleepflag = 0;myScriptCaller->continueDialogue();}
+//          //is out scriptcaller sleeping? Lets update it, and maybe wake it up
+//          if(myScriptCaller != nullptr) {
+//            if(myScriptCaller->sleepflag){
+//              if(myScriptCaller->sleepingMS > 1) { myScriptCaller->sleepingMS -= elapsed;}
+//              else {myScriptCaller->sleepflag = 0;myScriptCaller->continueDialogue();}
+//            }
+//          }
+
+
+
+
+        } else if(isAI && !useAgro) {
+          //HORROR STALKER NERVOUS AGGRESSIVE
+          //This is the code for having fun enemies who vary in aggressiveness
+          //prototypically, aggressiveness makes them faster, do more damage, and spend less time wandering
+          if(target == nullptr) {
+            //get the target
+            for(auto x : g_entities) {
+              if(x->faction == targetFaction) {
+                target = x;
+                break;
+              }
             }
+          }
+
+          if(target != nullptr) {
+            smellsPotentialTarget = 0;
+            seesPotentialTarget = 0;
+            //can it smell fomm?
+            if(XYWorldDistance(target->getOriginX(), target->getOriginY(), this->getOriginX(), this->getOriginY()) < this->smellAgroRadius) {
+              smellsPotentialTarget = 1;
+            }
+
+            //can it see fomm?
+            if(XYWorldDistance(target->getOriginX(), target->getOriginY(), this->getOriginX(), this->getOriginY()) < this->visionRadius) {
+              if(
+                  LineTrace(target->getOriginX(), target->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)
+                  &&
+                  target->tangible
+                  ) 
+              {
+                if(target != protag || !g_protagIsWithinBoardable) {
+                  //is the monster facing the target? compare angle to target to this steeringangel
+                  float angleToPotTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
+                  angleToPotTarget = wrapAngle(angleToPotTarget);
+                  if(abs(angleDiff(angleToPotTarget, this->steeringAngle)) < 1.6) {
+                    seesPotentialTarget = 1;
+                  }
+                }
+              }
+            }
+          }
+          
+          if(seesPotentialTarget) {
+            aggressiveness += elapsed * aggressivenessGain;
+          } else {
+            aggressiveness -= elapsed * aggressivenessLoss;
+          }
+
+          if(smellsPotentialTarget) {
+            aggressiveness += elapsed * aggressivenessGain;
+          }
+
+          if(aggressiveness < minAggressiveness) {
+            aggressiveness = minAggressiveness;
+          } else if(aggressiveness > maxAggressiveness) {
+            aggressiveness = maxAggressiveness;
           }
 
 
 
+        }
+        //is out scriptcaller sleeping? Lets update it, and maybe wake it up
+        if(myScriptCaller != nullptr) {
+          if(myScriptCaller->sleepflag){
+            if(myScriptCaller->sleepingMS > 1) { myScriptCaller->sleepingMS -= elapsed;}
+            else {myScriptCaller->sleepflag = 0;myScriptCaller->continueDialogue();}
+          }
+        }
 
+        if(isAI && target != nullptr) {
           //likely has abilities to use
           //are any abilities ready?
           for(auto &x : myAbilities) {
@@ -6638,7 +6812,8 @@ class entity:public actor {
 
             }
           }
-        } 
+
+        }
 
         //apply statuseffect
         this->stunned = hisStatusComponent.stunned.updateStatuses(elapsed);
@@ -7154,40 +7329,8 @@ class entity:public actor {
 
 
 
-      } else if (Destination != nullptr) {
-        //this is used for very intentional movement (pathing but not to an entity (agro) and not to a poi (traveling) 
-        //e.g. pathing to a hidingspot after protag hides, scripted pathing
-        BasicNavigate(Destination);
-
-        if(XYWorldDistance(this->getOriginX(), this->getOriginY(), Destination->x, Destination->y) < 32) {
-          Destination = 0;
-          if(lostHimSequence == 1) {
-            lostHimMs = 4000;
-            lostHimSequence = 2;
-          }
+      } 
         }
-
-
-      }
-      
-      if(lostHimMs > 0) {
-        lostHimMs -= elapsed;
-        float angleToTarget = atan2(lostHimX - getOriginX(), lostHimY - getOriginY()) - M_PI/2;
-        angleToTarget = wrapAngle(angleToTarget);
-        targetSteeringAngle = angleToTarget;
-      } else {
-        if(lostHimSequence == 2) {
-          lostHimSequence = 3;
-        }
-      }
-
-      if(lostHimSequence == 3) {
-        lostHimSequence = 0;
-        //myTravelstyle = patrol;
-        traveling = 1;
-        readyForNextTravelInstruction = 1;
-
-      }
 
       
 
@@ -7334,9 +7477,13 @@ class entity:public actor {
 
         for(auto x : path) {
           if(!x->enabled){
-            //M("TRYING TO USE DISABLED NODE");
+            M("TRYING TO USE DISABLED NODE");
             current = getNodeByPosition(getOriginX(), getOriginY());
             dest = current;
+
+            path.clear(); //seems to fix it
+
+
           }
         }
 
@@ -8597,7 +8744,7 @@ class ui {
             dstrect = transformRect( dstrect );
             if(dropshadow) {
               SDL_FRect shadowRect = dstrect;
-              float booshAmount = g_textDropShadowDist * 30;
+              float booshAmount = g_textDropShadowDist * 52.7;
               shadowRect.x += booshAmount;
               shadowRect.y += booshAmount;
               SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
@@ -8614,7 +8761,7 @@ class ui {
               dstrect.h /= g_zoom_mod;
               if(dropshadow) {
                 SDL_FRect shadowRect = dstrect;
-                float booshAmount = g_textDropShadowDist * 40;
+                float booshAmount = g_textDropShadowDist * 52.7;
                 shadowRect.x += booshAmount;
                 shadowRect.y += booshAmount;
                 SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
@@ -8645,7 +8792,7 @@ class ui {
               SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2};
               if(dropshadow) {
                 SDL_FRect shadowRect = dstrect;
-                float booshAmount = g_textDropShadowDist * 30;
+                float booshAmount = g_textDropShadowDist * 52.7;
                 shadowRect.x += booshAmount;
                 shadowRect.y += booshAmount;
                 SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
@@ -8740,6 +8887,7 @@ class musicNode {
     int x = 0;
     int y = 0;
     float radius = 1200;
+    bool enabled = 1; 
 
     musicNode(string fileaddress, int fx, int fy) {
       name = fileaddress;
@@ -8845,12 +8993,15 @@ class waypoint {
     float x = 0;
     float y = 0;
     int z = 0;
+    int angle = 0; //this is fed into convertFrameToAngle() to the ent that travels to the waypoint
+    
     string name;
-    waypoint(string fname, float fx, float fy, int fz) {
+    waypoint(string fname, float fx, float fy, int fz, int fangle) {
       name = fname;
       x = fx;
       y = fy;
       z = fz;
+      angle = fangle;
       g_waypoints.push_back(this);
     }
     ~waypoint() {
@@ -8977,6 +9128,171 @@ class listener {
     }
 };
 
+class escapeUI {
+  public:
+    ui* ninePatch;
+    ui* handMarker;
+    ui* fingerMarker;
+
+    ui* backButton;
+    ui* bbNinePatch;
+
+    vector<textbox*> optionTextboxes;
+
+    int optionIndex = 0;
+
+    float yStart = 0.35;
+    float yEnd = 0.65;
+    float xStart = 0.35;
+    float xEnd = 0.6;
+
+    float bbXStart = 0.8;
+    float bbYStart = 0.05;
+    float bbWidth = 0.10;
+
+    int numLines;
+
+    int positionOfCursor = 0;
+    int cursorIsOnBackButton = 0;
+    int minPositionOfCursor = 0;
+    int maxPositionOfCursor = 0;
+    bool modifyingValue = 0; //set to one when the user selects an option and begins tinkering it
+
+    float fingerOffset = 0.025;
+    float handOffset = 0.008;
+
+    float markerWidth = 0.055;
+    float markerFingerX = 0.70;
+    float markerHandX = 0.70;
+
+    float markerBBOffset = 0.04; //offset position of cursor when on the back button
+    float markerBBOffsetY = 0.04; 
+                                  
+    const float maxVolume = 1;
+    const float minVolume = 0;
+    const float deltaVolume = 0.05;
+
+    const float maxGraphics = 3;
+    const float minGraphics = 0;
+    const float deltaGraphics = 1;
+
+    const float maxBrightness = 140;
+    const float minBrightness = 60;
+    const float deltaBrightness = 5;
+
+
+    escapeUI() {
+
+      ninePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
+      ninePatch->patchwidth = 213;
+      ninePatch->patchscale = 0.4;
+      ninePatch->is9patch = true;
+      ninePatch->persistent = true;
+      ninePatch->show = 1;
+      ninePatch->priority = 2;
+
+      handMarker = new ui(renderer, "static/ui/hand_selector.bmp", markerHandX, 0.1, markerWidth, 1, 2);
+      handMarker->persistent = 1;
+      handMarker->show = 1;
+      handMarker->priority = 3;
+      handMarker->heightFromWidthFactor = 1;
+      handMarker->renderOverText = 1;
+
+      fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.bmp", markerFingerX, 0.1, markerWidth, 1, 2);
+      fingerMarker->persistent = 1;
+      fingerMarker->show = 1;
+      fingerMarker->priority = 3;
+      fingerMarker->heightFromWidthFactor = 1;
+      fingerMarker->renderOverText = 1;
+
+      vector<string> optionStrings;
+      
+      optionStrings.push_back("Back");
+      optionStrings.push_back("Levelselect");
+      optionStrings.push_back("Quit Game");
+      optionStrings.push_back("Settings");
+
+
+      numLines = optionStrings.size();
+      float spacing = (yEnd - yStart) / (numLines);
+
+//      backButton = new ui(renderer, "static/ui/menu_back.bmp", bbXStart, bbYStart, bbWidth, 1, 2);
+//      backButton->heightFromWidthFactor = 1;
+//      backButton->shrinkPercent = 0.03;
+//      backButton->persistent = 1;
+//      backButton->show = 1;
+//      backButton->priority = 1;
+//      backButton->dropshadow = 1;
+//
+//      bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", bbXStart, bbYStart, bbWidth, 1, 0);
+//      bbNinePatch->patchwidth = 213;
+//      bbNinePatch->patchscale = 0.4;
+//      bbNinePatch->is9patch = true;
+//      bbNinePatch->persistent = true;
+//      bbNinePatch->show = 1;
+//      bbNinePatch->priority = 0;
+//      bbNinePatch->heightFromWidthFactor = 1;
+
+
+      int i = 0;
+      for(float yPos = yStart + spacing/2; yPos < yEnd; yPos+= spacing ) 
+      {
+        textbox* newTextbox = new textbox(renderer, optionStrings[i].c_str(), 40 * g_fontsize, 0.5, yPos, 0);
+        newTextbox->dropshadow = 1;
+        newTextbox->show = 0;
+        newTextbox->align = 2;
+        optionTextboxes.push_back(newTextbox);
+        
+        i++;
+      }
+
+      maxPositionOfCursor = optionTextboxes.size() - 1;
+
+      hide();
+    }
+
+    ~escapeUI() {
+      delete ninePatch;
+      delete inventoryMarker;
+      delete handMarker;
+      delete fingerMarker;
+      //delete backButton;
+
+    }
+
+    void show() {
+      ninePatch->show = 1;
+      uiSelecting();
+      //backButton->show = 1;
+      //bbNinePatch->show = 1;
+      for(auto x : optionTextboxes) {
+        x->show = 1;
+      }
+    }
+
+    void hide() {
+      ninePatch->show = 0;
+      handMarker->show = 0;
+      fingerMarker->show = 0;
+      //backButton->show = 0;
+      //bbNinePatch->show = 0;
+      for(auto x : optionTextboxes) {
+        x->show = 0;
+      }
+    }
+
+    void uiModifying() {
+      g_escapeUI->fingerMarker->show = 0;
+      g_escapeUI->handMarker->show = 1;
+    }
+
+    void uiSelecting() {
+      g_escapeUI->handMarker->show = 0;
+      g_escapeUI->fingerMarker->show = 1;
+    }
+
+};
+
 //clear map
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
@@ -9021,6 +9337,10 @@ void clear_map(camera& cameraToReset) {
 
     SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
     SDL_SetRenderTarget(renderer, frame);
+
+    //to stop the clock and the goal text from rendering
+    adventureUIManager->scoreText->show = 0;
+    adventureUIManager->systemClock->show = 0;
 
     //render current frame to texture -- this is gonna get weird
     {
@@ -9229,6 +9549,40 @@ void clear_map(camera& cameraToReset) {
         }
       }
 
+      //this is the menu for quitting or going back to the "overworld"
+      if (g_inEscapeMenu) 
+      {
+        //move reticle to the correct position
+        g_escapeUI->handMarker->targety
+          = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+          + (g_escapeUI->handOffset);
+  
+        g_escapeUI->handMarker->targetx
+          = g_escapeUI->markerHandX;
+  
+        g_escapeUI->fingerMarker->targety
+          = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+          + (g_escapeUI->fingerOffset);
+  
+        float ww = WIN_WIDTH;
+        float fwidth = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->width;
+        g_escapeUI->fingerMarker->targetx
+          = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxX + 
+            fwidth / ww / 2;
+        
+  
+  
+        if(g_firstFrameOfSettingsMenu) {
+          g_firstFrameOfSettingsMenu = 0;
+          g_escapeUI->handMarker->x = g_escapeUI->handMarker->targetx;
+          g_escapeUI->handMarker->y = g_escapeUI->handMarker->targety;
+          g_escapeUI->fingerMarker->x = g_escapeUI->fingerMarker->targetx;
+          g_escapeUI->fingerMarker->y = g_escapeUI->fingerMarker->targety;
+  
+        }
+  
+      }
+
       // draw pause screen
       if (inPauseMenu)
       {
@@ -9236,11 +9590,11 @@ void clear_map(camera& cameraToReset) {
   
         // iterate thru inventory and draw items on screen
         float defaultX = WIN_WIDTH * 0.05;
-        float defaultY = WIN_WIDTH * 0.05;
+        float defaultY = WIN_HEIGHT * adventureUIManager->inventoryYStart;
         float x = defaultX;
         float y = defaultY;
         float maxX = WIN_WIDTH * 0.9;
-        float maxY = WIN_HEIGHT * 0.60;
+        float maxY = WIN_HEIGHT * adventureUIManager->inventoryYEnd;
         float itemWidth = WIN_WIDTH * 0.07;
         float padding = WIN_WIDTH * 0.01;
   
@@ -9343,22 +9697,39 @@ void clear_map(camera& cameraToReset) {
               if(g_levelSequence->levelNodes[i]->locked) {
                 adventureUIManager->escText->updateText("???", -1, 0.9);
               } else {
+                string dispText = g_levelSequence->levelNodes[i]->name;
+                std::replace(dispText.begin(), dispText.end(),'_',' ');
                 adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
   
               }
   
               // this item should have the marker
               inventoryMarker->show = 1;
-              inventoryMarker->x = x / WIN_WIDTH;
-              inventoryMarker->y = y / WIN_HEIGHT;
-              //now that it's a hand
-              inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-              inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+                                   
+              if(g_firstFrameOfPauseMenu) {
+                inventoryMarker->x = x / WIN_WIDTH;
+                inventoryMarker->y = y / WIN_HEIGHT;
+                inventoryMarker->x -= biggen;
+                inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targetx = inventoryMarker->x;
+                inventoryMarker->targety = inventoryMarker->y;
+                g_firstFrameOfPauseMenu = 0;
+              } else {
+                inventoryMarker->targetx = x / WIN_WIDTH;
+                inventoryMarker->targety = y / WIN_HEIGHT;
+                inventoryMarker->targetx -= biggen;
+                inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->targetx += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              }
+
               inventoryMarker->width = itemWidth / WIN_WIDTH;
     
-              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-              inventoryMarker->x -= biggen;
-              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
               inventoryMarker->width += biggen * 2;
               inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             }
@@ -9382,7 +9753,7 @@ void clear_map(camera& cameraToReset) {
         }
   
         //re-render inventory reticle so it goes on top of the items/level icons
-        inventoryMarker->render(renderer, g_camera, 1);
+        inventoryMarker->render(renderer, g_camera, 0);
         inventoryMarker->show = 0;
       }
       else
@@ -9395,6 +9766,10 @@ void clear_map(camera& cameraToReset) {
       SDL_RenderCopy(renderer, g_shade, NULL, NULL);
       //SDL_RenderPresent(renderer);
     }
+
+    //to stop the clock and the goal text from rendering
+    adventureUIManager->scoreText->show = 1;
+    adventureUIManager->systemClock->show = 1;
 
 
     SDL_SetRenderTarget(renderer, NULL);
@@ -9775,7 +10150,7 @@ class settingsUI {
 
     float yStart = 0.05;
     float yEnd = 0.9;
-    float xStart = 0.25;
+    float xStart = 0.3;
     float xEnd = 0.7;
 
     float bbXStart = 0.8;
@@ -9878,7 +10253,7 @@ class settingsUI {
       int i = 0;
       for(float yPos = yStart + spacing/2; yPos < yEnd; yPos+= spacing ) 
       {
-        textbox* newTextbox = new textbox(renderer, optionStrings[i].c_str(), 30 * g_fontsize, xStart + (spacing/2 * (WIN_WIDTH/WIN_HEIGHT)), yPos, xEnd - xStart);
+        textbox* newTextbox = new textbox(renderer, optionStrings[i].c_str(), 30 * g_fontsize, xStart + (spacing/2 * (WIN_WIDTH/WIN_HEIGHT)), yPos, xEnd);
         newTextbox->dropshadow = 1;
         newTextbox->show = 0;
         optionTextboxes.push_back(newTextbox);
@@ -9963,6 +10338,8 @@ class settingsUI {
     }
 
 };
+
+
 
 
 //I added this to help debug a problem with multiple copies of UI elements
