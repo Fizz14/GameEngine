@@ -7408,12 +7408,70 @@ void write_map(entity *mapent)
     }
 
 
+    //switch statement based on behemoth state
+    //make sure to select beforehand
+    //  /select common/zombie
+    //  /state
+    //  *passive:gopassive
+    //  *active:goactive
+    //  #
+    //  <gopassive>
+    //  I'll turn down his speed and damage.
+    //  #
+    //  <goactive>
+    //  I'll set his speed and damage up.
+    //  #
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/state")
+    {
+      int j = 1;
+
+      if(selected != nullptr) {
+  
+        string stateName = selected->states[selected->activeState].name;
+
+        string res = scriptToUse->at(dialogue_index + 1 + j);
+        while (res.find('*') != std::string::npos)
+        {
+          // parse option
+          //  *15:29 -> if distance is less than 15, go to line 29
+          string s = scriptToUse->at(dialogue_index + 1 + j);
+//I("s");
+          //I(s);
+          s.erase(0, 1);
+          string condition = s.substr(0, s.find(':'));
+          //I("condition");
+          //I(condition);
+          s.erase(0, s.find(':') + 1);
+          int jump = stoi(s);
+          //I("jump");
+          //I(jump);
+          //I("distance");
+          //I(distance);
+          if (stateName == condition)
+          {
+            dialogue_index = jump - 3;
+            this->continueDialogue();
+            return;
+          }
+          j++;
+          res = scriptToUse->at(dialogue_index + 1 + j);
+        }
+  
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
     // Switch-statement by aggressiveness of a behemoth
     // coditions are listed from least to greatest
     // starting from the top, I check if the aggressiveness field
     // is less than the value after the *
     // if it is, I take that option, if not, I proceed
-    //  /aggressiveness common/zombie
+    //  /select common/zombie
+    //  /aggressiveness
     //  *500:chill
     //  *1000:pissed
     //  #
@@ -7429,11 +7487,7 @@ void write_map(entity *mapent)
       int j = 1;
       string s = scriptToUse->at(dialogue_index + 1);
 
-      auto x = splitString(s, ' ');
-
-      string fStr = x[1];
-    
-      entity* firstEnt = searchEntities(fStr, talker);
+      entity* firstEnt = selected;
 
       if(firstEnt != nullptr) {
   
@@ -7568,11 +7622,38 @@ void write_map(entity *mapent)
         if (hopeful != nullptr)
         {
           selected = hopeful;
-          M("Managed to /select an entity");
         }
         else
         {
-          E("Couldn't find entity for /select call");
+          E("Couldn't find entity for /select call.");
+        }
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // check if entity is active
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/active")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      if(x.size() < 2) {
+        E("Not enough args for /select call.");
+      } else {
+
+        string entName = x[1];
+        entity *hopeful = 0;
+        hopeful = searchEntities(entName);
+        if (hopeful != nullptr)
+        {
+          selected = hopeful;
+        }
+        else
+        {
+          E("Couldn't find entity for /select call.");
         }
       }
 
@@ -7643,14 +7724,11 @@ void write_map(entity *mapent)
     if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\+[[:digit:]]+")))
     {
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
-      cout << "In selfdata add interpreter" << endl;
 
       string s = scriptToUse->at(dialogue_index + 1);
       
       vector<string> x = splitString(s, '+');
       x[0] = x[0].substr(1, x[0].size()-2);
-      cout << "The block is " << x[0] << endl;
-      cout << "The adden is " << x[1] << endl;
 
       int block = stoi(x[0]);
       int value = selected->data[block];
@@ -7667,14 +7745,11 @@ void write_map(entity *mapent)
     if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\-[[:digit:]]+")))
     {
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
-      cout << "In selfdata add interpreter" << endl;
 
       string s = scriptToUse->at(dialogue_index + 1);
       
       vector<string> x = splitString(s, '-');
       x[0] = x[0].substr(1, x[0].size()-2);
-      cout << "The block is " << x[0] << endl;
-      cout << "The adden is " << x[1] << endl;
 
       int block = stoi(x[0]);
       int value = selected->data[block];
@@ -7691,14 +7766,11 @@ void write_map(entity *mapent)
     if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\*[[:digit:]]+")))
     {
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
-      cout << "In selfdata add interpreter" << endl;
 
       string s = scriptToUse->at(dialogue_index + 1);
       
       vector<string> x = splitString(s, '*');
       x[0] = x[0].substr(1, x[0].size()-2);
-      cout << "The block is " << x[0] << endl;
-      cout << "The adden is " << x[1] << endl;
 
       int block = stoi(x[0]);
       int value = selected->data[block];
@@ -7716,14 +7788,11 @@ void write_map(entity *mapent)
     if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\/[[:digit:]]+")))
     {
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
-      cout << "In selfdata add interpreter" << endl;
 
       string s = scriptToUse->at(dialogue_index + 1);
       
       vector<string> x = splitString(s, '/');
       x[0] = x[0].substr(1, x[0].size()-2);
-      cout << "The block is " << x[0] << endl;
-      cout << "The adden is " << x[1] << endl;
 
       int block = stoi(x[0]);
       int value = selected->data[block];
@@ -7783,36 +7852,32 @@ void write_map(entity *mapent)
       return;
     }
 
-    //set passive interval
-    if (scriptToUse->at(dialogue_index + 1).substr(0, 19) == "/setpassiveinterval")
+    // set state interval
+    // /select common/zombie
+    // /setstateinterval passive 12000
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 17) == "/setstateinterval")
     {
       if(selected == nullptr) {E("Tried to set passive interval without calling /select first");}
       string s = scriptToUse->at(dialogue_index + 1);
       
       vector<string> x = splitString(s, ' ');
 
-      if(x.size() < 2) {
-        E("Not enough params for /setpassiveinterval call");
+      if(x.size() < 3) {
+        E("Not enough params for /setstateinterval call");
       }
-      selected->nextPassiveMs = stoi(x[1]);
 
-      dialogue_index++;
-      this->continueDialogue();
-      return;
-    }
-
-    //set active interval
-    if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setactiveinterval")
-    {
-      if(selected == nullptr) {E("Tried to set active interval without calling /select first");}
-      string s = scriptToUse->at(dialogue_index + 1);
-      
-      vector<string> x = splitString(s, ' ');
-
-      if(x.size() < 2) {
-        E("Not enough params for /setactiveinterval call");
+      int good = 0;
+      for(auto s : selected->states) {
+        if(s.name == x[1]) {
+          s.nextInterval = stoi(x[2]);
+          good = 1;
+          break;
+        }
       }
-      selected->nextActiveMs = stoi(x[1]);
+
+      if(!good) {
+        E("Couldn't find state for /setstateinterval");
+      }
 
       dialogue_index++;
       this->continueDialogue();

@@ -3267,6 +3267,15 @@ class statusComponent {
 
 };
 
+//part of a statemachine for a behemoth, e.g. a stalking state, a sleeping state, a hiding state, a roaming state
+struct state {
+  string name = "";
+  int interval = 0;
+  int nextInterval = 0;
+  vector<int> nextStates; //after the interval has elapsed, a next state will be chosen with rng
+  vector<float> nextStateProbabilities; //based on probabilities
+};
+
 class entity:public actor {
   public:
     //dialogue
@@ -3566,15 +3575,10 @@ class entity:public actor {
     //if we then start patrolling, patrol backwards
 
     //for behemoths who use agressiveness
-    int activeMs = 0;
-    int passiveMs = 6000;
+    bool useStateSystem = 0;
+    int activeState = 0;
+    vector<state> states;
 
-    int nextActiveMs = 0; //entities will set these in scripts, but they will only be used
-                         //when the current timers finish for expected behavior
-    int nextPassiveMs = 6000;
-
-    bool passive = 1; //is he passive or active
-    bool useActivePassiveSystem = 1;
 
     int attackDamageMultiplier = 1;
 
@@ -4244,6 +4248,74 @@ class entity:public actor {
           myScriptCaller->talker = this;
 
         }
+
+
+        stream >> comment; // states
+        stream >> comment; // open curly brace character
+        
+        //a line might look like this 
+        //  passive(1300)
+        for(;;) {
+          if(! (stream >> line) ) {break;}
+          if(line[0] == '}') {break;}
+          //line contains the name of an ability
+          state newState;
+          string name;
+          int interval;
+          
+          vector<string> x = splitString(line, '(');
+          name = x[0];
+          x[1].pop_back(); interval = stoi(x[1]);
+          newState.name = name;
+          newState.interval = interval;
+          newState.nextInterval = interval;
+
+          cout << "loading new state called " << name << " with interval " << interval << endl;
+          this->states.push_back(newState);
+        }
+
+        stream >> comment; // stateTransitions
+        stream >> comment; // open curly brace character
+        
+        //a line might look like this 
+        //  passive -> active (1)
+        for(;;) {
+          if(! (stream >> line) ) {break;}
+          if(line[0] == '}') {break;}
+          //line contains the name of an ability
+          string fromState;
+          string toState;
+          string probability;
+          
+          fromState = line;
+          stream >> comment; // "->"
+          stream >> toState;
+          stream >> probability;
+          
+          probability = probability.substr(1, probability.size()-2);
+
+          int fromIndex = -1;
+          int toIndex = -1;
+          for(int i = 0; i < states.size(); i++) {
+            if(fromState.compare(states[i].name)) {
+              fromIndex = i;
+            }
+            if(toState.compare(states[i].name)) {
+              toIndex = i;
+            }
+          }
+          if(fromIndex == -1 || toIndex == -1) {
+            E("Couldn't find state for stateTransition");
+          } else {
+            states[fromIndex].nextStates.push_back(toIndex);
+            states[fromIndex].nextStateProbabilities.push_back(stof(probability));
+            cout << "For state at index " << fromIndex << ", making a transition with prob " << probability << " to state at index " << toIndex << endl;
+
+          }
+          
+        }
+        if(states.size() > 0) {useStateSystem = 1;}
+
 
         stream >> comment; //ai_index
         stream >> this->aiIndex;
@@ -6719,26 +6791,14 @@ class entity:public actor {
             }
 
             //if we are using the active/passive system, let's update that
-            if(useActivePassiveSystem) {
-              if(passive) {
-                passiveMs -= elapsed;
-                if(passiveMs < 0) {
-                  cout << "MRRAAAAA!, this entity will be AGRO for " << activeMs << " ms" << endl;
-                  passiveMs  = nextPassiveMs;
-                  agrod = 1;
-                  passive = 0;
-                }
-              } else {
-                activeMs -= elapsed;
-                if(activeMs < 0) {
-                  cout << "Agh okay, this entity will be passive for " << passiveMs << " ms" << endl;
-                  activeMs = nextActiveMs;
-                  agrod = 0;
-                  myTravelstyle = roam;
-                  traveling = 1;
-                  readyForNextTravelInstruction = 1;
-                  passive = 1;
-                }
+            if(useStateSystem) {
+              states[activeState].interval -= elapsed;
+              if(states[activeState].interval < 0) {
+                int numChoices = states[activeState].nextStates.size();
+                int destinationState = states[activeState].nextStates[rand() % numChoices];
+                cout << "State change from " << activeState << " to " << destinationState << endl;
+                states[activeState].interval = states[activeState].nextInterval;
+                activeState = destinationState;
               }
             }
           }
@@ -7067,7 +7127,7 @@ class entity:public actor {
               if(curPatrolPerRoam < minPatrolPerRoam) {
                 myTravelstyle = patrol;
                 curPatrolPerRoam++;
-                M("Can't roam now");
+                //M("Can't roam now");
               } else {
                 if(r >= roamRate) {
                   myTravelstyle = patrol;
@@ -7087,7 +7147,7 @@ class entity:public actor {
                 D(random);
                 D(lastTargetDestIndex);
                 if(random == lastTargetDestIndex) {
-                  M("They're equal, this shouldn't happen");
+                  //M("They're equal, this shouldn't happen");
                 } 
 //                else if(random < lastTargetDestIndex) {
 //                  patrolDirection = 1; //patrol decreasingly
@@ -7110,14 +7170,14 @@ class entity:public actor {
 
                 int clockDistance = numPoiNodes - ounterDistance;
 
-                D(ounterDistance);
-                D(clockDistance);
+                //D(ounterDistance);
+                //D(clockDistance);
                 if(ounterDistance < clockDistance) {
                   patrolDirection = 0;
-                  M("New Direction is Ounter");
+                  //M("New Direction is Ounter");
                 } else {
                   patrolDirection = 1;
-                  M("New Direction is Clock");
+                  //M("New Direction is Clock");
 
                 }
 
@@ -7128,10 +7188,10 @@ class entity:public actor {
               } else if(myTravelstyle == patrol) {
                 if(patrolDirection == 0) {
                   currentPoiForPatrolling++;
-                  M("Going Ounter...");
+                  //M("Going Ounter...");
                 } else {
                   currentPoiForPatrolling--;
-                  M("Going Clock...");
+                  //M("Going Clock...");
                 }
                 if(currentPoiForPatrolling > (int)g_setsOfInterest.at(poiIndex).size()-1) {currentPoiForPatrolling = 0;}
                 if(currentPoiForPatrolling < 0) {currentPoiForPatrolling = g_setsOfInterest.at(poiIndex).size()-1;}
