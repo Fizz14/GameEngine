@@ -7532,7 +7532,7 @@ void write_map(entity *mapent)
     }
 
     //write debug message to console
-    if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/print")
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/print ")
     {
       string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
@@ -7592,31 +7592,144 @@ void write_map(entity *mapent)
       blockstr.pop_back();
       blockstr.erase(0, 1);
       int block = stoi(blockstr);
-      M("Oh boy lets write some selfdata to our selected entity");
       selected->data[block] = value;
       dialogue_index++;
       this->continueDialogue();
       return;
     }
 
-    // write random number to selfdata
-    //  0-1000->[4]
-    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
-    {
-      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
+    //write random number to selfdata
+    // 0-1000->[4]
+    if(regex_match (scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
       string s = scriptToUse->at(dialogue_index + 1);
-      int firstvalue = stoi(s.substr(0, s.find('-')));
-      s.erase(0, s.find('-') + 1);
-      int secondvalue = stoi(s.substr(0, s.find('-')));
-      s.erase(0, s.find('-') + 1);
-
-      string blockstr = s.substr(s.find('['));
-      blockstr.pop_back();
-      blockstr.erase(0, 1);
-      int block = stoi(blockstr);
+      int firstvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
+      int secondvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
+      
+      string blockstr = s.substr(s.find('[')); 
+      blockstr.pop_back(); blockstr.erase(0, 1);
+      int block = stoi (blockstr);
 
       selected->data[block] = rand() % (secondvalue - firstvalue + 1) + firstvalue;
-      D(selected->data[block]);
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //print selfdata to console for debuging
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/printdata")
+    {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
+      
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      if(x.size() >= 2) {
+        int block = stoi(s.substr(11));
+        int value = selected->data[block];
+        D(block);
+        D(value);
+        string valueSTR = to_string(value);
+        string printMe = "Print selfdata from Script: " + selected->name + " [" + to_string(block) + "]: " + valueSTR;
+        M(printMe);
+      }
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+    // add to selfdata
+    // [4]+1
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\+[[:digit:]]+")))
+    {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
+      cout << "In selfdata add interpreter" << endl;
+
+      string s = scriptToUse->at(dialogue_index + 1);
+      
+      vector<string> x = splitString(s, '+');
+      x[0] = x[0].substr(1, x[0].size()-2);
+      cout << "The block is " << x[0] << endl;
+      cout << "The adden is " << x[1] << endl;
+
+      int block = stoi(x[0]);
+      int value = selected->data[block];
+      value += stoi(x[1]);
+      selected->data[block] = value;
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // subtract from selfdata
+    // [4]-1
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\-[[:digit:]]+")))
+    {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
+      cout << "In selfdata add interpreter" << endl;
+
+      string s = scriptToUse->at(dialogue_index + 1);
+      
+      vector<string> x = splitString(s, '-');
+      x[0] = x[0].substr(1, x[0].size()-2);
+      cout << "The block is " << x[0] << endl;
+      cout << "The adden is " << x[1] << endl;
+
+      int block = stoi(x[0]);
+      int value = selected->data[block];
+      value -= stoi(x[1]);
+      selected->data[block] = value;
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // multiply selfdata
+    // [4]*3
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\*[[:digit:]]+")))
+    {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
+      cout << "In selfdata add interpreter" << endl;
+
+      string s = scriptToUse->at(dialogue_index + 1);
+      
+      vector<string> x = splitString(s, '*');
+      x[0] = x[0].substr(1, x[0].size()-2);
+      cout << "The block is " << x[0] << endl;
+      cout << "The adden is " << x[1] << endl;
+
+      int block = stoi(x[0]);
+      int value = selected->data[block];
+      value *= stoi(x[1]);
+      selected->data[block] = value;
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+    // divide selfdata
+    // [4]/3
+    if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]\\/[[:digit:]]+")))
+    {
+      if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
+      cout << "In selfdata add interpreter" << endl;
+
+      string s = scriptToUse->at(dialogue_index + 1);
+      
+      vector<string> x = splitString(s, '/');
+      x[0] = x[0].substr(1, x[0].size()-2);
+      cout << "The block is " << x[0] << endl;
+      cout << "The adden is " << x[1] << endl;
+
+      int block = stoi(x[0]);
+      int value = selected->data[block];
+      value /= stoi(x[1]);
+      selected->data[block] = value;
+
       dialogue_index++;
       this->continueDialogue();
       return;
@@ -7667,6 +7780,42 @@ void write_map(entity *mapent)
       dialogue_index++;
       this->continueDialogue();
       M("selfdatacheckingcode complete");
+      return;
+    }
+
+    //set passive interval
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 19) == "/setpassiveinterval")
+    {
+      if(selected == nullptr) {E("Tried to set passive interval without calling /select first");}
+      string s = scriptToUse->at(dialogue_index + 1);
+      
+      vector<string> x = splitString(s, ' ');
+
+      if(x.size() < 2) {
+        E("Not enough params for /setpassiveinterval call");
+      }
+      selected->nextPassiveMs = stoi(x[1]);
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    //set active interval
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setactiveinterval")
+    {
+      if(selected == nullptr) {E("Tried to set active interval without calling /select first");}
+      string s = scriptToUse->at(dialogue_index + 1);
+      
+      vector<string> x = splitString(s, ' ');
+
+      if(x.size() < 2) {
+        E("Not enough params for /setactiveinterval call");
+      }
+      selected->nextActiveMs = stoi(x[1]);
+
+      dialogue_index++;
+      this->continueDialogue();
       return;
     }
 

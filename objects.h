@@ -2622,7 +2622,7 @@ class ability {
       }
       string line;
 
-      getline(stream, line);
+      //getline(stream, line);
 
       //M("Lines of ability");
       while (getline(stream, line)) {
@@ -3565,6 +3565,19 @@ class entity:public actor {
     //if going to a random node makes the behemoth turn around,
     //if we then start patrolling, patrol backwards
 
+    //for behemoths who use agressiveness
+    int activeMs = 0;
+    int passiveMs = 6000;
+
+    int nextActiveMs = 0; //entities will set these in scripts, but they will only be used
+                         //when the current timers finish for expected behavior
+    int nextPassiveMs = 6000;
+
+    bool passive = 1; //is he passive or active
+    bool useActivePassiveSystem = 1;
+
+    int attackDamageMultiplier = 1;
+
 
     float seeAgroMs = 0;
 
@@ -3715,7 +3728,7 @@ class entity:public actor {
       file >> comment;
       file >> this->xagil;
 
-      file >> comment;
+      file >> comment; //turns_per_second
       file >> this->turningSpeed;
 
 
@@ -4928,6 +4941,7 @@ class entity:public actor {
 
 
       //returns a pointer to a door that the player used
+      //entity update
       virtual door* update(vector<door*> doors, float elapsed) {
         if(!tangible) {return nullptr;}
         
@@ -5229,7 +5243,7 @@ class entity:public actor {
           }
         }
 
-        if( (this != protag) || (this == protag) && ((protag_can_move) && (up || down || left || right))) {
+        if( (this != protag) || ((this == protag) && ((protag_can_move) && (up || down || left || right)))) {
           float amountToTurn = turningSpeed * elapsed/1000 * 2*M_PI;
           if(this == protag && g_spinning_duration > 0) {
             amountToTurn = 2 * M_PI;
@@ -6700,6 +6714,30 @@ class entity:public actor {
                   if(abs(angleDiff(angleToPotTarget, this->steeringAngle)) < 1.6) {
                     seesPotentialTarget = 1;
                   }
+                }
+              }
+            }
+
+            //if we are using the active/passive system, let's update that
+            if(useActivePassiveSystem) {
+              if(passive) {
+                passiveMs -= elapsed;
+                if(passiveMs < 0) {
+                  cout << "MRRAAAAA!, this entity will be AGRO for " << activeMs << " ms" << endl;
+                  passiveMs  = nextPassiveMs;
+                  agrod = 1;
+                  passive = 0;
+                }
+              } else {
+                activeMs -= elapsed;
+                if(activeMs < 0) {
+                  cout << "Agh okay, this entity will be passive for " << passiveMs << " ms" << endl;
+                  activeMs = nextActiveMs;
+                  agrod = 0;
+                  myTravelstyle = roam;
+                  traveling = 1;
+                  readyForNextTravelInstruction = 1;
+                  passive = 1;
                 }
               }
             }
