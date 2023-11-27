@@ -39,7 +39,8 @@ float navMeshDensity = 2;                       // navnodes every two blocks
 int limits[4] = {0};
 int m_enemyPoints = 0;                          // points the map has to spend on enemies when spawned and every x seconds afterwards
 string textureDirectory = "mapeditor";          // for choosing a file to load textures from, i.e. keep textures for a desert style level, a laboratory level, and a forest level separa
-float mapeditorNavNodeTraceRadius = 100;        // for choosing the radius of the traces between navNodes when creating them in the editor. Should be the radius of the biggest entity
+float mapeditorNavNodeCullRadius = 128;
+float mapeditorNavNodeTraceRadius = 150;        // for choosing the radius of the traces between navNodes when creating them in the editor. Should be the radius of the biggest entity
 // in the level, so that he does not get stuck on corners
 
 // for checking old console commands
@@ -1956,7 +1957,8 @@ void write_map(entity *mapent)
         //SDL_SetRenderDrawColor(renderer, redness, 100, 150, 255);
         
         if(drawNavMesh) {
-          if(g_navNodes[i]->costFromUsage > 1000) {
+          //if(g_navNodes[i]->costFromUsage > 1000) {
+          if(g_navNodes[i]->highlighted) {
              SDL_Rect obj = {(g_navNodes[i]->x -g_camera.x - 20)* g_camera.zoom , ((g_navNodes[i]->y - g_camera.y - 20) * g_camera.zoom), (40 * g_camera.zoom), (40 * g_camera.zoom)};
              SDL_RenderCopy(renderer, navNodeIconBlue->texture, NULL, &obj);
           } else {
@@ -2356,12 +2358,10 @@ void write_map(entity *mapent)
         }
         // delete nodes too close to walls
         // int checkinglayer = 0;
-        float cullingdiameter = mapeditorNavNodeTraceRadius;
+        float cullingdiameter = mapeditorNavNodeCullRadius;
         for (long long unsigned int i = 0; i < g_navNodes.size(); i++)
         {
-          rect noderect = {(int)(g_navNodes[i]->x - cullingdiameter / 2), (int)(g_navNodes[i]->y - cullingdiameter / 2), (int)(cullingdiameter), (int)(cullingdiameter * XtoY)};
-          noderect.z = g_navNodes[i]->z + 30;
-          noderect.zeight = 1;
+          rect noderect = {(int)(g_navNodes[i]->x - (cullingdiameter / 2)), (int)(g_navNodes[i]->y - (cullingdiameter / 2)), (int)(cullingdiameter), (int)(cullingdiameter * XtoY)};
           bool breakflag = 0;
           for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++)
           {
@@ -2370,7 +2370,7 @@ void write_map(entity *mapent)
             //    M( (layer ) * 64);
             //    M(g_navNodes[i]->x);
             //    M(g_navNodes[i]->z);
-            if (RectOverlap3d(g_boxs[layer][j]->bounds, noderect))
+            if (RectOverlap(g_boxs[layer][j]->bounds, noderect))
             {
               delete g_navNodes[i];
               i--;
@@ -2378,17 +2378,15 @@ void write_map(entity *mapent)
               break;
             }
           }
-          if(breakflag) {break;}
+          if(breakflag) {continue;}
           //do the same for implied geometry
-          for(auto x : g_impliedSlopes) {
-            if(RectOverlap(noderect, x->bounds))
-            {
+          for (long long unsigned int j = 0; j < g_impliedSlopes.size(); j++) {
+            if(RectOverlap(noderect, g_impliedSlopes[j]->bounds)) {
               delete g_navNodes[i];
               i--;
               break;
             }
           }
-          
           
           // break;//temp
         }
@@ -2404,7 +2402,7 @@ void write_map(entity *mapent)
             float gwt = max(g_navNodes[i]->z, g_navNodes[j]->z);
             gwt /= 64;
 
-            if (XYDistance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 280 && (LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt)) && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40))
+            if (XYDistance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 181+1 /*&& (LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt))*/ && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40))
             {
 
               // dont add a friend we already have
@@ -5929,6 +5927,7 @@ void write_map(entity *mapent)
               break;
             }
           }
+
           // break;//temp
         }
         for (long long unsigned int i = 0; i < g_navNodes.size(); i++)
@@ -7530,8 +7529,8 @@ void write_map(entity *mapent)
       return;
     }
 
-    //set aggressiveness
-    // /setaggressiveness common/zombie 65
+    //set aggressiveness of selected entity
+    // /setaggressiveness 65
     if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setaggressiveness")
     {
       int j = 1;
@@ -7556,6 +7555,29 @@ void write_map(entity *mapent)
       this->continueDialogue();
       return;
     }
+
+    //set speed
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/setbonusspeed")
+    {
+      int j = 1;
+      string s = scriptToUse->at(dialogue_index + 1);
+
+      auto x = splitString(s, ' ');
+      if(x.size() < 2) {
+        E("/setbonusspeed lacks params, should have two");
+      }
+
+      if(selected != nullptr) {
+        selected->bonusSpeed = stoi(x[1]);
+      } else {
+        E("Didn't call /select before /setbonusspeed");
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+    
 
     //set cooldown of ability
     // /setabilitycooldown [entity] [ability index] [ms]
@@ -7618,7 +7640,7 @@ void write_map(entity *mapent)
 
         string entName = x[1];
         entity *hopeful = 0;
-        hopeful = searchEntities(entName);
+        hopeful = searchEntities(entName, talker);
         if (hopeful != nullptr)
         {
           selected = hopeful;
@@ -7646,7 +7668,7 @@ void write_map(entity *mapent)
 
         string entName = x[1];
         entity *hopeful = 0;
-        hopeful = searchEntities(entName);
+        hopeful = searchEntities(entName, talker);
         if (hopeful != nullptr)
         {
           selected = hopeful;
@@ -8169,35 +8191,41 @@ void write_map(entity *mapent)
     // /roam 
     if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/roam")
     {
-      M("In /roam interpreter");
+      //M("In /roam interpreter");
       string s = scriptToUse->at(dialogue_index + 1);
-      s.erase(0, 6);
       vector<string> x = splitString(s, ' ');
-      string name = x[0];
+      if(x.size() < 2) {
+        E("Not enough params for /roam.");
+
+      }
       int p0 = stoi(x[1]);
 
-      entity *hopeful = searchEntities(name);
-
-      // if this entity called the function for itself, set hopeful to it
-      if (name == this->talker->name)
-      {
-        hopeful = this->talker;
+      if(selected == nullptr) {
+        E("Call to /roam without call to /select first");
       }
 
-      if (hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0)
-      {
-        M("Call to /roam worked");
-        hopeful->agrod = 0;
-        hopeful->target = nullptr;
-        hopeful->myTravelstyle = roam;
-        hopeful->poiIndex = p0;
-        hopeful->traveling = 1;
-        hopeful->readyForNextTravelInstruction = 1;
-      }
 
+      if (selected != nullptr && g_setsOfInterest.at(p0).size() != 0)
+      {
+        selected->agrod = 0;
+        selected->target = nullptr;
+        selected->myTravelstyle = roam;
+        selected->poiIndex = p0;
+        selected->traveling = 1;
+        selected->readyForNextTravelInstruction = 1;
+      }
       if (g_setsOfInterest.at(p0).size() == 0)
       {
         E("You told an entity to roam but there are no pointOfInterest-instances.");
+        if(g_setsOfInterest.at(0).size() != 0) {
+          selected->agrod = 0;
+          selected->target = nullptr;
+          selected->myTravelstyle = roam;
+          selected->poiIndex = 0;
+          selected->traveling = 1;
+          selected->readyForNextTravelInstruction = 1;
+
+        }
       }
 
       dialogue_index++;
@@ -9711,30 +9739,25 @@ void write_map(entity *mapent)
       return;
     }
     
-    // agro/unagro enemy
-    //  /agro oilman 1
-    //  /agro wubba 0
-    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/agro")
+    // agro/unagro selected enemy
+    //  /setagro 1
+    //  /setagro 0
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/setagro")
     {
-      M("in /agro interpreter");
+      if(selected == nullptr) {
+        E("Call to /setagro without /select first.");
+      }
       string s = scriptToUse->at(dialogue_index + 1);
-      s.erase(0, 6);
-      D(s);
+      s.erase(0, 9);
       string name = s.substr(0, s.find(' '));
-      s.erase(0, s.find(' ') + 1);
-      D(s);
+      //s.erase(0, s.find(' ') + 1);
       string agrostatestr = "0";
       agrostatestr = s; // s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
       float agrostate = stof(agrostatestr);
+      M("New agrostate for " + selected->name + ":");
+      D(agrostate);
 
-      entity *hopeful = searchEntities(name);
-      if (hopeful != nullptr)
-      {
-        hopeful->agrod = agrostate;
-      } else {
-        E("/agro couldn't find entity");
-
-      }
+      selected->agrod = agrostate;
 
       dialogue_index++;
       this->continueDialogue();

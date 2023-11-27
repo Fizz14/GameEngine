@@ -166,6 +166,8 @@ class navNode {
     int z = 0;
     vector<navNode*> friends;
     vector<float> costs;
+
+    bool highlighted = 0;
     float costFromSource = 0; //updated with dijkstras algorithm
     navNode* prev = nullptr; //updated with dijkstras algorithm
     
@@ -3322,6 +3324,8 @@ class entity:public actor {
 
     float forwardsVelocity = 0; //set by inputting movement, this will be converted to xvel and yvel based on to feed back into the old system.
 
+    bool forceAngularUpdate = 0;
+
     // e.g., targetSteeringAngle is set for the protag when a movement key is pressed,
     // and steeringAngle is slowly interpolated to that angle, used for both
     // the frame chosen and the actual force of movement on the protag.
@@ -3381,6 +3385,7 @@ class entity:public actor {
     bool shrinking = 0; //used to animate entities shrinking away
     bool turnToFacePlayer = true; //face player when talking
     bool useAnimForWalking = 0;
+    int animWalkFrames = 0; //how long is his walk animation?
     SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
     int animationconfig = 0;
 
@@ -3388,6 +3393,7 @@ class entity:public actor {
     int bounceindex = 0;
 
     int frame = 0; //current frame on SPRITESHEET
+    int walkAnimMsPerFrame = 100; //how many msperframe to use for walk anim
     int msPerFrame = 0; //how long to wait between frames of animation, 0 being infinite time (no frame animation)
     int msTilNextFrame = 0; //accumulater, when it reaches msPerFrame we advance frame
     int frameInAnimation = 0; //current frame in ANIMATION
@@ -3484,9 +3490,9 @@ class entity:public actor {
     //these control how a behemoth gains and loses aggressiveness
     //by LOS to their target
     float aggressiveness = 0;
-    float aggressivenessGain = 0.1; //per Ms
-    float aggressivenessLoss = 0.5;
-    float aggressivenessNoiseGain = 10;
+    float aggressivenessGain = 0.0001; //per Ms
+    float aggressivenessLoss = 0.0005;
+    float aggressivenessNoiseGain = 0.0001;
     float minAggressiveness = 0;
     float maxAggressiveness = 100;
 
@@ -3550,6 +3556,8 @@ class entity:public actor {
    
     bool smellsPotentialTarget = 0;
     bool seesPotentialTarget = 0;
+    bool hearsPotentialTarget = 0;
+    
 
 
 
@@ -3592,6 +3600,8 @@ class entity:public actor {
     // 3 - random
 
     int movementTypeSwitchRadius = 64 * 5; //if closer than this to target, chase them, regardless of what custom movement setting is
+    
+    float velocityPredictiveFactor = 15; //this is used for selecting a current navnode
 
     //aiIndex is used for having AI use their own patrolPoints
     //and not someone-else's
@@ -3624,6 +3634,7 @@ class entity:public actor {
     // !!! was 800 try to turn this down some hehe
     float dijkstraSpeed = 100; //how many updates to wait between calling dijkstra's algorithm
     float timeSinceLastDijkstra = -1;
+    bool justLostLosToTarget = 0;
     bool pathfinding = 0;
     float maxDistanceFromHome = 1400;
     float range = 3;
@@ -4114,6 +4125,14 @@ class entity:public actor {
       file >> comment;
       file >> animationconfig;
 
+      //walk_frames
+      file >> comment;
+      file >> animWalkFrames;
+
+      //walkMsPerSecond
+      file >> comment;
+      file >> walkAnimMsPerFrame;
+
       //pellet?
       file >> comment;
       file >> isPellet;
@@ -4211,7 +4230,7 @@ class entity:public actor {
           hasAtleastOneAbility = 1;
           //line contains the name of an ability
           ability newAbility = ability(line);
-          //M("loading new ability called " + line);
+          M("loading new ability called " + line);
 
           //they're stored as seconds in the configfile, but ms in the object
           float seconds = 0;
@@ -4297,10 +4316,10 @@ class entity:public actor {
           int fromIndex = -1;
           int toIndex = -1;
           for(int i = 0; i < states.size(); i++) {
-            if(fromState.compare(states[i].name)) {
+            if(fromState == states[i].name) {
               fromIndex = i;
             }
-            if(toState.compare(states[i].name)) {
+            if(toState == states[i].name) {
               toIndex = i;
             }
           }
@@ -4309,7 +4328,6 @@ class entity:public actor {
           } else {
             states[fromIndex].nextStates.push_back(toIndex);
             states[fromIndex].nextStateProbabilities.push_back(stof(probability));
-            cout << "For state at index " << fromIndex << ", making a transition with prob " << probability << " to state at index " << toIndex << endl;
 
           }
           
@@ -4332,6 +4350,13 @@ class entity:public actor {
         } else if(aiIndex == 3) {
           g_behemoth3 = this;
           g_behemoths.push_back(this);
+        }
+
+
+        if(!useAgro && g_setsOfInterest.at(poiIndex).size() != 0) {
+          traveling = 1;
+          readyForNextTravelInstruction = 1;
+          poiIndex = aiIndex;
         }
 
         //ai index of -1 won't be a behemoth, for instance, but will still be ai (e.g. fleshpit, it can run a script to animate.)
@@ -4367,6 +4392,9 @@ class entity:public actor {
         stream >> movementTypeSwitchRadius;
         movementTypeSwitchRadius *= 64;
 
+        stream >> comment; //velocity_predictive_factor_for_navnodes
+        stream >> velocityPredictiveFactor;
+
         stream >> comment; //bonus_speed
         stream >> bonusSpeed;
 
@@ -4375,6 +4403,7 @@ class entity:public actor {
 
         stream >> comment; //useAgro_and_not_aggressiveness
         stream >> useAgro;
+
 
         stream >> comment; //aggressiveness_gain
         stream >> aggressivenessGain;
@@ -4780,7 +4809,7 @@ class entity:public actor {
           if(
               (forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet)
               ||
-              this->lostHimSequence == 2
+              this->forceAngularUpdate
               ) {
             animation = convertAngleToFrame(steeringAngle);
             flip = SDL_FLIP_NONE;
@@ -4993,14 +5022,14 @@ class entity:public actor {
         int cacheY = getOriginY();
 
         if(useVelocity) {
-          cacheX += xvel * 15; //this might need to be parametrized and unique to each behemoth
-          cacheY += yvel * 15;
+          cacheX += xvel * velocityPredictiveFactor; //this might need to be parametrized and unique to each behemoth
+          cacheY += yvel * velocityPredictiveFactor;
         }
 
         //todo check for boxs
         if(array.size() == 0) {return nullptr;}
         for (long long unsigned int i = 0; i < array.size(); i++) {
-          float dist = Distance(cacheX, cacheY, array[i]->x, array[i]->y);
+          float dist = XYWorldDistanceSquared(cacheX, cacheY, array[i]->x, array[i]->y);
           if( (dist < min_dist || flag) && array[i]->enabled) {
             min_dist = dist;
             ret = array[i];
@@ -5155,7 +5184,7 @@ class entity:public actor {
             } else {
               frameInAnimation++;
 
-              if(frameInAnimation == xframes) {
+              if(frameInAnimation == xframes || (useAnimForWalking && frameInAnimation == animWalkFrames + 1 && !scriptedAnimation)) {
                 if(loopAnimation) {
                   if(scriptedAnimation) {
                     frameInAnimation = 0;
@@ -5202,7 +5231,7 @@ class entity:public actor {
           animate = 1;
           if(useAnimForWalking) {
             if( (!scriptedAnimation) && grounded) {
-              msPerFrame = 100;
+              msPerFrame = walkAnimMsPerFrame;
             } else {
               msPerFrame = 0;
             }
@@ -6356,7 +6385,7 @@ class entity:public actor {
               if(n->tangible && n->grounded) {
                 rect thatMovedBounds = {n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height};
                 if(RectOverlap(thisMovedBounds, thatMovedBounds) && (abs(this->z - n->z) < 32 )) {
-                  M("Protag boarded entity named " + n->name);
+                  //M("Protag boarded entity named " + n->name);
                   
                   //decide to de-agro entities
                   if(n->isHidingSpot) {
@@ -6532,21 +6561,21 @@ class entity:public actor {
 
               //under certain conditions, agro the entity hit and set his target to the shooter
               if(target == nullptr && useAgro) {
-                target = x->owner;
-                targetFaction = x->owner->faction;
-                if (useAgro == 1) { agrod = 1;
+              target = x->owner;
+              targetFaction = x->owner->faction;
+                agrod = 1;
 
-                //agro all of the boys on this's team who aren't already agrod, and set their target to a close entity from x's faction
-                //WITHIN A RADIUS, because it doesnt make sense to agro everyone on the map.
+              //agro all of the boys on this's team who aren't already agrod, and set their target to a close entity from x's faction
+              //WITHIN A RADIUS, because it doesnt make sense to agro everyone on the map.
 
-                for (auto y : g_entities) {
-                  if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr) && XYWorldDistance(y->x, y->y, this->x, this->y) < g_earshot) {
-                    y->targetFaction = x->owner->faction;
-                    y->agrod = 1;
-                  }
+              for (auto y : g_entities) {
+                if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr) && XYWorldDistance(y->x, y->y, this->x, this->y) < g_earshot && y->useAgro) {
+                  y->targetFaction = x->owner->faction;
+                  y->agrod = 1;
                 }
-
               }
+
+              
             }
           }
           for(auto x:projectilesToDelete) {
@@ -6556,15 +6585,17 @@ class entity:public actor {
 
 
         //alert nearby friends who arent fighting IF we are agrod
-        if(agrod) {
+        if(agrod && useAgro) {
           for (auto y : g_entities) {
             if(y->tangible && y != this && y->faction == this->faction && (y->agrod == 0 || y->target == nullptr) && XYWorldDistance(y->x, y->y, this->x, this->y) < g_earshot) {
-              y->agrod = 1;
-
-              if(this->target != nullptr) {
-                y->targetFaction = this->targetFaction;
-                if(y->target == nullptr) {
-                  y->target = this->target;
+              if(y->useAgro) {
+                y->agrod = 1;
+  
+                if(this->target != nullptr) {
+                  y->targetFaction = this->targetFaction;
+                  if(y->target == nullptr) {
+                    y->target = this->target;
+                  }
                 }
               }
             }
@@ -6790,27 +6821,49 @@ class entity:public actor {
               }
             }
 
-            //if we are using the active/passive system, let's update that
+            //can it hear fomm?
+
+            //if we are using the state system, let's update that
             if(useStateSystem) {
               states[activeState].interval -= elapsed;
               if(states[activeState].interval < 0) {
                 int numChoices = states[activeState].nextStates.size();
-                int destinationState = states[activeState].nextStates[rand() % numChoices];
-                cout << "State change from " << activeState << " to " << destinationState << endl;
+                float random = (double)rand() / RAND_MAX;
+                float sumOfOdds = 0;
+                int destinationState = 0;
+                for(int i = 0; i < states[activeState].nextStates.size(); i++) {
+                  float chance = states[activeState].nextStateProbabilities[i];
+                  sumOfOdds += chance;
+                  if(sumOfOdds >= random) { 
+                    destinationState = states[activeState].nextStates[i];
+                    break;
+                  }
+                }
+                //cout << "State change from " << activeState << " to " << destinationState << endl;
                 states[activeState].interval = states[activeState].nextInterval;
                 activeState = destinationState;
               }
             }
           }
           
-          if(seesPotentialTarget) {
-            aggressiveness += elapsed * aggressivenessGain;
-          } else {
-            aggressiveness -= elapsed * aggressivenessLoss;
-          }
-
-          if(smellsPotentialTarget) {
-            aggressiveness += elapsed * aggressivenessGain;
+          //aggressiveness is frozen if the player is hiding
+          if(!g_protagIsWithinBoardable) {
+            if(seesPotentialTarget) {
+              if(target == protag) {
+                g_protagIsBeingDetectedBySight = 1;
+              }
+              aggressiveness += elapsed * aggressivenessGain;
+            }
+            if(hearsPotentialTarget) {
+              aggressiveness += elapsed * aggressivenessNoiseGain;
+            }
+            if(smellsPotentialTarget) {
+              aggressiveness += elapsed * aggressivenessGain;
+            }
+  
+            if(!seesPotentialTarget && !hearsPotentialTarget && !smellsPotentialTarget) {
+              aggressiveness -= elapsed * aggressivenessLoss;
+            }
           }
 
           if(aggressiveness < minAggressiveness) {
@@ -6962,6 +7015,7 @@ class entity:public actor {
         if(this->dynamic && this->pushable) {
 
           for(auto x : g_entities) {
+            if(this->isAI && x->isAI) {continue;} //behemoths don't collide
             if(this == x) {continue;}
 
             //entities with a semisolid value of 2 are only solid to the player
@@ -7275,7 +7329,7 @@ class entity:public actor {
           //to target
           if(customMovement == 0 || distToTarget < movementTypeSwitchRadius)
           { //blindrun movement
-            if(( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, this->bounds.width + 2, this->layer, 10, true)) )  || (distToTarget < 100) ) ) {
+            if(( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true)) )  || (distToTarget < 64) ) ) {
             //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
             targetSteeringAngle = angleToTarget;
   
@@ -7284,13 +7338,16 @@ class entity:public actor {
             } else {
               //stop if in range
               forwardsVelocity = 0;
+              forceAngularUpdate = 1;
             }
 
             //not calling BasicNavigate, so we need to set nearby nodes to indicate that they're being used
             //we have LOS so this trick really isn't a hack
             
-            int xval = getOriginX() + 15 * xvel;
-            int yval = getOriginY() + 15 * yvel;
+            int xval = getOriginX();
+            int yval = getOriginY();
+//            int xval = getOriginX() + 15 * xvel;
+//            int yval = getOriginY() + 15 * yvel;
             navNode* closestNode = getNodeByPos(g_navNodes, xval, yval);
             for(auto u : closestNode->friends) {
               u->costFromUsage = 1000000;
@@ -7305,12 +7362,14 @@ class entity:public actor {
             dest = nullptr;
             Destination = nullptr;
             timeSinceLastDijkstra = -1;
-  
-  
+            justLostLosToTarget = 1;
+            path.clear();
+
           } else {
             if(Destination != nullptr) {
               BasicNavigate(Destination);
             }
+            justLostLosToTarget = 0;
           }
         } else if( customMovement == 1) 
         { //precede
@@ -7405,7 +7464,7 @@ class entity:public actor {
           }
 
           //detect stuckness- if we're stuck, try heading to a random nearby node for a moment
-          if(abs(lastx - x) < 0.2 && abs(lasty - y) < 0.2) {
+          if(abs(lastx - x) < 3 && abs(lasty - y) < 3) {
             stuckTime++;
           } else {
             stuckTime = 0;
@@ -7438,7 +7497,9 @@ class entity:public actor {
     //all-purpose pathfinding function
     void BasicNavigate(navNode* ultimateTargetNode) {
       if(g_navNodes.size() < 1) {return;}
+      bool popOffPath = 0;
       if(current == nullptr) { //modified during rotational overhaul
+        popOffPath = 1;
         
         //around the time when I started getting organs to follow the player
         //i noticed that sometimes entities would lose LOS and take the long
@@ -7449,8 +7510,10 @@ class entity:public actor {
         //sometime after that I started using the second node in the path, but that still hasn't quite solved it
         //i'll try re-enabling the useVelocity param and trying to fix it
 
+        M("Reset current");
         current = Get_Closest_Node(g_navNodes, 1);
         dest = current;
+        path.clear();
       }
 
       // current->Render(255,0,0);
@@ -7466,11 +7529,13 @@ class entity:public actor {
 
       
       int prog = 0;
-      if(abs(dest->y - getOriginY() ) < 64) {
-        prog ++;
-      }
-      if(abs(dest->x - getOriginX()) < 55) {
-        prog ++;
+      if(dest != nullptr) {
+        if(abs(dest->y - getOriginY() ) < 64) {
+          prog ++;
+        }
+        if(abs(dest->x - getOriginX()) < 55) {
+          prog ++;
+        }
       }
 
       if(prog == 2) {
@@ -7483,7 +7548,12 @@ class entity:public actor {
       }
 
       if(timeSinceLastDijkstra < 0) {
+
         current = dest;
+        //current = Get_Closest_Node(g_navNodes, 1);
+        //dest = current;
+
+
         //randomized time to space out dijkstra calls -> less framedrops
         timeSinceLastDijkstra = dijkstraSpeed + rand() % 500;
         navNode* targetNode = ultimateTargetNode;
@@ -7571,6 +7641,35 @@ class entity:public actor {
             break;
           }
           targetNode = targetNode->prev;
+        }
+
+        if(popOffPath && path.size() > 1) {
+          path.erase(path.begin());
+          path.erase(path.begin());
+        }
+
+        if(justLostLosToTarget) {
+          M("Just lost LOS to target");
+          //put a chair on the current node for debugging
+//          entity* chair = searchEntities("base/swivelchair");
+//          if(chair != nullptr) {
+//            chair->setOriginX(current->x);
+//            chair->setOriginY(current->y);
+//          } else {
+//            M("Pointer to debugging chair was nullptr");
+//          }
+//          This code might be handy later for trying to understand why
+//          entities doesn't travel as you might expect.
+//          Today's efforts (probably) mark the conclusion of a struggle
+//          I've had with getting entities to path properly.
+//          The problem was that they would take a bad path the moment they lose
+//          LOS to their target.
+//          Many improvements have been made, and in this case the problem was
+//          with the navmesh, the closest node was one nex to a wall, which was 
+//          too close to travel to another node close to the wall (there was no line between them)
+//          and because of how I have nodes attach, the nodes didnt connect to some of the closest
+//          nodes, but kinda past them and through them, making it look like he was taking a 
+//          very long path. I'll ajust how navnodes are linked
         }
 
         for(auto x : path) {
@@ -8377,6 +8476,7 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
 
 //returns true if there was no hit
 //visibility is 1 to check for just navblock (very solid) entities
+// LineTrace definition
 int LineTrace(int x1, int y1, int x2, int y2, bool display = 0, int size = 30, int layer = 0, int resolution = 10, bool visibility, bool fogOfWar) {
   //float resolution = 10;
 

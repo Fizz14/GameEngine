@@ -742,8 +742,32 @@ int WinMain()
   {
     for(auto x : g_ai) {
       if(x->name == "common/zombie") {
+        
+        if(x->target != nullptr && x->target->name != "common/fomm") {
+          //I found a bug where they agrod on the vent, but afterwards I checked and the vents have faction -1, so that shouldn't happen
+          M("Is this the bug Joseph found on Nov 23 2023?");
+          M("Entity common/zombie has target.");
+          D(x->target->name);
+          breakpoint();
+        }         
+
+        //D(x->target->name);
         // print any debug info
         //D(x->aggressiveness);
+        //M("status check");
+        if(x->agrod) {
+          //M("Zombie is agrod.");
+        } else {
+          //M("Zombie is not agrod.");
+        }
+        
+      }
+      if(x->name == "common/creep") {
+        if(x->agrod) {
+          //M("Creep is agrod.");
+        } else {
+          //M("Creep is not agrod.");
+        }
       }
     }
 
@@ -982,16 +1006,13 @@ int WinMain()
       
       //if we're boarded within an entity, unboard
       if(g_protagIsWithinBoardable && !g_transferingByBoardable) {
-        M("Unboarded");
         
         //if the protag was currently duping a behemoth and hopped out, re-agro that behemoth
         for(auto x : g_ai) {
-          if(x->lostHimSequence != 0) {
+          if(x->useAgro && x->lostHimSequence != 0) {
             x->agrod = 1;
             x->target = protag;
-
           }
-
         }
 
         smokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z);
@@ -1346,6 +1367,7 @@ int WinMain()
 
           int xdiff = functionalX - g_lastFunctionalX;
           int ydiff = functionalY - g_lastFunctionalY;
+          if(g_force_cookies_update) {xdiff = 0; ydiff = 0;}
 
           // to make old tiles fade out
 
@@ -2046,7 +2068,6 @@ int WinMain()
 
 
       if(g_behemoth3 != nullptr && g_behemoth3->tangible) {
-        M("B3 element positioning");
         adventureUIManager->b3_element->show = 1;
 
         
@@ -2103,17 +2124,18 @@ int WinMain()
 
     //check if protag is within hearing-range of any behemoths
     adventureUIManager->hearingDetectable->show = 0;
-    //M("Cool, we hid the hearingDetectable ui element");
-    breakpoint2();
     for(auto x : g_behemoths) {
       float hearingRadiusSquared = pow(x->hearingRadius, 2);
       float distToProtagSquared = XYWorldDistanceSquared(x->getOriginX(), x->getOriginY(), protag->getOriginX(), protag->getOriginY());
 //      D(distToProtagSquared);
 //      D(hearingRadiusSquared);
 
+      x->hearsPotentialTarget = 0;
       if(distToProtagSquared <= hearingRadiusSquared) {
         adventureUIManager->hearingDetectable->show = 1;
         g_protagIsInHearingRange = 1;
+        x->aggressiveness += elapsed * x->aggressivenessNoiseGain;
+        x->hearsPotentialTarget = 1;
         break;
 
       } else {
@@ -2161,6 +2183,18 @@ int WinMain()
 
     }
 
+    //!!! remove this before shipping
+    for(auto u : g_navNodes) {
+      u->costFromUsage = 0;
+      u->highlighted = 0;
+    }
+    for(auto x: g_ai) {
+      if(x->current != nullptr) {
+        x->current->highlighted = 1;
+      }
+    }
+
+
     //do global nav calcs (shared intelligence for behemoths)
     if(protag != nullptr) {
      
@@ -2169,9 +2203,13 @@ int WinMain()
         navCalcMs = 0;
         //precedeProtagNode = Get_Closest_Node(g_navNodes, protag->x, protag->y);
 
+
+        //!!! remove this before shipping
         for(auto u : g_navNodes) {
           u->costFromUsage = 0;
         }
+
+
 
         for(auto x : g_entities) {
           if(x->aiIndex > 0 && x->customMovement == 0) {
@@ -5624,7 +5662,7 @@ void protagMakesNoise() {
     float maxHearingDist = pow(x->hearingRadius,2);
 
     if(distToProtag <= maxHearingDist) {
-      if(x->targetFaction == protag->faction) {
+      if(x->useAgro && x->targetFaction == protag->faction) {
         x->agrod = 1;
         x->target = protag;
       }
