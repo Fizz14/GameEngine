@@ -1579,14 +1579,9 @@ class weapon {
 
     ~weapon() {
       for(auto x: attacks) {
-        M("lets delete an attack");
-        M(x->name);
         delete x;
-        M("attack deleted successfully");
       }
       g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), this), g_weapons.end());
-
-      M("weapon deleted successfully");
     }
 };
 
@@ -3280,6 +3275,8 @@ struct state {
 
 class entity:public actor {
   public:
+    vector<entity*> spawnlist;
+
     //dialogue
 
     //int dialogue_index = 0; //we really don't want to use a dialogue_index in 2023
@@ -3304,7 +3301,7 @@ class entity:public actor {
 
     int footstep_reset = 0; //used for playing footsteps accurately with anim
 
-
+    bool dontSave = 0;
 
     //basic movement
     float xagil = 0;
@@ -3342,6 +3339,7 @@ class entity:public actor {
     int layer = 0; //related to z, used for boxs
     int stableLayer = 0; //layer, but only if it's been held for some ms
     bool grounded = 1; //is standing on ground
+    bool groundedByEntity = 0;
     float xmaxspeed = 0;
     float baseMaxSpeed = 0;
     float bonusSpeed = 0;
@@ -3422,6 +3420,7 @@ class entity:public actor {
     bool inParty = false;
     bool talks = false;
     bool wallcap = false; //used for wallcaps
+    float shadowSize = 0;
     cshadow * shadow = 0;
     bool rectangularshadow = 0;
     bool isAI = 0;
@@ -3443,9 +3442,19 @@ class entity:public actor {
     float orbitRange = 1;
     int orbitOffset = 0; //the frames of offset for an orbital.
                          
-    //for pellets
-    bool isPellet = 0; //this is turned off
+    int identity = 0; //used for marking pellets, spiketraps, cannons, etc.
+
+    //for pellets (identity == 1)
     bool wasPellet = 0; //this is true if something was ever a pellet
+
+    //for spiketraps (identity == 2)
+    int spikeActiveMS = 0;
+    int maxSpikeActiveMS = 1300;
+    int spikeWaitMS = 0;
+    int maxSpikeWaitMS = 1300;
+    int spikeState = 0;
+    int spikedPlayer = 0;
+
 
     //for boarding
     bool isBoardable = 0;
@@ -3540,6 +3549,8 @@ class entity:public actor {
     //without worrying about being interupted by the player
     //just don't have them use the dialog-box
     adventureUI* myScriptCaller = nullptr;
+
+    adventureUI* contactScriptCaller = nullptr;
 
     //for fields
     bool usesContactScript = 0;
@@ -3774,9 +3785,8 @@ class entity:public actor {
       file >> this->sortingOffset;
       this->baseSortingOffset = sortingOffset;
       file >> comment;
-      float fsize;
-      file >> fsize;
-      shadow = new cshadow(renderer, fsize);
+      file >> this->shadowSize;
+      shadow = new cshadow(renderer, shadowSize);
 
 
       this->shadow->owner = this;
@@ -3803,8 +3813,8 @@ class entity:public actor {
       file >> comment;
       file >> this->framewidth;
       file >> this->frameheight;
-      this->shadow->width = this->bounds.width * fsize;
-      this->shadow->height = this->bounds.height * fsize;
+      this->shadow->width = this->bounds.width * shadowSize;
+      this->shadow->height = this->bounds.height * shadowSize;
 
 
       //bigger shadows have bigger sortingoffsets
@@ -4051,6 +4061,8 @@ class entity:public actor {
         overflow--;
         if(overflow < 0) {E("Bad spawnlist."); break;}
         entity* a = new entity(renderer, line);
+        a->dontSave = 1;
+        spawnlist.push_back(a);
         if(a->parentName == this->name) {
           a->parent = this;
         }
@@ -4101,6 +4113,11 @@ class entity:public actor {
 
       if(fieldScript != "0") {
         usesContactScript = 1;
+
+        contactScriptCaller = new adventureUI(renderer, 1);
+        contactScriptCaller->playersUI = 0;
+        contactScriptCaller->talker = this;
+
         string txtfilename = "";
         if (fileExists("maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt")) {
           txtfilename = "maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt";
@@ -4114,6 +4131,7 @@ class entity:public actor {
           contactScript.push_back(line);
         }
         parseScriptForLabels(contactScript);
+        contactScriptCaller->ownScript = this->contactScript;
       }
 
 
@@ -4133,9 +4151,9 @@ class entity:public actor {
       file >> comment;
       file >> walkAnimMsPerFrame;
 
-      //pellet?
+      //identity
       file >> comment;
-      file >> isPellet;
+      file >> identity;
 
       //boardable?
       file >> comment;
@@ -4180,13 +4198,19 @@ class entity:public actor {
       }
 
 
-      if(isPellet) {
+      if(identity == 1) {
         g_pellets.push_back(this);
         bounceindex = rand() % 8;
         wasPellet = 1;
         CalcDynamicForOneFrame = 1;
         //M("Set calcdynamic"); //this is so that the shadow is calculated for pellets for one frame
                               //i'll have to do that later
+      }
+
+      if(identity == 2) {
+        for(auto entry : spawnlist) {
+          entry->visible = 0;
+        }
       }
 
       if(animationconfig == 0) {
@@ -4428,6 +4452,58 @@ class entity:public actor {
       file.close();
       }
 
+      //copy constructor
+      //first intended for spawning in cannonballs
+      entity(SDL_Renderer* renderer, entity* a) {
+        this->texture = a->texture;
+        this->asset_sharer = 1;
+        this->missile = a->missile;
+        this->xagil = a->xagil;
+        this->turningSpeed = a->turningSpeed;
+        this->xmaxspeed = a->xmaxspeed;
+        this->grounded = a->grounded;
+        this->baseMaxSpeed = a->baseMaxSpeed;
+        this->friction = a->friction;
+        this->baseFriction = a->baseFriction;
+        this->animspeed = a->animspeed;
+        this->animlimit = a->animlimit;
+        this->framewidth = a->framewidth;
+        this->frameheight = a->frameheight;
+        this->xframes = a->xframes;
+        this->yframes = a->yframes;
+        this->framespots = a->framespots;
+        this->dynamic = a->dynamic;
+        this->canFight = a->canFight;
+        this->usesContactScript = a->usesContactScript;
+        this->contactScriptWaitMS = a->contactScriptWaitMS;
+        this->contactReadyToProc = a->contactReadyToProc;
+        this->contactScript = a->contactScript;
+        this->faction = a->faction;
+        this->targetFaction = a->targetFaction;
+        this->shadowSize = a->shadowSize;
+        this->hisweapon = a->hisweapon;
+        this->visible = a->visible;
+        this->name = a->name;
+        this->tangible = a->tangible;
+        this->width = a->width;
+        this->height = a->height;
+        this->zeight = a->zeight;
+        this->sortingOffset = a->sortingOffset;
+        this->bounds = a->bounds;
+        shadow = new cshadow(renderer, shadowSize);
+        shadow->owner = this;
+        this->shadow = shadow;
+        this->shadow->width = a->shadow->width;
+        this->shadow->height = a->shadow->height;
+        this->shadow->sortingOffset = a->shadow->sortingOffset;
+        this->shadow->xoffset = a->shadow->xoffset;
+        this->shadow->yoffset = a->shadow->yoffset;
+
+        
+
+        g_entities.push_back(this);
+      }
+
       //for worlditems, load the ent file but use a texture by name
       entity(SDL_Renderer * renderer, int idk,  string texturename) {
         //M("entity()");
@@ -4652,7 +4728,7 @@ class entity:public actor {
           g_large_entities.erase(remove(g_large_entities.begin(), g_large_entities.end(), this), g_large_entities.end());
         }
 
-        if(isPellet) {
+        if(identity == 1) {
           g_pellets.erase(remove(g_pellets.begin(), g_pellets.end(), this), g_pellets.end());
         }
 
@@ -4726,6 +4802,7 @@ class entity:public actor {
 
       void shoot();
 
+      //entity render function
       void render(SDL_Renderer * renderer, camera fcamera) {
         if(!tangible) {return;}
         if(!visible) {return;}
@@ -5160,6 +5237,7 @@ class entity:public actor {
         }
 
 
+
         if(msPerFrame != 0) {
           msTilNextFrame += elapsed;
           if(msTilNextFrame > msPerFrame && xframes > 1) {
@@ -5183,7 +5261,6 @@ class entity:public actor {
               }
             } else {
               frameInAnimation++;
-
               if(frameInAnimation == xframes || (useAnimForWalking && frameInAnimation == animWalkFrames + 1 && !scriptedAnimation)) {
                 if(loopAnimation) {
                   if(scriptedAnimation) {
@@ -5194,7 +5271,6 @@ class entity:public actor {
                 } else {
                   frameInAnimation = xframes - 1;
                   msPerFrame = 0;
-                  //!!! slightly ambiguous. open to review later
                   scriptedAnimation = 0;
                 }
               }
@@ -5619,6 +5695,7 @@ class entity:public actor {
               }
             }
           }
+          groundedByEntity = 0;
           for (auto n : g_solid_entities) {
             if(n == this) {continue;}
             if(!n->tangible) {continue;}
@@ -5633,8 +5710,12 @@ class entity:public actor {
 
             //uh oh, did we collide with something?
             if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
-              ycollide = true;
-              yvel = 0;
+              if((this == protag || this->isAI) && (thatmovedbounds.z + thatmovedbounds.zeight) - z < g_stepHeight) {
+                z += (thatmovedbounds.z + thatmovedbounds.zeight) - z;
+              } else {
+                ycollide = true;
+                yvel = 0;
+              }
             }
 
             //update bounds with new pos
@@ -5644,8 +5725,12 @@ class entity:public actor {
 
             //uh oh, did we collide with something?
             if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
-              xcollide = true;
-              xvel = 0;
+              if((this == protag || this->isAI) && (thatmovedbounds.z + thatmovedbounds.zeight) - z < g_stepHeight) {
+                z += (thatmovedbounds.z + thatmovedbounds.zeight) - z;
+              } else {
+                xcollide = true;
+                xvel = 0;
+              }
             }
           }
 
@@ -6347,6 +6432,7 @@ class entity:public actor {
 
         //look for solid entities (new as of Nov 2023 for the bed)
         if(this == protag) { //seems to be causing slowdown
+          groundedByEntity = 0;
           for(auto n : g_solid_entities) {
             if(XYWorldDistanceSquared(this->x, this->y, n->x, n->y) < 102400) //arbitrary distance chosen for optimization, it indicates a origin-to-origin distance of five blocks which is usually enough
             {
@@ -6370,11 +6456,8 @@ class entity:public actor {
  
 
         if(z > floor + 1) {
-
           zaccel -= g_gravity * ((double) elapsed / 256.0);
           grounded = 0;
-
-
         } else {
           // !!! maybe revisit this to let "character" entities have fallsounds
           if(grounded == 0 && this == protag && g_boardingCooldownMs < 0) {
@@ -6474,6 +6557,8 @@ class entity:public actor {
 
         }
 
+        if(groundedByEntity) { grounded = 1;}
+
 
         zvel += zaccel * ((double) elapsed / 256.0);
 
@@ -6513,6 +6598,22 @@ class entity:public actor {
 
         shadow->x = x + shadow->xoffset;
         shadow->y = y + shadow->yoffset;
+
+        //is out scriptcaller sleeping? Lets update it, and maybe wake it up
+        if(myScriptCaller != nullptr) {
+          if(myScriptCaller->sleepflag){
+            if(myScriptCaller->sleepingMS > 1) { myScriptCaller->sleepingMS -= elapsed;}
+            else {myScriptCaller->sleepflag = 0;myScriptCaller->continueDialogue();}
+          }
+        }
+
+        //and what about our contactscriptcaller?
+        if(contactScriptCaller != nullptr) {
+          if(contactScriptCaller->sleepflag){
+            if(contactScriptCaller->sleepingMS > 1) { contactScriptCaller->sleepingMS -= elapsed;}
+            else {contactScriptCaller->sleepflag = 0;contactScriptCaller->continueDialogue();}
+          }
+        }
 
         //update combat
         if(isWorlditem) {return nullptr;}
@@ -6875,13 +6976,6 @@ class entity:public actor {
 
 
         }
-        //is out scriptcaller sleeping? Lets update it, and maybe wake it up
-        if(myScriptCaller != nullptr) {
-          if(myScriptCaller->sleepflag){
-            if(myScriptCaller->sleepingMS > 1) { myScriptCaller->sleepingMS -= elapsed;}
-            else {myScriptCaller->sleepflag = 0;myScriptCaller->continueDialogue();}
-          }
-        }
 
         if(isAI && target != nullptr) {
           //likely has abilities to use
@@ -7069,17 +7163,11 @@ class entity:public actor {
                   yvel += normy * mag;
                 }
   
-              } else if(m && x->usesContactScript && x->contactReadyToProc && x->tangible && this->faction != x->faction) {
-                //make a scriptcaller
-                adventureUI scripter(renderer, 1);
-                scripter.playersUI = 0;
-                scripter.talker = x;
-                scripter.ownScript = x->contactScript;
-                scripter.dialogue_index = -1;
+              } else if(m && x->usesContactScript && x->contactReadyToProc && x->tangible && this->faction != x->faction && !x->contactScriptCaller->executingScript) {
+                x->contactScriptCaller->dialogue_index = -1;
                 x->target = this;
                 x->sayings = x->contactScript;
-                scripter.continueDialogue();
-  
+                x->contactScriptCaller->continueDialogue();
               }
             }
           }
@@ -7268,51 +7356,96 @@ class entity:public actor {
           }
         }
 
+        if(identity == 2) {
+          //spiketrap
+          if(spikeState == 0) {
+            if(RectOverlap3d(this->getMovedBounds(), protag->getMovedBounds())) {
+              spikeState = 1;
+              spikeWaitMS = 0;
+            }
+          }
+          if(spikeState == 1) {
+            //wait a second, and then extend
+            spikeWaitMS += elapsed;
+            if(spikeWaitMS > maxSpikeWaitMS) {
+              spikeActiveMS = 0;
+              //show spikes
+              for(auto entry : spawnlist) {
+                entry->frameInAnimation = 0;
+                entry->loopAnimation = 0;
+                entry->msPerFrame = 50;
+                entry->scriptedAnimation = 1;
+                entry->reverseAnimation = 0;
+                entry->visible = 1;
+              }
+              spikeState = 2;
+              spikedPlayer = 0;
+              spikeWaitMS = 0;
+
+            }
+
+          }
+          if(spikeState == 2) {
+            if(!spikedPlayer) {
+              rect changeMe = this->getMovedBounds();
+              changeMe.zeight = 32;
+              if(RectOverlap3d(changeMe, protag->getMovedBounds())) {
+                protag->hp -= 1; //blegh
+                protag->flashingMS = g_flashtime;
+                playSound(2, g_playerdamage, 0);
+                spikedPlayer = 1;
+              }
+            }
+
+            spikeWaitMS += elapsed;
+            if(spikeWaitMS > maxSpikeActiveMS) {
+              spikeActiveMS = 0;
+              //hide spikes
+              for(auto entry : spawnlist) {
+                entry->frameInAnimation = 1;
+                entry->loopAnimation = 0;
+                entry->msPerFrame = 50;
+                entry->scriptedAnimation = 1;
+                entry->reverseAnimation = 1;
+              }
+              spikeState = 3;
+              spikeWaitMS = 0;
+            }
+
+          }
+          if(spikeState == 3) {
+            spikeWaitMS += elapsed;
+            if(spikeWaitMS > 125) {
+              for(auto entry : spawnlist) {
+                entry->visible = 0;
+              }
+              spikeState = 0;
+              spikeWaitMS = 0;
+            }
+
+          }
+           
+        }
+
 
         if(this->missile) {
           // missile movment
           if(target !=  nullptr && target->tangible) {
-
             if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
-              float ydist = 0;
-              float xdist = 0;
-    
-              xdist = abs(target->getOriginX() - getOriginX());
-              ydist = abs(target->getOriginY() - getOriginY());
-    
-              float vect = pow((pow(xdist,2)  + pow(ydist,2)), 0.5);
-              float factor = 1;
-    
-              if(vect != 0) {
-                factor = 1 / vect;
-              }
-    
-              xdist *= factor;
-              ydist *= factor;
-    
-              if(target->getOriginX() > getOriginX()) {
-                xaccel = this->xagil * xdist;
-                walkingxaccel = xaccel;
-              } else {
-                xaccel = -this->xagil * xdist;
-                walkingxaccel = xaccel;
-              }
-              if(target->getOriginY() > getOriginY()) {
-                yaccel = this->xagil * ydist;
-                walkingyaccel = yaccel;
-              } else {
-                yaccel = -this->xagil * ydist;
-                walkingyaccel = yaccel;
-              }
+
+              angleToTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
+              angleToTarget = wrapAngle(angleToTarget);
+              targetSteeringAngle = angleToTarget;
+              forwardsVelocity = xagil;
   
             } else {
-              walkingyaccel = 0; walkingxaccel = 0;
-              
               //stop if in range
-              yaccel = 0;
-              xaccel = 0;
+              forwardsVelocity = 0;
+              forceAngularUpdate = 1;
             }
 
+          } else if (target == nullptr) {
+            forwardsVelocity = xagil;
           }
 
           
@@ -7550,8 +7683,11 @@ class entity:public actor {
       if(timeSinceLastDijkstra < 0) {
 
         current = dest;
-        //current = Get_Closest_Node(g_navNodes, 1);
-        //dest = current;
+        if(current == nullptr) {
+          //shit!
+          current = Get_Closest_Node(g_navNodes, 1);
+          dest = current;
+        }
 
 
         //randomized time to space out dijkstra calls -> less framedrops
@@ -7778,6 +7914,9 @@ class entity:public actor {
 entity* searchEntities(string fname, entity* caller) {
   if(fname == "protag") {
     return protag;
+  }
+  if(fname == "null" || fname == "nullptr") {
+    return nullptr; //this has some uses, e.g. making missiles have null target
   }
   if(caller != 0 && fname == "target") {
     if(caller->target != nullptr && (caller->target->tangible || caller->target == protag && g_protagIsWithinBoardable));

@@ -348,6 +348,7 @@ int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
 bool g_showHealthbar = 0;
 effectIndex *smokeEffect;
+effectIndex *littleSmokeEffect;
 
 // for fow
 SDL_Texture *result;
@@ -524,6 +525,8 @@ float g_transitionSpeed = 3; // 3, 9
 //backpack - holds usable items on a hotbar
 int g_whichUsableSelectedIndex = 0;
 vector<usable*> g_backpack;
+float g_usableWaitToCycleTime = 0;
+float g_maxUsableWaitToCycleTime = 100;
 adventureUI* g_backpackScriptCaller = nullptr;
 entity *g_backpackNarrarator; //script callers should have thier own ent to not mess up dialogue indexes (dumb!)
 const float g_backpackHorizontalOffset = 0.35;
@@ -598,6 +601,7 @@ bool g_blinkHidden = 0; //alternates every maxBlinkingMS
 
 // physics
 float g_gravity = 220;
+float g_stepHeight = 15;
 int g_hasBeenHoldingJump = 0; //for letting the player hold jump to go higher
 int g_jumpGaranteedAccelMs = 0; 
 int g_maxJumpGaranteedAccelMs = 150; //for x ms protag is garanteed to accelerate, was 150 

@@ -1733,7 +1733,7 @@ bool mapeditor_save_map(string word)
 
   for (long long unsigned int i = 0; i < g_entities.size(); i++)
   {
-    if (!g_entities[i]->inParty && !g_entities[i]->persistentHidden && !g_entities[i]->persistentGeneral && !g_entities[i]->isOrbital)
+    if (!g_entities[i]->inParty && !g_entities[i]->persistentHidden && !g_entities[i]->persistentGeneral && !g_entities[i]->isOrbital && !g_entities[i]->dontSave)
     {
       if (g_entities[i]->isWorlditem)
       {
@@ -5366,6 +5366,17 @@ void write_map(entity *mapent)
         }
         M("}");
       }
+      
+      if(word == "actorlist") {
+        for(int i = 0; i < g_actors.size(); i++){
+          if("engine" != g_actors[i]->name.substr(0,6)) {
+            string iAsString = to_string(i);
+            string printMe = "actors[" + iAsString + "]->name: " + g_actors[i]->name;
+            M(printMe);
+          }
+        }
+      }
+
 
       // roam zombie 0 -> make zombie roam poi 0
       if (word == "roam")
@@ -6927,7 +6938,7 @@ void write_map(entity *mapent)
     thisUsableIcon->show = 0;
     nextUsableIcon->show = 0;
 
-    cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.85, 0.03, 1, 1);
+    cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.83, 0.03, 1, 1);
     cooldownIndicator->priority = -6;
     cooldownIndicator->persistent = 1;
     cooldownIndicator->heightFromWidthFactor = 1;
@@ -7622,8 +7633,23 @@ void write_map(entity *mapent)
       this->continueDialogue();
       return;
     }
-    
 
+
+    // select entity from talker's spawnlist
+    // /selectfromspawnlist 1
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 20) == "/selectfromspawnlist")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
+
+      auto x = splitString(s, ' ');
+      selected = talker->spawnlist.at(stoi(x[1]));
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+    
+    // select command
     //change talker (useful for writing selfdata to entities from non-dialogue scripts)
     // do
     // /select common/train
@@ -7859,7 +7885,7 @@ void write_map(entity *mapent)
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
-        if (selected->data[block] == condition)
+        if (selected->data[block] >= condition)
         {
           dialogue_index = jump - 3;
           this->continueDialogue();
@@ -7870,7 +7896,6 @@ void write_map(entity *mapent)
       }
       dialogue_index++;
       this->continueDialogue();
-      M("selfdatacheckingcode complete");
       return;
     }
 
@@ -8075,6 +8100,7 @@ void write_map(entity *mapent)
 
       entity* hopeful = searchEntities(s, talker);
       if(hopeful != nullptr) {
+        hopeful->usesContactScript = 0;
         if(hopeful->asset_sharer) {
           hopeful->usingTimeToLive = 1;
           hopeful->timeToLiveMs = -1;
@@ -8482,6 +8508,48 @@ void write_map(entity *mapent)
       this->continueDialogue();
       return;
     }
+
+    //select talker
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/tselect")
+    {
+      selected = talker;
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+    //make a puff of smoke at the selected ent
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/puff")
+    {
+      smokeEffect->happen(selected->getOriginX(), selected->getOriginY(), selected->z);
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+
+    //make a little puff of smoke at the selected ent
+    //with forwards offset and z offset
+    // /littlepuff 50 20
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 11) == "/littlepuff")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+      float offset = stoi(x[1]);
+      float zoffset = stoi(x[2]);
+      float yoff = -offset * sin(selected->steeringAngle);
+      float xoff = offset * cos(selected->steeringAngle);
+
+      littleSmokeEffect->happen(selected->getOriginX() + xoff, selected->getOriginY() + yoff, selected->z + zoffset);
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+    
     
 
     //force entity in the direction they are facing
@@ -8567,7 +8635,8 @@ void write_map(entity *mapent)
       string ttlSTR = "0"; ttlSTR = x[2];
       string setDirectionSTR = "0"; setDirectionSTR = x[3];
       entity *teleportMe = new entity(renderer, teleportMeSTR.c_str());
-      entity *teleportToMe = searchEntities(teleportToMeSTR);
+      teleportMe->dontSave = 1;
+      entity *teleportToMe = searchEntities(teleportToMeSTR, talker);
       lastReferencedEntity = teleportMe;
       int ttl = stoi(ttlSTR);
       int setDirection = stoi(setDirectionSTR);
@@ -8589,7 +8658,111 @@ void write_map(entity *mapent)
           teleportMe->flip = teleportToMe->flip;
 
         }
+        teleportMe->steeringAngle = teleportToMe->steeringAngle;
+        teleportMe->targetSteeringAngle = teleportToMe->steeringAngle;
+        
+        selected = teleportMe;
       }
+      
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // spawn entity at an entity with ttl (0 for no ttl)
+    // always at talker
+    // /tentspawn spawnMe ttlMs setDirection
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/tentspawn")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
+      s.erase(0, 10);
+      vector<string> x = splitString(s, ' ');
+      string teleportMeSTR = x[1];
+      string ttlSTR = "0"; ttlSTR = x[2];
+      string setDirectionSTR = "0"; setDirectionSTR = x[3];
+      entity *teleportMe = new entity(renderer, teleportMeSTR.c_str());
+      teleportMe->dontSave = 1;
+      entity *teleportToMe = talker;
+      lastReferencedEntity = teleportMe;
+      int ttl = stoi(ttlSTR);
+      int setDirection = stoi(setDirectionSTR);
+      if (teleportMe != nullptr && teleportToMe != nullptr)
+      {
+        teleportMe->setOriginX(teleportToMe->getOriginX());
+        teleportMe->setOriginY(teleportToMe->getOriginY());
+        teleportMe->xvel = 0;
+        teleportMe->yvel = 0;
+        teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
+        teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
+        if(ttl > 0) {
+          teleportMe->usingTimeToLive = 1;
+          teleportMe->timeToLiveMs = ttl;
+        }
+
+        if(setDirection == 1) {
+          teleportMe->animation = teleportToMe->animation;
+          teleportMe->flip = teleportToMe->flip;
+
+        }
+        teleportMe->steeringAngle = teleportToMe->steeringAngle;
+        teleportMe->targetSteeringAngle = teleportToMe->steeringAngle;
+        
+        selected = teleportMe;
+      }
+      
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // copy an entity from the spawnlist at the talking entity with ttl (0 for no ttl)
+    // always at talker
+    // /tentcopy indexInSpawnlist ttlMs setDirection
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/tentcopy")
+    {
+      string s = scriptToUse->at(dialogue_index + 1);
+      s.erase(0, 10);
+      vector<string> x = splitString(s, ' ');
+      string teleportMeIndex = x[0];
+
+      string ttlSTR = "0"; ttlSTR = x[1];
+      string setDirectionSTR = "0"; setDirectionSTR = x[2];
+
+      entity *teleportMe = new entity(renderer, talker->spawnlist[stoi(teleportMeIndex)]);
+      teleportMe->setOriginX(talker->getOriginX());
+      teleportMe->setOriginY(talker->getOriginY());
+
+      teleportMe->dontSave = 1;
+      entity *teleportToMe = talker;
+      lastReferencedEntity = teleportMe;
+      int ttl = stoi(ttlSTR);
+      int setDirection = stoi(setDirectionSTR);
+      if (teleportMe != nullptr && teleportToMe != nullptr)
+      {
+        teleportMe->setOriginX(teleportToMe->getOriginX());
+        teleportMe->setOriginY(teleportToMe->getOriginY());
+        teleportMe->xvel = 0;
+        teleportMe->yvel = 0;
+        teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
+        teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
+        if(ttl > 0) {
+          teleportMe->usingTimeToLive = 1;
+          teleportMe->timeToLiveMs = ttl;
+        }
+
+        if(setDirection == 1) {
+          teleportMe->animation = teleportToMe->animation;
+          teleportMe->flip = teleportToMe->flip;
+
+        }
+        teleportMe->steeringAngle = teleportToMe->steeringAngle;
+        teleportMe->targetSteeringAngle = teleportToMe->steeringAngle;
+        
+        selected = teleportMe;
+      }
+      
 
       dialogue_index++;
       this->continueDialogue();
@@ -8680,21 +8853,39 @@ void write_map(entity *mapent)
     // Doesn't pathfind
     // this entity should not have an ai file
     // /missle common/zombie-bolt fomm
+    //
+    // use a null target ("null", "nullptr") to make the missile just go in a straight line
     if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/missile") {
 
       string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
-      string missileMeSTR = x[1];
-      string targetMeSTR = x[2];
+      string targetMeSTR = x[1];
       
-      entity *missileMe = searchEntities(missileMeSTR, talker);
-      entity *targetMe = searchEntities(targetMeSTR, talker);
+      //entity *missileMe = searchEntities(missileMeSTR, talker);
+      if(selected == nullptr) {
+        E("No entity was selected before /missile call.");
+      }
 
-      if(missileMe != nullptr && targetMe != nullptr) {
-        missileMe->target = targetMe;
+      if(targetMeSTR == "null" || targetMeSTR == "nullptr") {
+        entity* missileMe = selected;
+        missileMe->target = nullptr;
         missileMe->dynamic = 1;
         missileMe->missile = 1;
         missileMe->fragileMovement = 1;
+      } else {
+  
+        entity* missileMe = selected;
+        entity *targetMe = searchEntities(targetMeSTR, talker);
+  
+        if(missileMe != nullptr && targetMe != nullptr) {
+          missileMe->target = targetMe;
+        }
+  
+        if(missileMe != nullptr) {
+          missileMe->dynamic = 1;
+          missileMe->missile = 1;
+          missileMe->fragileMovement = 1;
+        }
       }
 
 
@@ -9334,7 +9525,6 @@ void write_map(entity *mapent)
       DIstr = s.substr(0, s.find(' '));
       s.erase(0, s.find(' ') + 1);
       int DI = 0;
-      D(DIstr);
       DI = stoi(DIstr);
       dialogue_index = DI - 3;
       this->continueDialogue();
@@ -9346,20 +9536,18 @@ void write_map(entity *mapent)
     // it's used for stopping the player from closing doors
     // when dynamic entities are underneath
     //
-    // /collisioncheck common/doora :malfunction
+    // /anycollisioncheck common/doora :malfunction
     //
     // -> jump to <malfunction> if common/doora overlaps a dynamic ent
     //
-    if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/collisioncheck") {
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/anycollisioncheck") {
       string s = scriptToUse->at(dialogue_index+1);
       vector<string> x = splitString(s, ' ');
       if((int)x.size() >= 3) 
       {
         entity *checkMyCollision = searchEntities(x[1]);
-        M("Got here");
 
         if(checkMyCollision != nullptr) {
-        M("Got here");
           bool collision = 0;
           for(auto x : g_entities) {
             if(x->dynamic && x!= checkMyCollision && RectOverlap(x->getMovedBounds(), checkMyCollision->getMovedBounds())) {
@@ -9379,6 +9567,42 @@ void write_map(entity *mapent)
           }
         } else {
           E("/collisioncheck error - not enough args");
+        }
+      }
+
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    }
+
+    // jump based on collision between talker and given object
+    // it's used for triggering a spiketrap
+    //
+    // /collisioncheck protag :trigger
+    //
+    if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/collisioncheck") {
+      string s = scriptToUse->at(dialogue_index+1);
+      vector<string> x = splitString(s, ' ');
+      if((int)x.size() >= 3) 
+      {
+        entity *checkMyCollision = searchEntities(x[1]);
+
+        if(checkMyCollision != nullptr) {
+          bool collision = 0;
+            if(RectOverlap(talker->getMovedBounds(), checkMyCollision->getMovedBounds())) {
+              collision = 1;
+            }
+
+          if(collision) {
+            string DIstr = "0";
+            DIstr = x[2]; 
+            DIstr = DIstr.substr(1);
+            int DI = 0;
+            DI = stoi(DIstr);
+            dialogue_index = DI - 3;
+            this->continueDialogue();
+            return;
+          }
         }
       }
 
@@ -9576,46 +9800,32 @@ void write_map(entity *mapent)
       s.erase(0, 9);
       vector<string> split = splitString(s, ' ');
 
-      entity *ent = 0;
-      // if the entity we are talking to is the same as the one we want to animate, just animate talker
-      if (talker->name == split[0])
-      {
-        ent = talker;
-      }
-      else if(lastReferencedEntity != 0 && lastReferencedEntity->name == split[0] && lastReferencedEntity->tangible) {
-        ent = lastReferencedEntity;
-      }
-      else
-      {
-        ent = searchEntities(split[0], talker);
-        //M("Searched for ent");
-        //D(ent->name);
-      }
+      entity *ent = selected;
       if (ent != 0)
       {
-        int animationset = stoi(split[1]);
+        int animationset = stoi(split[0]);
         if (animationset != -1)
         {
-          ent->animation = stoi(split[1]);
+          ent->animation = stoi(split[0]);
           //I("Set animation to ");
           //I(ent->animation);
         }
-        ent->msPerFrame = stoi(split[2]);
+        ent->msPerFrame = stoi(split[1]);
         //I("Set msPerFrame to");
         //I(ent->msPerFrame);
 
-        int frameset = stoi(split[3]);
+        int frameset = stoi(split[2]);
         if(frameset != -1) {
           ent->frameInAnimation = stoi(split[3]);
           //I("Set frameInAnimation to ");
           //I(ent->frameInAnimation);
         }
 
-        ent->loopAnimation = stoi(split[4]);
+        ent->loopAnimation = stoi(split[3]);
         //I("Set loopAnimation to ");
         //I(ent->loopAnimation);
         
-        ent->reverseAnimation = stoi(split[5]);
+        ent->reverseAnimation = stoi(split[4]);
         //I("Set reverseAnimation to ");
         //I(ent->reverseAnimation);
 
@@ -9786,32 +9996,22 @@ void write_map(entity *mapent)
 
 
 
-    // make entity tangible
-    //  /tangible oilman 0
-    //  /tangible wubba 1
+    // make selected entity tangible
+    //  /tangible 0
+    //  /tangible 1
 
     if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/tangible")
     {
       string s = scriptToUse->at(dialogue_index + 1);
-      s.erase(0, 10);
-      D(s);
-      string name = s.substr(0, s.find(' '));
-      s.erase(0, s.find(' ') + 1);
-      D(s);
-      string tangiblestatestr = "0";
-      tangiblestatestr = s; // s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-      float tangiblestate = stof(tangiblestatestr);
+      auto x = splitString(s, ' ');
 
-      entity *hopeful = searchEntities(name);
-      if (hopeful != nullptr)
-      {
-        hopeful->tangible = tangiblestate;
-      }
+      selected->tangible = stoi(x[1]);
 
       dialogue_index++;
       this->continueDialogue();
       return;
     }
+
 
     // heal entity
     if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/heal")

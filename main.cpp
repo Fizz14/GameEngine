@@ -675,6 +675,9 @@ int WinMain()
   smokeEffect = new effectIndex("puff", renderer);
   smokeEffect->persistent = 1;
 
+  littleSmokeEffect = new effectIndex("steam", renderer);
+  littleSmokeEffect->persistent = 1;
+
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   SDL_RenderPresent(renderer);
   SDL_GL_SetSwapInterval(1);
@@ -740,36 +743,36 @@ int WinMain()
 
   while (!quit)
   {
-    for(auto x : g_ai) {
-      if(x->name == "common/zombie") {
-        
-        if(x->target != nullptr && x->target->name != "common/fomm") {
-          //I found a bug where they agrod on the vent, but afterwards I checked and the vents have faction -1, so that shouldn't happen
-          M("Is this the bug Joseph found on Nov 23 2023?");
-          M("Entity common/zombie has target.");
-          D(x->target->name);
-          breakpoint();
-        }         
-
-        //D(x->target->name);
-        // print any debug info
-        //D(x->aggressiveness);
-        //M("status check");
-        if(x->agrod) {
-          //M("Zombie is agrod.");
-        } else {
-          //M("Zombie is not agrod.");
-        }
-        
-      }
-      if(x->name == "common/creep") {
-        if(x->agrod) {
-          //M("Creep is agrod.");
-        } else {
-          //M("Creep is not agrod.");
-        }
-      }
-    }
+//    for(auto x : g_ai) {
+//      if(x->name == "common/zombie") {
+//        
+//        if(x->target != nullptr && x->target->name != "common/fomm") {
+//          //I found a bug where they agrod on the vent, but afterwards I checked and the vents have faction -1, so that shouldn't happen
+//          M("Is this the bug Joseph found on Nov 23 2023?");
+//          M("Entity common/zombie has target.");
+//          D(x->target->name);
+//          breakpoint();
+//        }         
+//
+//        //D(x->target->name);
+//        // print any debug info
+//        //D(x->aggressiveness);
+//        //M("status check");
+//        if(x->agrod) {
+//          //M("Zombie is agrod.");
+//        } else {
+//          //M("Zombie is not agrod.");
+//        }
+//        
+//      }
+//      if(x->name == "common/creep") {
+//        if(x->agrod) {
+//          //M("Creep is agrod.");
+//        } else {
+//          //M("Creep is not agrod.");
+//        }
+//      }
+//    }
 
     // some event handling
     while (SDL_PollEvent(&event))
@@ -934,6 +937,7 @@ int WinMain()
     g_blinkingMS += elapsed;
     g_jumpGaranteedAccelMs -= elapsed;
     g_boardingCooldownMs -= elapsed;
+    g_usableWaitToCycleTime -= elapsed;
     if(g_protagIsWithinBoardable) { 
       g_msSinceBoarding += elapsed;
     
@@ -3061,7 +3065,7 @@ int WinMain()
     {
       for (long long unsigned int i = 0; i < g_entities.size(); i++)
       {
-        if (g_entities[i]->isWorlditem || g_entities[i]->isPellet)
+        if (g_entities[i]->isWorlditem || g_entities[i]->identity == 1)
         {
           // make it bounce
           int index = g_entities[i]->bounceindex;
@@ -3098,35 +3102,45 @@ int WinMain()
         if(g_entities[i]->usingTimeToLive) {
 
           if(g_entities[i]->timeToLiveMs < 0) {
-
-            g_entities[i]->height = 0;
-            g_entities[i]->width = 0;
-
-            g_entities[i]->shrinking = 1;
-
-            if(!g_entities[i]->wasPellet) { 
-              g_entities[i]->dynamic = 0;
-              g_entities[i]->xvel = 0;
-              g_entities[i]->yvel = 0;
-              g_entities[i]->missile = 0;
-            }
-
-
-            if(g_entities[i]->curheight < 1) {
-              //remove this entity from it's parent's 
-              //list of children
-              if(g_entities[i]->isOrbital) {
-                g_entities[i]->parent->children.erase(remove(g_entities[i]->parent->children.begin(), g_entities[i]->parent->children.end(), g_entities[i]), g_entities[i]->parent->children.end());
-                g_entities[i]->isOrbital = 0;
-              }
-
-
-
+            if(g_entities[i]->dontSave) {
               if(!g_entities[i]->asset_sharer) {
                 g_entities[i]->tangible = 0;
                 g_entities[i]->usingTimeToLive = 0;
               } else {
                 delete g_entities[i];
+              }
+
+            } else {
+
+              g_entities[i]->height = 0;
+              g_entities[i]->width = 0;
+  
+              g_entities[i]->shrinking = 1;
+  
+              if(!g_entities[i]->wasPellet) { 
+                g_entities[i]->dynamic = 0;
+                g_entities[i]->xvel = 0;
+                g_entities[i]->yvel = 0;
+                g_entities[i]->missile = 0;
+              }
+  
+  
+              if(g_entities[i]->curheight < 1) {
+                //remove this entity from it's parent's 
+                //list of children
+                if(g_entities[i]->isOrbital) {
+                  g_entities[i]->parent->children.erase(remove(g_entities[i]->parent->children.begin(), g_entities[i]->parent->children.end(), g_entities[i]), g_entities[i]->parent->children.end());
+                  g_entities[i]->isOrbital = 0;
+                }
+  
+  
+  
+                if(!g_entities[i]->asset_sharer) {
+                  g_entities[i]->tangible = 0;
+                  g_entities[i]->usingTimeToLive = 0;
+                } else {
+                  delete g_entities[i];
+                }
               }
             }
           } 
@@ -3182,7 +3196,7 @@ int WinMain()
   
             
             g_pellets.erase(remove(g_pellets.begin(), g_pellets.end(), x), g_pellets.end());
-            x->isPellet = 0;
+            x->identity = 0;
             i--;
             g_currentPelletsCollected++;
   
@@ -4136,7 +4150,7 @@ void getInput(float &elapsed)
       {
         if(protag_can_move && !g_selectingUsable) {
           protag->move_left();
-        } else if(protag_can_move && g_selectingUsable && SoldUILeft <= 0 && !inPauseMenu && g_spinning_duration <= 0 ) {
+        } else if(protag_can_move && g_selectingUsable && SoldUILeft <= 0 && !inPauseMenu && g_spinning_duration <= 0 && g_usableWaitToCycleTime < 0) {
           //select prev backpack item
           g_backpackIndex --;
           g_hotbarCycleDirection = 1;
@@ -4197,7 +4211,7 @@ void getInput(float &elapsed)
       {
         if(protag_can_move && !g_selectingUsable) {
           protag->move_right();
-        } else if(protag_can_move && g_selectingUsable && SoldUIRight <= 0 && !inPauseMenu && g_spinning_duration <= 0) {
+        } else if(protag_can_move && g_selectingUsable && SoldUIRight <= 0 && !inPauseMenu && g_spinning_duration <= 0 && g_usableWaitToCycleTime < 0) {
           //select next backpack item
           g_backpackIndex ++;
           g_hotbarCycleDirection = 0;
@@ -4271,6 +4285,9 @@ void getInput(float &elapsed)
       //for short presses, advance inventory left rather than widening the hotbar
       g_currentHotbarSelectMs += elapsed;
       if(g_currentHotbarSelectMs >= g_hotbarLongSelectMs) {
+        if(g_selectingUsable == 0) {
+          g_usableWaitToCycleTime = g_maxUsableWaitToCycleTime;
+        }
         g_selectingUsable = 1;
       }
     } else {
