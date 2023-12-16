@@ -33,6 +33,7 @@ class usable;
 
 entity* searchEntities(string fname, entity* caller);
 entity* searchEntities(string fname);
+void playSoundAtPosition(int channel, Mix_Chunk *sound, int loops, int xpos, int ypos, float volume);
 void debugUI();
 
 /*
@@ -1665,6 +1666,8 @@ class effectIndex {
     SDL_Texture* texture;
     int spawnNumber = 12;
     float spawnRadius = 1;
+    int msPerFrame = 0;
+    bool killAfterAnim = 0;
 
     int plifetime = 5;
     int disappearMethod = 0; // 0 -> shrink, 1-> fade
@@ -1698,12 +1701,13 @@ class effectIndex {
     float spawnerYOffset = 0;
     float spawnerZOffset = 0;
     float spawnerIntervalMs = 0;
+
     
 
     effectIndex(string filename, SDL_Renderer* renderer);
 
     //given coordinates, spawn particles in the level
-    void happen(int fx, int fy, int fz);
+    void happen(int fx, int fy, int fz, float fangle);
 
     ~effectIndex();
 
@@ -1724,6 +1728,12 @@ class particle : public actor {
     float deltasizex = 0;
     float deltasizey = 0;
 
+    int msPerFrame = 0;
+    int msTilNextFrame = 0;
+    bool killAfterAnim = 0;
+
+    float angle = 0;
+
     int frame = 0;
     int yframes = 1;
     int framewidth = 0;
@@ -1741,9 +1751,6 @@ class particle : public actor {
       lifetime = type->plifetime;
       width = type->pwidth;
       height = type->pheight;
-      velocityx = type->pvelocityx;
-      velocityy = type->pvelocityy;
-      velocityz = type->pvelocityz;
       accelerationx = type->paccelerationx;
       accelerationy = type->paccelerationy;
       accelerationz = type->paccelerationz;
@@ -1753,6 +1760,8 @@ class particle : public actor {
       yframes = type->yframes;
       framewidth = type->framewidth;
       frameheight = type->frameheight;
+      msPerFrame = type->msPerFrame;
+      killAfterAnim = type->killAfterAnim;
     }
 
     ~particle() {
@@ -1761,13 +1770,12 @@ class particle : public actor {
 
     void update(int elapsed, camera fcamera) {
       lifetime -= elapsed;
-
-
-      x += velocityx * elapsed;
-      y += velocityy * elapsed;
+      x -= velocityx * -cos(angle) + velocityy * sin(angle);
+      y -= velocityx * sin(angle) + velocityy * -cos(angle);
       z += velocityz * elapsed;
-      velocityx += accelerationx * elapsed;
-      velocityy += accelerationy * elapsed;
+
+      velocityx -= accelerationx * elapsed;
+      velocityy -= accelerationy * elapsed;
       velocityz += accelerationz * elapsed;
       width += deltasizex * elapsed;
       height += deltasizey * elapsed;
@@ -1777,6 +1785,20 @@ class particle : public actor {
       width = max(zero,width);
       height = max(zero,height);
       z = max(zero,z);
+
+      msTilNextFrame += elapsed;
+      if(msPerFrame != 0 && msTilNextFrame > msPerFrame) {
+        frame++;
+        if(frame >= yframes) {
+          if(killAfterAnim) {
+            lifetime = -1;
+          } else {
+            frame = 0;
+
+          }
+        }
+        msTilNextFrame = 0;
+      }
     }
 
     // particle render
@@ -1951,6 +1973,14 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   file >> line;
   file >> spawnerIntervalMs;
 
+  //msPerFrame
+  file >> line;
+  file >> msPerFrame;
+
+  //killAfterAnim
+  file >> line;
+  file >> killAfterAnim;
+
 
   g_effectIndexes.push_back(this);
 
@@ -1958,13 +1988,13 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 
 //add support effectIndexes to maps
 //given coordinates, spawn particles in the level
-void effectIndex::happen(int fx, int fy, int fz) {
+void effectIndex::happen(int fx, int fy, int fz, float fangle = 0) {
   for(int i = 0; i < spawnNumber; i++) {
     particle* a = new particle(this);
-
-//    a->x = fx + (spawnRadius/2 - (rand() % spawnRadius));
-//    a->y = fy + (spawnRadius/2 - (rand() % spawnRadius));
-//    a->z = fz + (spawnRadius/2 - (rand() % spawnRadius));
+    g_lastParticleCreated = a;
+    a->velocityx = this->pvelocityx;
+    a->velocityy = this->pvelocityy;
+    a->velocityz = this->pvelocityz;
 
     //spawn randomly in a sphere
     float tx = rand() % 10000 - 5000;
@@ -1976,6 +2006,8 @@ void effectIndex::happen(int fx, int fy, int fz) {
     tx *= net;
     ty *= net;
     tz *= net;
+
+    a->angle = fangle;
 
     a->x = fx + tx;
     a->y = fy + ty;
@@ -3311,6 +3343,7 @@ class entity:public actor {
     float xvel = 0;
     float yvel = 0;
     float zvel = 0;
+    bool useGravity = 1;
 
     // angular reform of movement system
     // as long-planned, entities will not move in explicit directions,
@@ -3454,8 +3487,7 @@ class entity:public actor {
     int maxSpikeWaitMS = 1300;
     int spikeState = 0;
     int spikedPlayer = 0;
-
-
+   
     //for boarding
     bool isBoardable = 0;
     bool isHidingSpot = 0;
@@ -4207,10 +4239,29 @@ class entity:public actor {
                               //i'll have to do that later
       }
 
-      if(identity == 2) {
+      if(identity == 2 || identity == 3) {
         for(auto entry : spawnlist) {
           entry->visible = 0;
         }
+      }
+
+      if(identity == 6) {
+        this->isAI = 1;
+        this->poiIndex = 6;
+        this->readyForNextTravelInstruction = 1;
+      }
+
+      if(identity == 8) {
+        //psychotrap
+        parent->visible = 0;
+        for(auto entry : spawnlist) {
+          entry->visible = 1;
+          entry->msPerFrame = 2;
+          entry->loopAnimation = 1;
+          entry->scriptedAnimation = 1;
+        }
+        
+
       }
 
       if(animationconfig == 0) {
@@ -4220,6 +4271,8 @@ class entity:public actor {
       if(animationconfig == 1) {
         useAnimForWalking = 0;
       }
+
+      
 
 
 
@@ -4804,6 +4857,8 @@ class entity:public actor {
 
       //entity render function
       void render(SDL_Renderer * renderer, camera fcamera) {
+        
+        SDL_SetTextureAlphaMod(texture, opacity);
         if(!tangible) {return;}
         if(!visible) {return;}
 
@@ -5365,6 +5420,19 @@ class entity:public actor {
           forwardsPushVelocity = 0;
         }
 
+        if(identity == 5) {
+          if(spikeState) {
+            forwardsVelocity = xagil;
+          } else {
+            forwardsVelocity = -xagil;
+          }
+          if(devMode) {
+            forwardsVelocity = 0; //phew!
+
+          }
+        }
+
+
         //set xaccel and yaccel from forwardsVelocity
         xaccel = cos(steeringAngle) * forwardsVelocity;
         yaccel = -sin(steeringAngle) * forwardsVelocity;
@@ -5707,10 +5775,10 @@ class entity:public actor {
             rect thatmovedbounds = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
             thatmovedbounds.z = n->z;
             thatmovedbounds.zeight = n->bounds.zeight;
-
+            
             //uh oh, did we collide with something?
             if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
-              if((this == protag || this->isAI) && (thatmovedbounds.z + thatmovedbounds.zeight) - z < g_stepHeight) {
+              if((this == protag || this->isAI || this->identity == 5) && (thatmovedbounds.z + thatmovedbounds.zeight) - z < g_stepHeight) {
                 z += (thatmovedbounds.z + thatmovedbounds.zeight) - z;
               } else {
                 ycollide = true;
@@ -5725,7 +5793,7 @@ class entity:public actor {
 
             //uh oh, did we collide with something?
             if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
-              if((this == protag || this->isAI) && (thatmovedbounds.z + thatmovedbounds.zeight) - z < g_stepHeight) {
+              if((this == protag || this->isAI || this->identity == 5) && (thatmovedbounds.z + thatmovedbounds.zeight) - z < g_stepHeight) {
                 z += (thatmovedbounds.z + thatmovedbounds.zeight) - z;
               } else {
                 xcollide = true;
@@ -6161,6 +6229,34 @@ class entity:public actor {
           //playSound(-1, g_bonk, 0);
         }
 
+
+        if(identity == 5 && (xcollide || ycollide)) {
+          //bladetrap
+          
+          if(spikedPlayer == spikeState) {
+            //this is a crappy way to make the effect happen
+            //when it hits a wall, but sometimes it waits at the wall before reversing
+            playSoundAtPosition(7, g_bladetrapSound, 0, getOriginX(), getOriginY(), 0.5);
+            float offset = 50;
+            if(!spikeState) {
+              offset = -50;
+            }
+            float xoff = offset * cos(steeringAngle);
+            float yoff = -offset * sin(steeringAngle);
+            sparksEffect->happen(getOriginX() + xoff, getOriginY() + yoff, z + 25); 
+            g_lastParticleCreated->sortingOffset = 50;
+            spikedPlayer = !spikedPlayer;
+          }
+
+          if(spikeActiveMS > maxSpikeActiveMS) {
+            spikeActiveMS = 0;
+            spikeState = !spikeState;
+
+          }
+
+        }
+
+
         //if we had a collision on X but not Y, increase yvel to what it would have been without
         //the x component (help ents get thru narrow doorways)
 //        if(xcollide) {
@@ -6456,7 +6552,9 @@ class entity:public actor {
  
 
         if(z > floor + 1) {
-          zaccel -= g_gravity * ((double) elapsed / 256.0);
+          if(useGravity) {
+            zaccel -= g_gravity * ((double) elapsed / 256.0);
+          }
           grounded = 0;
         } else {
           // !!! maybe revisit this to let "character" entities have fallsounds
@@ -7378,6 +7476,7 @@ class entity:public actor {
                 entry->reverseAnimation = 0;
                 entry->visible = 1;
               }
+              playSound(5, g_spiketrapSound, 0);
               spikeState = 2;
               spikedPlayer = 0;
               spikeWaitMS = 0;
@@ -7390,7 +7489,7 @@ class entity:public actor {
               rect changeMe = this->getMovedBounds();
               changeMe.zeight = 32;
               if(RectOverlap3d(changeMe, protag->getMovedBounds())) {
-                protag->hp -= 1; //blegh
+                protag->hp -= maxhp; //blegh
                 protag->flashingMS = g_flashtime;
                 playSound(2, g_playerdamage, 0);
                 spikedPlayer = 1;
@@ -7426,6 +7525,130 @@ class entity:public actor {
           }
            
         }
+
+        if (identity == 3) {
+          //cannon
+          spikeWaitMS += elapsed;
+          if(spikeWaitMS > maxSpikeWaitMS) {
+            entity *copy = new entity(renderer, spawnlist[0]);
+            copy->z = z + 10;
+            copy->dontSave = 1;
+            copy->usingTimeToLive = 1;
+            copy->timeToLiveMs = 3000;
+            copy->steeringAngle = steeringAngle;
+            copy->targetSteeringAngle = steeringAngle;
+            copy->missile = 1;
+            copy->visible = 1;
+            copy->fragileMovement = 1;
+            copy->msPerFrame = 70;
+            copy->loopAnimation = 1;
+            copy->useGravity = 0;
+            copy->identity = 4;
+            spikeWaitMS = 0;
+             
+            float offset = 50;
+            float yoff = -offset * sin(steeringAngle);
+            float xoff = offset * cos(steeringAngle);
+
+            copy->setOriginX(getOriginX() + xoff);
+            copy->setOriginY(getOriginY() + yoff);
+            
+      
+            blackSmokeEffect->happen(getOriginX() + xoff, getOriginY() + yoff, z + 40, steeringAngle);
+            playSoundAtPosition(6, g_cannonfireSound, 0, getOriginX(), getOriginY(), 0.6);
+          }
+
+        }
+
+        if(identity == 4) {
+          //cannonball
+          if(RectOverlap3d(this->getMovedBounds(), protag->getMovedBounds())) {
+            timeToLiveMs = -1;
+            protag->hp -= maxhp;
+            protag->flashingMS = g_flashtime;
+            playSound(2, g_playerdamage, 0);
+          }
+        }
+
+        if(identity == 5) {
+          //bladetrap
+          spikeWaitMS += elapsed;
+          spikeActiveMS+=elapsed;
+          if(CylinderOverlap(this->getMovedBounds(), protag->getMovedBounds()) && spikeWaitMS > maxSpikeWaitMS)
+          {
+            spikeWaitMS = 0;
+            protag->hp -= maxhp;
+            protag->flashingMS = g_flashtime;
+            playSound(2, g_playerdamage, 0);
+
+          }
+        }
+
+        if(identity == 6) {
+          //smarttrap
+
+          spikeWaitMS += elapsed;
+          spikeActiveMS+=elapsed;
+          if(CylinderOverlap(this->getMovedBounds(), protag->getMovedBounds()) && spikeWaitMS > maxSpikeWaitMS)
+          {
+            spikeWaitMS = 0;
+            protag->hp -= maxhp;
+            protag->flashingMS = g_flashtime;
+            playSound(2, g_playerdamage, 0);
+
+
+          }
+
+          if(readyForNextTravelInstruction) {
+            playSoundAtPosition(7, g_smarttrapSound, 0, getOriginX(), getOriginY(), 0.5);
+            
+
+          }
+        }
+
+        if(identity == 7) {
+          //facetrap
+          float dist = XYWorldDistanceSquared(this->getOriginX(), this->getOriginY(), protag->getOriginX(), protag->getOriginY());
+          const float maxDist = 16384;
+          const float minDist = -2000;
+          if(dist > maxDist) {
+            opacity = 0;
+
+          } else {
+            opacity = 255.0 * (1 -((dist + minDist) / (maxDist +minDist)));
+            if(opacity > 255) {opacity = 255;}
+            SDL_SetTextureAlphaMod(texture, opacity);
+
+          }
+
+
+        }
+
+        if(identity == 8) {
+          spikeActiveMS -= elapsed;
+          //psychotrap
+          if(RectOverlap3d(this->getMovedBounds(), protag->getMovedBounds())) {
+            //show graphic
+            for(auto entry : spawnlist) {
+              entry->visible = 1;
+            }
+
+            if(RectOverlap3d(this->parent->getMovedBounds(), protag->getMovedBounds()) && spikeActiveMS <= 0) {
+              protag->hp -= maxhp;
+              protag->flashingMS = g_flashtime;
+              playSound(2, g_playerdamage, 0);
+              spikeActiveMS = maxSpikeActiveMS;
+            }
+
+          } else {
+            //hide graphic
+            for(auto entry : spawnlist) {
+              entry->visible = 0;
+            }
+
+          }
+        }
+
 
 
         if(this->missile) {
@@ -9322,6 +9545,24 @@ void playSoundByName(string fname) {
 
   if(!g_mute && sound != NULL) {
     Mix_PlayChannel(0, sound,0);
+  }
+}
+
+void playSoundAtPosition(int channel, Mix_Chunk *sound, int loops, int xpos, int ypos, float volume)
+{
+  // M("play sound");
+  if (!g_mute && sound != NULL)
+  {
+    //!!! this could be better if it used the camera's position
+    float dist = XYWorldDistance(g_focus->getOriginX(), g_focus->getOriginY(), xpos, ypos);
+    const float maxDistance = 1200; //a few screens away
+    float cur_volume = (maxDistance - dist)/maxDistance * 128;
+    cur_volume *= volume;
+    if(cur_volume < 0) {cur_volume = 0;}
+    Mix_VolumeChunk(sound, cur_volume);
+    if(!g_mute && sound != NULL) {
+      Mix_PlayChannel(channel, sound,loops);
+    }
   }
 }
 

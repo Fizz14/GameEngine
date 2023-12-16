@@ -349,6 +349,10 @@ int g_fogofwarRays = 100;
 bool g_showHealthbar = 0;
 effectIndex *smokeEffect;
 effectIndex *littleSmokeEffect;
+effectIndex *blackSmokeEffect;
+effectIndex *sparksEffect;
+
+particle* g_lastParticleCreated = 0;
 
 // for fow
 SDL_Texture *result;
@@ -826,6 +830,9 @@ Mix_Chunk *g_menu_open_sound;
 Mix_Chunk *g_menu_close_sound;
 Mix_Chunk *g_menu_manip_sound;
 Mix_Chunk *g_pelletCollectSound;
+Mix_Chunk *g_spiketrapSound;
+Mix_Chunk *g_bladetrapSound;
+Mix_Chunk *g_smarttrapSound;
 Mix_Chunk *g_trainReadySound;
 
 Mix_Chunk *g_land;
@@ -846,6 +853,7 @@ bool fadeFlag = 0; // for waiting between fading music in and out
 bool entFadeFlag = 0;
 int musicUpdateTimer = 0;
 Mix_Chunk *g_bulletdestroySound;
+Mix_Chunk *g_cannonfireSound;
 Mix_Chunk *g_playerdamage;
 Mix_Chunk *g_enemydamage;
 Mix_Chunk *g_npcdamage;
@@ -1008,6 +1016,7 @@ void playSound(int channel, Mix_Chunk *sound, int loops)
     Mix_PlayChannel(channel, sound, loops);
   }
 }
+
 
 SDL_Texture *MaskTexture(SDL_Renderer *renderer, SDL_Texture *mask, SDL_Texture *diffuse)
 {

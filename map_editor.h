@@ -291,6 +291,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       e->steeringAngle = convertFrameToAngleNew(e->animation, e->flip == SDL_FLIP_HORIZONTAL);
       e->targetSteeringAngle = e->steeringAngle;
 
+      if(e->animation > e->yframes) {
+        e->animation = e->yframes;
+
+      }
       
       if(e->parent != nullptr) {
 
@@ -1741,6 +1745,9 @@ bool mapeditor_save_map(string word)
       }
       else
       {
+        //some ents have one frame but i still wanna set angle
+        g_entities[i]->animation = convertAngleToFrame(g_entities[i]->steeringAngle);
+
         ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) << " " << to_string(g_entities[i]->z) << " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
       }
     }
@@ -6325,7 +6332,7 @@ void write_map(entity *mapent)
   }
 
   if (devinput[37] && !olddevinput[37]) {
-    smokeEffect->happen(g_focus->getOriginX(), g_focus->getOriginY(), g_focus->z);
+    sparksEffect->happen(g_focus->getOriginX() + 128, g_focus->getOriginY(), g_focus->z);
   }
 
   // change wall, cap, and floor textures
@@ -7867,6 +7874,7 @@ void write_map(entity *mapent)
     //
     if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]")))
     {
+      breakpoint();
       if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
       int j = 1;
       // parse which block of memory we are interested in
@@ -7885,7 +7893,9 @@ void write_map(entity *mapent)
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
-        if (selected->data[block] >= condition)
+        D(selected->data[block]);
+        D(condition);
+        if (selected->data[block] <= condition)
         {
           dialogue_index = jump - 3;
           this->continueDialogue();
@@ -9569,7 +9579,6 @@ void write_map(entity *mapent)
           E("/collisioncheck error - not enough args");
         }
       }
-
       dialogue_index++;
       this->continueDialogue();
       return;
@@ -9616,7 +9625,6 @@ void write_map(entity *mapent)
     //  /solidify wall 0
     if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/solidify")
     {
-      M("/solidify");
       string s = scriptToUse->at(dialogue_index + 1);
       s.erase(0, 10);
 
@@ -9814,18 +9822,18 @@ void write_map(entity *mapent)
         //I("Set msPerFrame to");
         //I(ent->msPerFrame);
 
-        int frameset = stoi(split[2]);
+        int frameset = stoi(split[3]);
         if(frameset != -1) {
           ent->frameInAnimation = stoi(split[3]);
           //I("Set frameInAnimation to ");
           //I(ent->frameInAnimation);
         }
 
-        ent->loopAnimation = stoi(split[3]);
+        ent->loopAnimation = stoi(split[4]);
         //I("Set loopAnimation to ");
         //I(ent->loopAnimation);
         
-        ent->reverseAnimation = stoi(split[4]);
+        ent->reverseAnimation = stoi(split[5]);
         //I("Set reverseAnimation to ");
         //I(ent->reverseAnimation);
 

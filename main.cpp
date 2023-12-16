@@ -327,32 +327,57 @@ int WinMain()
   // init static resources
   g_bulletdestroySound = Mix_LoadWAV("static/sounds/step.wav");
   g_preloadedSounds.emplace_back(g_bulletdestroySound, "static/sounds/step.wav");
+
+  g_cannonfireSound = Mix_LoadWAV("static/sounds/cannonfire.wav");
+  g_preloadedSounds.emplace_back(g_cannonfireSound , "static/sounds/cannonfire.wav");
+
   g_playerdamage = Mix_LoadWAV("static/sounds/playerdamage.wav");
   g_preloadedSounds.emplace_back(g_playerdamage, "static/sounds/playerdamage.wav");
+
   g_enemydamage = Mix_LoadWAV("static/sounds/enemydamage.wav");
   g_preloadedSounds.emplace_back(g_enemydamage, "static/sounds/enemydamage.wav");
+
   g_npcdamage = Mix_LoadWAV("static/sounds/npcdamage.wav");
   g_preloadedSounds.emplace_back(g_npcdamage, "static/sounds/npcdamage.wav");
+
   g_s_playerdeath = Mix_LoadWAV("static/sounds/playerdeath.wav");
   g_preloadedSounds.emplace_back(g_s_playerdeath, "static/sounds/playerdeath.wav");
+
   g_land = Mix_LoadWAV("static/sounds/land.wav");
   g_preloadedSounds.emplace_back(g_land, "static/sounds/step2.wav");
+
   g_footstep_a = Mix_LoadWAV("static/sounds/protag-step-1.wav");
   g_preloadedSounds.emplace_back(g_footstep_a, "static/sounds/protag-step-1.wav");
+
   g_footstep_b = Mix_LoadWAV("static/sounds/protag-step-2.wav");
   g_preloadedSounds.emplace_back(g_footstep_b, "static/sounds/protag-step-2.wav");
+
   g_bonk = Mix_LoadWAV("static/sounds/bonk.wav");
   g_preloadedSounds.emplace_back(g_bonk, "static/sounds/bonk.wav");
+
   g_menu_open_sound = Mix_LoadWAV("static/sounds/open-menu.wav");
   g_preloadedSounds.emplace_back(g_menu_open_sound, "static/sounds/open-menu.wav");
+
   g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
   g_preloadedSounds.emplace_back(g_menu_close_sound, "static/sounds/close-menu.wav");
+
   g_ui_voice = Mix_LoadWAV("static/sounds/voice-low.wav");
   g_preloadedSounds.emplace_back(g_ui_voice, "static/sounds/voice-low.wav");
+
   g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
   g_preloadedSounds.emplace_back(g_menu_manip_sound, "static/sounds/manip-menu.wav");
+
   g_pelletCollectSound = Mix_LoadWAV("static/sounds/pellet.wav");
   g_preloadedSounds.emplace_back(g_pelletCollectSound, "static/sounds/pellet.wav");
+
+  g_spiketrapSound = Mix_LoadWAV("static/sounds/spiketrap.wav");
+  g_preloadedSounds.emplace_back(g_spiketrapSound, "static/sounds/spiketrap.wav");
+
+  g_bladetrapSound = Mix_LoadWAV("static/sounds/bladetrap.wav");
+  g_preloadedSounds.emplace_back(g_spiketrapSound, "static/sounds/bladetrap.wav");
+
+  g_smarttrapSound = Mix_LoadWAV("static/sounds/smarttrap.wav");
+  g_preloadedSounds.emplace_back(g_spiketrapSound, "static/sounds/smarttrap.wav");
 
   if(devMode) {
     g_dijkstraDebugRed = new ui(renderer, "engine/walkerRed.bmp", 0,0,32,32, 3);
@@ -677,6 +702,12 @@ int WinMain()
 
   littleSmokeEffect = new effectIndex("steam", renderer);
   littleSmokeEffect->persistent = 1;
+
+  blackSmokeEffect = new effectIndex("blackpowder", renderer);
+  blackSmokeEffect->persistent = 1;
+
+  sparksEffect = new effectIndex("sparks", renderer);
+  sparksEffect->persistent = 1;
 
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   SDL_RenderPresent(renderer);
