@@ -7627,13 +7627,13 @@ class entity:public actor {
         if(identity == 8) {
           spikeActiveMS -= elapsed;
           //psychotrap
-          if(RectOverlap3d(this->getMovedBounds(), protag->getMovedBounds())) {
+          if(CylinderOverlap(this->getMovedBounds(), protag->getMovedBounds())) {
             //show graphic
             for(auto entry : spawnlist) {
               entry->visible = 1;
             }
 
-            if(RectOverlap3d(this->parent->getMovedBounds(), protag->getMovedBounds()) && spikeActiveMS <= 0) {
+            if(CylinderOverlap(this->parent->getMovedBounds(), protag->getMovedBounds()) && spikeActiveMS <= 0) {
               protag->hp -= maxhp;
               protag->flashingMS = g_flashtime;
               playSound(2, g_playerdamage, 0);
