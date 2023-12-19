@@ -7,10 +7,11 @@
 #include <stdlib.h>
 #include <chrono>
 #include <thread>
+
 #include "globals.h"
 #include "objects.h"
 #include "map_editor.h"
-#include "lightcookietesting.h"
+#include "lightcookies.h"
 
 using namespace std;
 
@@ -23,6 +24,7 @@ void toggleDevmode();
 void toggleFullscreen();
 
 void protagMakesNoise();
+
 
 int WinMain()
 {
@@ -1050,7 +1052,7 @@ int WinMain()
           }
         }
 
-        smokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z);
+        smokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z, 0);
         g_protagIsWithinBoardable = 0;
         g_boardedEntity->semisolidwaittoenable = 1;
         g_boardedEntity->semisolid = 0;
@@ -2319,7 +2321,7 @@ int WinMain()
 
       //check interval ms
       if(e->currentIntervalMs <= 0) {
-        e->type->happen(e->parent->getOriginX() + e->xoffset, e->parent->getOriginY() + e->yoffset, e->parent->z + e->zoffset);
+        e->type->happen(e->parent->getOriginX() + e->xoffset, e->parent->getOriginY() + e->yoffset, e->parent->z + e->zoffset, 0);
         e->currentIntervalMs = e->maxIntervalMs;
       }
       e->currentIntervalMs -= elapsed;
