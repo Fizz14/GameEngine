@@ -1,10 +1,9 @@
-How to get this code working on windows:
+64b Win 11, powershell:
 
-get SDL2_image.dll, SDL2_mixer.dll, SDL2_ttf.dll, SDL2.dll, zlib1.dll, libogg-0.dll, libfreetype-6.dll, libvorbis-0.dll, and libvorbisfile-3.dll and put them with the code.
-
-You need lots of textures and configuration files to get it to work, check the googledrive.
-
-Build with g++ main.cpp -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2  -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -Wno-narrowing; start a.exe;
-
-make sure that the textures in textures/lighting are bmp and not png, this should be updated soon for the linux version.
-
+g++ objects.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2  -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1; [console]::beep(500,300);
+g++ map_editor.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2  -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1; [console]::beep(500,300);
+g++ lightcookies.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2  -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1; [console]::beep(500,300);
+g++ globals.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2  -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1; [console]::beep(500,300);
+g++ main.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2  -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1; [console]::beep(500,300);
+g++ main.o objects.o map_editor.o lightcookies.o globals.o -std=c++17 -o out.exe -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2  -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1; [console]::beep(500,300);
+gdb ./out.exe
