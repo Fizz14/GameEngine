@@ -175,6 +175,7 @@ float g_extraShadowSize = 20; // how much bigger are shadows in comparison to th
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
 bool g_showHealthbar = 0;
+int g_entitySleepDistance = 1048576;
 effectIndex *smokeEffect;
 effectIndex *littleSmokeEffect;
 effectIndex *blackSmokeEffect;
@@ -1209,6 +1210,11 @@ int yesNoPrompt(string msg)
     SDL_Log("error displaying message box");
   }
   return buttonid;
+}
+
+int rng(int min, int max) {
+  if(max == min) {return min;}
+  return ( ((int)rand() % (max-min))  + min);
 }
 
 

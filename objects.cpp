@@ -21,6 +21,7 @@
 #include "lightcookies.h"
 #include "objects.h"
 #include "map_editor.h"
+#include "specialobjects.h"
 
 #include <utility>
 
@@ -2150,35 +2151,6 @@ indexItem::~indexItem() {
   SDL_DestroyTexture(texture);
 }
 
-
-ability::ability(string binding) {
-  name = binding;
-  ifstream stream;
-  string loadstr;
-  //try to open from local map folder first
-
-  loadstr = "maps/" + g_mapdir + "/scripts/" + binding + ".txt";
-  const char* plik = loadstr.c_str();
-
-  stream.open(plik);
-
-  if (!stream.is_open()) {
-    stream.open("static/scripts/" + binding + ".txt");
-  }
-  string line;
-
-  //getline(stream, line);
-
-  //M("Lines of ability");
-  while (getline(stream, line)) {
-    script.push_back(line);
-  }
-
-  parseScriptForLabels(script);
-
-}
-
-
 void fancychar::setIndex(int findex) {
   auto entry = g_fancyAlphabet[findex];
   texture = entry.first;
@@ -3014,8 +2986,8 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       if(line[0] == '}') {break;}
       hasAtleastOneAbility = 1;
       //line contains the name of an ability
-      ability newAbility = ability(line);
-      M("loading new ability called " + line);
+      ability newAbility;
+      newAbility.name = line;
 
       //they're stored as seconds in the configfile, but ms in the object
       float seconds = 0;
@@ -4954,6 +4926,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           //playSound(-1, g_bonk, 0);
         }
 
+        //specialObjectsBump();
 
         if(identity == 5 && (xcollide || ycollide)) {
           //bladetrap
@@ -5804,6 +5777,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           //likely has abilities to use
           //are any abilities ready?
           for(auto &x : myAbilities) {
+            if(x.ready == 1) {continue;}
             
             //accumulate-abilities will always decrease CD
             if(x.resetStableAccumulate == 2) {
@@ -5837,44 +5811,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
               //are we in range to the player?
 
               if( inRange && !myScriptCaller->executingScript) {
-
-                //I(this->name + " used " + x.name + ".");
-                //this->dialogue_index = 1;
-                //this->sayings = x.script;
-                this->myScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
-                this->myScriptCaller->ownScript = x.script;
-
-                this->myScriptCaller->executingScript = 1;
-                this->myScriptCaller->dialogue_index = -1;
-                this->myScriptCaller->talker = this;
-                this->myScriptCaller->continueDialogue();
-                if(x.upperCooldownBound - x.lowerCooldownBound <= 0) {
-                  x.cooldownMS = x.lowerCooldownBound;
-                } else {
-                  x.cooldownMS = ( fmod(rand(),  (x.upperCooldownBound - x.lowerCooldownBound)) ) + x.lowerCooldownBound;
-                }
-                //I("Set his cooldown to " + to_string(x.cooldownMS));
-                //I(x.upperCooldownBound);
-                //I(x.lowerCooldownBound);
-              } else if(this->aiIndex == -1 && !myScriptCaller->executingScript){ //use aiIndex of -1 for entities that don't agro on anything, but just run scripts passively
-
-                //this->sayings = x.script; not doing this anymore, see "Since the script interpreter system..." in adventureUI class declaration
-
-                this->myScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
-                this->myScriptCaller->ownScript = x.script;
-                
-                
-
-                this->myScriptCaller->executingScript = 1;
-                this->myScriptCaller->dialogue_index = -1;
-                this->myScriptCaller->talker = this;
-                //this->myScriptCaller->continueDialogue();
-                if(x.upperCooldownBound - x.lowerCooldownBound <= 0) {
-                  x.cooldownMS = x.lowerCooldownBound;
-                } else {
-                  x.cooldownMS = ( fmod(rand(),  (x.upperCooldownBound - x.lowerCooldownBound)) ) + x.lowerCooldownBound;
-                }
-
+                x.ready = 1;
 
               }
 
@@ -6179,202 +6116,12 @@ door* entity::update(vector<door*> doors, float elapsed) {
           }
         }
 
-        if(identity == 2) {
-          //spiketrap
-          if(spikeState == 0) {
-            if(RectOverlap3d(this->getMovedBounds(), protag->getMovedBounds())) {
-              spikeState = 1;
-              spikeWaitMS = 0;
-            }
-          }
-          if(spikeState == 1) {
-            //wait a second, and then extend
-            spikeWaitMS += elapsed;
-            if(spikeWaitMS > maxSpikeWaitMS) {
-              spikeActiveMS = 0;
-              //show spikes
-              for(auto entry : spawnlist) {
-                entry->frameInAnimation = 0;
-                entry->loopAnimation = 0;
-                entry->msPerFrame = 50;
-                entry->scriptedAnimation = 1;
-                entry->reverseAnimation = 0;
-                entry->visible = 1;
-              }
-              playSound(5, g_spiketrapSound, 0);
-              spikeState = 2;
-              spikedPlayer = 0;
-              spikeWaitMS = 0;
 
-            }
 
-          }
-          if(spikeState == 2) {
-            if(!spikedPlayer) {
-              rect changeMe = this->getMovedBounds();
-              changeMe.zeight = 32;
-              if(RectOverlap3d(changeMe, protag->getMovedBounds())) {
-                protag->hp -= maxhp; //blegh
-                protag->flashingMS = g_flashtime;
-                playSound(2, g_playerdamage, 0);
-                spikedPlayer = 1;
-              }
-            }
-
-            spikeWaitMS += elapsed;
-            if(spikeWaitMS > maxSpikeActiveMS) {
-              spikeActiveMS = 0;
-              //hide spikes
-              for(auto entry : spawnlist) {
-                entry->frameInAnimation = 1;
-                entry->loopAnimation = 0;
-                entry->msPerFrame = 50;
-                entry->scriptedAnimation = 1;
-                entry->reverseAnimation = 1;
-              }
-              spikeState = 3;
-              spikeWaitMS = 0;
-            }
-
-          }
-          if(spikeState == 3) {
-            spikeWaitMS += elapsed;
-            if(spikeWaitMS > 125) {
-              for(auto entry : spawnlist) {
-                entry->visible = 0;
-              }
-              spikeState = 0;
-              spikeWaitMS = 0;
-            }
-
-          }
-           
+        float dist = XYWorldDistanceSquared(this->getOriginX(), this->getOriginY(), protag->getOriginX(), protag->getOriginY());
+        if(dist < g_entitySleepDistance) {
+          specialObjectsUpdate(this, elapsed);
         }
-
-        if (identity == 3) {
-          //cannon
-          spikeWaitMS += elapsed;
-          if(spikeWaitMS > maxSpikeWaitMS) {
-            entity *copy = new entity(renderer, spawnlist[0]);
-            copy->z = z + 10;
-            copy->dontSave = 1;
-            copy->usingTimeToLive = 1;
-            copy->timeToLiveMs = 3000;
-            copy->steeringAngle = steeringAngle;
-            copy->targetSteeringAngle = steeringAngle;
-            copy->missile = 1;
-            copy->visible = 1;
-            copy->fragileMovement = 1;
-            copy->msPerFrame = 70;
-            copy->loopAnimation = 1;
-            copy->useGravity = 0;
-            copy->identity = 4;
-            spikeWaitMS = 0;
-             
-            float offset = 50;
-            float yoff = -offset * sin(steeringAngle);
-            float xoff = offset * cos(steeringAngle);
-
-            copy->setOriginX(getOriginX() + xoff);
-            copy->setOriginY(getOriginY() + yoff);
-            
-      
-            blackSmokeEffect->happen(getOriginX() + xoff, getOriginY() + yoff, z + 40, steeringAngle);
-            playSoundAtPosition(6, g_cannonfireSound, 0, getOriginX(), getOriginY(), 0.6);
-          }
-
-        }
-
-        if(identity == 4) {
-          //cannonball
-          if(RectOverlap3d(this->getMovedBounds(), protag->getMovedBounds())) {
-            timeToLiveMs = -1;
-            protag->hp -= maxhp;
-            protag->flashingMS = g_flashtime;
-            playSound(2, g_playerdamage, 0);
-          }
-        }
-
-        if(identity == 5) {
-          //bladetrap
-          spikeWaitMS += elapsed;
-          spikeActiveMS+=elapsed;
-          if(CylinderOverlap(this->getMovedBounds(), protag->getMovedBounds()) && spikeWaitMS > maxSpikeWaitMS)
-          {
-            spikeWaitMS = 0;
-            protag->hp -= maxhp;
-            protag->flashingMS = g_flashtime;
-            playSound(2, g_playerdamage, 0);
-
-          }
-        }
-
-        if(identity == 6) {
-          //smarttrap
-
-          spikeWaitMS += elapsed;
-          spikeActiveMS+=elapsed;
-          if(CylinderOverlap(this->getMovedBounds(), protag->getMovedBounds()) && spikeWaitMS > maxSpikeWaitMS)
-          {
-            spikeWaitMS = 0;
-            protag->hp -= maxhp;
-            protag->flashingMS = g_flashtime;
-            playSound(2, g_playerdamage, 0);
-
-
-          }
-
-          if(readyForNextTravelInstruction) {
-            playSoundAtPosition(7, g_smarttrapSound, 0, getOriginX(), getOriginY(), 0.5);
-            
-
-          }
-        }
-
-        if(identity == 7) {
-          //facetrap
-          float dist = XYWorldDistanceSquared(this->getOriginX(), this->getOriginY(), protag->getOriginX(), protag->getOriginY());
-          const float maxDist = 16384;
-          const float minDist = -2000;
-          if(dist > maxDist) {
-            opacity = 0;
-
-          } else {
-            opacity = 255.0 * (1 -((dist + minDist) / (maxDist +minDist)));
-            if(opacity > 255) {opacity = 255;}
-            SDL_SetTextureAlphaMod(texture, opacity);
-
-          }
-
-
-        }
-
-        if(identity == 8) {
-          spikeActiveMS -= elapsed;
-          //psychotrap
-          if(CylinderOverlap(this->getMovedBounds(), protag->getMovedBounds())) {
-            //show graphic
-            for(auto entry : spawnlist) {
-              entry->visible = 1;
-            }
-
-            if(CylinderOverlap(this->parent->getMovedBounds(), protag->getMovedBounds()) && spikeActiveMS <= 0) {
-              protag->hp -= maxhp;
-              protag->flashingMS = g_flashtime;
-              playSound(2, g_playerdamage, 0);
-              spikeActiveMS = maxSpikeActiveMS;
-            }
-
-          } else {
-            //hide graphic
-            for(auto entry : spawnlist) {
-              entry->visible = 0;
-            }
-
-          }
-        }
-
-
 
         if(this->missile) {
           // missile movment
@@ -8175,22 +7922,22 @@ escapeUI::escapeUI() {
   numLines = optionStrings.size();
   float spacing = (yEnd - yStart) / (numLines);
 
-    backButton = new ui(renderer, "static/ui/menu_back.bmp", bbXStart, bbYStart, bbWidth, 1, 2);
-    backButton->heightFromWidthFactor = 1;
-    backButton->shrinkPercent = 0.03;
-    backButton->persistent = 1;
-    backButton->show = 1;
-    backButton->priority = 1;
-    backButton->dropshadow = 1;
-
-    bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", bbXStart, bbYStart, bbWidth, 1, 0);
-    bbNinePatch->patchwidth = 213;
-    bbNinePatch->patchscale = 0.4;
-    bbNinePatch->is9patch = true;
-    bbNinePatch->persistent = true;
-    bbNinePatch->show = 1;
-    bbNinePatch->priority = 0;
-    bbNinePatch->heightFromWidthFactor = 1;
+//    backButton = new ui(renderer, "static/ui/menu_back.bmp", bbXStart, bbYStart, bbWidth, 1, 2);
+//    backButton->heightFromWidthFactor = 1;
+//    backButton->shrinkPercent = 0.03;
+//    backButton->persistent = 1;
+//    backButton->show = 0;
+//    backButton->priority = 1;
+//    backButton->dropshadow = 1;
+//
+//    bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", bbXStart, bbYStart, bbWidth, 1, 0);
+//    bbNinePatch->patchwidth = 213;
+//    bbNinePatch->patchscale = 0.4;
+//    bbNinePatch->is9patch = true;
+//    bbNinePatch->persistent = true;
+//    bbNinePatch->show = 1;
+//    bbNinePatch->priority = 0;
+//    bbNinePatch->heightFromWidthFactor = 1;
 
 
   int i = 0;
@@ -9526,17 +9273,6 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 }
 
 void adventureUI::initFullUI() {
-
-    thoughtPicture = new ui(renderer, "static/ui/brain9patch.bmp", 0.82, -0.09, 0.23, 1, -15);
-    thoughtPicture->persistent = 1;
-    thoughtPicture->heightFromWidthFactor = 1;
-    thoughtPicture->show = 1;
-    thoughtPicture->framewidth = 410;
-    thoughtPicture->frameheight = 465;
-    thoughtPicture->layer0 = 1;
-    thoughtPicture->glideSpeed = 0.1;
-    thoughtPicture->widthGlideSpeed = 0.1;
-    thoughtPicture->priority = -10; //thought is behind everything
 
     tastePicture = new ui(renderer, "static/ui/taste.bmp", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
     tastePicture->persistent = 1;
@@ -12519,8 +12255,8 @@ I("s");
   }
 
 
-  // change animation data
-  // animate entity direction msPerFrame frameInAnimation LoopAnimation reverse
+  // change animation data for selected
+  // animate direction msPerFrame frameInAnimation LoopAnimation reverse
   // set direction to -1 to not set the direction
   // set msperframe to 0 to not animate
   // set frameInAnimation to -1 to not change

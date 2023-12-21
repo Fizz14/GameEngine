@@ -769,14 +769,11 @@ class ability {
     // 1 -> stable -> ability isn't reset, but it only charges when in range.
     // 2 -> accumulate -> ability charges regardless of range, meaning it will often activate as soon as the enemy finds the player
 
-
     int resetStableAccumulate = 1;
-
-    vector<string> script;
 
     string name = "unset";
 
-    ability(string binding); 
+    bool ready = 0;
 
 };
 

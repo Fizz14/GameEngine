@@ -314,6 +314,7 @@ extern float g_extraShadowSize;
 extern int g_fogofwarEnabled;
 extern int g_fogofwarRays;
 extern bool g_showHealthbar;
+extern int g_entitySleepDistance;
 extern effectIndex *smokeEffect;
 extern effectIndex *littleSmokeEffect;
 extern effectIndex *blackSmokeEffect;
@@ -855,6 +856,7 @@ bool replaceString(std::string &str, const std::string &from, const std::string 
 
 int yesNoPrompt(string msg);
 
+int rng(int min, int max);
 
 
 #endif

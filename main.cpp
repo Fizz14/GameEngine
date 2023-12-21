@@ -3664,7 +3664,6 @@ int WinMain()
 
 int interact(float elapsed, entity *protag)
 {
-  M("interact()");
   SDL_Rect srect;
   switch (protag->animation)
   {
