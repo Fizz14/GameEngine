@@ -1,29 +1,21 @@
-dev:
-	g++ main.cpp -std=c++17 -o carbin.out -Wno-narrowing -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf; ./carbin.out 1
+all: globals.o lightcookies.o main.o map_editor.o objects.o specialobjects.o
+	g++ main.o objects.o map_editor.o specialobjects.o lightcookies.o globals.o -std=c++17 -o out.exe -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -O0 -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
-game:
-	g++ main.cpp -std=c++17 -o carbin.out -Wno-narrowing -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf; ./carbin.out
+globals.o: globals.cpp
+	g++ globals.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
-build:
-	g++ main.cpp -std=c++17 -o carbin.out -Wno-narrowing -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf;
+lightcookies.o: lightcookies.cpp
+	g++ lightcookies.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
-test:
-	./carbin.out 1 0
+main.o: main.cpp
+	g++ main.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
-play:
-	./carbin.out
+map_editor.o: map_editor.cpp
+	g++ map_editor.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
-debug:
-	g++ main.cpp -std=c++17 -o carbin.out -Wno-narrowing -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf; gdb carbin.out
+objects.o: objects.cpp
+	g++ objects.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
-leaks:
-	valgrind ./carbin.out 1 --show-leak-kinds=definite
+specialobjects.o: specialobjects.cpp
+	g++ specialobjects.cpp -std=c++17 -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
-gleaks:
-	valgrind ./carbin.out 0 --show-leak-kinds=definite
-
-windows:
-	x86_64-w64-mingw32-g++ main.cpp -g -o carbin.out -L\usr\include -Wno-narrowing -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf; 
-
-cookies:
-	g++ lightcookietesting.cpp -std=c++17 -o cookies.out -Wno-narrowing -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf; ./cookies.out

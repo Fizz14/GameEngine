@@ -1832,6 +1832,17 @@ void write_map(entity *mapent)
       SDL_SetRenderDrawColor(renderer, 80, 150, 0, 255);
       SDL_RenderDrawRectF(renderer, &drect);
     }
+
+    for(auto h : g_hitboxes) {
+      drect.x = h->x;
+      drect.y = h->y;
+      drect.w = h->bounds.width;
+      drect.h = h->bounds.height;
+      drect = transformRect(drect);
+      SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+      SDL_RenderDrawRectF(renderer, &drect);
+    }
+
     int layer = 0;
     for (auto n : g_boxs)
     {
@@ -3136,6 +3147,7 @@ void write_map(entity *mapent)
         }
       }
     }
+
     consolehistory.push_back(input);
     if (consolehistory.size() > 10)
     {
@@ -3998,436 +4010,7 @@ void write_map(entity *mapent)
           }
         }
       }
-      if (word == "join")
-      {
-        // combine box collisions where possible, likely after a split operation
-        bool refresh = true; // wether to restart the operation
-        while (refresh)
-        {
-          refresh = false;
-          for (long long unsigned int i = 0; i < g_boxs.size(); i++)
-          {
-            for (auto him : g_boxs[i])
-            {
 
-              // is there a collision in the space one block to the right of this block, and at the top?
-              //   * * x
-              //   * *
-              for (auto other : g_boxs[i])
-              {
-                if (RectOverlap(rect(him->bounds.x + him->bounds.width + 2, him->bounds.y + 2, 64 - 4, 55 - 4), other->bounds))
-                {
-                  // does it have the same shineTop as him?
-                  if (him->shineTop == other->shineTop)
-                  {
-                    // does it have the same height and y position as him?
-                    if (him->bounds.y == other->bounds.y && him->bounds.height == other->bounds.height)
-                    {
-                      // does it have the same shineBot as him?
-                      if (him->shineBot == other->shineBot)
-                      {
-                        // shading?
-                        if (him->shadeBot == other->shadeBot && him->shadeTop == other->shadeTop)
-                        {
-                          // textures?
-                          if (him->captexture == other->captexture && him->walltexture == other->walltexture)
-                          {
-                            // both capped or not capped?
-                            if (him->capped == other->capped)
-                            {
-                              // join the two blocks
-                              string shadestring = "";
-                              if (him->shadeTop)
-                              {
-                                shadestring += "1";
-                              }
-                              else
-                              {
-                                shadestring += "0";
-                              }
-                              if (him->shadeBot)
-                              {
-                                shadestring += "1";
-                              }
-                              else
-                              {
-                                shadestring += "0";
-                              }
-                              if (him->shadeLeft)
-                              {
-                                shadestring += "1";
-                              }
-                              else
-                              {
-                                shadestring += "0";
-                              }
-                              if (other->shadeRight)
-                              {
-                                shadestring += "1";
-                              }
-                              else
-                              {
-                                shadestring += "0";
-                              }
-
-                              new box(him->bounds.x, him->bounds.y, him->bounds.width + other->bounds.width, him->bounds.height, him->layer, him->walltexture, him->captexture, him->capped, him->shineTop, him->shineBot, shadestring.c_str());
-                              for (auto child : him->children)
-                              {
-                                delete child;
-                              }
-                              delete him;
-                              for (auto child : other->children)
-                              {
-                                delete child;
-                              }
-                              delete other;
-                              refresh = true;
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-        // vertical pass
-        refresh = true;
-        while (refresh)
-        {
-          refresh = false;
-          for (long long unsigned int i = 0; i < g_boxs.size(); i++)
-          {
-            for (auto him : g_boxs[i])
-            {
-              // is there a collision in the space directly below this block
-              //   * *
-              //   * *
-              //   x
-              for (auto other : g_boxs[i])
-              {
-                if (RectOverlap(rect(him->bounds.x + 2, him->bounds.y + him->bounds.height + 2, 64 - 4, 55 - 4), other->bounds))
-                {
-                  // does it have the same width and x position as him?
-                  if (him->bounds.x == other->bounds.x && him->bounds.width == other->bounds.width)
-                  {
-                    if (him->shadeLeft == other->shadeLeft && him->shadeRight == other->shadeRight)
-                    {
-                      // textures?
-                      if (him->captexture == other->captexture && him->walltexture == other->walltexture)
-                      {
-                        // both capped or not capped?
-                        if (him->capped == other->capped)
-                        {
-                          // join the two blocks
-                          string shadestring = "";
-                          if (him->shadeTop)
-                          {
-                            shadestring += "1";
-                          }
-                          else
-                          {
-                            shadestring += "0";
-                          }
-                          if (other->shadeBot)
-                          {
-                            shadestring += "1";
-                          }
-                          else
-                          {
-                            shadestring += "0";
-                          }
-                          if (him->shadeLeft)
-                          {
-                            shadestring += "1";
-                          }
-                          else
-                          {
-                            shadestring += "0";
-                          }
-                          if (him->shadeRight)
-                          {
-                            shadestring += "1";
-                          }
-                          else
-                          {
-                            shadestring += "0";
-                          }
-
-                          new box(him->bounds.x, him->bounds.y, him->bounds.width, him->bounds.height + other->bounds.height, him->layer, him->walltexture, him->captexture, him->capped, him->shineTop, other->shineBot, shadestring.c_str());
-                          for (auto child : him->children)
-                          {
-                            delete child;
-                          }
-                          delete him;
-                          for (auto child : other->children)
-                          {
-                            delete child;
-                          }
-                          delete other;
-                          refresh = true;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      if (word == "bake")
-      {
-        // set capped
-        for (long long unsigned int i = 0; i < g_boxs.size(); i++)
-        {
-          for (auto b : g_boxs[i])
-          {
-            rect inneighbor = {b->bounds.x + 2, b->bounds.y + 2, b->bounds.width - 4, b->bounds.height - 4};
-            // set capped for each box
-            if ((int)i == g_layers)
-            {
-              continue;
-            }
-            for (auto n : g_boxs[i + 1])
-            {
-              // don't calculate lighting by invisible walls
-              if (n->walltexture == "engine/seethru.bmp")
-              {
-                continue;
-              }
-              if (RectOverlap(inneighbor, n->bounds))
-              {
-                b->capped = false;
-              }
-            }
-          }
-        }
-        for (long long unsigned int i = 0; i < g_triangles.size(); i++)
-        {
-          for (auto b : g_triangles[i])
-          {
-            // set capped for each box
-            if ((int)i == g_layers)
-            {
-              continue;
-            }
-            rect a = {((b->x1 + b->x2) / 2) - 4, ((b->y1 + b->y2) / 2) - 4, 8, 8};
-            for (auto n : g_triangles[i + 1])
-            {
-              if (TriRectOverlap(n, a))
-              {
-                b->capped = false;
-              }
-            }
-          }
-        }
-        // get lighting data to mapcollisions
-        for (long long unsigned int i = 0; i < g_boxs.size(); i++)
-        {
-
-          for (auto b : g_boxs[i])
-          {
-            // shade
-            b->shadeTop = false;
-            b->shadeBot = false;
-            b->shadeLeft = false;
-            b->shadeRight = false;
-            rect uneighbor = {b->bounds.x + 2, b->bounds.y - 55 + 2, b->bounds.width - 4, 55 - 4};
-            rect dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};
-            b->shineTop = true;
-            b->shineBot = true;
-            // check for overlap with all other boxes
-            for (auto n : g_boxs[i])
-            {
-              if (n == b)
-              {
-                continue;
-              }
-
-              if (RectOverlap(n->bounds, uneighbor))
-              {
-                b->shineTop = false;
-              }
-              if (RectOverlap(n->bounds, dneighbor))
-              {
-                b->shineBot = false;
-              }
-            }
-            for (auto n : g_triangles[i])
-            {
-              if (TriRectOverlap(n, uneighbor.x, uneighbor.y, uneighbor.width, uneighbor.height))
-              {
-                b->shineTop = false;
-              }
-              if (TriRectOverlap(n, dneighbor.x, dneighbor.y, dneighbor.width, dneighbor.height))
-              {
-                b->shineBot = false;
-                b->shadeBot = 2; // new change
-              }
-            }
-            if (!b->capped)
-            {
-              b->shineTop = false;
-              b->shineBot = false;
-            }
-
-            uneighbor = {b->bounds.x + 2, b->bounds.y - 55 + 2, b->bounds.width - 4, 55 - 4};
-            dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};
-            rect lneighbor = {b->bounds.x + 2 - 64, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
-            rect rneighbor = {b->bounds.x + 2 + b->bounds.width, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
-            // check for overlap with tiles if it is on layer 0 and with boxes and triangles a layer below for each dir
-            if (i == 0)
-            {
-              for (auto t : g_tiles)
-              {
-                if (RectOverlap(t->getMovedBounds(), uneighbor))
-                {
-                  b->shadeTop = true;
-                }
-                if (RectOverlap(t->getMovedBounds(), dneighbor) && b->shadeBot != 2)
-                {
-                  b->shadeBot = true;
-                }
-                if (RectOverlap(t->getMovedBounds(), lneighbor))
-                {
-                  b->shadeLeft = true;
-                }
-                if (RectOverlap(t->getMovedBounds(), rneighbor))
-                {
-                  b->shadeRight = true;
-                }
-              }
-              // but, if there is a layer 0 block overlapping our neighbor rect, we want to disable that shading
-              // because that would be a random shadow under a block with visible corners
-              for (auto n : g_boxs[0])
-              {
-                if (n == b)
-                {
-                  continue;
-                }
-                if (RectOverlap(n->bounds, uneighbor))
-                {
-                  b->shadeTop = false;
-                }
-                if (RectOverlap(n->bounds, dneighbor) && b->shadeBot != 2)
-                {
-                  b->shadeBot = false;
-                }
-                if (RectOverlap(n->bounds, lneighbor))
-                {
-                  b->shadeLeft = false;
-                }
-                if (RectOverlap(n->bounds, rneighbor))
-                {
-                  b->shadeRight = false;
-                }
-              }
-              // same for tris
-              for (auto t : g_triangles[0])
-              {
-
-                if (TriRectOverlap(t, uneighbor))
-                {
-                  // b->shadeTop = false;
-                }
-                if (TriRectOverlap(t, dneighbor) && b->shadeBot != 2)
-                {
-                  b->shadeBot = false;
-                }
-                if (TriRectOverlap(t, lneighbor))
-                {
-                  b->shadeLeft = false;
-                }
-                if (TriRectOverlap(t, rneighbor))
-                {
-                  b->shadeRight = false;
-                }
-              }
-            }
-            if (i > 0)
-            {
-              for (auto n : g_boxs[i - 1])
-              {
-                if (!n->capped)
-                {
-                  continue;
-                }
-                if (RectOverlap(n->bounds, uneighbor))
-                {
-                  b->shadeTop = true;
-                }
-                if (RectOverlap(n->bounds, dneighbor))
-                {
-                  b->shadeBot = true;
-                }
-                if (RectOverlap(n->bounds, lneighbor))
-                {
-                  b->shadeLeft = true;
-                }
-                if (RectOverlap(n->bounds, rneighbor))
-                {
-                  b->shadeRight = true;
-                }
-              }
-              for (auto t : g_triangles[i - 1])
-              {
-                if (!t->capped)
-                {
-                  continue;
-                }
-                if (TriRectOverlap(t, uneighbor))
-                {
-                  b->shadeTop = true;
-                }
-                if (TriRectOverlap(t, dneighbor))
-                {
-                  b->shadeBot = true;
-                }
-                if (TriRectOverlap(t, lneighbor))
-                {
-                  b->shadeLeft = true;
-                }
-                if (TriRectOverlap(t, rneighbor))
-                {
-                  b->shadeRight = true;
-                }
-              }
-            }
-          }
-        }
-
-        // bake triangles
-        for (int i = 0; i < g_layers; i++)
-        {
-          for (auto tri : g_triangles[i])
-          {
-            tri->shaded = 0;
-            if (tri->layer == 0)
-            {
-              for (auto tile : g_tiles)
-              {
-                if (TriRectOverlap(tri, tile->getMovedBounds()))
-                {
-                  tri->shaded = 1;
-                }
-              }
-            }
-            else
-            {
-              for (auto b : g_boxs[i - 1])
-              {
-                if (TriRectOverlap(tri, b->bounds.x + 2, b->bounds.y + 2, b->bounds.width - 4, b->bounds.height - 4))
-                {
-                  tri->shaded = 1;
-                }
-              }
-            }
-          }
-        }
-      }
       if (word == "ninja") 
       {
         if(line >> word) {
@@ -4438,6 +4021,7 @@ void write_map(entity *mapent)
           M("Turned on ninjamode");
         }
       }
+
       if (word == "reload")
       {
 
@@ -5039,52 +4623,6 @@ void write_map(entity *mapent)
         }
       }
 
-      // procedurally add enemies to the map with associated cost.
-      // can be extended (and I want to) to spawn enemies continuously (from spawners?) to make it feel real
-      if (word == "enemy")
-      {
-        string name;
-        // make the entity to get the cost
-        line >> name;
-        if (name != "")
-        {
-          entity *a = new entity(renderer, name);
-          int cost = a->cost;
-          delete a;
-          enemiesMap[name] = cost;
-        }
-        break;
-      }
-
-      if (word == "agro")
-      {
-        line >> word;
-        entity *hopeful = searchEntities(word);
-        if (hopeful != nullptr)
-        {
-          hopeful->agrod = 1;
-        }
-      }
-
-      if (word == "deagro")
-      {
-        line >> word;
-        entity *hopeful = searchEntities(word);
-        if (hopeful != nullptr)
-        {
-          hopeful->agrod = 0;
-        }
-      }
-
-      if (word == "agroall")
-      {
-        for(auto x : g_entities) {
-          if(x->dynamic && x->targetFaction == protag->faction) {
-            x->agrod = 1;
-          }
-        }
-      }
-
       if(word =="fuckoff")
       {
         for(auto x : g_entities) {
@@ -5094,28 +4632,6 @@ void write_map(entity *mapent)
           }
         }
 
-      }
-
-      if(word == "deagroall")
-      {
-        for(auto x : g_entities) {
-          if(x->dynamic && x->targetFaction == protag->faction) {
-            x->agrod = 0;
-          }
-        }
-      }
-
-      if(word == "patrolall")
-      {
-        for(auto x : g_entities) {
-          if(x->dynamic) {
-            x->target = nullptr;
-            x->myTravelstyle = patrol;
-            x->poiIndex = 0;
-            x->traveling = 1;
-            x->readyForNextTravelInstruction = 1;
-          }
-        }
       }
 
       if(word == "break" || word == "breakpoint") 
@@ -5143,6 +4659,7 @@ void write_map(entity *mapent)
 
         break;
       }
+
       if(word == "msperframe")
       {
         M("Set msperframe");
@@ -5306,56 +4823,6 @@ void write_map(entity *mapent)
         M("}");
       }
       
-      if(word == "actorlist") {
-        for(int i = 0; i < g_actors.size(); i++){
-          if("engine" != g_actors[i]->name.substr(0,6)) {
-            string iAsString = to_string(i);
-            string printMe = "actors[" + iAsString + "]->name: " + g_actors[i]->name;
-            M(printMe);
-          }
-        }
-      }
-
-
-      // roam zombie 0 -> make zombie roam poi 0
-      if (word == "roam")
-      {
-        line >> word;
-        int p0;
-        line >> p0;
-        entity *hopeful = searchEntities(word);
-        if (hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0)
-        {
-          M("Made someone roam on " + p0);
-          D(hopeful->name);
-          hopeful->agrod = 0;
-          hopeful->target = nullptr;
-          hopeful->myTravelstyle = roam;
-          hopeful->poiIndex = p0;
-          hopeful->traveling = 1;
-          hopeful->readyForNextTravelInstruction = 1;
-        }
-      }
-
-      if (word == "patrol")
-      {
-        line >> word;
-        int p0 = 0;
-        line >> p0;
-        entity *hopeful = searchEntities(word);
-        if (hopeful != nullptr && g_setsOfInterest.at(p0).size() != 0)
-        {
-          M("Made someone patrol on " + p0);
-          D(hopeful->name);
-          hopeful->agrod = 0;
-          hopeful->target = nullptr;
-          hopeful->myTravelstyle = patrol;
-          hopeful->poiIndex = p0;
-          hopeful->traveling = 1;
-          hopeful->readyForNextTravelInstruction = 1;
-        }
-      }
-
       if (word == "adj" || word == "adjust")
       {
         // adjust
@@ -5400,6 +4867,7 @@ void write_map(entity *mapent)
           break;
         }
       }
+
       if (word == "where")
       {
         M(px);
@@ -5425,20 +4893,6 @@ void write_map(entity *mapent)
           }
         }
         break;
-      }
-
-      if (word == "setobjective" || word == "setobj")
-      {
-        line >> word;
-        if (word != "")
-        {
-          entity *hopeful = searchEntities(word);
-          if (hopeful != 0)
-          {
-            g_objective = hopeful;
-            adventureUIManager->crosshair->show = 1;
-          }
-        }
       }
 
       if (word == "reset" || word == "rs")
@@ -5560,8 +5014,8 @@ void write_map(entity *mapent)
           x->animation = rand() % x->yframes;
 
         }
-
       }
+
       if (word == "travel")
       {
         string wayname;

@@ -93,6 +93,8 @@ class waypoint;
 
 class trigger;
 
+class hitbox;
+
 class listener;
 
 class worldItem;
@@ -206,6 +208,8 @@ extern vector<waypoint *> g_waypoints;
 
 extern vector<trigger *> g_triggers;
 
+extern vector<hitbox *> g_hitboxes;
+
 extern vector<listener *> g_listeners;
 
 extern vector<projectile *> g_projectiles;
@@ -250,7 +254,7 @@ struct cmpCoord
 
 #define I(a)                                \
 {                                         \
-  std::cout << #a << ": " << (a) << endl; \
+  std::cout << (a) << endl; \
 }
 
 #define E(a)                                \

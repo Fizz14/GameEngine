@@ -1261,8 +1261,6 @@ weapon::weapon(string fname, bool tryToShareGraphics) {
     if(line == "&") { break; }
     field = line.substr(0, line.find(' '));
     attack* a = new attack(line, tryToShareGraphics);
-      D(this->name);
-      D(a->name);
 
     //a->faction = faction;
     attacks.push_back(a);
@@ -2910,39 +2908,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   }
 
 
-  if(identity == 1) {
-    g_pellets.push_back(this);
-    bounceindex = rand() % 8;
-    wasPellet = 1;
-    CalcDynamicForOneFrame = 1;
-    //M("Set calcdynamic"); //this is so that the shadow is calculated for pellets for one frame
-                          //i'll have to do that later
-  }
-
-  if(identity == 2 || identity == 3) {
-    for(auto entry : spawnlist) {
-      entry->visible = 0;
-    }
-  }
-
-  if(identity == 6) {
-    this->isAI = 1;
-    this->poiIndex = 6;
-    this->readyForNextTravelInstruction = 1;
-  }
-
-  if(identity == 8) {
-    //psychotrap
-    parent->visible = 0;
-    for(auto entry : spawnlist) {
-      entry->visible = 1;
-      entry->msPerFrame = 2;
-      entry->loopAnimation = 1;
-      entry->scriptedAnimation = 1;
-    }
-    
-
-  }
+  specialObjectsInit(this);
 
   if(animationconfig == 0) {
     useAnimForWalking = 1;
@@ -2951,11 +2917,6 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   if(animationconfig == 1) {
     useAnimForWalking = 0;
   }
-
-  
-
-
-
 
   //load ai-data
   string AIloadstr;
@@ -2979,12 +2940,9 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     stream >> comment; //abilities
     stream >> comment; // open curly brace character
 
-    //take in each ability
-    bool hasAtleastOneAbility = 0;
     for(;;) {
       if(! (stream >> line) ) {break;}
       if(line[0] == '}') {break;}
-      hasAtleastOneAbility = 1;
       //line contains the name of an ability
       ability newAbility;
       newAbility.name = line;
@@ -3016,14 +2974,13 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       this->myAbilities.push_back(newAbility);
     }
 
-    //give us a way to call scripts if we have an ability
-    if(hasAtleastOneAbility) {
-      // !!! make another constructor that doesn't have a dialogbox
-      myScriptCaller = new adventureUI(renderer, 1);
-      myScriptCaller->playersUI = 0;
-      myScriptCaller->talker = this;
-
-    }
+    //give us a way to call scripts if we have at least one script
+//    if(hasAtleastOneScript) {
+//      // !!! make another constructor that doesn't have a dialogbox
+//      myScriptCaller = new adventureUI(renderer, 1);
+//      myScriptCaller->playersUI = 0;
+//      myScriptCaller->talker = this;
+//    }
 
 
     stream >> comment; // states
@@ -3046,7 +3003,6 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       newState.interval = interval;
       newState.nextInterval = interval;
 
-      cout << "loading new state called " << name << " with interval " << interval << endl;
       this->states.push_back(newState);
     }
 
@@ -4118,14 +4074,13 @@ door* entity::update(vector<door*> doors, float elapsed) {
         }
 
         if(identity == 5) {
-          if(spikeState) {
+          if(flagA) {
             forwardsVelocity = xagil;
           } else {
             forwardsVelocity = -xagil;
           }
           if(devMode) {
             forwardsVelocity = 0; //phew!
-
           }
         }
 
@@ -4926,54 +4881,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           //playSound(-1, g_bonk, 0);
         }
 
-        //specialObjectsBump();
-
-        if(identity == 5 && (xcollide || ycollide)) {
-          //bladetrap
-          
-          if(spikedPlayer == spikeState) {
-            //this is a crappy way to make the effect happen
-            //when it hits a wall, but sometimes it waits at the wall before reversing
-            playSoundAtPosition(7, g_bladetrapSound, 0, getOriginX(), getOriginY(), 0.5);
-            float offset = 50;
-            if(!spikeState) {
-              offset = -50;
-            }
-            float xoff = offset * cos(steeringAngle);
-            float yoff = -offset * sin(steeringAngle);
-            sparksEffect->happen(getOriginX() + xoff, getOriginY() + yoff, z + 25, 0);
-            g_lastParticleCreated->sortingOffset = 50;
-            spikedPlayer = !spikedPlayer;
-          }
-
-          if(spikeActiveMS > maxSpikeActiveMS) {
-            spikeActiveMS = 0;
-            spikeState = !spikeState;
-
-          }
-
-        }
-
-
-        //if we had a collision on X but not Y, increase yvel to what it would have been without
-        //the x component (help ents get thru narrow doorways)
-//        if(xcollide) {
-//          yvel -= yaccel * ((double) elapsed / 256.0);
-//          if(yaccel > 0) {
-//            yvel += (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
-//          } else if (yaccel < 0) {
-//            yvel -= (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
-//          }
-//        }
-//
-//        if(ycollide) {
-//          xvel -= xaccel * ((double) elapsed / 256.0);
-//          if(xaccel > 0) {
-//            xvel += (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
-//          } else if (xaccel < 0) {
-//            xvel -= (xmaxspeed * (1 - statusSlownPercent)) * ((double) elapsed / 256.0);
-//          }
-//        }
+        specialObjectsBump(this, xcollide, ycollide);
 
         if(!ycollide && !transition) {
           y+= yvel * ((double) elapsed / 256.0);
@@ -5805,16 +5713,10 @@ door* entity::update(vector<door*> doors, float elapsed) {
             }
 
             if(x.cooldownMS < 0) {
-
-              //do we acknowledge the player's existance?
-
               //are we in range to the player?
-
-              if( inRange && !myScriptCaller->executingScript) {
+              if(inRange) {
                 x.ready = 1;
-
               }
-
             }
           }
 
@@ -7829,6 +7731,18 @@ trigger::trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheigh
 
 trigger::~trigger() {
   g_triggers.erase(remove(g_triggers.begin(), g_triggers.end(), this), g_triggers.end());
+}
+
+hitbox::hitbox() {
+  g_hitboxes.push_back(this);
+}
+
+hitbox::~hitbox() {
+  g_hitboxes.erase(remove(g_hitboxes.begin(), g_hitboxes.end(), this), g_hitboxes.end());
+}
+
+rect hitbox::getMovedBounds() {
+  return rect(bounds.x + x, bounds.y + y, z, bounds.width, bounds.height, bounds.zeight);
 }
 
 listener::listener(string fname, int fblock, int fcondition, string fbinding, int fx, int fy) {
@@ -9885,207 +9799,6 @@ I("s");
     return;
   }
 
-
-  //switch statement based on behemoth state
-  //make sure to select beforehand
-  //  /select common/zombie
-  //  /state
-  //  *passive:gopassive
-  //  *active:goactive
-  //  #
-  //  <gopassive>
-  //  I'll turn down his speed and damage.
-  //  #
-  //  <goactive>
-  //  I'll set his speed and damage up.
-  //  #
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/state")
-  {
-    int j = 1;
-
-    if(selected != nullptr) {
-
-      string stateName = selected->states[selected->activeState].name;
-
-      string res = scriptToUse->at(dialogue_index + 1 + j);
-      while (res.find('*') != std::string::npos)
-      {
-        // parse option
-        //  *15:29 -> if distance is less than 15, go to line 29
-        string s = scriptToUse->at(dialogue_index + 1 + j);
-I("s");
-        //I(s);
-        s.erase(0, 1);
-        string condition = s.substr(0, s.find(':'));
-        //I("condition");
-        //I(condition);
-        s.erase(0, s.find(':') + 1);
-        int jump = stoi(s);
-        //I("jump");
-        //I(jump);
-        //I("distance");
-        //I(distance);
-        if (stateName == condition)
-        {
-          dialogue_index = jump - 3;
-          this->continueDialogue();
-          return;
-        }
-        j++;
-        res = scriptToUse->at(dialogue_index + 1 + j);
-      }
-
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
-  // Switch-statement by aggressiveness of a behemoth
-  // coditions are listed from least to greatest
-  // starting from the top, I check if the aggressiveness field
-  // is less than the value after the *
-  // if it is, I take that option, if not, I proceed
-  //  /select common/zombie
-  //  /aggressiveness
-  //  *500:chill
-  //  *1000:pissed
-  //  #
-  //  <chill>
-  //  I'm not that aggressive
-  //  #
-  //  <pissed>
-  //  I'm really aggressive!
-  //  #
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/aggressiveness")
-  {
-    //M("In /aggressivness interpreter");
-    int j = 1;
-    string s = scriptToUse->at(dialogue_index + 1);
-
-    entity* firstEnt = selected;
-
-    if(firstEnt != nullptr) {
-
-      int agrn = firstEnt->aggressiveness;
-
-      string res = scriptToUse->at(dialogue_index + 1 + j);
-      while (res.find('*') != std::string::npos)
-      {
-        // parse option
-        //  *15:29 -> if distance is less than 15, go to line 29
-        string s = scriptToUse->at(dialogue_index + 1 + j);
-I("s");
-        //I(s);
-        s.erase(0, 1);
-        int condition = stoi(s.substr(0, s.find(':')));
-        //I("condition");
-        //I(condition);
-        s.erase(0, s.find(':') + 1);
-        int jump = stoi(s);
-        //I("jump");
-        //I(jump);
-        //I("distance");
-        //I(distance);
-        if (agrn < condition)
-        {
-          dialogue_index = jump - 3;
-          this->continueDialogue();
-          return;
-        } 
-        j++;
-        res = scriptToUse->at(dialogue_index + 1 + j);
-      }
-
-    } else {
-      E("/aggressiveness couldn't find entity");
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  //set aggressiveness of selected entity
-  // /setaggressiveness 65
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setaggressiveness")
-  {
-    int j = 1;
-    string s = scriptToUse->at(dialogue_index + 1);
-
-    auto x = splitString(s, ' ');
-    if(x.size() < 3) {
-      E("/setaggressiveness lacks params, should have two");
-    }
-
-    string fStr = x[1];
-  
-    entity* firstEnt = searchEntities(fStr, talker);
-
-    if(firstEnt != nullptr) {
-      firstEnt->aggressiveness = stoi(x[2]);
-    } else {
-      E("/setaggressiveness couldn't find entity");
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  //set speed
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/setbonusspeed")
-  {
-    int j = 1;
-    string s = scriptToUse->at(dialogue_index + 1);
-
-    auto x = splitString(s, ' ');
-    if(x.size() < 2) {
-      E("/setbonusspeed lacks params, should have two");
-    }
-
-    if(selected != nullptr) {
-      selected->bonusSpeed = stoi(x[1]);
-    } else {
-      E("Didn't call /select before /setbonusspeed");
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-  
-
-  //set cooldown of ability
-  // /setabilitycooldown [entity] [ability index] [ms]
-  // /setabilitycooldown common/zombie 0 1000
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/setabilitycooldown")
-  {
-    int j = 1;
-    string s = scriptToUse->at(dialogue_index + 1);
-
-    auto x = splitString(s, ' ');
-    if(x.size() < 4) {
-      E("/setabilitycooldown lacks params, should have three");
-    }
-
-    string fStr = x[1];
-  
-    entity* firstEnt = searchEntities(fStr, talker);
-
-    if(firstEnt != nullptr) {
-      firstEnt->myAbilities[stoi(x[2])].cooldownMS = stoi(x[3]);
-    } else {
-      E("/setabilitycooldown couldn't find entity");
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
   //write debug message to console
   if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/print ")
   {
@@ -10103,20 +9816,6 @@ I("s");
   }
 
 
-  // select entity from talker's spawnlist
-  // /selectfromspawnlist 1
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 20) == "/selectfromspawnlist")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-
-    auto x = splitString(s, ' ');
-    selected = talker->spawnlist.at(stoi(x[1]));
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-  
   // select command
   //change talker (useful for writing selfdata to entities from non-dialogue scripts)
   // do
@@ -10150,33 +9849,6 @@ I("s");
     return;
   }
 
-  // check if entity is active
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/active")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-
-    if(x.size() < 2) {
-      E("Not enough args for /select call.");
-    } else {
-
-      string entName = x[1];
-      entity *hopeful = 0;
-      hopeful = searchEntities(entName, talker);
-      if (hopeful != nullptr)
-      {
-        selected = hopeful;
-      }
-      else
-      {
-        E("Couldn't find entity for /select call.");
-      }
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
 
   // write selfdata 5->[4]
   if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
@@ -10365,38 +10037,6 @@ I("s");
       j++;
       res = scriptToUse->at(dialogue_index + 1 + j);
     }
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // set state interval
-  // /select common/zombie
-  // /setstateinterval passive 12000
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 17) == "/setstateinterval")
-  {
-    if(selected == nullptr) {E("Tried to set passive interval without calling /select first");}
-    string s = scriptToUse->at(dialogue_index + 1);
-    
-    vector<string> x = splitString(s, ' ');
-
-    if(x.size() < 3) {
-      E("Not enough params for /setstateinterval call");
-    }
-
-    int good = 0;
-    for(auto s : selected->states) {
-      if(s.name == x[1]) {
-        s.nextInterval = stoi(x[2]);
-        good = 1;
-        break;
-      }
-    }
-
-    if(!good) {
-      E("Couldn't find state for /setstateinterval");
-    }
-
     dialogue_index++;
     this->continueDialogue();
     return;
@@ -10606,25 +10246,6 @@ I("s");
     return;
   }
 
-  // destroy oldest from type of entity, keeping x entities
-  // if it owns an asset, just make it intagible
-  //    if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/keeponly")
-  //    {
-  //        string s = scriptToUse->at(dialogue_index + 1);
-  //        // erase '&'
-  //        s.erase(0, 10);
-  //        vector<string> splits = splitString(s, ' ');
-  //        int numberOfEntsToKeep = stoi(s[0]);
-  //        string entName = s[1]
-  //        for(int i = 0; i < stoi(s); i++) {
-  //
-  //        }
-  //
-  //        dialogue_index++;
-  //        this->continueDialogue();
-  //        return;
-  //    }
-
   // move entity
   // "move"
   if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/move ")
@@ -10655,114 +10276,6 @@ I("s");
     return;
   }
 
-  // shrink entity
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/shrink")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 8);
-    //vector<string> x = splitString(s, ' ');
-    //string name = x[0];
-    //int p0 = stoi(x[1]);
-    //int p1 = stoi(x[2]);
-    entity *hopeful = searchEntities(s);
-
-    // if this entity called the function for itself, set hopeful to it
-    if (s == this->talker->name)
-    {
-      hopeful = this->talker;
-    }
-
-    if (hopeful != nullptr)
-    {
-      hopeful->width = 0;
-      hopeful->height = 0;
-      hopeful->animspeed = 0.001;
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // have entity roam
-  // /roam 
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/roam")
-  {
-    //M("In /roam interpreter");
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-    if(x.size() < 2) {
-      E("Not enough params for /roam.");
-
-    }
-    int p0 = stoi(x[1]);
-
-    if(selected == nullptr) {
-      E("Call to /roam without call to /select first");
-    }
-
-
-    if (selected != nullptr && g_setsOfInterest.at(p0).size() != 0)
-    {
-      selected->agrod = 0;
-      selected->target = nullptr;
-      selected->myTravelstyle = roam;
-      selected->poiIndex = p0;
-      selected->traveling = 1;
-      selected->readyForNextTravelInstruction = 1;
-    }
-    if (g_setsOfInterest.at(p0).size() == 0)
-    {
-      E("You told an entity to roam but there are no pointOfInterest-instances.");
-      if(g_setsOfInterest.at(0).size() != 0) {
-        selected->agrod = 0;
-        selected->target = nullptr;
-        selected->myTravelstyle = roam;
-        selected->poiIndex = 0;
-        selected->traveling = 1;
-        selected->readyForNextTravelInstruction = 1;
-
-      }
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // have entity patrol
-  // /patrol common/zombie 0
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/patrol")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 8);
-    vector<string> x = splitString(s, ' ');
-    string name = x[0];
-    int p0 = stoi(x[1]);
-
-    entity *hopeful = searchEntities(name);
-
-    // if this entity called the function for itself, set hopeful to it
-    if (name == this->talker->name)
-    {
-      hopeful = this->talker;
-    }
-
-    if (hopeful != nullptr)
-    {
-      hopeful->agrod = 0;
-      hopeful->target = nullptr;
-      hopeful->myTravelstyle = patrol;
-      hopeful->poiIndex = p0;
-      hopeful->traveling = 1;
-      hopeful->readyForNextTravelInstruction = 1;
-      hopeful->currentPoiForPatrolling = -1;
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
 
   // teleport entity
   if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/teleport")
@@ -10990,86 +10503,6 @@ I("s");
     return;
   }
 
-
-  //make a puff of smoke at the selected ent
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/puff")
-  {
-    smokeEffect->happen(selected->getOriginX(), selected->getOriginY(), selected->z, 0);
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
-  //make a little puff of smoke at the selected ent
-  //with forwards offset and z offset
-  // /littlepuff 50 20
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 11) == "/littlepuff")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-    float offset = stoi(x[1]);
-    float zoffset = stoi(x[2]);
-    float yoff = -offset * sin(selected->steeringAngle);
-    float xoff = offset * cos(selected->steeringAngle);
-
-    littleSmokeEffect->happen(selected->getOriginX() + xoff, selected->getOriginY() + yoff, selected->z + zoffset, 0);
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-  
-  
-
-  //force entity in the direction they are facing
-  // /pushent protag 1000
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/pushent")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-    if(x.size() > 2) {
-      string smokeMeStr = x[1];
-      string forceMagnitudeStr = x[2];
-      int forceMagnitude = stoi(forceMagnitudeStr);
-      entity *smokeAtMe = searchEntities(smokeMeStr);
-      if (smokeAtMe != nullptr) {
-        smokeAtMe->forwardsPushVelocity = forceMagnitude;
-        smokeAtMe->forwardsPushAngle = smokeAtMe->steeringAngle;
-      } else {
-        E("Couldn't find ent for /pushent call.");
-      }
-    } else {
-      E("Not enough args for /pushent call.");
-    }
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  //make a smoke effect at an entity
-  //I'm not testing this, because I'm a rebel
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/entsmoke")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-    if(x.size() > 1) {
-      string smokeMeStr = x[1];
-      entity *smokeAtMe = searchEntities(smokeMeStr);
-      if (smokeAtMe != nullptr) {
-        smokeEffect->happen(smokeAtMe->getOriginX(), smokeAtMe->getOriginY(), smokeAtMe->z, 0);
-      } else {
-        E("Couldn't find ent for /entsmoke call.");
-      }
-    } else {
-      E("Not enough args for /entsmoke call.");
-    }
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
   // teleport entity to another entity
   if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/entteleport")
   {
@@ -11108,53 +10541,6 @@ I("s");
     entity *teleportMe = new entity(renderer, teleportMeSTR.c_str());
     teleportMe->dontSave = 1;
     entity *teleportToMe = searchEntities(teleportToMeSTR, talker);
-    lastReferencedEntity = teleportMe;
-    int ttl = stoi(ttlSTR);
-    int setDirection = stoi(setDirectionSTR);
-    if (teleportMe != nullptr && teleportToMe != nullptr)
-    {
-      teleportMe->setOriginX(teleportToMe->getOriginX());
-      teleportMe->setOriginY(teleportToMe->getOriginY());
-      teleportMe->xvel = 0;
-      teleportMe->yvel = 0;
-      teleportMe->shadow->x = teleportMe->x + teleportMe->shadow->xoffset;
-      teleportMe->shadow->y = teleportMe->y + teleportMe->shadow->yoffset;
-      if(ttl > 0) {
-        teleportMe->usingTimeToLive = 1;
-        teleportMe->timeToLiveMs = ttl;
-      }
-
-      if(setDirection == 1) {
-        teleportMe->animation = teleportToMe->animation;
-        teleportMe->flip = teleportToMe->flip;
-
-      }
-      teleportMe->steeringAngle = teleportToMe->steeringAngle;
-      teleportMe->targetSteeringAngle = teleportToMe->steeringAngle;
-      
-      selected = teleportMe;
-    }
-    
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // spawn entity at an entity with ttl (0 for no ttl)
-  // always at talker
-  // /tentspawn spawnMe ttlMs setDirection
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/tentspawn")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 10);
-    vector<string> x = splitString(s, ' ');
-    string teleportMeSTR = x[1];
-    string ttlSTR = "0"; ttlSTR = x[2];
-    string setDirectionSTR = "0"; setDirectionSTR = x[3];
-    entity *teleportMe = new entity(renderer, teleportMeSTR.c_str());
-    teleportMe->dontSave = 1;
-    entity *teleportToMe = talker;
     lastReferencedEntity = teleportMe;
     int ttl = stoi(ttlSTR);
     int setDirection = stoi(setDirectionSTR);
@@ -11240,27 +10626,6 @@ I("s");
     return;
   }
 
-  // make the talker a secondary camera target (hog the camera)
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 4) == "/hog")
-  {
-    //careful
-    g_hog = talker;
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/unhog")
-  {
-    g_hog = 0;
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
   //apply statuseffects
   // /inflict [entity] [status] [duration, MS] [factor]
   // /inflict target poisoned 5000 1
@@ -11320,50 +10685,6 @@ I("s");
     return;
   }
 
-  // give an entity the ability to home onto another entity
-  // Doesn't pathfind
-  // this entity should not have an ai file
-  // /missle common/zombie-bolt fomm
-  //
-  // use a null target ("null", "nullptr") to make the missile just go in a straight line
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/missile") {
-
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-    string targetMeSTR = x[1];
-    
-    //entity *missileMe = searchEntities(missileMeSTR, talker);
-    if(selected == nullptr) {
-      E("No entity was selected before /missile call.");
-    }
-
-    if(targetMeSTR == "null" || targetMeSTR == "nullptr") {
-      entity* missileMe = selected;
-      missileMe->target = nullptr;
-      missileMe->dynamic = 1;
-      missileMe->missile = 1;
-      missileMe->fragileMovement = 1;
-    } else {
-
-      entity* missileMe = selected;
-      entity *targetMe = searchEntities(targetMeSTR, talker);
-
-      if(missileMe != nullptr && targetMe != nullptr) {
-        missileMe->target = targetMe;
-      }
-
-      if(missileMe != nullptr) {
-        missileMe->dynamic = 1;
-        missileMe->missile = 1;
-        missileMe->fragileMovement = 1;
-      }
-    }
-
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
 
   // change objective
   // /setobjective heart
@@ -11735,78 +11056,6 @@ I("s");
     return;
   }
 
-  // show score ui
-  // /showscore
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/showscore")
-  {
-    adventureUIManager->showScoreUI();
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // hide score ui
-  // /hidescore
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/hidescore")
-  {
-    adventureUIManager->hideScoreUI();
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // increment score
-  // /addscore 15
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/addscore")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-
-    g_score += stoi(x[1]);
-
-    string displayScore = to_string(g_score);
-    scoreText->updateText(displayScore, -1, 34);
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
-  // decrement score
-  // /subtractscore 15
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/subtractscore")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-
-    g_score -= stoi(x[1]);
-    
-    string displayScore = to_string(g_score);
-    scoreText->updateText(displayScore, -1, 34);
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
-
-  // reset score
-  // /resetscore
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/resetscore")
-  {
-    g_score = 0;
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
-
   // write savefile
   // /save
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/save" || scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/writesave")
@@ -11965,28 +11214,6 @@ I("s");
     return;
   }
 
-  //launch escape menu
-  //the menu the user sees when they press escape
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 11) == "/escapemenu") 
-  {
-    //write to settingsUi from related variables
-    g_escapeUI->show();
-    g_inEscapeMenu = 1;
-    g_firstFrameOfSettingsMenu = 1;
-    g_escapeUI->positionOfCursor = 0;
-    g_escapeUI->cursorIsOnBackButton = 0;
-
-    // this is the stuff we do when we read '#' (end scripting)
-    executingScript = 0;
-
-    mobilize = 0;
-    if(this == adventureUIManager) {
-      adventureUIManager->hideTalkingUI();
-    }
-
-    return;
-  }
-
   // unconditional jump
   if (scriptToUse->at(dialogue_index + 1).at(0) == ':')
   {
@@ -11998,85 +11225,6 @@ I("s");
     int DI = 0;
     DI = stoi(DIstr);
     dialogue_index = DI - 3;
-    this->continueDialogue();
-    return;
-  }
-
-  // jump based on collision between given object and any
-  // dynamic objects
-  // it's used for stopping the player from closing doors
-  // when dynamic entities are underneath
-  //
-  // /anycollisioncheck common/doora :malfunction
-  //
-  // -> jump to <malfunction> if common/doora overlaps a dynamic ent
-  //
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 18) == "/anycollisioncheck") {
-    string s = scriptToUse->at(dialogue_index+1);
-    vector<string> x = splitString(s, ' ');
-    if((int)x.size() >= 3) 
-    {
-      entity *checkMyCollision = searchEntities(x[1]);
-
-      if(checkMyCollision != nullptr) {
-        bool collision = 0;
-        for(auto x : g_entities) {
-          if(x->dynamic && x!= checkMyCollision && RectOverlap(x->getMovedBounds(), checkMyCollision->getMovedBounds())) {
-            collision = 1;
-          }
-        }
-
-        if(collision) {
-          string DIstr = "0";
-          DIstr = x[2]; 
-          DIstr = DIstr.substr(1);
-          int DI = 0;
-          DI = stoi(DIstr);
-          dialogue_index = DI - 3;
-          this->continueDialogue();
-          return;
-        }
-      } else {
-        E("/collisioncheck error - not enough args");
-      }
-    }
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // jump based on collision between talker and given object
-  // it's used for triggering a spiketrap
-  //
-  // /collisioncheck protag :trigger
-  //
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/collisioncheck") {
-    string s = scriptToUse->at(dialogue_index+1);
-    vector<string> x = splitString(s, ' ');
-    if((int)x.size() >= 3) 
-    {
-      entity *checkMyCollision = searchEntities(x[1]);
-
-      if(checkMyCollision != nullptr) {
-        bool collision = 0;
-          if(RectOverlap(talker->getMovedBounds(), checkMyCollision->getMovedBounds())) {
-            collision = 1;
-          }
-
-        if(collision) {
-          string DIstr = "0";
-          DIstr = x[2]; 
-          DIstr = DIstr.substr(1);
-          int DI = 0;
-          DI = stoi(DIstr);
-          dialogue_index = DI - 3;
-          this->continueDialogue();
-          return;
-        }
-      }
-    }
-
-    dialogue_index++;
     this->continueDialogue();
     return;
   }
@@ -12184,77 +11332,6 @@ I("s");
     return;
   }
 
-  // make entity disapear by floating up
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/banish")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 8);
-
-    entity *banishMe = 0;
-    auto parts = splitString(s, ' ');
-
-    banishMe = searchEntities(parts[0]);
-    bool banished = 1;
-    if (parts.size() > 1)
-    {
-      banished = (parts[1] != "0");
-    }
-    int zaccel = 220;
-    if (parts.size() > 2)
-    {
-      zaccel = stoi(parts[2]);
-    }
-    if (banishMe != 0)
-    {
-      if (banished)
-      {
-        banishMe->zaccel = zaccel;
-        banishMe->banished = 1;
-        banishMe->shadow->enabled = 0;
-
-        // this is set on mapload so commenting this out should be fine
-        //  if(banishMe->overlappedNodes.empty()) {
-        //      auto r = banishMe->getMovedBounds();
-        //      for(auto x : g_navNodes) {
-        //          // !!! this also isn't 3d-safe
-        //          rect nodespot = {x->x - 32, x->y -22, 64, 45};
-        //          D(nodespot.x);
-        //          D(nodespot.y);
-        //          if(RectOverlap(r, nodespot)) {
-        //              banishMe->overlappedNodes.push_back(x);
-        //              //M("node enabled!");
-        //              //x->enabled = 1;
-        //          }
-        //      }
-        //  }
-      }
-      else
-      {
-        banishMe->banished = 0;
-        banishMe->dynamic = 1;
-        SDL_SetTextureAlphaMod(banishMe->texture, 255);
-        // this means that there will be problems if doors overlap- at the moment, that seems absurd
-        for (auto x : banishMe->overlappedNodes)
-        {
-          M("Node disabled!");
-          x->enabled = 0;
-          x->prev = nullptr;
-          // for(auto y : x->friends) {
-          //     y->enabled = 0;
-          //     y->prev = nullptr;
-          // }
-        }
-        banishMe->shadow->enabled = 1;
-      }
-    }
-    g_force_cookies_update = 1;
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
   // change animation data for selected
   // animate direction msPerFrame frameInAnimation LoopAnimation reverse
   // set direction to -1 to not set the direction
@@ -12347,6 +11424,7 @@ I("s");
     this->continueDialogue();
     return;
   }
+
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/nomusic")
   {
     string s = scriptToUse->at(dialogue_index + 1);
@@ -12418,53 +11496,6 @@ I("s");
     return;
   }
   
-  // agro/unagro selected enemy
-  //  /setagro 1
-  //  /setagro 0
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/setagro")
-  {
-    if(selected == nullptr) {
-      E("Call to /setagro without /select first.");
-    }
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 9);
-    string name = s.substr(0, s.find(' '));
-    //s.erase(0, s.find(' ') + 1);
-    string agrostatestr = "0";
-    agrostatestr = s; // s.substr(0, s.find(' ')); s.erase(0, s.find(' ') + 1);
-    float agrostate = stof(agrostatestr);
-    M("New agrostate for " + selected->name + ":");
-    D(agrostate);
-
-    selected->agrod = agrostate;
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // /settarget zombie fomm
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/settarget")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 11);
-    vector<string> x = splitString(s, ' ');
-    string teleportMeSTR = x[0];
-    string teleportToMeSTR = x[1];
-    entity *changeMyTarget = searchEntities(teleportMeSTR);
-    entity *toMe = searchEntities(teleportToMeSTR);
-    if (changeMyTarget != nullptr && toMe != nullptr)
-    {
-      changeMyTarget->target = toMe;
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-
-
   // make selected entity tangible
   //  /tangible 0
   //  /tangible 1
@@ -12540,59 +11571,6 @@ I("s");
     return;
   }
 
-  // add entity to the party
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/enlist")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 8);
-    string name = s;
-
-    entity *hopeful = searchEntities(name);
-    if (hopeful != nullptr)
-    {
-      hopeful->inParty = 1;
-      hopeful->tangible = 0;
-      party.push_back(hopeful);
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  // remove entity from the party
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/delist")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 8);
-    string name = s;
-
-    entity *hopeful = searchEntities(name);
-    if (hopeful != nullptr && hopeful != mainProtag)
-    {
-      hopeful->inParty = 0;
-      hopeful->tangible = 1;
-      party.erase(remove(party.begin(), party.end(), hopeful), party.end());
-      if (hopeful == protag)
-      {
-        // set protag to mainProtag
-        mainProtag->x = mainProtag->getOriginX() - mainProtag->bounds.x - mainProtag->bounds.width / 2;
-        mainProtag->y = mainProtag->getOriginY() - mainProtag->bounds.y - mainProtag->bounds.height / 2;
-        mainProtag->z = protag->z;
-        mainProtag->xvel = protag->xvel;
-        mainProtag->yvel = protag->yvel;
-        mainProtag->zvel = protag->zvel;
-
-        mainProtag->animation = protag->animation;
-        mainProtag->flip = protag->flip;
-        protag = mainProtag;
-      }
-    }
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
 
   // overwrite a save
   if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/clearsave")

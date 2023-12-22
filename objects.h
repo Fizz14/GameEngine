@@ -1400,13 +1400,20 @@ class entity:public actor {
     //for pellets (identity == 1)
     bool wasPellet = 0; //this is true if something was ever a pellet
 
-    //for spiketraps (identity == 2)
-    int spikeActiveMS = 0;
-    int maxSpikeActiveMS = 1300;
-    int spikeWaitMS = 0;
-    int maxSpikeWaitMS = 1300;
-    int spikeState = 0;
-    int spikedPlayer = 0;
+    //for special objects
+    int cooldownA = 0;
+    int cooldownB = 0;
+    int cooldownC = 0;
+    int cooldownD = 0;
+    int flagA = 0;
+    int flagB = 0;
+    int flagC = 0;
+    int flagD = 0;
+    int maxCooldownA = 0;
+    int maxCooldownB = 0;
+    int maxCooldownC = 0;
+    int maxCooldownD = 0;
+
    
     //for boarding
     bool isBoardable = 0;
@@ -1971,6 +1978,25 @@ class trigger {
     trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheight, int fzeight, string ftargetEntity);
 
     ~trigger(); 
+};
+
+class hitbox {
+  public:
+    float x = 0;
+    float y = 0;
+    float z = 0;
+    rect bounds;
+    int sleepingMS = 0; //active after sleepingMS elapse
+    bool active = 0;
+    int activeMS = 0; //ttl, decreases when hitbox is active
+    int targetFaction = 0;
+    int damage = 1;
+
+    hitbox();
+
+    ~hitbox();
+
+    rect getMovedBounds();
 };
 
 class listener {

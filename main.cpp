@@ -3450,16 +3450,40 @@ int WinMain()
         adventureUIManager->dialogue_index = -1;
         narrarator->sayings = g_triggers[i]->script;
         adventureUIManager->continueDialogue();
-        // we need to break here if we loaded a new map
-        // definately definately revisit this if you are having problems
-        // with loading maps and memorycorruption
-        //!!!
         if (transition)
         {
           break;
         }
 
         g_triggers[i]->active = 0;
+      }
+    }
+
+    //hitboxes
+    for(auto a : g_hitboxes) {
+      if(a->active) {
+        a->activeMS -= elapsed;
+        if(a->targetFaction == 0) {
+
+          if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
+            protag->hp -= a->damage;
+            protag->flashingMS = g_flashtime;
+            playSound(2, g_playerdamage, 0);
+            a->activeMS = -1;
+          }
+        }
+      } else {
+        a->sleepingMS -= elapsed;
+        if(a->sleepingMS <= 0) {
+          a->active = 1;
+        }
+      }
+    }
+
+    for(int i = 0; i < g_hitboxes.size(); i++) {
+      if(g_hitboxes[i]->activeMS <= 0) {
+        delete g_hitboxes[i];
+        i--;
       }
     }
 

@@ -89,6 +89,8 @@ vector<waypoint *> g_waypoints;
 
 vector<trigger *> g_triggers;
 
+vector<hitbox *> g_hitboxes;
+
 vector<listener *> g_listeners;
 
 vector<projectile *> g_projectiles;

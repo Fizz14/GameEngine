@@ -9,6 +9,10 @@
 #include "globals.h"
 #include "objects.h"
 
+void specialObjectsInit(entity* a);
+
+void specialObjectsBump(entity* a, bool xcollide, bool ycollide);
+
 void specialObjectsUpdate(entity * a, float elapsed);
 
 #endif
