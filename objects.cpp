@@ -2152,38 +2152,45 @@ indexItem::~indexItem() {
 void fancychar::setIndex(int findex) {
   auto entry = g_fancyAlphabet[findex];
   texture = entry.first;
-  width = entry.second/120.0;
+  width = entry.second * 0.0007;
 }
 
-void fancychar::render() {
-  SDL_Rect dstrect = {x + parent->x, y + parent->y, width, 0.1};
+void fancychar::render(fancyword* parent) {
+  if(!show) {return;}
+  SDL_FRect dstrect = {x + parent->x + 0.05, y + parent->y + 0.7, width, 0.05};
   dstrect.x *= (float)WIN_WIDTH;
   dstrect.y *= (float)WIN_HEIGHT;
   dstrect.w *= (float)WIN_WIDTH;
-  dstrect.h *= (float)WIN_HEIGHT;
-  M("Why doesn't this print?");
-  D(x);
-  D(y);
-  D(parent->x);
-  D(parent->y);
+  dstrect.h *= (float)WIN_WIDTH;
 
-  D(dstrect.x);
-  D(dstrect.y);
-  D(dstrect.w);
-  D(dstrect.h);
+  float booshAmount = 2*(WIN_WIDTH / STANDARD_SCREENWIDTH);
+  SDL_FRect shadowRect = dstrect;
+  shadowRect.x += booshAmount;
+  shadowRect.y += booshAmount;
+
+  SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+
+  SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+  SDL_SetTextureColorMod(texture, 255,255,255);
   
-
-  SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+  SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
 }
 
 void fancyword::render() { //render each char
-  M("Do we have no chars?");
   for(auto myChar : chars) {
-    myChar.render();
-    M("Rendered a char");
+    myChar.render(this);
   }
 }
 
+void fancyword::append(int index) {
+  fancychar newChar;
+  newChar.setIndex(index);
+  chars.push_back(newChar);
+  if(chars.size() > 1) {
+    chars.at(chars.size() -1).x += chars.at(chars.size()-2).width + chars.at(chars.size()-2).x;
+  }
+  width += newChar.width;
+}
 
 fancybox::fancybox() {
   bounds.x = 0.05;
@@ -2193,62 +2200,72 @@ fancybox::fancybox() {
 }
 
 void fancybox::render() {
-  //render each word
-  for(auto word : words) {
-    word.render();
+  if(show) {
+    for(auto word : words) {
+      word.render();
+    }
   }
+}
+
+void fancybox::clear() {
+  words.clear();
+  wordProgress = 0;
+  letterProgress = 0;
 }
 
 void fancybox::arrange(string fcontent) { 
-  M("fancybox::arrange()");
+  //M("fancybox::arrange()");
   
-  //when I add special chars, there will be some extra code here parsing them
-  //and replacing them with a certain character, pushing them back on a list or something
-  //then when I get to that character (e.g., `), I use an entry from the list
-  //either way, each char of fcontent corresponds to one drawn texture of a letter/symbol
-
   int i = 0;
-  fancyword firstWord;
-  
-  float wordX, wordY;
-  wordX = bounds.x;
-  wordY = bounds.y;
-
-  float widthOfCurrentWord = 0;
-
-  firstWord.x = wordX;
-  firstWord.y = wordY;
-
-  words.push_back(firstWord);
-  float currentWordPos = 0;
-  for(;;) {
-
-    fancychar nextChar;
-    nextChar.setIndex(g_fancyCharLookup[fcontent[i]]);
-    nextChar.x = widthOfCurrentWord;
-    widthOfCurrentWord += nextChar.width;
-    nextChar.parent = &words[words.size()-1];
-    words[words.size()-1].chars.push_back(nextChar);
-
+  fancyword word;
+  for(int i = 1; i < fcontent.size(); i++) {
     if(fcontent[i] == ' ') {
-      //add a space to the latest word and start adding to a new word
-      fancyword nextWord;
-      words.push_back(nextWord);
-      wordX += widthOfCurrentWord;
-      nextWord.x = wordX;
-      nextWord.y = bounds.y;
-      widthOfCurrentWord = 0;
+      float oldwidth = word.width + word.x;
+      float oldy = word.y;
+      words.push_back(word);
+      word.chars.clear();
+      word.width = 0;
+      word.x = oldwidth + (0.01);
+      word.y = oldy;
+      if(word.x > 0.7) {
+        word.x = 0;
+        word.y += 0.08;
+      }
+      continue;
     }
-    i++;
-    if(i == fcontent.size()) {break;}
+    word.append(g_fancyCharLookup[fcontent[i]]);
 
   }
+
+  words.push_back(word);
+
 }
 
-void fancybox::reveal() { //words contain their following space
+int fancybox::reveal() {
+  if(words.size() == 0) {return -1;}
+  if(wordProgress < words.size()) {
+    words[wordProgress].chars[letterProgress].show = 1;
+    letterProgress++;
+    if(letterProgress > words[wordProgress].chars.size()) {
+      letterProgress = 0;
+      wordProgress ++;
+    }
+  } else {
+    //all done!
+    adventureUIManager->dialogProceedIndicator->show = 1;
+    return -1;
+  }
 
+  return 0;
 }
 
+void fancybox::revealAll() {
+  for(int i = 0; i <4000; i++) {
+    if(reveal() == -1) {
+      break;
+    }
+  }
+}
 
 worldsound::worldsound(string filename, int fx, int fy) {
   name = filename;
@@ -3563,36 +3580,45 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 
   if(RectOverlap(obj, cam)) {
 
-    //set visual direction
-    //lil problem with this code- the zombie will face SE when he should face E
-    if(
-        (forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet)
-        ||
-        this->forceAngularUpdate
-        ) {
-      animation = convertAngleToFrame(steeringAngle);
-      flip = SDL_FLIP_NONE;
-      if(yframes < 8) {
-        if(animation == 5) {
-          animation = 3;
-          flip = SDL_FLIP_HORIZONTAL;
-        } else if(animation == 6) {
-          animation = 2;
-          flip = SDL_FLIP_HORIZONTAL;
-        } else if(animation == 7) {
-          animation = 1;
-          flip = SDL_FLIP_HORIZONTAL;
-        }
+    if(directionUpdateCooldownMs < 0) {
 
-        if(animation > 5 || animation < 0) {
+      //set visual direction
+      if(
+          (forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet)
+          ||
+          this->forceAngularUpdate
+          ) {
+        animation = convertAngleToFrame(steeringAngle);
+        flip = SDL_FLIP_NONE;
+        if(yframes < 8) {
+          if(animation == 5) {
+            animation = 3;
+            flip = SDL_FLIP_HORIZONTAL;
+          } else if(animation == 6) {
+            animation = 2;
+            flip = SDL_FLIP_HORIZONTAL;
+          } else if(animation == 7) {
+            animation = 1;
+            flip = SDL_FLIP_HORIZONTAL;
+          }
+  
+          if(animation > 5 || animation < 0) {
+            animation = 0;
+          }
+        }
+  
+        if(yframes < 2) {
           animation = 0;
         }
+  
+  
       }
-
-      if(yframes < 2) {
-        animation = 0;
+      if(lastDirection != animation) {
+        directionUpdateCooldownMs = maxDirectionUpdateCooldownMs;
       }
-
+      lastDirection = animation;
+    } else {
+      directionUpdateCooldownMs -= elapsed;
     }
 
     hadInput = 0;
@@ -6021,7 +6047,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
 
         float dist = XYWorldDistanceSquared(this->getOriginX(), this->getOriginY(), protag->getOriginX(), protag->getOriginY());
-        if(dist < g_entitySleepDistance) {
+        if(dist < g_entitySleepDistance || this->isAI) {
           specialObjectsUpdate(this, elapsed);
         }
 
@@ -6202,7 +6228,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           lastx = x;
           lasty = y;
           if(stuckTime > maxStuckTime) {
-            M("A PATHFINDER IS STUCK");
+            //M("A PATHFINDER IS STUCK");
             //spring to get over obstacles
             //this->zaccel = 350;
             stuckTime = 0;
@@ -6253,7 +6279,9 @@ void entity::BasicNavigate(navNode* ultimateTargetNode) {
   if(dest != nullptr) {
     float angleToTarget = atan2(dest->x - getOriginX(), dest->y - getOriginY()) - M_PI/2;
     angleToTarget = wrapAngle(angleToTarget);
-    targetSteeringAngle = angleToTarget;
+    if(!specialAngleOverride) {
+      targetSteeringAngle = angleToTarget;
+    }
     forwardsVelocity = xagil;
   }
 
@@ -6382,15 +6410,6 @@ void entity::BasicNavigate(navNode* ultimateTargetNode) {
     }
 
     if(justLostLosToTarget) {
-      M("Just lost LOS to target");
-      //put a chair on the current node for debugging
-        entity* chair = searchEntities("base/swivelchair");
-        if(chair != nullptr) {
-          chair->setOriginX(current->x);
-          chair->setOriginY(current->y);
-        } else {
-          M("Pointer to debugging chair was nullptr");
-        }
 //        This code might be handy later for trying to understand why
 //        entities doesn't travel as you might expect.
 //        Today's efforts (probably) mark the conclusion of a struggle
@@ -6691,20 +6710,8 @@ usable::usable(string fname) {
   //specialAction
   file >> comment;
   file >> specialAction;
-  
-
   file.close();
 
-  //read script
-  loadstr = filepath + "script_" + fname + ".txt";
-  file.open(loadstr);
-  if(!file.is_open()) { E("Couldn't open Script-file for Usable with Name " + fname); E(filepath); return;}
-  
-  string line;
-  while (getline(file, line)) {
-    script.push_back(line);
-  }
-  parseScriptForLabels(script);
 
   //load sprite
   loadstr = filepath + "img_" + fname + ".bmp";
@@ -6727,6 +6734,7 @@ usable::~usable() {
 
 int loadSave() {
   g_save.clear();
+  g_saveStrings.clear();
   ifstream file;
   string line;
 
@@ -6745,7 +6753,7 @@ int loadSave() {
     try {
       g_save.insert( pair<string, int>(field, stoi(value)) );
     } catch(...) {
-      E("Error writing save.");
+      E("Error reading save.");
       return -1;
     }
 
@@ -7742,7 +7750,11 @@ hitbox::~hitbox() {
 }
 
 rect hitbox::getMovedBounds() {
-  return rect(bounds.x + x, bounds.y + y, z, bounds.width, bounds.height, bounds.zeight);
+  if(parent == 0) {
+    return rect(bounds.x + x, bounds.y + y, z, bounds.width, bounds.height, bounds.zeight);
+  } else {
+    return rect(bounds.x + x + parent->getOriginX() - bounds.width/2, bounds.y + y + parent->getOriginY() - bounds.height/2, z + parent->z, bounds.width, bounds.height, bounds.zeight);
+  }
 }
 
 listener::listener(string fname, int fblock, int fcondition, string fbinding, int fx, int fy) {
@@ -7829,8 +7841,8 @@ escapeUI::escapeUI() {
   
   optionStrings.push_back("Back");
   optionStrings.push_back("Levelselect");
-  optionStrings.push_back("Quit Game");
   optionStrings.push_back("Settings");
+  optionStrings.push_back("End");
 
 
   numLines = optionStrings.size();
@@ -7928,6 +7940,7 @@ void clear_map(camera& cameraToReset) {
   g_behemoth2 = 0;
   g_behemoth3 = 0;
   adventureUIManager->crosshair->show = 0;
+  breakpoint();
   {
 
     //SDL_GL_SetSwapInterval(0);
@@ -8952,6 +8965,7 @@ void adventureUI::hideTalkingUI()
 }
 
 void adventureUI::showScoreUI() {
+  breakpoint();
   scoreText->show = 1;
 }
 
@@ -9188,17 +9202,17 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 
 void adventureUI::initFullUI() {
 
-    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
-    tastePicture->persistent = 1;
-    tastePicture->heightFromWidthFactor = 1;
-    tastePicture->show = 1;
-    tastePicture->framewidth = 410;
-    tastePicture->frameheight = 465;
-    tastePicture->layer0 = 1;
-    tastePicture->glideSpeed = 0.1;
-    tastePicture->widthGlideSpeed = 0.1;
-    tastePicture->priority = -10; //taste is behind everything
-    tastePicture->show = 1;
+//    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
+//    tastePicture->persistent = 1;
+//    tastePicture->heightFromWidthFactor = 1;
+//    tastePicture->show = 1;
+//    tastePicture->framewidth = 410;
+//    tastePicture->frameheight = 465;
+//    tastePicture->layer0 = 1;
+//    tastePicture->glideSpeed = 0.1;
+//    tastePicture->widthGlideSpeed = 0.1;
+//    tastePicture->priority = -10; //taste is behind everything
+//    tastePicture->show = 1;
 
   adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
   adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
@@ -9359,11 +9373,11 @@ adventureUI::~adventureUI()
 void adventureUI::pushFancyText(entity * ftalker)
 {
   inPauseMenu = 0;
+  talkingText->show = 0;
   adventureUIManager->hideInventoryUI();
-  hideTalkingUI();
   talker = ftalker;
   g_talker = ftalker;
-  string arrangeText = ownScript.at(dialogue_index);
+  string arrangeText = scriptToUse->at(dialogue_index);
   //parse arrangeText for variables within $$, e.g. $$playername$$
   int position = arrangeText.find("$$");  
   if(position != string::npos) {
@@ -9424,6 +9438,7 @@ void adventureUI::pushText(entity *ftalker)
 void adventureUI::updateText()
 {
   talkingText->updateText(curText, -1, 0.85, currentTextcolor, currentFontStr);
+  g_fancybox->reveal();
 
   //used to be code here for unsleeping the player's ui
 
@@ -9465,7 +9480,7 @@ void adventureUI::updateText()
   else
   {
     typing = false;
-    if(!askingQuestion && this == adventureUIManager && executingScript) {
+    if(!askingQuestion && this == adventureUIManager && executingScript && (curText != "")) {
       if(dialogProceedIndicator->show == 0) {
         dialogProceedIndicator->show = 1;
         dialogProceedIndicator->y = 0.9;
@@ -9477,9 +9492,12 @@ void adventureUI::updateText()
 }
 
 void adventureUI::skipText() {
-  curText = pushedText;
+  g_fancybox->revealAll();
+  if(pushedText != "") {
+    curText = pushedText;
     Mix_HaltChannel(6);
     Mix_VolumeChunk(blip, 20);
+  }
   //playSound(6, blip, 0);
 }
 
@@ -9496,6 +9514,7 @@ void adventureUI::initDialogue() {
 //scripts
 void adventureUI::continueDialogue()
 {
+  g_fancybox->show = 0;
   // has our entity died?
   if (g_forceEndDialogue && playersUI)
   {
@@ -9551,6 +9570,8 @@ void adventureUI::continueDialogue()
     mobilize = 0;
     if(this == adventureUIManager) {
       adventureUIManager->hideTalkingUI();
+      g_fancybox->show = 0;
+      g_fancybox->clear();
     }
 
 
@@ -11026,33 +11047,32 @@ I("s");
   {
     loadSave();
 
-    // close dialogue
-
-    adventureUIManager->hideTalkingUI();
-    // reset character's dialogue_index
     dialogue_index = 0;
-    // stop talker from bouncing
-    talker->animate = 0;
 
     clear_map(g_camera);
     auto x = splitString(g_mapOfLastSave, '/');
     g_mapdir = x[0];
     g_map = x[1];
-    // cout << "mapdir : " << g_mapdir << endl;
-    // cout << "map : " << g_map << endl;
-    // SDL_Delay(5000);
-    load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+    
+    //load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+    
+    string filename = g_levelSequence->levelNodes[0]->mapfilename;
+    load_map(renderer, filename,"a");
 
     // clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
     if (canSwitchOffDevMode)
     {
       init_map_writing(renderer);
     }
+    adventureUIManager->hideTalkingUI();
 
-    breakpoint();
+    if(playersUI) {
+      protag_is_talking = 2;
+    }
+    executingScript = 0;
+    g_inTitleScreen = 0;
+    adventureUIManager->showHUD();
 
-    protag_is_talking = 0;
-    protag_can_move = 1;
     return;
   }
 
@@ -11485,11 +11505,10 @@ I("s");
   // wait for input
   if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/waitforinput")
   {
+    protag_is_talking = 1;
     curText = "";
     pushedText = "";
     typing = true;
-    // showTalkingUI();
-    // updateText();
     hideTalkingUI();
     dialogue_index++;
 
@@ -11578,17 +11597,29 @@ I("s");
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 11);
     string name = s;
-    
-    //for safety
-    if(s.find("..") != std::string::npos) {
-      E("Tried to write a save outside of user/saves directory");
+    I(s);
+    if(name != "a" && name != "b" && name != "c") {
+      //bad name
       dialogue_index++;
       this->continueDialogue();
       return;
     }
+    
+    //for safety
+//    if(s.find("..") != std::string::npos) {
+//      E("Tried to write a save outside of user/saves directory");
+//      dialogue_index++;
+//      this->continueDialogue();
+//      return;
+//    }
 
-    D("trying to clear save " + s);
-    filesystem::copy("user/saves/newsave.save", "user/saves/" + s + ".save", std::filesystem::copy_options::overwrite_existing);
+    I("trying to clear save " + s);
+    try {
+      filesystem::remove_all("user/saves/" + s + ".save");
+      filesystem::copy("user/saves/newsave.save", "user/saves/" + s + ".save");
+    } catch (const filesystem::filesystem_error& e) {
+      cerr << e.what() << endl;
+    }
     dialogue_index++;
     this->continueDialogue();
     return;
@@ -11598,6 +11629,9 @@ I("s");
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/quit")
   {
     quit = 1;
+    if(playersUI) {
+      protag_is_talking = 2;
+    }
     return;
   }
 
@@ -11668,6 +11702,8 @@ I("s");
   if (scriptToUse->at(dialogue_index + 1).substr(0, 1) == "`")
   {
     dialogue_index++;
+    g_fancybox->show = 1;
+    g_fancybox->clear();
     pushFancyText(talker);
     return;
   }
@@ -11735,6 +11771,7 @@ void adventureUI::hideHUD() {
   hotbarFocus->show = 0;
   hotbar->show = 0;
   cooldownIndicator->show = 0;
+  systemClock->show = 0;
 }
 
 void adventureUI::showHUD() {
@@ -11743,5 +11780,6 @@ void adventureUI::showHUD() {
   hotbarFocus->show = 1;
   hotbar->show = 1;
   cooldownIndicator->show = 1;
+  systemClock->show = 1;
 }
 

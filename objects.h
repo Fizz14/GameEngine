@@ -809,23 +809,24 @@ class fancychar {
 public:
   float x = 0;
   float y = 0;
-  float width; 
+  float width = 0; 
+  bool show = 0;
   int charsetIndex; //0 for lowercase, 1 for uppercase, 2 for symbols, possibly 3 for special chars
   SDL_Texture* texture; //pointer to texture in g_fancyAlphabet
-  fancyword * parent; 
 
   void setIndex(int findex); 
 
-  void render();
+  void render(fancyword* parent);
 };
 
 class fancyword {
 public:
   float x = 0;
   float y = 0;
-  float width; //screenspace width
-  string content; //contains encoding for special characters
+  float width = 0;
   vector<fancychar> chars;
+
+  void append(int index);
 
   void render(); 
 };
@@ -834,8 +835,12 @@ class fancybox {
 public:
   rect bounds; //screenspace bb
   vector<fancyword> words;
-  int progress = 0; //how many chars have been shown of the chars which exist?
+  
+  int wordProgress = 0;
+  int letterProgress = 0;
 
+  bool show = 0;
+ 
   fancybox(); 
 
   void render(); 
@@ -844,7 +849,11 @@ public:
   //this param might contain some encoding for special chars
   void arrange(string fcontent); 
 
-  void reveal(); 
+  int reveal(); 
+
+  void revealAll();
+
+  void clear();
   
   
 };
@@ -1237,6 +1246,8 @@ class entity:public actor {
     int cachedOriginX = 0;
     int cachedOriginY = 0;
 
+    bool specialAngleOverride = 0;
+
     bool cachedOriginValsAreGood = 0;
 
     //sounds
@@ -1350,6 +1361,9 @@ class entity:public actor {
     int frameInAnimation = 0; //current frame in ANIMATION
     bool loopAnimation = 1; //start over after we finish
     int animation = 4; //current animation, or the row of the spritesheet
+    int lastDirection = 4; //so that entities don't switch between directional frames too often
+    int directionUpdateCooldownMs = 0;
+    static const int maxDirectionUpdateCooldownMs = 40;
     int defaultAnimation = 4;
     bool scriptedAnimation = 0; //0 means the character is animated based on movement. 1 means the character is animated based on a script.
     int reverseAnimation = 0; //step backwards with frames instead of forwards, and end
@@ -1413,6 +1427,7 @@ class entity:public actor {
     int maxCooldownB = 0;
     int maxCooldownC = 0;
     int maxCooldownD = 0;
+    int lastState = 0;
 
    
     //for boarding
@@ -1781,12 +1796,10 @@ class usable {
 
     SDL_Texture* texture;
 
-    vector<string> script;
-
     int maxCooldownMs = 0;
     int cooldownMs = 0;
 
-    int specialAction = 0; //for hooking up items directly to engie code, namely spindashing
+    int specialAction = 0; //for hooking up items directly to engine code, namely spindashing
                            //0 - nothing
                            //1 - spin
                            //2 - openInventory
@@ -1991,6 +2004,7 @@ class hitbox {
     int activeMS = 0; //ttl, decreases when hitbox is active
     int targetFaction = 0;
     int damage = 1;
+    entity* parent = 0;
 
     hitbox();
 

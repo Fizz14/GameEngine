@@ -687,6 +687,7 @@ float curTextWait = 0;
 bool old_z_value = 1; // the last value of the z key. used for advancing dialogue, i.e. z key was down and is now up or was up and is now down if old_z_value != SDL[SDL_SCANCODE_Z]
 float g_healthbarBorderSize = 0;
 bool g_showHUD = 1;
+bool g_inTitleScreen = 0;
 
 //for hungersystem
 int g_foodpoints = 100;
@@ -706,7 +707,7 @@ string g_alphabet = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_lower = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ<^;";
 
-string g_fancyAlphabetChars = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz !@#$%^&*()+-_;,\"\'";
+string g_fancyAlphabetChars = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ?!@#$%^&*()+-._;,\"\'";
 
 //the pair contains a texture and a width
 std::map<int, std::pair<SDL_Texture*, float>> g_fancyAlphabet{};

@@ -649,6 +649,7 @@ extern float curTextWait;
 extern bool old_z_value;
 extern float g_healthbarBorderSize;
 extern bool g_showHUD;
+extern bool g_inTitleScreen;
 
 extern int g_foodpoints;
 extern int g_maxFoodpoints;

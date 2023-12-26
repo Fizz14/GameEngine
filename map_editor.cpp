@@ -1285,13 +1285,12 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   g_camera.oldx = g_camera.x;
   g_camera.oldy = g_camera.y;
 
-  //M("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
-
   // call map's init-script
   // seemingly crashes the game sometimes
   // don't run the init-script if we're in devmode
   if (!devMode && fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
+    cout << "Found the initscript" << endl;
     string loadstr = "maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
     //D(loadstr);
     const char *plik = loadstr.c_str();
@@ -1305,49 +1304,30 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     while (getline(stream, line))
     {
       script.push_back(line);
-      //D(line);
     }
 
     parseScriptForLabels(script);
 
-    if (narrarator->myScriptCaller == nullptr)
-    {
-      narrarator->myScriptCaller = new adventureUI(renderer, 1);
-      narrarator->myScriptCaller->playersUI = 0;
-      narrarator->myScriptCaller->talker = narrarator;
-    }
-
     narrarator->sayings = script;
-    narrarator->myScriptCaller->executingScript = 1;
-    narrarator->myScriptCaller->dialogue_index = -1;
-    narrarator->myScriptCaller->talker = narrarator;
-    adventureUIManager->ownScript = narrarator->sayings;
+    adventureUIManager->ownScript = script;
     adventureUIManager->talker = narrarator;
+    adventureUIManager->blip = g_ui_voice;
     adventureUIManager->dialogue_index = -1;
+    g_forceEndDialogue = 0;
 
-    if (narrarator->sayings.size() > 0)
+    if (script.size() > 0)
     {
-      M("Doing mapinit");
-      narrarator->myScriptCaller->continueDialogue();
-      M("finished mapinit");
+      adventureUIManager->continueDialogue();
     }
   }
   else
   {
-    if(!devMode) {
-      M("Map's initscript not found.");
-    }
+    //initscript not found
   }
 
   g_maxPelletsInLevel = g_pellets.size();
   g_currentPelletsCollected = 0;
 
-//  if(g_pellets.size() > 0) {
-//    g_pelletTexture = g_pellets.at(0);
-//  } else {
-//    g_pelletTexture = nullptr;
-//  }
-  
   //link together transport ents
   for(auto x : g_boardableEntities) {
     if(x->transportEnt != "0" || x->transportEnt != "") {
@@ -1838,6 +1818,10 @@ void write_map(entity *mapent)
       drect.y = h->y;
       drect.w = h->bounds.width;
       drect.h = h->bounds.height;
+      if(h->parent != 0) {
+        drect.x += h->parent->getOriginX() - drect.w/2;
+        drect.y += h->parent->getOriginY() - drect.h/2;
+      }
       drect = transformRect(drect);
       SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
       SDL_RenderDrawRectF(renderer, &drect);

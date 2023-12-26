@@ -15,4 +15,6 @@ void specialObjectsBump(entity* a, bool xcollide, bool ycollide);
 
 void specialObjectsUpdate(entity * a, float elapsed);
 
+void usableItemCode(usable* a);
+
 #endif

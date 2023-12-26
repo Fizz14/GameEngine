@@ -12,6 +12,7 @@
 #include "objects.h"
 #include "map_editor.h"
 #include "lightcookies.h"
+#include "specialobjects.h"
 
 using namespace std;
 
@@ -46,18 +47,6 @@ int WinMain()
 
   SDL_SetWindowPosition(window, 1280, 720);
 
-  // for( int i = 0; i < SDL_GetNumRenderDrivers(); ++i ) {
-  // 	SDL_RendererInfo rendererInfo = {};
-  // 	SDL_GetRenderDriverInfo( i, &rendererInfo );
-  // 	if( rendererInfo.name != std::string( "opengles2" ) ) {
-  // 		//provide info about improper renderer
-  // 		continue;
-  // 	}
-
-  // 	renderer = SDL_CreateRenderer( window, i, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
-  // 	break;
-  // }
-
   Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
   SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
  
@@ -79,14 +68,11 @@ int WinMain()
   SDL_Texture *brightness_b = SDL_CreateTextureFromSurface(renderer, brightness_b_s);
   SDL_FreeSurface(brightness_b_s);
 
-  // SDL_RenderSetLogicalSize(renderer, 1920, 1080); //for enforcing screen resolution
-
   // entities will be made here so have them set as created during loadingtime and not arbitrarily during play
   g_loadingATM = 1;
 
   // set global shadow-texture
 
-  //!!! move these to the engine folder
   SDL_Surface *image = IMG_Load("engine/shadow.bmp");
   g_shadowTexture = SDL_CreateTextureFromSurface(renderer, image);
   SDL_FreeSurface(image);
@@ -95,8 +81,6 @@ int WinMain()
   SDL_FreeSurface(image);
 
   // narrarator holds scripts caused by things like triggers
-  //  !!! reduce first launch overhead by
-  //  making the narrarator use a sprite with 1 pixel
   narrarator = new entity(renderer, "engine/sp-joseph");
   narrarator->tangible = 0;
   narrarator->persistentHidden = 1;
@@ -108,35 +92,6 @@ int WinMain()
   g_backpackNarrarator = new entity(renderer, "engine/sp-joseph");
   g_backpackNarrarator->tangible = 0;
   g_backpackNarrarator->persistentHidden = 1;
-
-  // entity* fomm;
-  // //fomm = new entity(renderer, "fomm");
-
-  // fomm->inParty = 1;
-  // party.push_back(fomm);
-  // fomm->footstep = Mix_LoadWAV("sounds/protag-step-1.wav");
-  // fomm->footstep2 = Mix_LoadWAV("sounds/protag-step-2.wav");
-  // protag = fomm;
-  // g_cameraShove = protag->hisweapon->attacks[0]->range/2;
-  // g_focus = protag;
-
-  // g_deathsound = Mix_LoadWAV("audio/sounds/game-over.wav");
-
-  // protag healthbar
-//  ui *protagHealthbarA = new ui(renderer, "static/ui/healthbarA.bmp", 0, 0, 0.05, 0.02, -3);
-//  protagHealthbarA->persistent = 1;
-//  ui *protagHealthbarB = new ui(renderer, "static/ui/healthbarB.bmp", 0, 0, 0.05, 0.02, -2);
-//  protagHealthbarB->persistent = 1;
-//  protagHealthbarB->shrinkPixels = 1;
-//
-//  ui *protagHealthbarC = new ui(renderer, "static/ui/healthbarC.bmp", 0, 0, 0.05, 0.02, -1);
-//  protagHealthbarC->persistent = 1;
-//  protagHealthbarC->shrinkPixels = 1;
-//
-//  protagHealthbarA->show = g_showHealthbar;
-//  protagHealthbarB->show = g_showHealthbar;
-//  protagHealthbarC->show = g_showHealthbar;
-
 
   // for transition
   SDL_Surface *transitionSurface = IMG_Load("engine/transition.bmp");
@@ -500,6 +455,9 @@ int WinMain()
 
   TTF_CloseFont(alphabetfont);
   g_fancybox = new fancybox();
+  g_fancybox->bounds.x = 0.05;
+  g_fancybox->bounds.x = 0.7;
+  g_fancybox->show = 1;
 
 
   //init options menu
@@ -557,12 +515,12 @@ int WinMain()
   {
     SDL_ShowCursor(0);
     loadSave();
-
-    string filename = g_levelSequence->levelNodes[0]->mapfilename;
-
-    load_map(renderer, filename,"a");
-    vector<string> x = splitString(filename, '/');
-    g_mapdir = x[1];
+    g_inTitleScreen = 1;
+    load_map(renderer, "maps/sp-title/g.map","a");
+    adventureUIManager->hideBackpackUI();
+    adventureUIManager->hideHUD();
+    adventureUIManager->hideScoreUI();
+    adventureUIManager->hideTalkingUI();
   }
 
   inventoryMarker = new ui(renderer, "static/ui/finger_selector_angled.bmp", 0, 0, 0.1, 0.1, 2);
@@ -773,6 +731,15 @@ int WinMain()
 
   g_loadingATM = 0;
 
+  //good!
+//  fancyword myWord;
+//  myWord.x = 0.05;
+//  myWord.y = 0.7;
+//  myWord.append(2);
+//  myWord.append(0);
+//  myWord.append(19);
+    //myWord.render();
+  
 
   while (!quit)
   {
@@ -2520,7 +2487,7 @@ int WinMain()
     }
 
     // ui
-    if (!inPauseMenu && g_showHUD)
+    if (!inPauseMenu && g_showHUD && !g_inTitleScreen)
     {
       // !!! segfaults on mapload sometimes
       
@@ -2712,7 +2679,7 @@ int WinMain()
     }
 
     //render fancybox
-    //g_fancybox->render();
+    g_fancybox->render();
 
     // settings menu
     if (g_inSettingsMenu) 
@@ -3351,7 +3318,6 @@ int WinMain()
     }
 
     adventureUIManager->scoreText->updateText(scorePrint, -1, 1);
-    adventureUIManager->showScoreUI();
 
     //system clock display
     string systemTimePrint = "";
@@ -3465,7 +3431,7 @@ int WinMain()
         a->activeMS -= elapsed;
         if(a->targetFaction == 0) {
 
-          if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
+          if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()) && !g_protagIsWithinBoardable) {
             protag->hp -= a->damage;
             protag->flashingMS = g_flashtime;
             playSound(2, g_playerdamage, 0);
@@ -3497,7 +3463,6 @@ int WinMain()
     {
       if (transition)
       {
-
         g_forceEndDialogue = 0;
         // onframe things
         SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
@@ -3645,7 +3610,6 @@ int WinMain()
       {
         fadeFlag = 0;
         Mix_HaltMusic();
-        cout << "played some music " << newClosest->name << endl;
         Mix_FadeInMusic(newClosest->blip, -1, 1000);
       }
       if (entFadeFlag && musicFadeTimer > 200)
@@ -4638,7 +4602,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 0;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4648,7 +4611,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 1;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4658,7 +4620,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 2;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4668,7 +4629,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 3;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4678,7 +4638,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 4;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4688,7 +4647,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 5;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4698,7 +4656,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 6;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4708,7 +4665,6 @@ void getInput(float &elapsed)
             g_awaitSwallowedKey = 1;
             g_whichRebindValue = 7;
             g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText("_", -1, 1);
-            //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 1;
             g_settingsUI->uiModifying();
           }
   
@@ -4724,7 +4680,6 @@ void getInput(float &elapsed)
           if(g_settingsUI->positionOfCursor == 9) { // Music volume
             g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
             if(g_settingsUI->modifyingValue) {
-              //g_settingsUI->valueTextboxes[9]->blinking = 1;
               g_settingsUI->uiModifying();
             } else {
               g_settingsUI->uiSelecting();
@@ -4734,7 +4689,6 @@ void getInput(float &elapsed)
           if(g_settingsUI->positionOfCursor == 10) { // Sounds volume
             g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
             if(g_settingsUI->modifyingValue) {
-              //g_settingsUI->valueTextboxes[10]->blinking = 1;
               g_settingsUI->uiModifying();
             } else {
               g_settingsUI->uiSelecting();
@@ -4744,7 +4698,6 @@ void getInput(float &elapsed)
           if(g_settingsUI->positionOfCursor == 11) { // Graphics Quality
             g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
             if(g_settingsUI->modifyingValue) {
-              //g_settingsUI->valueTextboxes[11]->blinking = 1;
               g_settingsUI->uiModifying();
             } else {
               g_settingsUI->uiSelecting();
@@ -4754,7 +4707,6 @@ void getInput(float &elapsed)
           if(g_settingsUI->positionOfCursor == 12) { // Brightness
             g_settingsUI->modifyingValue = !g_settingsUI->modifyingValue;
             if(g_settingsUI->modifyingValue) {
-              //g_settingsUI->valueTextboxes[12]->blinking = 1;
               g_settingsUI->uiModifying();
             } else {
               g_settingsUI->uiSelecting();
@@ -4768,7 +4720,6 @@ void getInput(float &elapsed)
         //there might be a problem with this logic
         bindings[g_pollForThisBinding] = g_swallowedKey;
         g_settingsUI->valueTextboxes[g_whichRebindValue]->updateText(SDL_GetScancodeName(g_swallowedKey), -1, 1);
-        //g_settingsUI->valueTextboxes[g_whichRebindValue]->blinking = 0;
         g_awaitSwallowedKey = 0;
         g_settingsUI->uiSelecting();
       }
@@ -4853,11 +4804,18 @@ void getInput(float &elapsed)
           adventureUIManager->hideHUD();
         }
   
-        if(g_escapeUI->positionOfCursor == 2) { //To desktop
-          quit = 1;
+        if(g_escapeUI->positionOfCursor == 3) {
+          //quit = 1;  //to desktop
+          clear_map(g_camera);
+          g_inTitleScreen = 1;
+          g_mapdir = "sp-title";
+          
+
+          load_map(renderer, "maps/sp-title/g.map","a"); //to menu
+          
         }
 
-        if(g_escapeUI->positionOfCursor == 3) { //Settings
+        if(g_escapeUI->positionOfCursor == 2) { //Settings
           g_settingsUI->show();
           g_inSettingsMenu = 1;
           g_firstFrameOfSettingsMenu = 1;
@@ -5035,15 +4993,8 @@ void getInput(float &elapsed)
         
         usable* thisUsable = g_backpack.at(g_backpackIndex); 
         thisUsable->cooldownMs = thisUsable->maxCooldownMs;
-  
-        //make a scriptcaller
-        adventureUI scripter(renderer, 1);
-        scripter.playersUI = 0;
-        scripter.useOwnScriptInsteadOfTalkersScript = 1;
-        scripter.talker = g_backpackNarrarator;
-        scripter.ownScript = thisUsable->script;
-        scripter.dialogue_index = -1;
-        scripter.continueDialogue();
+
+        usableItemCode(thisUsable);
 
       }
 
@@ -5288,7 +5239,6 @@ void getInput(float &elapsed)
   }
 
   dialogue_cooldown -= elapsed;
-
 
   if (keystate[bindings[11]] && !inPauseMenu && !transition)
   {
