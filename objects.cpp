@@ -2157,7 +2157,16 @@ void fancychar::setIndex(int findex) {
 
 void fancychar::render(fancyword* parent) {
   if(!show) {return;}
-  SDL_FRect dstrect = {x + parent->x + 0.05, y + parent->y + 0.7, width, 0.05};
+  SDL_FRect dstrect = {x + xd + parent->x + 0.05, y + yd + parent->y + 0.7, width, 0.05};
+
+  dstrect.w *= bonusWidth;
+  dstrect.h *= bonusWidth;
+  
+  dstrect.x -= bonusSize/2;
+  dstrect.y -= bonusSize/2;
+  dstrect.w += bonusSize;
+  dstrect.h += bonusSize;
+
   dstrect.x *= (float)WIN_WIDTH;
   dstrect.y *= (float)WIN_HEIGHT;
   dstrect.w *= (float)WIN_WIDTH;
@@ -2168,12 +2177,140 @@ void fancychar::render(fancyword* parent) {
   shadowRect.x += booshAmount;
   shadowRect.y += booshAmount;
 
-  SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+  SDL_SetTextureColorMod(texture, 55, 55, 55);
+  SDL_SetTextureAlphaMod(texture, opacity);
 
   SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
-  SDL_SetTextureColorMod(texture, 255,255,255);
+
+  SDL_Color cc = adventureUIManager->textcolors[color].second;
+
+  SDL_SetTextureColorMod(texture, pow(cc.r,1.0013),pow(cc.g,1.0013),pow(cc.b,1.0013));
   
   SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+}
+
+void fancychar::update(float elapsed) {
+  accumulator += accSpeed;
+  if(accumulator > 1) {
+    accumulator -= 1;
+  }
+
+  switch (movement) {
+    case '0': 
+    {
+      break;
+    }
+    case '1':
+    {
+      //frightful shaking
+      xd = ((double)rand() / RAND_MAX) / 500;
+      yd = ((double)rand() / RAND_MAX) / 500;
+      break;
+    }
+    case '2':
+    {
+      //lightheaded wave
+      accSpeed = 0.01;
+  
+      float indexOffset = index;
+      indexOffset /= 5;
+  
+      yd = sin(accumulator*2*M_PI + indexOffset) / 120;
+      xd = cos(accumulator*2*M_PI + indexOffset) / 120;
+      
+      break;
+    }
+    case '3':
+    {
+      //parade, lines dance united
+      accSpeed = 0.02;
+  
+      float indexOffset = index;
+      indexOffset /= 15;
+  
+      yd = sin(accumulator*2*M_PI + indexOffset) / 240;
+      xd = cos(accumulator*2*M_PI + indexOffset) / 240;
+      break;
+    }
+    case '4':
+    {
+      //light swinging
+      accSpeed = 0.02;
+  
+      float indexOffset = index;
+      indexOffset /= 15;
+  
+      yd = sin(accumulator*2*M_PI + indexOffset) / 240;
+      xd = cos(accumulator*2*M_PI + indexOffset) / 240;
+      break;
+    }
+    case '5':
+    {
+      //swinging
+      accSpeed = 0.02;
+  
+      float indexOffset = index;
+      indexOffset /= 5;
+  
+      yd = sin(accumulator*2*M_PI + indexOffset) / 240;
+      xd = cos(accumulator*2*M_PI + indexOffset) / 240;
+      break;
+    }
+    case '6':
+    {
+      //smashed
+      if(xd == 0) {
+        xd = ((double)rand() / RAND_MAX) / 200;
+        yd = ((double)rand() / RAND_MAX) / 200;
+      }
+      break;
+    }
+    case '7':
+    {
+      //vertical smash
+      if(yd == 0) {
+        yd = ((double)rand() / RAND_MAX) / 200;
+      }
+      break;
+    }
+    case '8':
+    {
+      //drop in, used by nintendo for shouting, or announcements
+      if(show) {
+        opacity += 25;
+        if(opacity > 255) {
+          opacity = 255;
+        }
+        bonusSize -= 0.01;
+        if(bonusSize <= 0) {
+          bonusSize = 0;
+        }
+      }
+      break;
+    }
+    case '9':
+    {
+      //drop in big text;
+      if(show) {
+        opacity += 25;
+        if(opacity > 255) {
+          opacity = 255;
+        }
+        bonusSize -= 0.01;
+        if(bonusSize <= 0) {
+          bonusSize = 0;
+        }
+      }
+      break;
+    }
+    case 'a':
+    {
+      //little text
+      break;
+    }
+
+  }
+
 }
 
 void fancyword::render() { //render each char
@@ -2182,14 +2319,21 @@ void fancyword::render() { //render each char
   }
 }
 
-void fancyword::append(int index) {
+void fancyword::update(float elapsed) {
+  for(int i = 0; i < chars.size(); i++) {
+    chars[i].update(elapsed);
+  }
+}
+
+void fancyword::append(int index, float fbw) {
   fancychar newChar;
   newChar.setIndex(index);
+  newChar.bonusWidth = fbw;
   chars.push_back(newChar);
   if(chars.size() > 1) {
-    chars.at(chars.size() -1).x += chars.at(chars.size()-2).width + chars.at(chars.size()-2).x;
+    chars.at(chars.size() -1).x += (chars.at(chars.size()-2).width * chars.at((chars.size()-2)).bonusWidth) + chars.at(chars.size()-2).x;
   }
-  width += newChar.width;
+  width += newChar.width * fbw;
 }
 
 fancybox::fancybox() {
@@ -2207,6 +2351,15 @@ void fancybox::render() {
   }
 }
 
+void fancybox::update(float elapsed) {
+  if(show) {
+    for(int i = 0; i < words.size(); i++) {
+
+      words[i].update(elapsed);
+    }
+  }
+}
+
 void fancybox::clear() {
   words.clear();
   wordProgress = 0;
@@ -2214,11 +2367,30 @@ void fancybox::clear() {
 }
 
 void fancybox::arrange(string fcontent) { 
-  //M("fancybox::arrange()");
   
   int i = 0;
   fancyword word;
+  int runningIndex = 0;
+  int color = 0;
+  char movement = 0;
   for(int i = 1; i < fcontent.size(); i++) {
+    runningIndex++;
+
+    if(fcontent[i] == '\\') {
+      //special encoding operation
+      char first = fcontent[i+1];
+      string second = "";
+      second += fcontent[i+2];
+      if(first == 'c') {
+        color = stoi(second);
+      } else if(first == 'm'){
+        movement = second[0];
+      }
+
+      i++;
+      i++;
+      continue;
+    }
     if(fcontent[i] == ' ') {
       float oldwidth = word.width + word.x;
       float oldy = word.y;
@@ -2230,11 +2402,40 @@ void fancybox::arrange(string fcontent) {
       if(word.x > 0.7) {
         word.x = 0;
         word.y += 0.08;
+        if(movement == '9') {
+          word.y += 0.08;
+        }
+        if(movement != '3') {
+          //parade movement involves dancing lines
+          runningIndex = 0;
+        }
+
       }
       continue;
     }
-    word.append(g_fancyCharLookup[fcontent[i]]);
 
+    float bonusWidth = 1;
+    if(movement == '9') { bonusWidth = 3;}
+    if(movement == 'a') { bonusWidth = 0.5; word.y=0.025;}
+    word.append(g_fancyCharLookup[fcontent[i]], bonusWidth);
+    word.chars.at(word.chars.size() -1).index = runningIndex;
+    word.chars.at(word.chars.size() -1).color = color;
+    word.chars.at(word.chars.size() -1).movement = movement;
+    if(movement == '8') {
+      word.chars.at(word.chars.size() -1).opacity = 0;
+      word.chars.at(word.chars.size() -1).bonusSize = 0.1;
+    }
+    if(movement == '9') {
+      word.chars.at(word.chars.size() -1).opacity = 0;
+      word.chars.at(word.chars.size() -1).bonusSize = 0.1;
+    }
+    if(movement == 'a') {
+      word.chars.at(word.chars.size() -1).opacity = 170;
+      word.chars.at(word.chars.size() -1).bonusSize = 0;
+    }
+
+    
+    
   }
 
   words.push_back(word);
@@ -2242,17 +2443,28 @@ void fancybox::arrange(string fcontent) {
 }
 
 int fancybox::reveal() {
-  if(words.size() == 0) {return -1;}
+  if(words.size() == 0) { return -1;}
+  // Play a clank
+  if (adventureUIManager->typing)
+  {
+    Mix_HaltChannel(6);
+    Mix_VolumeChunk(adventureUIManager->blip, 20);
+    playSound(6, adventureUIManager->blip, 0);
+  }
+
   if(wordProgress < words.size()) {
-    words[wordProgress].chars[letterProgress].show = 1;
+    if(letterProgress < words[wordProgress].chars.size()) {
+      words[wordProgress].chars[letterProgress].show = 1;
+    }
     letterProgress++;
-    if(letterProgress > words[wordProgress].chars.size()) {
+    if(letterProgress >= words[wordProgress].chars.size()) {
       letterProgress = 0;
       wordProgress ++;
     }
   } else {
     //all done!
     adventureUIManager->dialogProceedIndicator->show = 1;
+    adventureUIManager->typing = 0;
     return -1;
   }
 
@@ -9375,7 +9587,10 @@ void adventureUI::pushFancyText(entity * ftalker)
   inPauseMenu = 0;
   talkingText->show = 0;
   adventureUIManager->hideInventoryUI();
+  talkingBox->show = 1;
   talker = ftalker;
+  typing = 1;
+
   g_talker = ftalker;
   string arrangeText = scriptToUse->at(dialogue_index);
   //parse arrangeText for variables within $$, e.g. $$playername$$
@@ -9394,7 +9609,7 @@ void adventureUI::pushFancyText(entity * ftalker)
     }
   }
   g_fancybox->arrange(arrangeText);
-  M("Finished arrange()");
+  dialogProceedIndicator->show = 0;
 }
 
 void adventureUI::pushText(entity *ftalker)
@@ -9479,8 +9694,10 @@ void adventureUI::updateText()
   }
   else
   {
-    typing = false;
-    if(!askingQuestion && this == adventureUIManager && executingScript && (curText != "")) {
+    if(!g_fancybox->show) {
+      typing = false;
+    }
+    if(!askingQuestion && this == adventureUIManager && executingScript && (curText != "") && !g_fancybox->show) {
       if(dialogProceedIndicator->show == 0) {
         dialogProceedIndicator->show = 1;
         dialogProceedIndicator->y = 0.9;

@@ -809,14 +809,33 @@ class fancychar {
 public:
   float x = 0;
   float y = 0;
+
+  float xd = 0; //x dynamic
+  float yd = 0;
+
+  int index = 0;
+
+  int color = 0;
+
+  float bonusWidth = 0; //this doesn't change
+
+  float bonusSize = 0;
+  int opacity = 255;
+
+  float accumulator = 0;
+  float accSpeed = 0.001;
+
   float width = 0; 
   bool show = 0;
-  int charsetIndex; //0 for lowercase, 1 for uppercase, 2 for symbols, possibly 3 for special chars
   SDL_Texture* texture; //pointer to texture in g_fancyAlphabet
 
+  char movement = '0';
+  
   void setIndex(int findex); 
 
   void render(fancyword* parent);
+
+  void update(float elapsed);
 };
 
 class fancyword {
@@ -826,9 +845,11 @@ public:
   float width = 0;
   vector<fancychar> chars;
 
-  void append(int index);
+  void append(int index, float fbw);
 
   void render(); 
+
+  void update(float elapsed);
 };
 
 class fancybox {
@@ -840,10 +861,12 @@ public:
   int letterProgress = 0;
 
   bool show = 0;
- 
+
   fancybox(); 
 
   void render(); 
+
+  void update(float elapsed);
 
   //minding newlines and keeping letters of a word on the same line, arrange words/letters together before revealing them
   //this param might contain some encoding for special chars
@@ -935,13 +958,13 @@ class adventureUI {
       {"purple", {155, 115, 155}},
       {"blue", {115, 115, 155}},
 
-      {"bred", {190, 55, 55}},
-      {"borange", {190, 123, 55}},
-      {"byellow", {190, 190, 55}},
-      {"bgreen", {55, 190, 55}},
-      {"baqua", {55, 190, 190}},
-      {"bpurple", {190, 55, 190}},
-      {"bblue", {55, 55, 190}},
+      {"bred", {180, 45, 45}},
+      {"borange", {180, 113, 45}},
+      {"byellow", {180, 180, 45}},
+      {"bgreen", {45, 180, 45}},
+      {"baqua", {45, 180, 180}},
+      {"bpurple", {180, 45, 180}},
+      {"bblue", {45, 45, 180}},
 
       {"fred", {130, 55, 55}},
       {"forange", {130, 92, 55}},

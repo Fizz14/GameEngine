@@ -30,7 +30,6 @@ void protagMakesNoise();
 int WinMain()
 {
 
-  //devMode = 0;
   devMode = 1;
 
   canSwitchOffDevMode = devMode;
@@ -428,12 +427,13 @@ int WinMain()
 
   //fancy alphabet
   int fancyIndex = 0;
+  SDL_Color white = {255, 255, 255};
   for(char character : g_fancyAlphabetChars) { //not a char
     string letter = "";
     letter += character;
 
     // add support for special chars here
-    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
+    textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), white, 70);
 
     texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
 
@@ -2586,16 +2586,16 @@ int WinMain()
 //      }
 
       //heart beating
-      adventureUIManager->heartbeatDurationMs -= elapsed;
-      if(adventureUIManager->heartbeatDurationMs > 200) {
-          //expand
-          adventureUIManager->healthPicture->targetwidth = 0.25;
-
-      } else {
-          //contract
-          adventureUIManager->healthPicture->targetwidth = 0.25 - adventureUIManager->heartShrinkPercent;
-
-      }
+//      adventureUIManager->heartbeatDurationMs -= elapsed;
+//      if(adventureUIManager->heartbeatDurationMs > 200) {
+//          //expand
+//          adventureUIManager->healthPicture->targetwidth = 0.25;
+//
+//      } else {
+//          //contract
+//          adventureUIManager->healthPicture->targetwidth = 0.25 - adventureUIManager->heartShrinkPercent;
+//
+//      }
       if(adventureUIManager->heartbeatDurationMs < 0) {
         adventureUIManager->heartbeatDurationMs = (adventureUIManager->maxHeartbeatDurationMs - 300) * ((float)protag->hp / (float)protag->maxhp) + 300;
         float hpratio = ((float)protag->hp / (float)protag->maxhp);
@@ -2680,6 +2680,8 @@ int WinMain()
 
     //render fancybox
     g_fancybox->render();
+    g_fancybox->update(elapsed);
+
 
     // settings menu
     if (g_inSettingsMenu) 

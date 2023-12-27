@@ -18,8 +18,6 @@
 
 using namespace std;
 
-
-
 // for sorting ui on mapload
 int compare_ui(ui *a, ui *b)
 {
