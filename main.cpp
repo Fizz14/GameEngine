@@ -30,7 +30,7 @@ void protagMakesNoise();
 int WinMain()
 {
 
-  devMode = 1;
+  devMode = 0;
 
   canSwitchOffDevMode = devMode;
 
@@ -2963,18 +2963,30 @@ int WinMain()
             }
             SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
   
+            levelNode* tn = g_levelSequence->levelNodes[j];
+
             //should we draw the locked graphic?
-            if(g_levelSequence->levelNodes[j]->locked) {
+            if(tn->locked) {
+
               SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+
+              //render the face
+              SDL_RenderCopy(renderer, tn->mouthTexture, NULL, &drect);
+
+              SDL_Rect srect = tn->getEyeRect();
+              SDL_RenderCopy(renderer, tn->eyeTexture, &srect, &drect);
+              g_levelSequence->levelNodes[j]->blinkCooldownMS -= 16;
+              if(tn->blinkCooldownMS < 0) { tn->blinkCooldownMS = rng(tn->minBlinkCooldownMS, tn->maxBlinkCooldownMS); }
             } else {
-              SDL_RenderCopy(renderer, g_levelSequence->levelNodes[j]->sprite, NULL, &drect);
+              SDL_RenderCopy(renderer, tn->sprite, NULL, &drect);
             }
+
   
             if (i == inventorySelection)
             {
   
               if(g_levelSequence->levelNodes[i]->locked) {
-                adventureUIManager->escText->updateText("???", -1, 0.9);
+                adventureUIManager->escText->updateText("Locked", -1, 0.9);
               } else {
                 string dispText = g_levelSequence->levelNodes[i]->name;
                 std::replace(dispText.begin(), dispText.end(),'_',' ');

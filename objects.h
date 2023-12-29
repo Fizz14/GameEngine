@@ -948,31 +948,33 @@ class adventureUI {
 //                                   };
 
     vector<pair<string,SDL_Color>> textcolors = {
-      {"default", {155, 115, 115}}, //Pink, regular textbox
+      {"default", {155, 115, 115}}, //0, pink
 
-      {"red", {155, 115, 115}},
-      {"orange", {155, 135, 115}},
-      {"yellow", {155, 155, 115}},
-      {"green", {115, 155, 115}},
-      {"aqua", {115, 155, 155}},
-      {"purple", {155, 115, 155}},
-      {"blue", {115, 115, 155}},
+      {"red", {155, 115, 115}}, //1
+      {"orange", {155, 135, 115}}, //2
+      {"yellow", {155, 155, 115}}, //3
+      {"green", {115, 155, 115}}, //4
+      {"aqua", {115, 155, 155}}, //5
+      {"purple", {155, 115, 155}}, //6
+      {"blue", {115, 115, 155}}, //7
 
-      {"bred", {180, 45, 45}},
-      {"borange", {180, 113, 45}},
-      {"byellow", {180, 180, 45}},
-      {"bgreen", {45, 180, 45}},
-      {"baqua", {45, 180, 180}},
-      {"bpurple", {180, 45, 180}},
-      {"bblue", {45, 45, 180}},
+      {"bred", {180, 45, 45}}, //8
+      {"borange", {180, 113, 45}}, //9
+      {"byellow", {180, 180, 45}}, //a
+      {"bgreen", {45, 180, 45}}, //b
+      {"baqua", {45, 180, 180}}, //c
+      {"bpurple", {180, 45, 180}}, //d
+      {"bblue", {45, 45, 180}}, //e
 
-      {"fred", {130, 55, 55}},
-      {"forange", {130, 92, 55}},
-      {"fyellow", {130, 130, 55}},
-      {"fgreen", {55, 130, 115}},
-      {"faqua", {55, 130, 130}},
-      {"fpurple", {130, 55, 130}},
-      {"fblue", {55, 55, 130}},
+      {"fred", {130, 55, 55}}, //f
+      {"forange", {130, 92, 55}}, //g
+      {"fyellow", {130, 130, 55}}, //h
+      {"fgreen", {55, 130, 115}}, //i
+      {"faqua", {55, 130, 130}}, //j
+      {"fpurple", {130, 55, 130}}, //k
+      {"fblue", {55, 55, 130}}, //l
+      {"white", {155, 155, 155}}, //m
+      {"grey", {100, 100, 40}}, //n
 
                                    };
 
@@ -1789,10 +1791,28 @@ public:
 
   bool locked = 1;
   bool hidden = 0; //levels can be hidden so it is impossible to return to them (?)
+                  
 
-  levelNode(string p3, string p4, string p5, SDL_Renderer * renderer); 
+  int eyeStyle = 0;
+  bool loadedEyes = 0;
+  SDL_Texture* eyeTexture = nullptr;
+
+  int mouthStyle = 0;
+  bool loadedMouth = 0;
+  SDL_Texture* mouthTexture = nullptr;
+
+  int blinkCooldownMS = 0;
+
+  static const int maxBlinkCooldownMS = 10000;
+  static const int minBlinkCooldownMS = 2000;
+
+
+  levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, int fmouthStyle); 
+
 
   ~levelNode(); 
+
+  SDL_Rect getEyeRect();
 };
 
 
@@ -1891,6 +1911,8 @@ class textbox {
 
 class ui {
   public:
+    bool assetSharer = 0;
+
     float x;
     float y;
     

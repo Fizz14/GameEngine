@@ -98,6 +98,7 @@ void parseScriptForLabels(vector<string> &sayings) {
   for(int i = 0; i < (int)sayings.size(); i++) {
     int pos = sayings[i].find(":");
     if(pos != (int)string::npos) {
+      if(sayings[i][0] == '`') {break;} //this is a ':' in a bit of dialog or something
       bool good = 0;
       for(auto y: symboltable) {
         if(sayings[i].substr(pos+1, sayings[i].length()-(pos+1)) == y.first) {
@@ -2176,13 +2177,14 @@ void fancychar::render(fancyword* parent) {
   SDL_FRect shadowRect = dstrect;
   shadowRect.x += booshAmount;
   shadowRect.y += booshAmount;
+  
+  SDL_Color cc = adventureUIManager->textcolors[color].second;
 
-  SDL_SetTextureColorMod(texture, 55, 55, 55);
+  //SDL_SetTextureColorMod(texture, 55, 55, 55);
+  SDL_SetTextureColorMod(texture, pow(cc.r,0.8),pow(cc.g,0.8),pow(cc.b,0.8));
   SDL_SetTextureAlphaMod(texture, opacity);
 
   SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
-
-  SDL_Color cc = adventureUIManager->textcolors[color].second;
 
   SDL_SetTextureColorMod(texture, pow(cc.r,1.0013),pow(cc.g,1.0013),pow(cc.b,1.0013));
   
@@ -2381,8 +2383,85 @@ void fancybox::arrange(string fcontent) {
       char first = fcontent[i+1];
       string second = "";
       second += fcontent[i+2];
+      char sc = second[0];
       if(first == 'c') {
-        color = stoi(second);
+        switch(sc) {
+          case 'a':
+          {
+            color = 10;
+            break;
+          }
+          case 'b':
+          {
+            color = 11;
+            break;
+          }
+          case 'c':
+          {
+            color = 12;
+            break;
+          }
+          case 'd':
+          {
+            color = 13;
+            break;
+          }
+          case 'e':
+          {
+            color = 14;
+            break;
+          }
+          case 'f':
+          {
+            color = 15;
+            break;
+          }
+          case 'g':
+          {
+            color = 16;
+            break;
+          }
+          case 'h':
+          {
+            color = 17;
+            break;
+          }
+          case 'i':
+          {
+            color = 18;
+            break;
+          }
+          case 'j':
+          {
+            color = 19;
+            break;
+          }
+          case 'k':
+          {
+            color = 20;
+            break;
+          }
+          case 'l':
+          {
+            color = 21;
+            break;
+          }
+          case 'm':
+          {
+            color = 22;
+            break;
+          }
+          case 'n':
+          {
+            color = 23;
+            break;
+          }
+          default:
+          {
+            color = stoi(second);
+            break;
+          }
+        }
       } else if(first == 'm'){
         movement = second[0];
       }
@@ -6787,10 +6866,11 @@ vector<entity*> gatherEntities(string fname) {
   return ret;
 }
 
-levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer) {
+levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, int fmouthStyle) {
   name = p3;
   mapfilename = p4;
   waypointname = p5;
+  mouthStyle = fmouthStyle;
 
   //load graphic
   string lowerName = name;
@@ -6812,10 +6892,61 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer) {
   }
   sprite = SDL_CreateTextureFromSurface(renderer, loadMe);
   SDL_FreeSurface(loadMe);
+
+
+  for(int i = 0; i < g_levelNodes.size(); i++) {
+    levelNode* other = g_levelNodes[i];
+    if(other->eyeStyle == this->eyeStyle) {
+      this->eyeTexture = other->eyeTexture;
+      break;
+    }
+  }
+
+  for(int i = 0; i < g_levelNodes.size(); i++) {
+    levelNode* other = g_levelNodes[i];
+    if(other->mouthStyle == this->mouthStyle) {
+      this->mouthTexture = other->mouthTexture;
+      break;
+    }
+  }
+
+  if(eyeTexture == nullptr) {
+    string loadSTR = "levelsequence/icons/eyes.bmp";
+    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
+    this->eyeTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
+    SDL_FreeSurface(loadMe);
+  }
+
+  if(mouthTexture == nullptr) {
+    string loadSTR = "levelsequence/icons/mouth2.bmp";
+    if(mouthStyle == 1) {
+      loadSTR = "levelsequence/icons/mouth.bmp";
+    }
+    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
+
+    this->mouthTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
+    SDL_FreeSurface(loadMe);
+  }
+
+  blinkCooldownMS = rng(minBlinkCooldownMS, maxBlinkCooldownMS);
+  
+  g_levelNodes.push_back(this);
+
 }
 
 levelNode::~levelNode() {
+  if(loadedEyes) { SDL_DestroyTexture(eyeTexture);}
+  if(loadedMouth) { SDL_DestroyTexture(mouthTexture);}
   SDL_DestroyTexture(sprite);
+
+  g_levelNodes.erase(remove(g_levelNodes.begin(), g_levelNodes.end(), this), g_levelNodes.end());
+}
+
+SDL_Rect levelNode::getEyeRect() {
+  SDL_Rect srect = {0, 0, 196, 196};
+  if(blinkCooldownMS < 120) { srect.x += 196;};
+  if(blinkCooldownMS < 60) { srect.x += 196;};
+  return srect;
 }
 
 
@@ -6841,6 +6972,7 @@ levelSequence::levelSequence(string filename, SDL_Renderer * renderer){
   string way_name;
   getline(file,temp);
 
+  int i = 0;
   for(;;) {
 
     getline(file,level_name);
@@ -6849,7 +6981,11 @@ levelSequence::levelSequence(string filename, SDL_Renderer * renderer){
     map_name = "maps/" + map_name;
 
     if(file.eof()) {break;}
-    levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer);
+
+    bool special = find(g_creepyLocks.begin(), g_creepyLocks.end(), i) != g_creepyLocks.end();
+
+    levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer, special);
+    i++;
     levelNodes.push_back(newLevelNode);
     getline(file,temp);
 
@@ -6877,6 +7013,7 @@ void levelSequence::addLevels(string filename) {
   string way_name;
   getline(file,temp);
 
+  int i = 0;
   for(;;) {
 
     getline(file,level_name);
@@ -6885,7 +7022,10 @@ void levelSequence::addLevels(string filename) {
     map_name = "maps/" + map_name;
 
     if(file.eof()) {break;}
-    levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer);
+
+    bool special = find(g_creepyLocks.begin(), g_creepyLocks.end(), i) != g_creepyLocks.end();
+    levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer, special);
+    i++;
     levelNodes.push_back(newLevelNode);
     getline(file,temp);
 
@@ -7572,28 +7712,25 @@ void textbox::updateText(string content, float size, float fwidth, SDL_Color fco
 ui::ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float fwidth, float fheight, int fpriority) {
   //M("ui()" );
   filename = ffilename;
-  
-  string spritefilevar = filename;
 
+  string spritefilevar = filename;
   if(onionmode) {spritefilevar = "engine/onion.bmp";}
-  
   image = IMG_Load(spritefilevar.c_str());
+  texture = SDL_CreateTextureFromSurface(renderer, image);
+  SDL_FreeSurface(image);
 
   width = fwidth;
   height = fheight;
   x = fx;
   y = fy;
-  texture = SDL_CreateTextureFromSurface(renderer, image);
+  
   g_ui.push_back(this);
 
   priority = fpriority;
-  SDL_FreeSurface(image);
 }
 
 ui::~ui() {
-  //M("~ui()" );
   SDL_DestroyTexture(texture);
-
   g_ui.erase(remove(g_ui.begin(), g_ui.end(), this), g_ui.end());
 }
 
@@ -8539,7 +8676,7 @@ void clear_map(camera& cameraToReset) {
             {
   
               if(g_levelSequence->levelNodes[i]->locked) {
-                adventureUIManager->escText->updateText("???", -1, 0.9);
+                adventureUIManager->escText->updateText("Locked", -1, 0.9);
               } else {
                 string dispText = g_levelSequence->levelNodes[i]->name;
                 std::replace(dispText.begin(), dispText.end(),'_',' ');
@@ -9600,10 +9737,12 @@ void adventureUI::pushFancyText(entity * ftalker)
     if(position2 != string::npos) {
       //get the text between those two positions
       string variableName = arrangeText.substr(position + 2, position2 - position -2);
+      D(variableName);
 
       //is there a savestring for that?
       string res = readSaveStringField(variableName);
-      arrangeText.erase(pushedText.begin() + position, pushedText.begin() + position2 + 2);
+      D(res);
+      arrangeText.erase(arrangeText.begin() + position, arrangeText.begin() + position2 + 2);
       arrangeText.insert(position, res);
 
     }
@@ -11370,13 +11509,26 @@ I("s");
     return;
   }
 
+  // set the prompt for the next question
+  // /prompt
+  //
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/prompt")
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    auto parts = splitString(s, ' ');
+    keyboardPrompt = s.substr(8);
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
   // prompt user for text input and save the answer to a save-field
   //
   // /keyboard playername
   // AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrXxTtUuVvWwXxYyZz
   if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/keyboard")
   {
-    breakpoint();
 
     string s = scriptToUse->at(dialogue_index + 1);
     auto parts = splitString(s, ' ');
@@ -11386,7 +11538,7 @@ I("s");
     g_alphabet = g_alphabet_lower;
     g_alphabet_textures = &g_alphabetLower_textures;
 
-    keyboardPrompt = pushedText;
+    //keyboardPrompt = pushedText;
 
     g_inventoryUiIsLevelSelect = 0;
     g_inventoryUiIsKeyboard = 1;

@@ -111,6 +111,8 @@ vector<collisionZone *> g_collisionZones;
 
 vector<entity *> g_musicalEntities;
 
+vector<levelNode *> g_levelNodes;
+
 map<string, int> enemiesMap; // stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0;						 // how many points this map can spend on enemies;
 
@@ -707,7 +709,7 @@ string g_alphabet = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_lower = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ<^;";
 
-string g_fancyAlphabetChars = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ?!@#$%^&*()+-._;,\"\'";
+string g_fancyAlphabetChars = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ?!@#$%^&*()+-._:;,\"\'";
 
 //the pair contains a texture and a width
 std::map<int, std::pair<SDL_Texture*, float>> g_fancyAlphabet{};
@@ -874,6 +876,8 @@ string mapname = "";
 string backgroundstr = "black";
 
 float g_earshot = 4 * 64; // how close do entities need to be to join their friends in battle
+
+vector<int> g_creepyLocks = {2, 6, 12, 15};
 
 bool fileExists(const std::string &name)
 {

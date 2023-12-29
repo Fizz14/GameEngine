@@ -230,8 +230,7 @@ extern vector<collisionZone *> g_collisionZones;
 
 extern vector<entity *> g_musicalEntities;
 
-
-
+extern vector<levelNode *> g_levelNodes;
 
 struct cmpCoord
 {
@@ -464,6 +463,10 @@ extern int g_inventoryColumns;
 extern int g_itemsInInventory;
 extern int g_inventoryRows;
 extern SDL_Texture* g_locked_level_texture;
+extern SDL_Texture* g_levelIconEyeTexture;
+extern SDL_Texture* g_levelIconBlinkTexture;
+extern SDL_Texture* g_levelIconMouthTexture;
+extern SDL_Texture* g_levelIconMouth2Texture;
 extern textbox *inventoryText;
 extern ui *inventoryMarker;
 extern int oldUIUp;
@@ -819,6 +822,8 @@ extern string mapname;
 extern string backgroundstr;
 
 extern float g_earshot;
+
+extern vector<int> g_creepyLocks;
 
 bool fileExists(const std::string &name);
 
