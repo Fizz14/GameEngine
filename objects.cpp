@@ -2310,6 +2310,20 @@ void fancychar::update(float elapsed) {
       //little text
       break;
     }
+    case 'b':
+    {
+      //swinging, with a swing tempo
+     
+      accSpeed = abs(xd)*2 + 0.01;
+      float indexOffset = index;
+      indexOffset /= 5;
+
+  
+      yd = sin(accumulator*2*M_PI + indexOffset) / 240;
+      xd = cos(accumulator*2*M_PI + indexOffset) / 240;
+
+      break;
+    }
 
   }
 
@@ -2543,6 +2557,9 @@ int fancybox::reveal() {
   } else {
     //all done!
     adventureUIManager->dialogProceedIndicator->show = 1;
+    adventureUIManager->dialogProceedIndicator->y = 0.9;
+    adventureUIManager->c_dpiDesendMs = 0;
+    adventureUIManager->c_dpiAsending = 0;
     adventureUIManager->typing = 0;
     return -1;
   }
@@ -3216,7 +3233,6 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   }
 
 
-  specialObjectsInit(this);
 
   if(animationconfig == 0) {
     useAnimForWalking = 1;
@@ -3445,6 +3461,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
 
   }
 
+  specialObjectsInit(this);
 
   file.close();
 }
@@ -6085,7 +6102,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
         //push him away from close entities
         //if we're even slightly stuck, don't bother
-        if(this->dynamic && this->pushable) {
+        if(this->dynamic && this->pushable && elapsed > 0) {
 
           for(auto x : g_entities) {
             if(this->isAI && x->isAI) {continue;} //behemoths don't collide
@@ -7075,12 +7092,12 @@ usable::usable(string fname) {
   texture = SDL_CreateTextureFromSurface(renderer,image);
   SDL_FreeSurface(image);
 
-  g_backpack.push_back(this);
 }
+
+
 
 usable::~usable() {
   SDL_DestroyTexture(texture);
-  g_backpack.erase(remove(g_backpack.begin(), g_backpack.end(), this), g_backpack.end());
 }
 
 
@@ -7225,9 +7242,9 @@ int loadSave() {
   //delete all usables
   int size = g_backpack.size();
   for(int i = 0; i < size; i++) {
-    delete g_backpack[0];
+    delete g_chest[i];
   }
-  g_backpack.clear();
+  g_chest.clear();
 
   adventureUIManager->hideBackpackUI();
   adventureUIManager->resetBackpackUITextures();
@@ -7247,6 +7264,7 @@ int loadSave() {
 
     if(good == 1) {
       usable* newUsable = new usable(line);
+      g_chest.push_back(newUsable);
       adventureUIManager->showBackpackUI();
     }
 
@@ -9607,13 +9625,18 @@ void adventureUI::initFullUI() {
   hotbarFocus->dropshadow = 1;
 
 
+  SDL_Surface *surface = IMG_Load("engine/sp-no-texture.bmp");
+  noIconTexture = SDL_CreateTextureFromSurface(renderer, surface);
+  SDL_FreeSurface(surface);
 
   nextUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 + 0.1, 0.84, 0.1, 1, 1);
   nextUsableIcon->persistent = true;
   nextUsableIcon->heightFromWidthFactor = 1;
-  noIconTexture = nextUsableIcon->texture;
+  SDL_DestroyTexture(nextUsableIcon->texture);
+  nextUsableIcon->texture = noIconTexture;
   nextUsableIcon->shrinkPercent = 0.01; 
   nextUsableIcon->priority = -7;
+  nextUsableIcon->show = 0;
 
   prevUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 - 0.1, 0.84, 0.1, 1, 1);
   prevUsableIcon->persistent = true;
@@ -9697,6 +9720,14 @@ void adventureUI::initFullUI() {
     x->targety = x->y;
     x->glideSpeed = 0.3;
   }
+
+  hotbarMutedXIcon = new ui(renderer, "static/ui/red_x.bmp", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
+  hotbarMutedXIcon->persistent = true;
+  hotbarMutedXIcon->priority = -6;
+  hotbarMutedXIcon->heightFromWidthFactor = 1;
+  hotbarMutedXIcon->dropshadow = 1;
+
+
 }
 
 adventureUI::~adventureUI()
@@ -9757,12 +9788,14 @@ void adventureUI::pushText(entity *ftalker)
   adventureUIManager->hideInventoryUI();
   talker = ftalker;
   g_talker = ftalker;
-  if (scriptToUse->at(dialogue_index).at(0) == '%')
+  if (scriptToUse->at(dialogue_index).at(0) == '%' || scriptToUse->at(dialogue_index).at(0) == ')' || scriptToUse->at(dialogue_index).at(0) == '(')
   {
     pushedText = scriptToUse->at(dialogue_index).substr(1);
   }
-  else
-  {
+  else if(scriptToUse->at(dialogue_index).at(0) == '-') {
+    pushedText = scriptToUse->at(dialogue_index).substr(1);
+    pushedText = pushedText + " " + g_saveToDelete + "?";
+  } else {
     pushedText = scriptToUse->at(dialogue_index);
   }
 
@@ -9808,9 +9841,23 @@ void adventureUI::updateText()
     {
       latter = " > ";
     }
-    responseText->updateText(former + responses[response_index] + latter, -1, 0.9, currentTextcolor, currentFontStr);
+
+    string content = responses[response_index];
+    if(g_saveOverwriteResponse == 1 || g_saveOverwriteResponse == 2) {
+      if(response_index < 3) {
+        content = g_saveNames[response_index];
+      }
+    }
+
+    responseText->updateText(former + content + latter, -1, 0.9, currentTextcolor, currentFontStr);
     responseText->show = 1;
     response = responses[response_index];
+    if(g_saveOverwriteResponse == 2) {
+      if(response_index <3) {
+        g_saveToDelete = g_saveNames[response_index];
+      }
+    }
+
   }
   else
   {
@@ -9947,9 +9994,11 @@ void adventureUI::continueDialogue()
     return;
   }
 
+
   // question
   if (scriptToUse->at(dialogue_index + 1).at(0) == '%')
   {
+    g_saveOverwriteResponse = 0;
     // make a question
     dialogue_index++;
     pushText(talker);
@@ -9969,6 +10018,105 @@ void adventureUI::continueDialogue()
   else
   {
     askingQuestion = false;
+  }
+
+  // loadsavenames
+  if (scriptToUse->at(dialogue_index + 1).substr(0,14) == "/menuloadnames")
+  {
+    breakpoint();
+    vector<string> savenames = {"user/saves/a.save",
+                                "user/saves/b.save",
+                                "user/saves/c.save"};
+
+    ifstream data;
+    string line;
+    int i = 0;
+    string name = "New File";
+    g_saveNames.clear();
+    while(i < 3) {
+      data.open(savenames[i]);
+      while(!data.eof()) {
+        getline(data, line);
+        if(line.find("playername") != string::npos) {
+          vector<string> x = splitString(line, ' ');
+          if(x[1] == "Blank") { x[1] = "New File";}
+          g_saveNames.push_back(x[1]);
+          break;
+        }
+      }
+      data.close();
+      i++;
+    }
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+  // menu question
+  if (scriptToUse->at(dialogue_index + 1).at(0) == ')')
+  {
+    g_saveOverwriteResponse = 1;
+    // make a question
+    dialogue_index++;
+    pushText(talker);
+    askingQuestion = true;
+    // put responses in responses vector
+    int j = 1;
+    string res = scriptToUse->at(dialogue_index + j).substr(1);
+    responses.clear();
+    while (res.find(':') != std::string::npos)
+    {
+      responses.push_back(res.substr(0, res.find(':')));
+      j++;
+      res = scriptToUse->at(dialogue_index + j).substr(1);
+    }
+    
+    return;
+  }
+
+  // menu erase prompt
+  if (scriptToUse->at(dialogue_index + 1).at(0) == '(')
+  {
+    g_saveOverwriteResponse = 2;
+    // make a question
+    dialogue_index++;
+    pushText(talker);
+    askingQuestion = true;
+    // put responses in responses vector
+    int j = 1;
+    string res = scriptToUse->at(dialogue_index + j).substr(1);
+    responses.clear();
+    while (res.find(':') != std::string::npos)
+    {
+      responses.push_back(res.substr(0, res.find(':')));
+      j++;
+      res = scriptToUse->at(dialogue_index + j).substr(1);
+    }
+    
+    return;
+  }
+
+  // menu erase confirm prompt
+  if (scriptToUse->at(dialogue_index + 1).at(0) == '-')
+  {
+    g_saveOverwriteResponse = 3;
+    // make a question
+    dialogue_index++;
+    pushText(talker);
+    askingQuestion = true;
+    // put responses in responses vector
+    int j = 1;
+    string res = scriptToUse->at(dialogue_index + j).substr(1);
+    responses.clear();
+    while (res.find(':') != std::string::npos)
+    {
+      responses.push_back(res.substr(0, res.find(':')));
+      j++;
+      res = scriptToUse->at(dialogue_index + j).substr(1);
+    }
+    
+    return;
   }
 
   // item prompt
@@ -11517,6 +11665,7 @@ I("s");
     string s = scriptToUse->at(dialogue_index + 1);
     auto parts = splitString(s, ' ');
     keyboardPrompt = s.substr(8);
+    adventureUIManager->dialogProceedIndicator->show = 0;
 
     dialogue_index++;
     this->continueDialogue();
@@ -11541,6 +11690,7 @@ I("s");
     //keyboardPrompt = pushedText;
 
     g_inventoryUiIsLevelSelect = 0;
+    g_inventoryUiIsLoadout = 0;
     g_inventoryUiIsKeyboard = 1;
     inPauseMenu = 1;
     g_firstFrameOfPauseMenu = 1;
@@ -12035,6 +12185,7 @@ I("s");
   {
     g_inventoryUiIsLevelSelect = 1;
     g_inventoryUiIsKeyboard = 0;
+    g_inventoryUiIsLoadout = 0;
     inventorySelection = 0;
     inPauseMenu = 1;
     g_firstFrameOfPauseMenu = 1;
@@ -12100,7 +12251,9 @@ I("s");
 
     if(good == 1) {
       usable* newUsable = new usable(nameOfUsable);
-      adventureUIManager->showBackpackUI();
+      //!!! temporary for debugging
+      g_backpack.push_back(newUsable);
+      //adventureUIManager->showBackpackUI();
     }
 
     dialogue_index++;
@@ -12134,19 +12287,23 @@ void adventureUI::positionInventory() {
 
 //hide heart and other stuff if the player is in the menus
 void adventureUI::hideHUD() {
+  showHud = 0;
   healthPicture->show = 0;
   healthText->show = 0;
   hideScoreUI();
   hotbarFocus->show = 0;
+  hotbarMutedXIcon->show = 0;
   hotbar->show = 0;
   cooldownIndicator->show = 0;
   systemClock->show = 0;
 }
 
 void adventureUI::showHUD() {
+  showHud = 1;
   healthPicture->show = 1;
   healthText->show = 1;
   hotbarFocus->show = 1;
+  hotbarMutedXIcon->show = 1;
   hotbar->show = 1;
   cooldownIndicator->show = 1;
   systemClock->show = 1;

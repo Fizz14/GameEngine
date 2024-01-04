@@ -883,6 +883,8 @@ public:
 
 class adventureUI {
   public:
+    bool showHud = 1;
+
     int dialogue_index = 0;
 
     bool playersUI = 1; //is this the UI the player will use
@@ -1081,7 +1083,7 @@ class adventureUI {
     textbox* systemClock = 0;
 
     int countEntities = 0; //used now for /lookatall to count how many entities we've looked at
-                           
+        
     ui* hotbar = 0; //this is a little box which contains the player's usables
                     //when the player holds the inventory button, it widens and 
                     //the player can select a different item with the movement keys
@@ -1113,6 +1115,7 @@ class adventureUI {
     int shiftingMs = 0;
     int maxShiftingMs = 200;
 
+    ui* hotbarMutedXIcon = 0;
 
     //positions for gliding transition icons to 
     vector<std::pair<float, float>> hotbarPositions = {
@@ -1503,6 +1506,7 @@ class entity:public actor {
     float aggressivenessNoiseGain = 0.0001;
     float minAggressiveness = 0;
     float maxAggressiveness = 100;
+    float aggressivenessSpread = 0;
 
     bool agrod = 0; //are they fighting a target?
     float hearingRadius = 0;

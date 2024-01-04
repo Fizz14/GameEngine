@@ -1288,7 +1288,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   // don't run the init-script if we're in devmode
   if (!devMode && fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
-    cout << "Found the initscript" << endl;
     string loadstr = "maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
     //D(loadstr);
     const char *plik = loadstr.c_str();

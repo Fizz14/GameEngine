@@ -361,10 +361,15 @@ float g_transitionSpeed = 3; // 3, 9
 
 //backpack - holds usable items on a hotbar
 int g_whichUsableSelectedIndex = 0;
-vector<usable*> g_backpack;
+vector<usable*> g_backpack; //max six
+vector<usable*> g_chest; //all of the player's usables
+
+vector<int> g_loadout;
+int g_maxLoadoutSize = 6;
+SDL_Texture* g_loadoutHighlightTexture = 0;
+
 float g_usableWaitToCycleTime = 0;
 float g_maxUsableWaitToCycleTime = 100;
-adventureUI* g_backpackScriptCaller = nullptr;
 entity *g_backpackNarrarator; //script callers should have thier own ent to not mess up dialogue indexes (dumb!)
 const float g_backpackHorizontalOffset = 0.35;
 const float g_hotbarX = 0.45; //don't change this, to move it horizontally change g_backpackHorizontalOffset
@@ -702,6 +707,8 @@ int g_starvingFoodpoints = 20; //need 20 or more foodpoints to use items
 
 bool g_inventoryUiIsLevelSelect = 0; //set to 1 to repurpose to inventory UI for level select UI
 
+bool g_inventoryUiIsLoadout = 0;
+
 bool g_inventoryUiIsKeyboard = 0; //set to 1 to repurpose to inventory UI for player string input
 string g_keyboardInput = "";
 
@@ -768,6 +775,9 @@ bool g_autoSetThemesFromMapDirectory = 0; // if 1, loading a map will also set t
 
 // userdata - will be set on some file-select-screen
 string g_saveName = "a";
+vector<string> g_saveNames;
+int g_saveOverwriteResponse = 0;
+string g_saveToDelete = "";
 
 std::map<string, int> g_save = {};
 std::map<string, string> g_saveStrings = {};
@@ -797,6 +807,8 @@ float g_doubleSpinHelpMs = 16; //a spin can cancel another spin in the last x ms
 float g_spinJumpHelpMs = 0; //if you spin a frame after jumping you will jump and spin (spinjump)
 float g_currentSpinJumpHelpMs = g_spinJumpHelpMs;
 bool g_protag_jumped_this_frame = 0;
+
+entity* g_spurl_entity = 0;
 
 bool storedJump = 0;
 bool storedSpin = 0;
@@ -1152,6 +1164,17 @@ float XYWorldDistanceSquared(int x1, int y1, int x2, int y2)
   y2 *= 1 / XtoY;
   return pow((x1 - x2), 2) + pow((y1 - y2), 2);
 
+}
+
+float XYWorldDistanceSquared(entity* a, entity* b)
+{
+  int x1 = a->getOriginX();
+  int y1 = a->getOriginY();
+
+  int x2 = b->getOriginX();
+  int y2 = b->getOriginY();
+
+  return XYWorldDistanceSquared(x1, y1, x2, y2);
 }
 
 vector<string> splitString(string s, char delimiter)

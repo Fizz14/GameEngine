@@ -15,6 +15,10 @@ void specialObjectsBump(entity* a, bool xcollide, bool ycollide);
 
 void specialObjectsUpdate(entity * a, float elapsed);
 
+void specialObjectsInteract(entity* a);
+
 void usableItemCode(usable* a);
+
+float exponentialCurve(int max, int exponent);
 
 #endif

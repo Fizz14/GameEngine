@@ -68,20 +68,38 @@ void specialObjectsInit(entity* a) {
       }
       break;
     }
+    case 9:
+    {
+      //inventory chest
+
+      break;
+    }
     case 100:
     {
       //zombie
       a->spawnlist[0]->visible = 0;
       a->maxCooldownA = 300; //this is the time it takes to get from the start to the end of the bite animation
+      a->aggressiveness = exponentialCurve(60, 10);
+      a->aggressiveness += exponentialCurve(15, 3);
+
       break;
     }
     case 101:
     {
+      M("For disaster");
       //disaster
       a->agrod = 1;
       a->target = protag;
       a->traveling = 0;
       a->spawnlist[0]->visible = 0;
+      a->aggressiveness = exponentialCurve(60, 10);
+      break;
+    }
+    case 102:
+    {
+      //creep
+      a->aggressiveness = exponentialCurve(60, 10);
+      break;
 
     }
 
@@ -571,6 +589,56 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 
       break;
     }
+    case 102:
+    {
+      //creep
+      float dist = XYWorldDistanceSquared(a, protag);
+      const float range = 262144; //8 blocks
+      
+      if(dist < range) {
+        //protag->hisStatusComponent.slown.addStatus(1,0.4);
+        protag->hisStatusComponent.disabled.addStatus(1,0.4);
+
+      }
+
+    }
+  }
+}
+
+void specialObjectsInteract(entity* a) {
+  switch(a->identity) {
+    case 9:
+    {
+      //inventory chest
+      g_inventoryUiIsLevelSelect = 0;
+      g_inventoryUiIsLoadout = 1;
+      g_inventoryUiIsKeyboard = 0;
+      inventorySelection = 0;
+      inPauseMenu = 1;
+      g_firstFrameOfPauseMenu = 1;
+      old_z_value = 1;
+      adventureUIManager->escText->updateText("", -1, 0.9);
+      adventureUIManager->positionInventory();
+      adventureUIManager->showInventoryUI();
+      //adventureUIManager->hideHUD();
+      break;
+    }
+    case 10:
+    {
+      //corkboard
+      clear_map(g_camera);
+      g_inventoryUiIsLevelSelect = 1;
+      g_inventoryUiIsKeyboard = 0;
+      g_inventoryUiIsLoadout = 0;
+      inventorySelection = 0;
+      inPauseMenu = 1;
+      g_firstFrameOfPauseMenu = 1;
+      old_z_value = 1;
+      adventureUIManager->escText->updateText("", -1, 0.9);
+      adventureUIManager->positionInventory();
+      adventureUIManager->showInventoryUI();
+      adventureUIManager->hideHUD();
+    }
   }
 }
 
@@ -589,3 +657,9 @@ void usableItemCode(usable* a) {
   }
 }
 
+
+float exponentialCurve(int max, int exponent) {
+  float x = rng(0, 100);
+  float b = pow(x, exponent);
+  return (b * max)/(pow(100,exponent));
+}

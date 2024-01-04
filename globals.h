@@ -430,9 +430,14 @@ extern float g_transitionSpeed;
 
 extern int g_whichUsableSelectedIndex;
 extern vector<usable*> g_backpack;
+extern vector<usable*> g_chest;
+
+extern vector<int> g_loadout; //this is a set of indices to g_chest which will be put in g_backpack
+extern int g_maxLoadoutSize;
+extern SDL_Texture* g_loadoutHighlightTexture;
+
 extern float g_usableWaitToCycleTime;
 extern float g_maxUsableWaitToCycleTime;
-extern adventureUI* g_backpackScriptCaller;
 extern entity *g_backpackNarrarator;
 extern entity *g_currentMusicPlayingEntity;
 extern const float g_backpackHorizontalOffset;
@@ -664,6 +669,8 @@ extern int g_starvingFoodpoints;
 
 extern bool g_inventoryUiIsLevelSelect;
 
+extern bool g_inventoryUiIsLoadout;
+
 extern bool g_inventoryUiIsKeyboard;
 extern string g_keyboardInput;
 
@@ -722,6 +729,9 @@ extern bool adjusting;
 extern bool g_autoSetThemesFromMapDirectory;
 
 extern string g_saveName;
+extern vector<string> g_saveNames;
+extern int g_saveOverwriteResponse;
+extern string g_saveToDelete;
 
 extern std::map<string, int> g_save;
 extern std::map<string, string> g_saveStrings;
@@ -750,6 +760,8 @@ extern float g_doubleSpinHelpMs;
 extern float g_spinJumpHelpMs;
 extern float g_currentSpinJumpHelpMs;
 extern bool g_protag_jumped_this_frame;
+
+extern entity* g_spurl_entity;
 
 extern bool storedJump;
 extern bool storedSpin;
@@ -859,6 +871,8 @@ float XYWorldDistance(int x1, int y1, int x2, int y2);
 
 //faster, use this if you can
 float XYWorldDistanceSquared(int x1, int y1, int x2, int y2);
+
+float XYWorldDistanceSquared(entity* a, entity* b);
 
 vector<string> splitString(string s, char delimiter);
 

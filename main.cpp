@@ -30,7 +30,7 @@ void protagMakesNoise();
 int WinMain()
 {
 
-  devMode = 0;
+  devMode = 1;
 
   canSwitchOffDevMode = devMode;
 
@@ -335,6 +335,9 @@ int WinMain()
   g_smarttrapSound = Mix_LoadWAV("static/sounds/smarttrap.wav");
   g_preloadedSounds.emplace_back(g_spiketrapSound, "static/sounds/smarttrap.wav");
 
+  g_spurl_entity = new entity(renderer, "common/spurl");
+  g_spurl_entity->msPerFrame = 75;
+
   if(devMode) {
     g_dijkstraDebugRed = new ui(renderer, "engine/walkerRed.bmp", 0,0,32,32, 3);
     g_dijkstraDebugRed->persistent = 1;
@@ -470,6 +473,12 @@ int WinMain()
     SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
     g_locked_level_texture = SDL_CreateTextureFromSurface(renderer, loadMe);
     SDL_FreeSurface(loadMe);
+
+    loadSTR = "static/ui/loadout_highlight.bmp";
+    loadMe = IMG_Load(loadSTR.c_str());
+    g_loadoutHighlightTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
+    SDL_FreeSurface(loadMe);
+
   }
 
   //load levelSequence
@@ -489,10 +498,6 @@ int WinMain()
   g_pelletGoalScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
   g_pelletGoalScriptCaller->talker = narrarator;
 
-  //this is used for calling scripts from items in the backpack
-  g_backpackScriptCaller = new adventureUI(renderer, 1);
-  g_backpackScriptCaller->playersUI = 0;
-  g_backpackScriptCaller->useOwnScriptInsteadOfTalkersScript = 1;
   g_pelletGoalScriptCaller->talker = narrarator;
 
   srand(time(NULL));
@@ -731,48 +736,8 @@ int WinMain()
 
   g_loadingATM = 0;
 
-  //good!
-//  fancyword myWord;
-//  myWord.x = 0.05;
-//  myWord.y = 0.7;
-//  myWord.append(2);
-//  myWord.append(0);
-//  myWord.append(19);
-    //myWord.render();
-  
-
   while (!quit)
   {
-//    for(auto x : g_ai) {
-//      if(x->name == "common/zombie") {
-//        
-//        if(x->target != nullptr && x->target->name != "common/fomm") {
-//          //I found a bug where they agrod on the vent, but afterwards I checked and the vents have faction -1, so that shouldn't happen
-//          M("Is this the bug Joseph found on Nov 23 2023?");
-//          M("Entity common/zombie has target.");
-//          D(x->target->name);
-//          breakpoint();
-//        }         
-//
-//        //D(x->target->name);
-//        // print any debug info
-//        //D(x->aggressiveness);
-//        //M("status check");
-//        if(x->agrod) {
-//          //M("Zombie is agrod.");
-//        } else {
-//          //M("Zombie is not agrod.");
-//        }
-//        
-//      }
-//      if(x->name == "common/creep") {
-//        if(x->agrod) {
-//          //M("Creep is agrod.");
-//        } else {
-//          //M("Creep is not agrod.");
-//        }
-//      }
-//    }
 
     // some event handling
     while (SDL_PollEvent(&event))
@@ -1150,6 +1115,7 @@ int WinMain()
     // background
     // SDL_SetRenderTarget(renderer, TextureA);
     SDL_RenderClear(renderer);
+    
     if (g_backgroundLoaded && g_useBackgrounds)
     { // if the level has a background and the user would like to see it
       SDL_RenderCopy(renderer, background, NULL, NULL);
@@ -1319,6 +1285,7 @@ int WinMain()
     adventureUIManager->hotbar->x = 0.65 - g_hotbarWidth + g_backpackHorizontalOffset;
     adventureUIManager->hotbarPositions[3].first = 0.1 + (g_hotbarX - (g_hotbarWidth - 0.1)/2 + g_backpackHorizontalOffset);
     adventureUIManager->hotbarFocus->x = 0.1 + 0.005 + (g_hotbarX - (g_hotbarWidth - 0.1)/2 + g_backpackHorizontalOffset);
+    adventureUIManager->hotbarMutedXIcon->x = adventureUIManager->hotbarFocus->x;
     adventureUIManager->cooldownIndicator->x = adventureUIManager->hotbarPositions[3].first;
 
     //adventureUIManager->thisUsableIcon->show = 0;
@@ -2728,6 +2695,7 @@ int WinMain()
     //this is the menu for quitting or going back to the "overworld"
     if (g_inEscapeMenu) 
     {
+      elapsed = 0;
       //move reticle to the correct position
       g_escapeUI->handMarker->targety
         = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
@@ -2863,6 +2831,75 @@ int WinMain()
           g_itemsInInventory = g_alphabet.size();
 
 
+        } else if(g_inventoryUiIsLoadout) {
+          //this is how the player chooses which items 
+          //to bring to a level
+          for(auto t : g_chest) {
+            if (i < itemsPerRow * inventoryScroll)
+            {
+              // this item won't be rendered
+              i++;
+              continue;
+            }
+            
+            SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth};
+            float boosh = 0.02*WIN_WIDTH;
+            SDL_Rect hdrect = {(int)x - boosh/2, (int)y-boosh/2, (int)itemWidth+boosh, (int)itemWidth+boosh};
+
+            //should the highlight be rendered?
+            if(find(g_loadout.begin(), g_loadout.end(), i) != g_loadout.end()) {
+              SDL_RenderCopy(renderer, g_loadoutHighlightTexture, NULL, &hdrect);
+            }
+
+            SDL_RenderCopy(renderer, t->texture, NULL, &drect);
+
+            if (i == inventorySelection || g_firstFrameOfPauseMenu)
+            {
+              // this item should have the marker
+              inventoryMarker->show = 1;
+
+              float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+              if(g_firstFrameOfPauseMenu) {
+                inventoryMarker->x = x / WIN_WIDTH;
+                inventoryMarker->y = y / WIN_HEIGHT;
+                inventoryMarker->x -= biggen;
+                inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targetx = inventoryMarker->x;
+                inventoryMarker->targety = inventoryMarker->y;
+                g_firstFrameOfPauseMenu = 0;
+              } else {
+                inventoryMarker->targetx = x / WIN_WIDTH;
+                inventoryMarker->targety = y / WIN_HEIGHT;
+                inventoryMarker->targetx -= biggen;
+                inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                //now that it's a hand
+                inventoryMarker->targetx += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+                inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              }
+
+              inventoryMarker->width = itemWidth / WIN_WIDTH;
+              inventoryMarker->width += biggen * 2;
+              inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+            x += itemWidth + padding;
+            if (x > maxX)
+            {
+              x = defaultX;
+              y += itemWidth + padding;
+              if (y > maxY)
+              {
+                // we filled up the entire inventory, so lets leave
+                break;
+              }
+            }
+            i++;
+
+          }
+          g_itemsInInventory = g_chest.size();
+          
         } else {
           //populate boxes based on inventory
           for (auto it = mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it)
@@ -3163,7 +3200,10 @@ int WinMain()
 
       }
     }
-    
+
+    g_spurl_entity->setOriginX(protag->getOriginX());
+    g_spurl_entity->setOriginY(protag->getOriginY());
+    g_spurl_entity->z = protag->z;
     
     //did the protag collect a pellet?
     float protag_x = protag->getOriginX();
@@ -3812,6 +3852,10 @@ int interact(float elapsed, entity *protag)
         delete g_entities[i];
         return 0;
       }
+      if(g_entities[i]->tangible && g_entities[i]->identity != 0) {
+        specialObjectsInteract(g_entities[i]);
+        //can do a special object interaction AND execute a script (but I haven't done it yet)
+      }
       if (g_entities[i]->tangible && g_entities[i]->sayings.size() > 0)
       {
         if (g_entities[i]->animlimit != 0)
@@ -3913,17 +3957,6 @@ int interact(float elapsed, entity *protag)
         g_ignoreInput = 1;
         return 0;
       }
-    }
-    // no one to talk to, lets do x instead (heres where it goes)
-    if (use_cooldown <= 0)
-    {
-      // if(inPauseMenu) {
-      // 	inPauseMenu = 0;
-      // 	adventureUIManager->hideInventoryUI();
-      // } else {
-      // 	inPauseMenu = 1;
-      // 	adventureUIManager->showInventoryUI();
-      // }
     }
   }
 
@@ -4315,7 +4348,7 @@ void getInput(float &elapsed)
       inventorySelection = 0;
     }
    
-    if(keystate[bindings[12]] && protag_can_move && !inPauseMenu) {
+    if(keystate[bindings[12]] && protag_can_move && !inPauseMenu && g_backpack.size() > 0) {
       //for short presses, advance inventory left rather than widening the hotbar
       g_currentHotbarSelectMs += elapsed;
       if(g_currentHotbarSelectMs >= g_hotbarLongSelectMs) {
@@ -4363,44 +4396,6 @@ void getInput(float &elapsed)
       if(g_backpack.size() > 0) {
         adventureUIManager->hotbarTransitionIcons[2]->texture = g_backpack.at(g_backpackIndex)->texture;
       }
-    }
-
-
-    if (keystate[bindings[12]] && protag_can_move)
-    {
-
-
-      //this used to be how we opened up the inventory menu which took up the whole screen
-      //now we want to just open the backpack, but the player will be able to do this by
-      //using the picnicbox, so I'm not deleting this code, just commenting it out
-     
-      //it will be exposed thru the scripting interpreter later
-//      // pause menu
-//      if (inPauseMenu)
-//      {
-//        //if this is the inventory screen, close it
-//        if(g_inventoryUiIsLevelSelect == 0) {
-//          playSound(-1, g_menu_close_sound, 0);
-//          inPauseMenu = 0;
-//          elapsed = 16;
-//          adventureUIManager->hideInventoryUI();
-//        }
-//      }
-//      else
-//      {
-//
-//        playSound(-1, g_menu_open_sound, 0);
-//        g_inventoryUiIsLevelSelect = 0;
-//        inPauseMenu = 1;
-//        g_firstFrameOfPauseMenu = 1;
-//        adventureUIManager->escText->updateText("", -1, 0.9);
-//        inventorySelection = 0;
-//        adventureUIManager->positionInventory();
-//        adventureUIManager->showInventoryUI();
-//        
-//
-//
-//      }
     }
 
   }
@@ -4599,6 +4594,7 @@ void getInput(float &elapsed)
           //continue the script which was running 
           g_inventoryUiIsLevelSelect = 0;
           g_inventoryUiIsKeyboard = 0;
+          g_inventoryUiIsLoadout = 0;
           g_inSettingsMenu = 0;
           inPauseMenu = 0;
           g_settingsUI->hide();
@@ -4808,6 +4804,7 @@ void getInput(float &elapsed)
           //instead of loading the base, open the level-select menu
           g_inventoryUiIsLevelSelect = 1;
           g_inventoryUiIsKeyboard = 0;
+          g_inventoryUiIsLoadout = 0;
           inventorySelection = 0;
           inPauseMenu = 1;
           g_firstFrameOfPauseMenu = 1;
@@ -4926,6 +4923,16 @@ void getInput(float &elapsed)
     input[13] = 0;
   }
 
+  bool protag_can_use_items = !(protag->hisStatusComponent.disabled.statuses.size() > 0);
+  adventureUIManager->hotbarMutedXIcon->show = 0;
+  g_spurl_entity->visible = 0;
+  if(!protag_can_use_items) {
+    input[13] = 0; //bad!
+    if(adventureUIManager->showHud) {
+      adventureUIManager->hotbarMutedXIcon->show = 1;
+    }
+    g_spurl_entity->visible = 1;
+  } 
 
   //spinning/using item
   if( g_backpack.size() > 0 && protag_can_move && !inPauseMenu) {
@@ -4971,6 +4978,7 @@ void getInput(float &elapsed)
       
       if (inPauseMenu)
       {
+
         //if this is the inventory screen, close it
         if(g_inventoryUiIsLevelSelect == 0) {
           playSound(-1, g_menu_close_sound, 0);
@@ -4978,6 +4986,7 @@ void getInput(float &elapsed)
           elapsed = 16;
           adventureUIManager->hideInventoryUI();
         }
+
       }
       else
       {
@@ -4986,6 +4995,8 @@ void getInput(float &elapsed)
         thisUsable->cooldownMs = thisUsable->maxCooldownMs;
         playSound(-1, g_menu_open_sound, 0);
         g_inventoryUiIsLevelSelect = 0;
+        g_inventoryUiIsLoadout = 0;
+        g_inventoryUiIsKeyboard = 0;
         inPauseMenu = 1;
         g_firstFrameOfPauseMenu = 1;
         adventureUIManager->escText->updateText("", -1, 0.9);
@@ -5016,6 +5027,30 @@ void getInput(float &elapsed)
   } else if (inPauseMenu && input[13] && !oldinput[13]) {
     //this button should take the player out of the inventory for safety
     //incase they somehow switch off 
+    
+
+    //if that was the chest/loadout screen, update g_backpack
+    if(g_inventoryUiIsLoadout) {
+      adventureUIManager->nextUsableIcon->texture = adventureUIManager->noIconTexture;
+      adventureUIManager->thisUsableIcon->texture = adventureUIManager->noIconTexture;
+      adventureUIManager->prevUsableIcon->texture = adventureUIManager->noIconTexture;
+      
+      for(auto x : adventureUIManager->hotbarTransitionIcons) {
+        x->texture = adventureUIManager->noIconTexture;
+      }
+      
+      for(int i = 0; i < g_backpack.size(); i++) {
+        delete g_backpack[i];
+      }
+      g_backpack.clear();
+      g_backpackIndex = 0;
+  
+
+      for(int x : g_loadout) {
+        usable* newUsable = new usable(g_chest[x]->internalName);
+        g_backpack.push_back(newUsable);
+      }
+    }
     
     //if this is the inventory screen, close it
     if(g_inventoryUiIsLevelSelect == 0) {
@@ -5193,6 +5228,22 @@ void getInput(float &elapsed)
 
         }
 
+      } else if(g_inventoryUiIsLoadout) {
+        //toggle item equipped
+        bool highlighted = 0;
+        for(int i = 0; i < g_loadout.size(); i++) {
+          if(inventorySelection == g_loadout[i]) {
+            g_loadout.erase(g_loadout.begin() + i);
+            highlighted = 1;
+            break;
+          }
+        }
+        if(!highlighted) {
+          if(g_loadout.size() < g_maxLoadoutSize) {
+            g_loadout.push_back(inventorySelection);
+          }
+        }
+        
       } else {
       // select item in pausemenu
       // only if we arent running a script
@@ -5705,5 +5756,4 @@ void protagMakesNoise() {
       }
     }
   }
-
 }
