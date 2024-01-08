@@ -99,6 +99,8 @@ class listener;
 
 class worldItem;
 
+class ribbon;
+
 class indexItem;
 
 class effectIndex;
@@ -231,6 +233,8 @@ extern vector<collisionZone *> g_collisionZones;
 extern vector<entity *> g_musicalEntities;
 
 extern vector<levelNode *> g_levelNodes;
+
+extern vector<ribbon *> g_ribbons;
 
 struct cmpCoord
 {
@@ -837,6 +841,9 @@ extern float g_earshot;
 
 extern vector<int> g_creepyLocks;
 
+//gameplay
+extern float g_invincibleMs;
+
 bool fileExists(const std::string &name);
 
 void playSound(int channel, Mix_Chunk *sound, int loops);
@@ -882,5 +889,8 @@ int yesNoPrompt(string msg);
 
 int rng(int min, int max);
 
+void hurtProtag(int dmg);
+
+void transform3dPoint(float x, float y, float z, float &u, float &v);
 
 #endif

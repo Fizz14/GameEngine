@@ -738,7 +738,8 @@ int WinMain()
 
   while (!quit)
   {
-
+    // debug here
+    
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -929,9 +930,7 @@ int WinMain()
 
     // INPUT
     getInput(elapsed);
-
-
-
+    
     //lerp protag to boarded ent smoothly
     if(g_protagIsWithinBoardable) {
       if(g_transferingByBoardable) {
@@ -995,7 +994,21 @@ int WinMain()
         protag->animation = 4;
         protag->flip = SDL_FLIP_NONE;
         protag->xvel = 0;
-        protag->yvel = 200;
+        protag->yvel = 0;
+        if(staticInput[0]) {
+          protag->yvel = -200;
+        } else if(staticInput[1]) {
+          protag->yvel = 200;
+        }
+        if(staticInput[2]) {
+          protag->xvel = -200;
+        } else if(staticInput[4]) {
+          protag->xvel = 200;
+        }
+
+        
+
+
         g_boardedEntity = 0;
         protag->tangible = 1;    
         //protag->y += 45; //push us out of the boarded entity in a consistent way
@@ -2470,32 +2483,32 @@ int WinMain()
    
       //animate the guts sometimes
       //heart shake
-//      adventureUIManager->heartShakeIntervalMs -= elapsed;
-//      if(adventureUIManager->heartShakeIntervalMs < 0) {
-//        //make the heart shake back and forth briefly
-//        adventureUIManager->heartShakeDurationMs = adventureUIManager->maxHeartShakeDurationMs;
-//
-//        adventureUIManager->heartShakeIntervalMs = adventureUIManager->maxHeartShakeIntervalMs + rand() % adventureUIManager->heartShakeIntervalRandomMs;
-//      }
-//
-//      if(adventureUIManager->heartShakeDurationMs > 0) {
-//        adventureUIManager->heartShakeDurationMs -= elapsed;
-//
-//        if(adventureUIManager->heartShakeDurationMs % 400 > 200) {
-//          //move left
-//          adventureUIManager->healthPicture->targetx = -0.04 - 0.005;
-//
-//        } else {
-//          //move right
-//          adventureUIManager->healthPicture->targetx = -0.04 + 0.005;
-//
-//        }
-//
-//      } else {
-//        //move the heart back to its normal position
-//        adventureUIManager->healthPicture->targetx = -0.04;
-//
-//      }
+      adventureUIManager->heartShakeIntervalMs -= elapsed;
+      if(adventureUIManager->heartShakeIntervalMs < 0) {
+        //make the heart shake back and forth briefly
+        adventureUIManager->heartShakeDurationMs = adventureUIManager->maxHeartShakeDurationMs;
+
+        adventureUIManager->heartShakeIntervalMs = adventureUIManager->maxHeartShakeIntervalMs + rand() % adventureUIManager->heartShakeIntervalRandomMs;
+      }
+
+      if(adventureUIManager->heartShakeDurationMs > 0) {
+        adventureUIManager->heartShakeDurationMs -= elapsed;
+
+        if(adventureUIManager->heartShakeDurationMs % 400 > 200) {
+          //move left
+          adventureUIManager->healthPicture->targetx = -0.04 - 0.005;
+
+        } else {
+          //move right
+          adventureUIManager->healthPicture->targetx = -0.04 + 0.005;
+
+        }
+
+      } else {
+        //move the heart back to its normal position
+        adventureUIManager->healthPicture->targetx = -0.04;
+
+      }
 
       //stomach shaking
 //      adventureUIManager->stomachShakeIntervalMs -= elapsed;
@@ -2553,16 +2566,16 @@ int WinMain()
 //      }
 
       //heart beating
-//      adventureUIManager->heartbeatDurationMs -= elapsed;
-//      if(adventureUIManager->heartbeatDurationMs > 200) {
-//          //expand
-//          adventureUIManager->healthPicture->targetwidth = 0.25;
-//
-//      } else {
-//          //contract
-//          adventureUIManager->healthPicture->targetwidth = 0.25 - adventureUIManager->heartShrinkPercent;
-//
-//      }
+      adventureUIManager->heartbeatDurationMs -= elapsed;
+      if(adventureUIManager->heartbeatDurationMs > 200) {
+          //expand
+          adventureUIManager->healthPicture->targetwidth = 0.25;
+
+      } else {
+          //contract
+          adventureUIManager->healthPicture->targetwidth = 0.25 - adventureUIManager->heartShrinkPercent;
+
+      }
       if(adventureUIManager->heartbeatDurationMs < 0) {
         adventureUIManager->heartbeatDurationMs = (adventureUIManager->maxHeartbeatDurationMs - 300) * ((float)protag->hp / (float)protag->maxhp) + 300;
         float hpratio = ((float)protag->hp / (float)protag->maxhp);
@@ -2900,6 +2913,8 @@ int WinMain()
           }
           g_itemsInInventory = g_chest.size();
           
+          adventureUIManager->escText->updateText(g_chest[inventorySelection]->aboutTxt, -1, 0.9);
+          
         } else {
           //populate boxes based on inventory
           for (auto it = mainProtag->inventory.rbegin(); it != mainProtag->inventory.rend(); ++it)
@@ -2988,7 +3003,7 @@ int WinMain()
           }
           else
           {
-            adventureUIManager->escText->updateText("No items in inventory", -1, 0.9);
+            adventureUIManager->escText->updateText("No consumables.", -1, 0.9);
           }
         }
       } else {
@@ -3109,6 +3124,7 @@ int WinMain()
 
     g_protagIsBeingDetectedBySmell = 0; //this will be set in the entity update loop
     g_protagIsBeingDetectedBySight = 0;
+
 
     // ENTITY MOVEMENT (ENTITY UPDATE)
     // dont update movement while transitioning
@@ -3855,6 +3871,8 @@ int interact(float elapsed, entity *protag)
       if(g_entities[i]->tangible && g_entities[i]->identity != 0) {
         specialObjectsInteract(g_entities[i]);
         //can do a special object interaction AND execute a script (but I haven't done it yet)
+        g_ignoreInput = 1;
+        dialogue_cooldown = 500;
       }
       if (g_entities[i]->tangible && g_entities[i]->sayings.size() > 0)
       {
@@ -4931,7 +4949,7 @@ void getInput(float &elapsed)
     if(adventureUIManager->showHud) {
       adventureUIManager->hotbarMutedXIcon->show = 1;
     }
-    g_spurl_entity->visible = 1;
+    g_spurl_entity->visible = protag->visible && protag->tangible;
   } 
 
   //spinning/using item
@@ -5024,10 +5042,12 @@ void getInput(float &elapsed)
       }
 
     }
-  } else if (inPauseMenu && input[13] && !oldinput[13]) {
+  } else if (inPauseMenu && ( (input[13] && !oldinput[13]) || (input[8] && !oldinput[8])) ) {
     //this button should take the player out of the inventory for safety
     //incase they somehow switch off 
     
+    oldinput[8] = 1;
+    oldinput[13] = 1;
 
     //if that was the chest/loadout screen, update g_backpack
     if(g_inventoryUiIsLoadout) {

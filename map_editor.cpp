@@ -31,7 +31,6 @@ void sort_ui(vector<ui *> &g_ui)
 
 void populateMapWithEntities()
 {
-  M("Populating...");
   bool stillAdding = 1;
   int currentBudget = g_budget;    // we'll subtract from this current budget until we can't fit any more entities in the map
   vector<string> possibleEntities; // a vector of entities that we could add to the map.
@@ -80,7 +79,6 @@ void populateMapWithEntities()
 
 void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 {
-  M("load_map");
   debugClock = clock();
   mapname = filename;
   g_loadingATM = 1;
@@ -222,8 +220,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       e->targetSteeringAngle = e->steeringAngle;
 
       if(e->animation > e->yframes) {
-        e->animation = e->yframes;
-
+        e->animation = e->yframes - 1;
       }
       
       if(e->parent != nullptr) {
@@ -3146,7 +3143,6 @@ void write_map(entity *mapent)
 
     while (line >> word)
     {
-      M("Commandline interpreter");
       if (word == "sb")
       {
         drawhitboxes = !drawhitboxes;
@@ -4676,6 +4672,9 @@ void write_map(entity *mapent)
           D(chosenEntity->large);
           D(chosenEntity->banished);
           D(chosenEntity->createdAfterMapLoad);
+          D(chosenEntity->opacity);
+          D(chosenEntity->visible);
+          D(chosenEntity->texture);
           M("");
 
           M("Animation Data:");
@@ -4687,7 +4686,9 @@ void write_map(entity *mapent)
           D(chosenEntity->turnToFacePlayer);
           D(chosenEntity->msPerFrame);
           D(chosenEntity->frameInAnimation);
+          D(chosenEntity->animation); //this is really direction
           D(chosenEntity->loopAnimation);
+          D(chosenEntity->scriptedAnimation);
           M("");
 
           M("Particle Data:");
@@ -4705,6 +4706,7 @@ void write_map(entity *mapent)
           D(chosenEntity->aiIndex);
           D(chosenEntity->isBoardable);
           D(chosenEntity->transportEntPtr);
+          D(chosenEntity->tangible);
           M("");
 
           M("Combat Data:");

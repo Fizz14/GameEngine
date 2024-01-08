@@ -2712,6 +2712,10 @@ void statusComponent::statusSet::cleanUpStatuses() {
   }
 }
 
+int statusComponent::statusSet::check() {
+  return statuses.size() > 0;
+}
+
 statusComponent::statusComponent() {
   poisoned.complex = 1;
   poisoned.maxProckWaitMS = 1000;
@@ -5213,6 +5217,12 @@ door* entity::update(vector<door*> doors, float elapsed) {
             usingTimeToLive = 1;
           }
           //playSound(-1, g_bonk, 0);
+
+          //detect stuckness
+          stuckTime++;
+        } else {
+          stuckTime = 0;
+
         }
 
         specialObjectsBump(this, xcollide, ycollide);
@@ -5609,7 +5619,8 @@ door* entity::update(vector<door*> doors, float elapsed) {
         //for banish animation from scripts
         if(this->banished && zvel <= 0) {
           this->dynamic = 0;
-          SDL_SetTextureAlphaMod(this->texture, 127);
+          //SDL_SetTextureAlphaMod(this->texture, 127);
+          this->opacity = 127;
           //if we are solid, disable nodes beneath
           if(this->canBeSolid) {
 
@@ -6077,6 +6088,8 @@ door* entity::update(vector<door*> doors, float elapsed) {
         this->statusSlownPercent =  hisStatusComponent.slown.updateStatuses(elapsed);
         if(statusSlownPercent > 1) {statusSlownPercent = 1;}
 
+        hisStatusComponent.invincible.updateStatuses(elapsed);
+
         this->hisStatusComponent.stunned.cleanUpStatuses();
         this->hisStatusComponent.marked.cleanUpStatuses();
         this->hisStatusComponent.disabled.cleanUpStatuses();
@@ -6085,6 +6098,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
         this->hisStatusComponent.poisoned.cleanUpStatuses();
         this->hisStatusComponent.healen.cleanUpStatuses();
         this->hisStatusComponent.slown.cleanUpStatuses();
+        this->hisStatusComponent.invincible.cleanUpStatuses();
 
 
         //check if he has died
@@ -6274,7 +6288,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
                   curPatrolPerRoam = 0;
                 }
               }
-              if(myTravelstyle == roam) {
+              if(myTravelstyle == roam && g_setsOfInterest.size() > poiIndex) {
                 //generate random number corresponding to an index of our poi vector
                 int random = rand() % ((int)g_setsOfInterest.at(poiIndex).size() - 1);
                 pointOfInterest* targetDest = g_setsOfInterest.at(poiIndex).at(random);
@@ -6362,7 +6376,15 @@ door* entity::update(vector<door*> doors, float elapsed) {
         if(this->missile) {
           // missile movment
           if(target !=  nullptr && target->tangible) {
-            if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > this->hisweapon->attacks[hisweapon->combo]->range) {
+            int rangeToUse = 0;
+            
+            if(g_protagIsWithinBoardable) {
+              rangeToUse = 64 * 3;
+            } else {
+              rangeToUse = this->hisweapon->attacks[hisweapon->combo]->range;
+            }
+
+            if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > rangeToUse) {
 
               angleToTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
               angleToTarget = wrapAngle(angleToTarget);
@@ -6393,11 +6415,20 @@ door* entity::update(vector<door*> doors, float elapsed) {
           //to target
           if(customMovement == 0 || distToTarget < movementTypeSwitchRadius)
           { //blindrun movement
-            if(( (target->tangible && this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true)) )  || (distToTarget < 64) ) ) {
+            
+            if(( (this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true)) )  || (distToTarget < 64) ) ) {
             //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
             targetSteeringAngle = angleToTarget;
+            
+            int rangeToUse = 0;
+            
+            if(g_protagIsWithinBoardable) {
+              rangeToUse = 64 * 3;
+            } else {
+              rangeToUse = this->hisweapon->attacks[hisweapon->combo]->range;
+            }
   
-            if( distToTarget > this->hisweapon->attacks[hisweapon->combo]->range) {
+            if( distToTarget > rangeToUse) {
               forwardsVelocity = xagil;
             } else {
               //stop if in range
@@ -6413,11 +6444,10 @@ door* entity::update(vector<door*> doors, float elapsed) {
 //            int xval = getOriginX() + 15 * xvel;
 //            int yval = getOriginY() + 15 * yvel;
             navNode* closestNode = getNodeByPos(g_navNodes, xval, yval);
-            for(auto u : closestNode->friends) {
-              u->costFromUsage = 1000000;
-//              for(auto y : u->friends) {
-//                y->costFromUsage = 10000;
-//              }
+            if(closestNode != nullptr) {
+              for(auto u : closestNode->friends) {
+                u->costFromUsage = 1000000;
+              }
             }
 
   
@@ -6528,23 +6558,17 @@ door* entity::update(vector<door*> doors, float elapsed) {
           }
 
           //detect stuckness- if we're stuck, try heading to a random nearby node for a moment
-          if(abs(lastx - x) < 3 && abs(lasty - y) < 3) {
-            stuckTime++;
-          } else {
-            stuckTime = 0;
-          }
-          lastx = x;
-          lasty = y;
+
           if(stuckTime > maxStuckTime) {
-            //M("A PATHFINDER IS STUCK");
-            //spring to get over obstacles
-            //this->zaccel = 350;
+            M("A PATHFINDER IS STUCK");
             stuckTime = 0;
             current = Get_Closest_Node(g_navNodes);
             if(current != nullptr) {
               int c = rand() % current->friends.size();
               Destination = current->friends[c];
+              M("stuck resolved?");
             }
+            readyForNextTravelInstruction = 1;
           }
         }
 
@@ -7067,20 +7091,32 @@ usable::usable(string fname) {
   if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(loadstr); return;}
   
   string comment;
-  
+  string line;
+  string empty;
+
   //display name
-  file >> comment;
-  file >> name;
+  getline(file, comment);
+  getline(file, name);
+  getline(file, empty);
 
   //cooldownMs
-  file >> comment;
-  file >> maxCooldownMs;
+  getline(file, comment);
+  getline(file, line);
+  maxCooldownMs = stoi(line);
+  getline(file, empty);
 
   //specialAction
-  file >> comment;
-  file >> specialAction;
-  file.close();
+  getline(file, comment);
+  getline(file, line);
+  specialAction = stoi(line);
+  getline(file, empty);
 
+  //about
+  getline(file, comment);
+  getline(file, aboutTxt);
+  //getline(file, empty);
+
+  file.close();
 
   //load sprite
   loadstr = filepath + "img_" + fname + ".bmp";
@@ -8873,6 +8909,10 @@ void clear_map(camera& cameraToReset) {
     } else {
       delete g_entities[0];
     }
+  }
+
+  for(int i = 0; i < g_ribbons.size(); i++) {
+    delete g_ribbons[0];
   }
 
   //push back any entities that were in the party
@@ -12307,5 +12347,42 @@ void adventureUI::showHUD() {
   hotbar->show = 1;
   cooldownIndicator->show = 1;
   systemClock->show = 1;
+}
+
+ribbon::ribbon() {
+  g_ribbons.push_back(this);
+}
+
+ribbon::~ribbon() {
+  g_ribbons.erase(remove(g_ribbons.begin(), g_ribbons.end(), this), g_ribbons.end());
+}
+
+void ribbon::render(SDL_Renderer* renderer, camera fcamera) {
+  if(!visible) {return;}
+  if(r_length == 0) {
+    SDL_QueryTexture(texture, NULL, NULL, &r_length, &r_thickness);
+  }
+
+
+  float u1; float v1;
+  transform3dPoint(x1,y1,z1,u1,v1);
+  float u2; float v2;
+  transform3dPoint(x2,y2,z2,u2,v2);
+
+  float uc = (u1 + u2)/2;
+  float vc = (v1 + v2)/2;
+
+  int dist = Distance(u1, v1, u2, v2);
+
+
+  SDL_Rect drect = {(int)u2, (int)v2, dist, r_thickness};
+
+  float angle = atan2( (v1 - v2) , (u1 - u2) ) * (180 / M_PI);
+
+  SDL_Point center;
+  center.x = 0;
+  center.y = r_thickness/2;
+
+  SDL_RenderCopyEx(renderer, texture, NULL, &drect, angle, &center, SDL_FLIP_NONE);
 }
 

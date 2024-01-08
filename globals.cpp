@@ -113,6 +113,8 @@ vector<entity *> g_musicalEntities;
 
 vector<levelNode *> g_levelNodes;
 
+vector<ribbon *> g_ribbons;
+
 map<string, int> enemiesMap; // stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0;						 // how many points this map can spend on enemies;
 
@@ -891,6 +893,9 @@ float g_earshot = 4 * 64; // how close do entities need to be to join their frie
 
 vector<int> g_creepyLocks = {2, 6, 12, 15};
 
+//gameplay
+float g_invincibleMs = 1000;
+
 bool fileExists(const std::string &name)
 {
   if (FILE *file = fopen(name.c_str(), "r"))
@@ -1247,5 +1252,18 @@ int rng(int min, int max) {
   return ( ((int)rand() % (max-min))  + min);
 }
 
+void hurtProtag(int dmg) {
+  //easy way to implement heromode!
+  if(!protag->hisStatusComponent.invincible.check()) {
+    protag->hp -= dmg;
+    protag->hisStatusComponent.invincible.addStatus(g_invincibleMs, 1);
 
+    playSound(2, g_playerdamage, 0);
+    protag->flashingMS = g_flashtime;
+  }
+}
 
+void transform3dPoint(float x, float y, float z, float &u, float &v) {
+  u = floor(x) - g_camera.x;
+  v = floor(y) - (floor(z) * XtoZ) - g_camera.y;
+}

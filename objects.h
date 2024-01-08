@@ -491,7 +491,7 @@ class actor {
     float sortingOffset = 0;
     float bonusSortingOffset = 0; //added oct 2023 to make fogslates look better when there's just a bit of fog but it gets rendered above an ent and the fogslate behind renders behind that ent, but the slates are meant to blend out
     float baseSortingOffset = 0;
-    SDL_Texture* texture;
+    SDL_Texture* texture = nullptr;
     rect bounds = {0, 0, 10, 10};
     string name = "unnamed";
 
@@ -1238,6 +1238,8 @@ class statusComponent {
         float updateStatuses(float elapsedMS); 
 
         void cleanUpStatuses(); 
+
+        int check();
     };
 
     statusSet stunned;
@@ -1248,6 +1250,7 @@ class statusComponent {
     statusSet slown;
     statusSet healen;
     statusSet buffed;
+    statusSet invincible;
 
     statusComponent(); 
 
@@ -1265,6 +1268,7 @@ struct state {
 class entity:public actor {
   public:
     vector<entity*> spawnlist;
+    vector<actor*> actorlist;
 
     //dialogue
 
@@ -1443,6 +1447,7 @@ class entity:public actor {
     bool wasPellet = 0; //this is true if something was ever a pellet
 
     //for special objects
+    int specialState = 0; //flexible state field
     int cooldownA = 0;
     int cooldownB = 0;
     int cooldownC = 0;
@@ -1851,6 +1856,7 @@ class usable {
                            //1 - spin
                            //2 - openInventory
     
+    string aboutTxt = "";
 
     usable(string fname); 
 
@@ -2240,5 +2246,21 @@ class settingsUI {
 
 //I added this to help debug a problem with multiple copies of UI elements
 void debugUI();
+
+//this is for the braintrap
+//with a texture and two points in 3d space, draw the texture stretching between the two points
+// FOR EASE OF USE LOAD AN ENTITY AND COPY IT'S TEXTURE
+class ribbon:public actor {
+  public:
+    float x1 = 0; float y1 = 0; float z1 = 0;
+    float x2 = 0; float y2 = 0; float z2 = 0;
+
+    int r_length = 0; //ribbon width
+    int r_thickness = 0; //ribbon height
+
+    ribbon();
+    ~ribbon();
+    void render(SDL_Renderer * renderer, camera fcamera);
+};
 
 #endif
