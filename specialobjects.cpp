@@ -45,15 +45,13 @@ void specialObjectsInit(entity* a) {
       for(auto entry:a->spawnlist) {
         entry->visible = 0;
       }
-      a->maxCooldownA = 1300;
+      a->maxCooldownA = 3000;
       break;
     }
     case 6:
     {
       //smarttrap
-      a->isAI = 1;
       a->poiIndex = 6;
-      a->readyForNextTravelInstruction = 1;
       break;
     }
     case 8:
@@ -128,6 +126,122 @@ void specialObjectsInit(entity* a) {
 
       break;
     }
+    case 14:
+    {
+      //basic firetrap
+
+      a->spawnlist[0]->msPerFrame = 70;
+      a->spawnlist[0]->loopAnimation = 1;
+      a->spawnlist[0]->scriptedAnimation = 1;
+
+      a->spawnlist[1]->msPerFrame = 70;
+      a->spawnlist[1]->loopAnimation = 1;
+      a->spawnlist[1]->scriptedAnimation = 1;
+
+      a->spawnlist[2]->msPerFrame = 70;
+      a->spawnlist[2]->loopAnimation = 1;
+      a->spawnlist[2]->scriptedAnimation = 1;
+      break;
+    }
+    case 15:
+    {
+      //fast firetrap
+
+      a->spawnlist[0]->msPerFrame = 70;
+      a->spawnlist[0]->loopAnimation = 1;
+      a->spawnlist[0]->scriptedAnimation = 1;
+
+      a->spawnlist[1]->msPerFrame = 70;
+      a->spawnlist[1]->loopAnimation = 1;
+      a->spawnlist[1]->scriptedAnimation = 1;
+
+      a->spawnlist[2]->msPerFrame = 70;
+      a->spawnlist[2]->loopAnimation = 1;
+      a->spawnlist[2]->scriptedAnimation = 1;
+
+      a->spawnlist[3]->msPerFrame = 70;
+      a->spawnlist[3]->loopAnimation = 1;
+      a->spawnlist[3]->scriptedAnimation = 1;
+      break;
+    }
+    case 16:
+    {
+      //long firetrap
+
+      a->spawnlist[0]->msPerFrame = 70;
+      a->spawnlist[0]->loopAnimation = 1;
+      a->spawnlist[0]->scriptedAnimation = 1;
+
+      a->spawnlist[1]->msPerFrame = 70;
+      a->spawnlist[1]->loopAnimation = 1;
+      a->spawnlist[1]->scriptedAnimation = 1;
+
+      a->spawnlist[2]->msPerFrame = 70;
+      a->spawnlist[2]->loopAnimation = 1;
+      a->spawnlist[2]->scriptedAnimation = 1;
+
+      a->spawnlist[3]->msPerFrame = 70;
+      a->spawnlist[3]->loopAnimation = 1;
+      a->spawnlist[3]->scriptedAnimation = 1;
+
+      a->spawnlist[4]->msPerFrame = 70;
+      a->spawnlist[4]->loopAnimation = 1;
+      a->spawnlist[4]->scriptedAnimation = 1;
+
+      a->spawnlist[5]->msPerFrame = 70;
+      a->spawnlist[5]->loopAnimation = 1;
+      a->spawnlist[5]->scriptedAnimation = 1;
+
+      a->spawnlist[6]->msPerFrame = 70;
+      a->spawnlist[6]->loopAnimation = 1;
+      a->spawnlist[6]->scriptedAnimation = 1;
+      break;
+    }
+    case 17:
+    {
+      //double firetrap
+
+      a->spawnlist[0]->msPerFrame = 70;
+      a->spawnlist[0]->loopAnimation = 1;
+      a->spawnlist[0]->scriptedAnimation = 1;
+
+      a->spawnlist[1]->msPerFrame = 70;
+      a->spawnlist[1]->loopAnimation = 1;
+      a->spawnlist[1]->scriptedAnimation = 1;
+
+      a->spawnlist[2]->msPerFrame = 70;
+      a->spawnlist[2]->loopAnimation = 1;
+      a->spawnlist[2]->scriptedAnimation = 1;
+
+      a->spawnlist[3]->msPerFrame = 70;
+      a->spawnlist[3]->loopAnimation = 1;
+      a->spawnlist[3]->scriptedAnimation = 1;
+
+      a->spawnlist[4]->msPerFrame = 70;
+      a->spawnlist[4]->loopAnimation = 1;
+      a->spawnlist[4]->scriptedAnimation = 1;
+
+      a->spawnlist[5]->msPerFrame = 70;
+      a->spawnlist[5]->loopAnimation = 1;
+      a->spawnlist[5]->scriptedAnimation = 1;
+      break;
+    }
+    case 18:
+    {
+      //smart firetrap
+      
+      a->spawnlist[0]->visible = 0;
+
+      break;
+    }
+    case 19:
+    {
+      //bouncetrap
+      a->steeringAngle = M_PI/4;
+      a->targetSteeringAngle = M_PI/4;
+      break;
+    }
+
     case 100:
     {
       //zombie
@@ -147,7 +261,6 @@ void specialObjectsInit(entity* a) {
       a->traveling = 0;
       a->spawnlist[0]->visible = 0;
       a->aggressiveness = exponentialCurve(60, 10);
-      a->poiIndex = 1;
       break;
     }
     case 102:
@@ -156,7 +269,6 @@ void specialObjectsInit(entity* a) {
       a->aggressiveness = exponentialCurve(60, 10);
       a->spawnlist[0]->visible = 0;
       a->activeState = 0;
-      a->poiIndex = 2;
       break;
 
     }
@@ -164,7 +276,6 @@ void specialObjectsInit(entity* a) {
     {
       //fnomunon
       a->traveling = 1;
-      a->poiIndex = 3;
       break;
     }
 
@@ -192,6 +303,20 @@ void specialObjectsBump(entity* a, bool xcollide, bool ycollide) {
         }
   
       }
+      break;
+    }
+    case 19:
+    {
+      //bouncetrap
+      
+      if((xcollide || ycollide) && a->cooldownA < 0) {
+        a->targetSteeringAngle += M_PI/2;
+        a->targetSteeringAngle = wrapAngle(a->targetSteeringAngle);
+        a->steeringAngle = a->targetSteeringAngle;
+        a->cooldownA = 1000;
+      }
+      a->forwardsVelocity = 49;
+       
       break;
     }
   }
@@ -277,7 +402,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         copy->z = a->z + 10;
         copy->dontSave = 1;
         copy->usingTimeToLive = 1;
-        copy->timeToLiveMs = 3000;
+        copy->timeToLiveMs = 8000;
         copy->steeringAngle = a->steeringAngle;
         copy->targetSteeringAngle = a->steeringAngle;
         copy->missile = 1;
@@ -321,25 +446,50 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         hurtProtag(1);
     
       }
+
+      if(a->flagA) {
+        a->forwardsVelocity = a->xagil;
+      } else {
+        a->forwardsVelocity = -a->xagil;
+      }
+      a->steeringAngle = a->targetSteeringAngle;
       break;
     } 
     case 6: 
     {
       //smarttrap
     
-      a->cooldownA += elapsed;
-      a->cooldownB += elapsed;
       if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()) && a->cooldownA > a->maxCooldownA)
       {
         a->cooldownA = 0;
         hurtProtag(1);
-    
-    
       }
-    
+
+      navNode* hdest = (navNode*)g_setsOfInterest.at(a->poiIndex)[a->flagA];
+
+      a->readyForNextTravelInstruction = (hdest != nullptr && XYWorldDistance(a->getOriginX(), a->getOriginY(), hdest->x, hdest->y) < 32);
+
       if(a->readyForNextTravelInstruction) {
-        //playSoundAtPosition(7, g_smarttrapSound, 0, getOriginX(), getOriginY(), 0.5);
+        a->flagA ++;
+        if(a->flagA >= g_setsOfInterest.at(a->poiIndex).size()) {
+          a->flagA = 0;
+        }
       }
+
+
+      float angleToTarget = atan2(hdest->x - a->getOriginX(), hdest->y - a->getOriginY()) - M_PI/2;
+      
+      a->targetSteeringAngle = angleToTarget;
+
+      a->xaccel = cos(a->steeringAngle) * a->xmaxspeed;
+      a->yaccel = -sin(a->steeringAngle) * a->xmaxspeed;
+
+      a->xvel += a->xaccel * ((double) elapsed / 256.0);
+      a->yvel += a->yaccel * ((double) elapsed / 256.0);
+
+      a->x += a->xvel * ((double) elapsed / 256.0);
+      a->y += a->yvel * ((double) elapsed / 256.0);
+    
       break;
     } 
     case 7: 
@@ -419,6 +569,320 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 
       break;
     }
+    case 14:
+    {
+      //basic firetrap
+      a->steeringAngle += 0.01;
+      a->animation = 0;
+
+      float angleToUse = fmod(a->steeringAngle, M_PI);
+
+      a->frameInAnimation = -1;
+      for(int i = 0; i < g_ft_angles.size(); i++) {
+        if(angleToUse < g_ft_angles[i]) {
+          a->frameInAnimation = g_ft_frames[i];
+          if(g_ft_flipped[i]) {
+            a->flip = SDL_FLIP_HORIZONTAL;
+          } else {
+            a->flip = SDL_FLIP_NONE;
+          }
+          break;
+        }
+      }
+      if(a->frameInAnimation == -1) {
+        a->frameInAnimation = 0;
+        a->flip = SDL_FLIP_NONE;
+      }
+
+      //update fireballs
+      float offset = 1;
+      float yoff = -offset * sin(a->steeringAngle + g_ft_p/2 + M_PI/2);
+      float xoff = offset * cos(a->steeringAngle + g_ft_p/2 + M_PI/2);
+
+      const int dist = 60;
+
+      a->spawnlist[0]->setOriginX(a->getOriginX() + (xoff*dist));
+      a->spawnlist[0]->setOriginY(a->getOriginY() + (yoff*dist));
+
+      a->spawnlist[1]->setOriginX(a->getOriginX() + (xoff*dist*2));
+      a->spawnlist[1]->setOriginY(a->getOriginY() + (yoff*dist*2));
+
+      a->spawnlist[2]->setOriginX(a->getOriginX() + (xoff*dist*3));
+      a->spawnlist[2]->setOriginY(a->getOriginY() + (yoff*dist*3));
+
+      for(auto x : a->spawnlist) {
+        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
+          hurtProtag(1);
+        }
+      }
+      
+
+      break;
+    }
+    case 15:
+    {
+      //fast firetrap
+      a->steeringAngle += 0.02;
+      a->animation = 0;
+
+      float angleToUse = fmod(a->steeringAngle, M_PI);
+
+      a->frameInAnimation = -1;
+      for(int i = 0; i < g_ft_angles.size(); i++) {
+        if(angleToUse < g_ft_angles[i]) {
+          a->frameInAnimation = g_ft_frames[i];
+          if(g_ft_flipped[i]) {
+            a->flip = SDL_FLIP_HORIZONTAL;
+          } else {
+            a->flip = SDL_FLIP_NONE;
+          }
+          break;
+        }
+      }
+      if(a->frameInAnimation == -1) {
+        a->frameInAnimation = 0;
+        a->flip = SDL_FLIP_NONE;
+      }
+
+      //update fireballs
+      float offset = 1;
+      float yoff = -offset * sin(a->steeringAngle + g_ft_p/2 + M_PI/2);
+      float xoff = offset * cos(a->steeringAngle + g_ft_p/2 + M_PI/2);
+
+      const int dist = 60;
+
+      a->spawnlist[0]->setOriginX(a->getOriginX() + (xoff*dist));
+      a->spawnlist[0]->setOriginY(a->getOriginY() + (yoff*dist));
+
+      a->spawnlist[1]->setOriginX(a->getOriginX() + (xoff*dist*2));
+      a->spawnlist[1]->setOriginY(a->getOriginY() + (yoff*dist*2));
+
+      a->spawnlist[2]->setOriginX(a->getOriginX() + (xoff*dist*3));
+      a->spawnlist[2]->setOriginY(a->getOriginY() + (yoff*dist*3));
+
+      a->spawnlist[3]->setOriginX(a->getOriginX() + (xoff*dist*4));
+      a->spawnlist[3]->setOriginY(a->getOriginY() + (yoff*dist*4));
+
+      for(auto x : a->spawnlist) {
+        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
+          hurtProtag(1);
+        }
+      }
+      
+
+      break;
+    }
+    case 16:
+    {
+      //long firetrap
+      a->steeringAngle -= 0.01;;
+      a->animation = 0;
+
+      float angleToUse = fmod(a->steeringAngle, M_PI);
+
+      a->frameInAnimation = -1;
+      for(int i = 0; i < g_ft_angles.size(); i++) {
+        if(angleToUse < g_ft_angles[i]) {
+          a->frameInAnimation = g_ft_frames[i];
+          if(g_ft_flipped[i]) {
+            a->flip = SDL_FLIP_HORIZONTAL;
+          } else {
+            a->flip = SDL_FLIP_NONE;
+          }
+          break;
+        }
+      }
+      if(a->frameInAnimation == -1) {
+        a->frameInAnimation = 0;
+        a->flip = SDL_FLIP_NONE;
+      }
+
+      //update fireballs
+      float offset = 1;
+      float yoff = -offset * sin(a->steeringAngle + g_ft_p/2 + M_PI/2);
+      float xoff = offset * cos(a->steeringAngle + g_ft_p/2 + M_PI/2);
+
+      const int dist = 60;
+
+      a->spawnlist[0]->setOriginX(a->getOriginX() + (xoff*dist));
+      a->spawnlist[0]->setOriginY(a->getOriginY() + (yoff*dist));
+
+      a->spawnlist[1]->setOriginX(a->getOriginX() + (xoff*dist*2));
+      a->spawnlist[1]->setOriginY(a->getOriginY() + (yoff*dist*2));
+
+      a->spawnlist[2]->setOriginX(a->getOriginX() + (xoff*dist*3));
+      a->spawnlist[2]->setOriginY(a->getOriginY() + (yoff*dist*3));
+
+      a->spawnlist[3]->setOriginX(a->getOriginX() + (xoff*dist*4));
+      a->spawnlist[3]->setOriginY(a->getOriginY() + (yoff*dist*4));
+      
+      a->spawnlist[4]->setOriginX(a->getOriginX() + (xoff*dist*5));
+      a->spawnlist[4]->setOriginY(a->getOriginY() + (yoff*dist*5));
+
+      a->spawnlist[5]->setOriginX(a->getOriginX() + (xoff*dist*6));
+      a->spawnlist[5]->setOriginY(a->getOriginY() + (yoff*dist*6));
+      
+      a->spawnlist[6]->setOriginX(a->getOriginX() + (xoff*dist*7));
+      a->spawnlist[6]->setOriginY(a->getOriginY() + (yoff*dist*7));
+
+      for(auto x : a->spawnlist) {
+        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
+          hurtProtag(1);
+        }
+      }
+      
+
+      break;
+    }
+
+    case 17:
+    {
+      //double firetrap
+      a->steeringAngle -= 0.01;
+      a->animation = 0;
+
+      float angleToUse = fmod(a->steeringAngle, M_PI);
+
+      a->frameInAnimation = -1;
+      for(int i = 0; i < g_ft_angles.size(); i++) {
+        if(angleToUse < g_ft_angles[i]) {
+          a->frameInAnimation = g_ft_frames[i];
+          if(g_ft_flipped[i]) {
+            a->flip = SDL_FLIP_HORIZONTAL;
+          } else {
+            a->flip = SDL_FLIP_NONE;
+          }
+          break;
+        }
+      }
+      if(a->frameInAnimation == -1) {
+        a->frameInAnimation = 0;
+        a->flip = SDL_FLIP_NONE;
+      }
+
+      //update fireballs
+      float offset = 1;
+      float yoff = -offset * sin(a->steeringAngle + g_ft_p/2 + M_PI/2);
+      float xoff = offset * cos(a->steeringAngle + g_ft_p/2 + M_PI/2);
+
+      const int dist = 60;
+      const int coff = 10;
+
+      a->spawnlist[0]->setOriginX(a->getOriginX() + (xoff*(dist*1 + coff)));
+      a->spawnlist[0]->setOriginY(a->getOriginY() + (yoff*(dist*1 + coff)));
+
+      a->spawnlist[1]->setOriginX(a->getOriginX() + (xoff*(dist*2 + coff)));
+      a->spawnlist[1]->setOriginY(a->getOriginY() + (yoff*(dist*2 + coff)));
+      
+      a->spawnlist[2]->setOriginX(a->getOriginX() + (xoff*(dist*3 + coff)));
+      a->spawnlist[2]->setOriginY(a->getOriginY() + (yoff*(dist*3 + coff)));
+
+      a->spawnlist[3]->setOriginX(a->getOriginX() + (xoff*(dist*-1 - coff)));
+      a->spawnlist[3]->setOriginY(a->getOriginY() + (yoff*(dist*-1 - coff)));
+
+      a->spawnlist[4]->setOriginX(a->getOriginX() + (xoff*(dist*-2 - coff)));
+      a->spawnlist[4]->setOriginY(a->getOriginY() + (yoff*(dist*-2 - coff)));
+      
+      a->spawnlist[5]->setOriginX(a->getOriginX() + (xoff*(dist*-3 - coff)));
+      a->spawnlist[5]->setOriginY(a->getOriginY() + (yoff*(dist*-3 - coff)));
+
+      
+
+      for(auto x : a->spawnlist) {
+        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
+          hurtProtag(1);
+        }
+      }
+      
+
+      break;
+    }
+    case 18:
+    {
+      //smart firetrap
+      float angleToProtag = atan2(protag->getOriginX() - a->getOriginX(), protag->getOriginY() - a->getOriginY()) - M_PI/2;
+      angleToProtag = wrapAngle(angleToProtag);
+      a->targetSteeringAngle = angleToProtag - M_PI/2 - g_ft_p/2;
+
+      float angleToUse = fmod(a->steeringAngle, M_PI);
+      a->animation = 0;
+
+      a->frameInAnimation = -1;
+      for(int i = 0; i < g_ft_angles.size(); i++) {
+        if(angleToUse < g_ft_angles[i]) {
+          a->frameInAnimation = g_ft_frames[i];
+          if(g_ft_flipped[i]) {
+            a->flip = SDL_FLIP_HORIZONTAL;
+          } else {
+            a->flip = SDL_FLIP_NONE;
+          }
+          break;
+        }
+      }
+      if(a->frameInAnimation == -1) {
+        a->frameInAnimation = 0;
+        a->flip = SDL_FLIP_NONE;
+      }
+
+      
+      a->cooldownA += elapsed;
+      if(a->cooldownA > 3000) {
+        a->cooldownA = 0;
+        entity *copy = new entity(renderer, a->spawnlist[0]);
+        copy->z = a->z + 10;
+        copy->dontSave = 1;
+        copy->usingTimeToLive = 1;
+        copy->timeToLiveMs = 8000;
+        copy->steeringAngle = a->steeringAngle + M_PI/2 + g_ft_p/2;
+        copy->targetSteeringAngle = a->steeringAngle + M_PI/2 + g_ft_p/2;
+        copy->missile = 1;
+        copy->visible = 1;
+        copy->fragileMovement = 1;
+        copy->msPerFrame = 70;
+        copy->loopAnimation = 1;
+        copy->useGravity = 0;
+        copy->identity = 4;
+        a->cooldownA = 0;
+
+        float offset = 50;
+        float yoff = -offset * sin(a->steeringAngle + M_PI/2 + g_ft_p/2);
+        float xoff = offset * cos(a->steeringAngle + M_PI/2 + g_ft_p/2);
+    
+        copy->setOriginX(a->getOriginX() + xoff);
+        copy->setOriginY(a->getOriginY() + yoff);
+
+      }
+
+      break;
+    }
+    case 19:
+    {
+      //bouncetrap
+      //a->forwardsVelocity = a->xmaxspeed;
+      a->cooldownA -= elapsed;
+      if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()))
+      {
+        a->cooldownA = 0;
+        hurtProtag(1);
+    
+      }
+      break;
+    }
+    case 20:
+    {
+      //collectible familiar
+      if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()))
+      {
+        if(!a->flagA) {
+          a->dynamic = 0;
+          a->flagA = 1;
+          g_familiars.push_back(a);
+          g_chain_time = 1000;
+        }
+      }
+      a->cooldownA -= elapsed;
+    }
+   
     case 100: 
     {
       //zombie
@@ -485,7 +949,29 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         }
       }
     
+      //aggressiveness
+      //a->bonusSpeed = a->aggressiveness;
+
+      //updatestate
+      if(a->lastState != a->activeState) {
+        if(a->activeState == 0) {
+          //change to passive
+          a->readyForNextTravelInstruction = 1;
+          a->agrod = 0;
+          a->target = nullptr;
+          a->traveling = 1;
+      
+        } else {
+          //change to active
+          a->agrod = 1;
+          a->target = protag;
+          a->traveling = 0;
+      
+        }
+        a->lastState = a->activeState;
+      }
     
+
       for(int i = 0; i < a->myAbilities.size(); i++) {
         if(a->myAbilities[i].ready) {
           a->myAbilities[i].ready = 0;
@@ -527,37 +1013,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     
               break;
             }
-          case 1:
-            {
-              //updatestate
-              if(a->lastState == a->activeState) { break;}
-              if(a->activeState == 0) {
-                //change to passive
-                a->readyForNextTravelInstruction = 1;
-                a->agrod = 0;
-                a->target = nullptr;
-                a->traveling = 1;
-    
-              } else {
-                //change to active
-                a->agrod = 1;
-                a->target = protag;
-                a->traveling = 0;
-    
-              }
-              a->lastState = a->activeState;
-    
-              break;
-            }
-          case 2:
-            {
-              //update aggressiveness
-              a->bonusSpeed = a->aggressiveness;
-    
-              break;
-            }
           }
-          
         }
       }
       break;
@@ -667,7 +1123,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
             {
               //update aggressiveness
               if(!a->flagA) {
-                a->bonusSpeed = a->aggressiveness/3;
+                //a->bonusSpeed = a->aggressiveness/10;
               }
     
               break;
@@ -693,7 +1149,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       }
 
 
-      a->bonusSpeed = a->aggressiveness;
+      //a->bonusSpeed = a->aggressiveness;
 
       a->cooldownA -= elapsed;
 
@@ -898,6 +1354,16 @@ void specialObjectsInteract(entity* a) {
         a->frameInAnimation = 0;
       }
       break;
+    }
+    case 20:
+    {
+      //collectible familiar
+      if(!a->flagA) {
+        a->dynamic = 0;
+        g_familiars.push_back(a);
+        a->flagA = 1;
+        g_chain_time = 1000;
+      }
     }
   }
 }

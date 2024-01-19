@@ -22,6 +22,7 @@
 #include "objects.h"
 #include "map_editor.h"
 #include "specialobjects.h"
+#include "utils.h"
 
 #include <utility>
 
@@ -162,6 +163,7 @@ Uint32 heightmap::getpixel(SDL_Surface *surface, int x, int y) {
       return 0;
   }
 }
+
 
 navNode::navNode(int fx, int fy, int fz) {
   //M("navNode()" );
@@ -893,6 +895,16 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
       //SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
 
     }
+
+    if(g_waterAllocated == 0 && fileaddress.find("sp-water") != std::string::npos) {
+      g_waterAllocated = 1;
+      g_waterSurface = IMG_Load(filename); // the values of this data will not be modified
+      g_waterTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 440);
+      texture = g_waterTexture;
+      SDL_SetTextureBlendMode(g_waterTexture, SDL_BLENDMODE_BLEND);
+      //SDL_SetTextureAlphaMod(g_waterTexture, 255);
+    }
+
     if(mask_filename[0] != '&') {
       SDL_DestroyTexture(texture);
 
@@ -906,6 +918,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
       SDL_DestroyTexture(diffuse);
     }
   }
+
 
 
   mask_fileaddress = mask_filename;
@@ -1153,13 +1166,17 @@ attack::attack(string filename, bool tryToShareTextures) {
   file >> spritename;
 
   string temp;
-  temp = "maps/" + g_mapdir + "/sprites/" + spritename + ".bmp";
+  temp = "maps/" + g_mapdir + "/sprites/" + spritename + ".qoi";
   if(!fileExists(temp)) {
-    temp = "static/sprites/" + spritename + ".bmp";
+    temp = "static/sprites/" + spritename + ".qoi";
     if(!fileExists(temp)) {
-      temp = "static/sprites/default.bmp";
+      temp = "static/sprites/" + spritename + ".qoi";
+      if(!fileExists(temp)) {
+        temp = "static/sprites/default.qoi";
+      }
     }
   }
+
 
   //only try to share textures if this isnt an entity
   //that can ever be part of the party
@@ -1296,11 +1313,11 @@ void actor::render(SDL_Renderer * renderer, camera fcamera) {
 }
 
 
-int actor::getOriginX() {
+float actor::getOriginX() {
   return  x + bounds.x + bounds.width/2;
 }
 
-int actor::getOriginY() {
+float actor::getOriginY() {
   return y + bounds.y + bounds.height/2;
 }
 
@@ -1430,11 +1447,11 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 
 
   if(1) {
-    existSTR = "maps/" + g_mapdir + "/sprites/" + texname + ".bmp";
+    existSTR = "maps/" + g_mapdir + "/sprites/" + texname + ".qoi";
     if(!fileExists(existSTR)) {
-      existSTR = "static/sprites/" + texname + ".bmp";
+      existSTR = "static/sprites/" + texname + ".qoi";
       if(!fileExists(existSTR)) {
-        existSTR = "engine/effect-default.bmp";
+        existSTR = "engine/effect-default.qoi";
         E("Couldn't load effect, using default.");
       }
     }
@@ -2096,18 +2113,18 @@ indexItem::indexItem(string fname, bool fisKeyItem) : name(fname), isKeyItem(fis
   //if not, just use the standard one
 
   //check local first
-  if(fileExists("maps/" + g_mapdir + "/items/" + fname + "-inv.bmp")) {
-    lstr = "maps/" + g_mapdir + "/items/" + fname + "-inv.bmp";
-  } else if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".bmp")){
-    lstr = "maps/" + g_mapdir + "/items/" + fname + ".bmp";
-  } else if(fileExists("static/items/" + fname + "-inv.bmp")) {
-    lstr = "static/items/" + fname + "-inv.bmp";
+  if(fileExists("maps/" + g_mapdir + "/items/" + fname + "-inv.qoi")) {
+    lstr = "maps/" + g_mapdir + "/items/" + fname + "-inv.qoi";
+  } else if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".qoi")){
+    lstr = "maps/" + g_mapdir + "/items/" + fname + ".qoi";
+  } else if(fileExists("static/items/" + fname + "-inv.qoi")) {
+    lstr = "static/items/" + fname + "-inv.qoi";
   } else {
-    if(fileExists("static/items/" + fname + ".bmp")) {
-      lstr = "static/items/" + fname + ".bmp";
+    if(fileExists("static/items/" + fname + ".qoi")) {
+      lstr = "static/items/" + fname + ".qoi";
     } else {
       //failsafe - load an image we know we have
-      lstr = "static/sprites/default.bmp";
+      lstr = "static/sprites/default.qoi";
     }
   }
 
@@ -2556,11 +2573,13 @@ int fancybox::reveal() {
     }
   } else {
     //all done!
-    adventureUIManager->dialogProceedIndicator->show = 1;
-    adventureUIManager->dialogProceedIndicator->y = 0.9;
-    adventureUIManager->c_dpiDesendMs = 0;
-    adventureUIManager->c_dpiAsending = 0;
-    adventureUIManager->typing = 0;
+    if(adventureUIManager->dialogProceedIndicator->show == 0) {
+      adventureUIManager->dialogProceedIndicator->show = 1;
+      adventureUIManager->dialogProceedIndicator->y = 0.9;
+      adventureUIManager->c_dpiDesendMs = 0;
+      adventureUIManager->c_dpiAsending = 0;
+      adventureUIManager->typing = 0;
+    }
     return -1;
   }
 
@@ -2766,19 +2785,14 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   string temp;
   file >> temp;
   string spritefilevar;
-  if(temp.substr(0,3) == "sp-") {
-    spritefilevar = "engine/" + temp + ".bmp";
-  } else {
-    spritefilevar = "static/sprites/" + temp + ".bmp";
+  spritefilevar = "static/sprites/" + temp + ".qoi";
+
+  if(!fileExists(spritefilevar)) { 
+    spritefilevar = "maps/" + g_mapdir + "/sprites/" + temp + ".qoi";
+    D(spritefilevar);
   }
 
-
-  //check local folder
-  if(fileExists("maps/" + g_mapdir + "/sprites/" + filename + ".bmp")) {spritefilevar = "maps/" + g_mapdir + "/sprites/" + filename + ".bmp";}
-
-  //D(spritefilevar);
-  
-  if(onionmode) {spritefilevar = "engine/onion.bmp";}
+  if(onionmode) {spritefilevar = "engine/onion.qoi";}
 
   const char* spritefile = spritefilevar.c_str();
   float size;
@@ -3015,12 +3029,11 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     //this may have unwanted consequences for engine sprites, e.g. lighting
     if(!blurPixelsForScaling) {
       SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-      //M("Some entity is using pixel perfect rendering");
-      //D(name);
     } else {
       SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
     }
     SDL_Surface* image = IMG_Load(spritefile);
+
     texture = SDL_CreateTextureFromSurface(renderer, image);
     SDL_FreeSurface(image);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
@@ -3315,21 +3328,32 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     stream >> comment; // open curly brace character
     
     //a line might look like this 
-    //  passive(1300)
+    //  passive(1300, 3)
+    //  duration, range in blocks
+    //  the duration only decreases if the behemoth is within X blocks of the target
+    //  if the range is zero, that means any range is suitable for decreasing the remaining duration
     for(;;) {
       if(! (stream >> line) ) {break;}
       if(line[0] == '}') {break;}
       //line contains the name of an ability
       state newState;
       string name;
-      int interval;
       
       vector<string> x = splitString(line, '(');
       name = x[0];
-      x[1].pop_back(); interval = stoi(x[1]);
+      x[1].pop_back(); 
+
+      string interval = x[1];
+      
+      stream >> line;
+      line.pop_back();
+      
+      string blocks = line;
+
       newState.name = name;
-      newState.interval = interval;
-      newState.nextInterval = interval;
+      newState.interval = stoi(interval);
+      newState.nextInterval = stoi(interval);
+      newState.blocks = stoi(blocks) * 64;
 
       this->states.push_back(newState);
     }
@@ -3394,7 +3418,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     }
 
 
-    if(!useAgro && g_setsOfInterest.at(poiIndex).size() != 0) {
+    if(!useAgro) {
       traveling = 1;
       readyForNextTravelInstruction = 1;
       poiIndex = aiIndex;
@@ -3546,10 +3570,10 @@ entity::entity(SDL_Renderer * renderer, int idk,  string texturename) {
   string spritefilevar;
 
   //!!! do something else if there's none, use a generic image or smt
-  spritefilevar = "static/items/" + texturename + ".bmp";
+  spritefilevar = "static/items/" + texturename + ".qoi";
   
 
-  if(onionmode) {spritefilevar = "engine/onion.bmp";}
+  if(onionmode) {spritefilevar = "engine/onion.qoi";}
 
   SDL_Surface* image = IMG_Load(spritefilevar.c_str());
   texture = SDL_CreateTextureFromSurface(renderer, image);
@@ -3883,7 +3907,6 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
     sizeRestoreMs -= elapsed;
     curwidth = (width + curwidth) / 2;
     curheight = (height + curheight) / 2;
-
   }
 
 
@@ -3939,6 +3962,10 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 
     frame = animation * xframes + frameInAnimation;
     SDL_FRect dstrect = { (float)obj.x, (float)obj.y, (float)obj.width, (float)obj.height};
+    if(animationconfig == 2) {
+      //this is used to share a texture between multiple sprites who really just use one frame of the texture, e.g. collectible familiars
+      frame = animWalkFrames;
+    }
     //genericmode has just one frame
     if(isWorlditem) {frame = 0;}
 
@@ -4168,6 +4195,10 @@ musicNode* entity::Get_Closest_Node(vector<musicNode*> array, int useVelocity) {
 //entity update
 door* entity::update(vector<door*> doors, float elapsed) {
         if(!tangible) {return nullptr;}
+
+        if(target != nullptr) {
+          this->distanceToTarget = XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY());
+        }
         
         //unset these so they update
         cachedOriginValsAreGood = 0;
@@ -4411,22 +4442,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
           forwardsPushVelocity = 0;
         }
 
-        if(identity == 5) {
-          if(flagA) {
-            forwardsVelocity = xagil;
-          } else {
-            forwardsVelocity = -xagil;
-          }
-          if(devMode) {
-            forwardsVelocity = 0; //phew!
-          }
-        }
-
-
         //set xaccel and yaccel from forwardsVelocity
         xaccel = cos(steeringAngle) * forwardsVelocity;
         yaccel = -sin(steeringAngle) * forwardsVelocity;
-
 
         //keep pellets moving
         if(this->wasPellet && this->usingTimeToLive) {
@@ -4495,7 +4513,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           steeringAngle = wrapAngle(steeringAngle);
         }
 
-        if(agrod) {xmaxspeed = baseMaxSpeed + bonusSpeed;} else 
+        if(1) {xmaxspeed = baseMaxSpeed + bonusSpeed;} else 
         {xmaxspeed = baseMaxSpeed;}
 
         //normalize accel vector
@@ -4608,12 +4626,10 @@ door* entity::update(vector<door*> doors, float elapsed) {
                 for(auto x : g_impliedSlopes) {
                 //rect sleepbox = rect(x->bounds.x - 150, x->bounds.y-150, x->bounds.width+300, x->bounds.height+300);
                 //if(!RectOverlap(sleepbox, movedbounds)) {continue;}
-                if(RectOverlap(movedbounds, x->bounds)) {
-                  inCollision = 1;
-                  break;
-                }
-
-
+                  if(RectOverlap(movedbounds, x->bounds)) {
+                    inCollision = 1;
+                    break;
+                  }
                 }
 
               }
@@ -4625,13 +4641,22 @@ door* entity::update(vector<door*> doors, float elapsed) {
                 for (auto n : g_solid_entities) {
                   if(n == this) {continue;}
                   if(!n->tangible) {continue;}
+                  //if(n->zeight < g_stepHeight) {continue;} //if you ever wanna solve the bug
+                                                   //where the game keeps jiggling ents
+                                                   //out of spiketraps, you should then 
+                                                   //remove this line
                   //update bounds with new pos
                   rect thatmovedbounds = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
-                  thatmovedbounds.z = bounds.z;
-                  thatmovedbounds.zeight = bounds.zeight;
+                  thatmovedbounds.z = n->bounds.z;
+                  thatmovedbounds.zeight = n->bounds.zeight;
+
                   //uh oh, did we collide with something?
                   if(RectOverlap3d(movedbounds, thatmovedbounds)) {
-                    inCollision = 1;
+                    if(movedbounds.z >= thatmovedbounds.z + thatmovedbounds.zeight) {
+                    } else {
+                      inCollision = 1;
+                    }
+
                     break;
                   }
                 }
@@ -4730,6 +4755,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
         int oxvel = xvel;
         int oyvel = yvel;
+        
 
         //observed problem - sometimes the zombie gets stuck trying to go thru a narrow doorway
         //For instance, the zombie is trying to move left and up to pass thru a doorway
@@ -4765,6 +4791,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             rect thatmovedbounds = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
             thatmovedbounds.z = n->z;
             thatmovedbounds.zeight = n->bounds.zeight;
+
             
             //uh oh, did we collide with something?
             if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
@@ -4785,6 +4812,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             if(RectOverlap3d(thismovedbounds, thatmovedbounds)) {
               if((this == protag || this->isAI || this->identity == 5) && (thatmovedbounds.z + thatmovedbounds.zeight) - z < g_stepHeight) {
                 z += (thatmovedbounds.z + thatmovedbounds.zeight) - z;
+                
               } else {
                 xcollide = true;
                 xvel = 0;
@@ -5222,7 +5250,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
           stuckTime++;
         } else {
           stuckTime = 0;
-
         }
 
         specialObjectsBump(this, xcollide, ycollide);
@@ -5274,7 +5301,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           bool breakflag = 0;
 
           for (int i = (int)g_tiles.size() - 1; i >= 0; i--) {
-            if(g_tiles[i]->fileaddress == "textures/marker.bmp") {continue; }
+            if(g_tiles[i]->fileaddress == "textures/marker.qoi") {continue; }
             tilerect = rect(g_tiles[i]->x, g_tiles[i]->y, g_tiles[i]->width, g_tiles[i]->height);
 
             if(RectOverlap(tilerect, movedbounds)) {
@@ -5477,7 +5504,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
         }
 
         //look for solid entities (new as of Nov 2023 for the bed)
-        if(this == protag) { //seems to be causing slowdown
+        if(this == protag || this->isAI) { //seems to be causing slowdown
           groundedByEntity = 0;
           for(auto n : g_solid_entities) {
             if(XYWorldDistanceSquared(this->x, this->y, n->x, n->y) < 102400) //arbitrary distance chosen for optimization, it indicates a origin-to-origin distance of five blocks which is usually enough
@@ -5486,7 +5513,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
               thisb.z = z;
               thisb.zeight = bounds.zeight;
   
-              rect that = rect(n->bounds.x + n->x, n->bounds.y + n->y, n->bounds.width, n->bounds.height);
+              rect that = rect(n->bounds.x + n->x -2, n->bounds.y + n->y-2, n->bounds.width+1, n->bounds.height+1);
               that.z = n->z;
               that.zeight = n->bounds.zeight;
   
@@ -5519,46 +5546,46 @@ door* entity::update(vector<door*> doors, float elapsed) {
                   //M("Protag boarded entity named " + n->name);
                   
                   //decide to de-agro entities
-                  if(n->isHidingSpot) {
-                    for(auto x:g_ai) {
-                      if(x->target == protag) {
-                        //I want a "realistic" or clever way of de-agroing enemies
-                        //I could make it so that there's a timer after fomm is last in listening range of an agrod enemy
-                        if(!g_protagIsInHearingRange) {
-                          //x->poiIndex = 0;
-                          // i want to have a fun way of having the enemy de-agro
-                          // I want them to approach the hiding spot and stare at it for a moment
-                          // before a "?" appears above their head and they then wander off
-
-                          //this makes them instantly give up the moment the protag hides
-                          x->agrod = 0;
-                          x->smellAgroMs = 0;
-                          x->target = nullptr;
-
-                          //x->myTravelstyle = patrol;
-                          //x->traveling = 1;
-                          //x->readyForNextTravelInstruction = 1;
-                          M("begin losthim sequence");
-                          
-                          x->lostHimSequence = 1;
-                          
-                          //we want to pick the node closest to the edge of the hs,
-                          //in the direction of the behemoth
-                          //so get the angle from the hs to the behemoth
-                          
-                          float angleToBehemoth = atan2(x->getOriginX() - n->getOriginX(), x->getOriginY() - n->getOriginY()) - M_PI/2;
-                          angleToBehemoth = wrapAngle(angleToBehemoth);
-
-                          float interestingX = n->getOriginX() + cos(angleToBehemoth) * n->bounds.width/2;
-                          float interestingY = n->getOriginY() + sin(angleToBehemoth) * n->bounds.width/2;
-
-                          Destination = getNodeByPosition(x->lostHimX, x->lostHimY);
-                          x->lostHimX = n->getOriginX();
-                          x->lostHimY = n->getOriginY();
-                        }
-                      }
-                    }
-                  }
+//                  if(n->isHidingSpot) {
+//                    for(auto x:g_ai) {
+//                      if(x->target == protag) {
+//                        //I want a "realistic" or clever way of de-agroing enemies
+//                        //I could make it so that there's a timer after fomm is last in listening range of an agrod enemy
+//                        if(!g_protagIsInHearingRange) {
+//                          //x->poiIndex = 0;
+//                          // i want to have a fun way of having the enemy de-agro
+//                          // I want them to approach the hiding spot and stare at it for a moment
+//                          // before a "?" appears above their head and they then wander off
+//
+//                          //this makes them instantly give up the moment the protag hides
+//                          x->agrod = 0;
+//                          x->smellAgroMs = 0;
+//                          x->target = nullptr;
+//
+//                          //x->myTravelstyle = patrol;
+//                          //x->traveling = 1;
+//                          //x->readyForNextTravelInstruction = 1;
+//                          M("begin losthim sequence");
+//                          
+//                          x->lostHimSequence = 1;
+//                          
+//                          //we want to pick the node closest to the edge of the hs,
+//                          //in the direction of the behemoth
+//                          //so get the angle from the hs to the behemoth
+//                          
+//                          float angleToBehemoth = atan2(x->getOriginX() - n->getOriginX(), x->getOriginY() - n->getOriginY()) - M_PI/2;
+//                          angleToBehemoth = wrapAngle(angleToBehemoth);
+//
+//                          float interestingX = n->getOriginX() + cos(angleToBehemoth) * n->bounds.width/2;
+//                          float interestingY = n->getOriginY() + sin(angleToBehemoth) * n->bounds.width/2;
+//
+//                          Destination = getNodeByPosition(x->lostHimX, x->lostHimY);
+//                          x->lostHimX = n->getOriginX();
+//                          x->lostHimY = n->getOriginY();
+//                        }
+//                      }
+//                    }
+//                  }
 
                   if(n->transportEntPtr != nullptr) {
                     g_boardedEntity = n->transportEntPtr;
@@ -5948,12 +5975,12 @@ door* entity::update(vector<door*> doors, float elapsed) {
             smellsPotentialTarget = 0;
             seesPotentialTarget = 0;
             //can it smell fomm?
-            if(XYWorldDistance(target->getOriginX(), target->getOriginY(), this->getOriginX(), this->getOriginY()) < this->smellAgroRadius) {
+            if(distanceToTarget < this->smellAgroRadius) {
               smellsPotentialTarget = 1;
             }
 
             //can it see fomm?
-            if(XYWorldDistance(target->getOriginX(), target->getOriginY(), this->getOriginX(), this->getOriginY()) < this->visionRadius) {
+            if(distanceToTarget < this->visionRadius) {
               if(
                   LineTrace(target->getOriginX(), target->getOriginY(), this->getOriginX(), this->getOriginY(), false, 30, 0, 10, false)
                   &&
@@ -5975,7 +6002,11 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
             //if we are using the state system, let's update that
             if(useStateSystem) {
-              states[activeState].interval -= elapsed;
+              
+              if(distanceToTarget < states[activeState].blocks || states[activeState].blocks == 0) {
+                states[activeState].interval -= elapsed;
+              }
+
               if(states[activeState].interval < 0) {
                 int numChoices = states[activeState].nextStates.size();
                 float random = (double)rand() / RAND_MAX;
@@ -6021,12 +6052,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
           } else if(aggressiveness > maxAggressiveness) {
             aggressiveness = maxAggressiveness;
           }
-
-
-
         }
 
-        if(isAI && target != nullptr) {
+        if(isAI) {
           //likely has abilities to use
           //are any abilities ready?
           for(auto &x : myAbilities) {
@@ -6042,7 +6070,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             float dist = std::numeric_limits<float>::max();
 
             if(target != nullptr) {
-              dist = XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY());
+              dist = distanceToTarget;
             }
 
             if((dist <= x.upperRangeBound  && dist >= x.lowerRangeBound) || x.upperRangeBound == x.lowerRangeBound && x.lowerRangeBound == 0) {
@@ -6230,7 +6258,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
               //in these types of games, humans seem to shoot even when they are out
               // of range, so lets go with that
               shooting = 0;
-              float distanceToTarget = XYWorldDistance(target->getOriginX(), target->getOriginY(), getOriginX(), getOriginY());
+              //float distanceToTarget = XYWorldDistance(target->getOriginX(), target->getOriginY(), getOriginX(), getOriginY());
               if(distanceToTarget < this->hisweapon->attacks[hisweapon->combo]->range) {
                 shooting = 1;
               }
@@ -6296,8 +6324,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
                   random++;
                   targetDest = g_setsOfInterest.at(poiIndex).at(random);
                 }
-                D(random);
-                D(lastTargetDestIndex);
                 if(random == lastTargetDestIndex) {
                   //M("They're equal, this shouldn't happen");
                 } 
@@ -6598,7 +6624,6 @@ void entity::BasicNavigate(navNode* ultimateTargetNode) {
     //sometime after that I started using the second node in the path, but that still hasn't quite solved it
     //i'll try re-enabling the useVelocity param and trying to fix it
 
-    M("Reset current");
     current = Get_Closest_Node(g_navNodes, 1);
     dest = current;
     path.clear();
@@ -6921,10 +6946,10 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, i
   std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), 
       [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } ); //I convinced c++ that e is a number for this uber-efficient line of code
 
-  string loadSTR = "levelsequence/icons/" + lowerName + ".bmp";
+  string loadSTR = "levelsequence/icons/" + lowerName + ".qoi";
 
 
-  if(onionmode) {loadSTR = "engine/onion.bmp";}
+  if(onionmode) {loadSTR = "engine/onion.qoi";}
 
   SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
   if(loadMe == NULL) {
@@ -6952,16 +6977,16 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, i
   }
 
   if(eyeTexture == nullptr) {
-    string loadSTR = "levelsequence/icons/eyes.bmp";
+    string loadSTR = "levelsequence/icons/eyes.qoi";
     SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
     this->eyeTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
     SDL_FreeSurface(loadMe);
   }
 
   if(mouthTexture == nullptr) {
-    string loadSTR = "levelsequence/icons/mouth2.bmp";
+    string loadSTR = "levelsequence/icons/mouth2.qoi";
     if(mouthStyle == 1) {
-      loadSTR = "levelsequence/icons/mouth.bmp";
+      loadSTR = "levelsequence/icons/mouth.qoi";
     }
     SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
 
@@ -7119,10 +7144,10 @@ usable::usable(string fname) {
   file.close();
 
   //load sprite
-  loadstr = filepath + "img_" + fname + ".bmp";
+  loadstr = filepath + "img_" + fname + ".qoi";
 
 
-  if(onionmode) {loadstr = "engine/onion.bmp";}
+  if(onionmode) {loadstr = "engine/onion.qoi";}
 
   SDL_Surface* image = IMG_Load(loadstr.c_str());
   texture = SDL_CreateTextureFromSurface(renderer,image);
@@ -7560,7 +7585,7 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer,
 
 
     for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++) {
-      if(RectOverlap(a, g_boxs[layer][j]->bounds) && g_boxs[layer][j]->walltexture != "engine/seethru.bmp") {
+      if(RectOverlap(a, g_boxs[layer][j]->bounds) && g_boxs[layer][j]->walltexture != "engine/seethru.qoi") {
         lineTraceX = a.x + a.width/2;
         lineTraceY = a.y + a.height/2;
         return false;
@@ -7768,7 +7793,7 @@ ui::ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float
   filename = ffilename;
 
   string spritefilevar = filename;
-  if(onionmode) {spritefilevar = "engine/onion.bmp";}
+  if(onionmode) {spritefilevar = "engine/onion.qoi";}
   image = IMG_Load(spritefilevar.c_str());
   texture = SDL_CreateTextureFromSurface(renderer, image);
   SDL_FreeSurface(image);
@@ -8218,7 +8243,7 @@ int listener::update() {
 
 escapeUI::escapeUI() {
 
-  ninePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
+  ninePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
   ninePatch->patchwidth = 213;
   ninePatch->patchscale = 0.4;
   ninePatch->is9patch = true;
@@ -8226,14 +8251,14 @@ escapeUI::escapeUI() {
   ninePatch->show = 1;
   ninePatch->priority = 2;
 
-  handMarker = new ui(renderer, "static/ui/hand_selector.bmp", markerHandX, 0.1, markerWidth, 1, 2);
+  handMarker = new ui(renderer, "static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
   handMarker->persistent = 1;
   handMarker->show = 1;
   handMarker->priority = 3;
   handMarker->heightFromWidthFactor = 1;
   handMarker->renderOverText = 1;
 
-  fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.bmp", markerFingerX, 0.1, markerWidth, 1, 2);
+  fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
   fingerMarker->persistent = 1;
   fingerMarker->show = 1;
   fingerMarker->priority = 3;
@@ -8251,7 +8276,7 @@ escapeUI::escapeUI() {
   numLines = optionStrings.size();
   float spacing = (yEnd - yStart) / (numLines);
 
-//    backButton = new ui(renderer, "static/ui/menu_back.bmp", bbXStart, bbYStart, bbWidth, 1, 2);
+//    backButton = new ui(renderer, "static/ui/menu_back.qoi", bbXStart, bbYStart, bbWidth, 1, 2);
 //    backButton->heightFromWidthFactor = 1;
 //    backButton->shrinkPercent = 0.03;
 //    backButton->persistent = 1;
@@ -8259,7 +8284,7 @@ escapeUI::escapeUI() {
 //    backButton->priority = 1;
 //    backButton->dropshadow = 1;
 //
-//    bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", bbXStart, bbYStart, bbWidth, 1, 0);
+//    bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", bbXStart, bbYStart, bbWidth, 1, 0);
 //    bbNinePatch->patchwidth = 213;
 //    bbNinePatch->patchscale = 0.4;
 //    bbNinePatch->is9patch = true;
@@ -8342,6 +8367,13 @@ void clear_map(camera& cameraToReset) {
   g_behemoth1 = 0;
   g_behemoth2 = 0;
   g_behemoth3 = 0;
+  
+  if(g_waterAllocated) {
+    g_waterTexture = 0;
+    g_waterAllocated = 0;
+    SDL_FreeSurface(g_waterSurface);
+  }
+
   adventureUIManager->crosshair->show = 0;
   breakpoint();
   {
@@ -8356,7 +8388,7 @@ void clear_map(camera& cameraToReset) {
     transitionMinFrametime = 1/mframes * 1000;
 
 
-    SDL_Surface* transitionSurface = IMG_Load("engine/transition.bmp");
+    SDL_Surface* transitionSurface = IMG_Load("engine/transition.qoi");
 
     int imageWidth = transitionSurface->w;
     int imageHeight = transitionSurface->h;
@@ -9163,7 +9195,7 @@ worldItem::~worldItem() {
 
 settingsUI::settingsUI() {
 
-  ninePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
+  ninePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
   ninePatch->patchwidth = 213;
   ninePatch->patchscale = 0.4;
   ninePatch->is9patch = true;
@@ -9171,14 +9203,14 @@ settingsUI::settingsUI() {
   ninePatch->show = 1;
   ninePatch->priority = 0;
 
-  handMarker = new ui(renderer, "static/ui/hand_selector.bmp", markerHandX, 0.1, markerWidth, 1, 2);
+  handMarker = new ui(renderer, "static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
   handMarker->persistent = 1;
   handMarker->show = 1;
   handMarker->priority = 3;
   handMarker->heightFromWidthFactor = 1;
   handMarker->renderOverText = 1;
 
-  fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.bmp", markerFingerX, 0.1, markerWidth, 1, 2);
+  fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
   fingerMarker->persistent = 1;
   fingerMarker->show = 1;
   fingerMarker->priority = 3;
@@ -9205,7 +9237,7 @@ settingsUI::settingsUI() {
   numLines = optionStrings.size();
   float spacing = (yEnd - yStart) / (numLines);
 
-  backButton = new ui(renderer, "static/ui/menu_back.bmp", bbXStart, bbYStart, bbWidth, 1, 2);
+  backButton = new ui(renderer, "static/ui/menu_back.qoi", bbXStart, bbYStart, bbWidth, 1, 2);
   backButton->heightFromWidthFactor = 1;
   backButton->shrinkPercent = 0.03;
   backButton->persistent = 1;
@@ -9213,7 +9245,7 @@ settingsUI::settingsUI() {
   backButton->priority = 1;
   backButton->dropshadow = 1;
 
-  bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.bmp", bbXStart, bbYStart, bbWidth, 1, 0);
+  bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", bbXStart, bbYStart, bbWidth, 1, 0);
   bbNinePatch->patchwidth = 213;
   bbNinePatch->patchscale = 0.4;
   bbNinePatch->is9patch = true;
@@ -9407,20 +9439,20 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 {
   this->light = plight;
   if(!light) {
-    talkingBox = new ui(renderer, "static/ui/menu9patchblack.bmp", 0, 0.65, 1, 0.35, 0);
+    talkingBox = new ui(renderer, "static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
     talkingBox->patchwidth = 213;
     talkingBox->patchscale = 0.4;
     talkingBox->is9patch = true;
     talkingBox->persistent = true;
 
-    dialogProceedIndicator = new ui(renderer, "static/ui/dialog_proceed.bmp", 0.92, 0.88, 0.05, 1, 0);
+    dialogProceedIndicator = new ui(renderer, "static/ui/dialog_proceed.qoi", 0.92, 0.88, 0.05, 1, 0);
     dialogProceedIndicator->heightFromWidthFactor = 1;
     dialogProceedIndicator->persistent = true;
     dialogProceedIndicator->priority = 8;
     dialogProceedIndicator->dropshadow = 1;
     
 
-    // talkingBoxTexture = new ui(renderer, "static/ui/ui-background.bmp", 0.1, 0.45, 0.9, 0.25, 0);
+    // talkingBoxTexture = new ui(renderer, "static/ui/ui-background.qoi", 0.1, 0.45, 0.9, 0.25, 0);
     // talkingBoxTexture->persistent = true;
     /// SDL_SetTextureBlendMode(talkingBoxTexture->texture, SDL_BLENDMODE_ADD);
 
@@ -9469,21 +9501,21 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     //systemClock->show = 0;
 
 
-    inventoryA = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
+    inventoryA = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
     inventoryA->is9patch = true;
     inventoryA->patchwidth = 213;
     inventoryA->patchscale = 0.4;
     inventoryA->persistent = true;
     inventoryA->show = 0;
 
-    inventoryB = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
+    inventoryB = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
     inventoryB->is9patch = true;
     inventoryB->patchwidth = 213;
     inventoryB->patchscale = 0.4;
     inventoryB->persistent = true;
     inventoryB->priority = -4;
 
-    crosshair = new ui(renderer, "static/ui/crosshair.bmp", 0, 0, 0.05, 0.05, -15);
+    crosshair = new ui(renderer, "static/ui/crosshair.qoi", 0, 0, 0.05, 0.05, -15);
     crosshair->persistent = 1;
     crosshair->heightFromWidthFactor = 1;
     crosshair->show = 0;
@@ -9492,7 +9524,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     crosshair->frameheight = 128;
     crosshair->priority = -5; //crosshair goes ontop usable icons
     
-    b0_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+    b0_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b0_element->persistent = 1;
     b0_element->heightFromWidthFactor = 1;
     b0_element->show = 0;
@@ -9501,7 +9533,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b0_element->frameheight = 128;
     b0_element->priority = -5; //crosshair goes ontop usable icons
 
-    b1_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+    b1_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b1_element->persistent = 1;
     b1_element->heightFromWidthFactor = 1;
     b1_element->show = 0;
@@ -9512,7 +9544,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b1_element->priority = -5; //crosshair goes ontop usable icons
 
 
-    b2_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+    b2_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b2_element->persistent = 1;
     b2_element->heightFromWidthFactor = 1;
     b2_element->show = 0;
@@ -9522,7 +9554,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b2_element->frameheight = 128;
     b2_element->priority = -5; //crosshair goes ontop usable icons
 
-    b3_element = new ui(renderer, "static/ui/behemoth_element.bmp", 0, 0, 0.05, 0.05, -15);
+    b3_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b3_element->persistent = 1;
     b3_element->heightFromWidthFactor = 1;
     b3_element->show = 0;
@@ -9532,13 +9564,13 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b3_element->frameheight = 128;
     b3_element->priority = -5; //crosshair goes ontop usable icons
     
-    hearingDetectable = new ui(renderer, "static/ui/detection-hearing.bmp", 0.85, 0.05, 0.1, 1, -10);
+    hearingDetectable = new ui(renderer, "static/ui/detection-hearing.qoi", 0.85, 0.05, 0.1, 1, -10);
     hearingDetectable->persistent = 1;
     hearingDetectable->heightFromWidthFactor = 1.3392;
     hearingDetectable->show = 1;
     hearingDetectable->priority = -3;
 
-    seeingDetectable = new ui(renderer, "static/ui/detection-seeing.bmp", 0.85, 0.075, 0.1, 1, -10);
+    seeingDetectable = new ui(renderer, "static/ui/detection-seeing.qoi", 0.85, 0.075, 0.1, 1, -10);
     seeingDetectable->persistent = 1;
     seeingDetectable->heightFromWidthFactor = 1;
     seeingDetectable->xframes = 8;
@@ -9609,7 +9641,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 
 void adventureUI::initFullUI() {
 
-//    tastePicture = new ui(renderer, "static/ui/taste.bmp", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
+//    tastePicture = new ui(renderer, "static/ui/taste.qoi", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
 //    tastePicture->persistent = 1;
 //    tastePicture->heightFromWidthFactor = 1;
 //    tastePicture->show = 1;
@@ -9624,7 +9656,7 @@ void adventureUI::initFullUI() {
   adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
   adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
 
-    hungerPicture = new ui(renderer, "static/ui/hunger.bmp", 0.8, 0.6, 0.25, 1, -15);
+    hungerPicture = new ui(renderer, "static/ui/hunger.qoi", 0.8, 0.6, 0.25, 1, -15);
     hungerPicture->persistent = 1;
     hungerPicture->heightFromWidthFactor = 1;
     hungerPicture->show = 1;
@@ -9639,7 +9671,7 @@ void adventureUI::initFullUI() {
   adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
   adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
 
-  healthPicture = new ui(renderer, "static/ui/health.bmp", -0.04, -0.09, 0.25, 1, -15);
+  healthPicture = new ui(renderer, "static/ui/health.qoi", -0.04, -0.09, 0.25, 1, -15);
   healthPicture->persistent = 1;
   healthPicture->heightFromWidthFactor = 1;
   healthPicture->show = 1;
@@ -9650,7 +9682,7 @@ void adventureUI::initFullUI() {
   healthPicture->widthGlideSpeed = 0.1;
   healthPicture->priority = -10; //health is behind everything
 
-  hotbar = new ui(renderer, "static/ui/menu9patchblack.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.84, 0.1, 0.1, 1);
+  hotbar = new ui(renderer, "static/ui/menu9patchblack.qoi", g_hotbarX + g_backpackHorizontalOffset, 0.84, 0.1, 0.1, 1);
   hotbar->is9patch = true;
   hotbar->patchwidth = 213;
   hotbar->patchscale = 0.5;
@@ -9658,18 +9690,18 @@ void adventureUI::initFullUI() {
   hotbar->heightFromWidthFactor = 1;
   hotbar->priority = -8;
 
-  hotbarFocus = new ui(renderer, "static/ui/hotbar_focus.bmp", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
+  hotbarFocus = new ui(renderer, "static/ui/hotbar_focus.qoi", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
   hotbarFocus->persistent = true;
   hotbarFocus->heightFromWidthFactor = 1;
   hotbarFocus->priority = -7;
   hotbarFocus->dropshadow = 1;
 
 
-  SDL_Surface *surface = IMG_Load("engine/sp-no-texture.bmp");
+  SDL_Surface *surface = IMG_Load("engine/sp-no-texture.qoi");
   noIconTexture = SDL_CreateTextureFromSurface(renderer, surface);
   SDL_FreeSurface(surface);
 
-  nextUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 + 0.1, 0.84, 0.1, 1, 1);
+  nextUsableIcon = new ui(renderer, "engine/sp-no-texture.qoi", 0.45 + 0.1, 0.84, 0.1, 1, 1);
   nextUsableIcon->persistent = true;
   nextUsableIcon->heightFromWidthFactor = 1;
   SDL_DestroyTexture(nextUsableIcon->texture);
@@ -9678,7 +9710,7 @@ void adventureUI::initFullUI() {
   nextUsableIcon->priority = -7;
   nextUsableIcon->show = 0;
 
-  prevUsableIcon = new ui(renderer, "engine/sp-no-texture.bmp", 0.45 - 0.1, 0.84, 0.1, 1, 1);
+  prevUsableIcon = new ui(renderer, "engine/sp-no-texture.qoi", 0.45 - 0.1, 0.84, 0.1, 1, 1);
   prevUsableIcon->persistent = true;
   prevUsableIcon->heightFromWidthFactor = 1;
   SDL_DestroyTexture(prevUsableIcon->texture);
@@ -9686,7 +9718,7 @@ void adventureUI::initFullUI() {
   prevUsableIcon->shrinkPercent = 0.01; 
   prevUsableIcon->priority = -7;
 
-  thisUsableIcon = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
+  thisUsableIcon = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   thisUsableIcon->persistent = true;
   thisUsableIcon->heightFromWidthFactor = 1;
   SDL_DestroyTexture(thisUsableIcon->texture);
@@ -9696,7 +9728,7 @@ void adventureUI::initFullUI() {
 
   float shrinkPercent = 0.015;
 
-  t1 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
+  t1 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t1->persistent = true;
   t1->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t1->texture);
@@ -9704,7 +9736,7 @@ void adventureUI::initFullUI() {
   t1->shrinkPercent = shrinkPercent; 
   t1->priority = -7;
 
-  t2 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
+  t2 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t2->persistent = true;
   t2->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t2->texture);
@@ -9712,7 +9744,7 @@ void adventureUI::initFullUI() {
   t2->shrinkPercent = shrinkPercent; 
   t2->priority = -7;
 
-  t3 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
+  t3 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t3->persistent = true;
   t3->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t3->texture);
@@ -9720,7 +9752,7 @@ void adventureUI::initFullUI() {
   t3->shrinkPercent = shrinkPercent; 
   t3->priority = -6;
 
-  t4 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
+  t4 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t4->persistent = true;
   t4->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t4->texture);
@@ -9728,7 +9760,7 @@ void adventureUI::initFullUI() {
   t4->shrinkPercent = shrinkPercent; 
   t4->priority = -7;
 
-  t5 = new ui(renderer, "static/ui/menu9patchblack.bmp", 0.45, 0.84, 0.1, 1, 1);
+  t5 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t5->persistent = true;
   t5->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t5->texture);
@@ -9746,7 +9778,7 @@ void adventureUI::initFullUI() {
   thisUsableIcon->show = 0;
   nextUsableIcon->show = 0;
 
-  cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.bmp", g_hotbarX + g_backpackHorizontalOffset, 0.83, 0.03, 1, 1);
+  cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.qoi", g_hotbarX + g_backpackHorizontalOffset, 0.83, 0.03, 1, 1);
   cooldownIndicator->priority = -6;
   cooldownIndicator->persistent = 1;
   cooldownIndicator->heightFromWidthFactor = 1;
@@ -9761,7 +9793,7 @@ void adventureUI::initFullUI() {
     x->glideSpeed = 0.3;
   }
 
-  hotbarMutedXIcon = new ui(renderer, "static/ui/red_x.bmp", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
+  hotbarMutedXIcon = new ui(renderer, "static/ui/red_x.qoi", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
   hotbarMutedXIcon->persistent = true;
   hotbarMutedXIcon->priority = -6;
   hotbarMutedXIcon->heightFromWidthFactor = 1;
@@ -10248,6 +10280,78 @@ void adventureUI::continueDialogue()
     this->continueDialogue();
     return;
   }
+
+  // check if collectible familiars contains these entities
+  // /familiarcheck circus/ticket-a circus/ticket-b circus/ticket-c :success
+  // `You still need to collect some tickets to enter the circus
+  // `Come back when you have three tickets
+  // #
+  // <success>
+  // `Okay, I will let you enter the circus
+  // #
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/familiarcheck")
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    vector<string> names;
+
+    int fail = 0;
+    for(int i = 1; i < x.size()-1; i++) {
+      D(x[i]);
+      int good = 0;
+      for(auto y : g_familiars) {
+        if(y->name == x[i]) { good = 1;}
+      }
+      if(!good) { fail = 1; break;}
+    }
+
+    if(fail) {
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+    } else {
+      //do the jump
+      string jumpst = x[x.size()-1];
+      jumpst.erase(jumpst.begin());
+      int jump = stoi(jumpst);
+      dialogue_index = jump - 3;
+      this->continueDialogue();
+      return;
+
+    }
+  }
+
+  // suck the selected familiars towards a given entity
+  // removes them from the player's familiars
+  // /familiarsuck common/chest circus/ticket-a circus/ticket-b circus/ticket-c 
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/familiarsuck")
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    vector<string> names;
+
+    for(int i = 2; i < x.size(); i++) {
+      D(x[i]);
+      for(auto y : g_familiars) {
+        if(y->name == x[i]) { 
+          g_ex_familiars.push_back(y);
+          g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), y), g_familiars.end());
+        }
+      }
+    }
+
+    g_exFamiliarParent = searchEntities(x[1]);
+    g_exFamiliarTimer = 10000;
+
+
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
 
   // check number of living entities by name
   //  /count

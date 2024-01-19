@@ -11,4 +11,8 @@ SDL_Texture *addTextures(SDL_Renderer *renderer, vector<vector<int>> fogcookies,
 
 SDL_Texture *IlluminateTexture(SDL_Renderer *renderer, SDL_Texture *&mask, SDL_Texture *&diffuse, SDL_Texture *&result);
 
+Uint32 getPixelOfSurface(SDL_Surface *surface, int x, int y);
+
+SDL_Texture* animateWater(SDL_Renderer* renderer, SDL_Texture* wtex, SDL_Surface* wsurf, float acc);
+
 #endif

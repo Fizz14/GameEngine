@@ -506,9 +506,9 @@ class actor {
     virtual void render(SDL_Renderer * renderer, camera fcamera); 
 
 
-    int getOriginX(); 
+    float getOriginX(); 
 
-    int getOriginY(); 
+    float getOriginY(); 
 
     //for moving the object by its origin
     //this won't move the origin relative to the sprite or anything like that
@@ -1261,12 +1261,16 @@ struct state {
   string name = "";
   int interval = 0;
   int nextInterval = 0;
+  int blocks = 0;
   vector<int> nextStates; //after the interval has elapsed, a next state will be chosen with rng
   vector<float> nextStateProbabilities; //based on probabilities
 };
 
 class entity:public actor {
   public:
+    float widthmodifier;
+    float heightmodifier;
+ 
     vector<entity*> spawnlist;
     vector<actor*> actorlist;
 
@@ -1297,6 +1301,8 @@ class entity:public actor {
     int footstep_reset = 0; //used for playing footsteps accurately with anim
 
     bool dontSave = 0;
+
+    float distanceToTarget = 0;
 
     //basic movement
     float xagil = 0;

@@ -59,11 +59,11 @@ int WinMain()
 
   // for brightness
   // reuse texture for transition, cuz why not
-  SDL_Surface *brightness_a_s = IMG_Load("engine/transition.bmp");
+  SDL_Surface *brightness_a_s = IMG_Load("engine/transition.qoi");
   SDL_Texture *brightness_a = SDL_CreateTextureFromSurface(renderer, brightness_a_s);
   SDL_FreeSurface(brightness_a_s);
 
-  SDL_Surface *brightness_b_s = IMG_Load("engine/black-diffuse.bmp");
+  SDL_Surface *brightness_b_s = IMG_Load("engine/black-diffuse.qoi");
   SDL_Texture *brightness_b = SDL_CreateTextureFromSurface(renderer, brightness_b_s);
   SDL_FreeSurface(brightness_b_s);
 
@@ -72,10 +72,10 @@ int WinMain()
 
   // set global shadow-texture
 
-  SDL_Surface *image = IMG_Load("engine/shadow.bmp");
+  SDL_Surface *image = IMG_Load("engine/shadow.qoi");
   g_shadowTexture = SDL_CreateTextureFromSurface(renderer, image);
   SDL_FreeSurface(image);
-  image = IMG_Load("engine/shadow-square.bmp");
+  image = IMG_Load("engine/shadow-square.qoi");
   g_shadowTextureAlternate = SDL_CreateTextureFromSurface(renderer, image);
   SDL_FreeSurface(image);
 
@@ -93,7 +93,7 @@ int WinMain()
   g_backpackNarrarator->persistentHidden = 1;
 
   // for transition
-  SDL_Surface *transitionSurface = IMG_Load("engine/transition.bmp");
+  SDL_Surface *transitionSurface = IMG_Load("engine/transition.qoi");
 
   int transitionImageWidth = transitionSurface->w;
   int transitionImageHeight = transitionSurface->h;
@@ -125,7 +125,7 @@ int WinMain()
     // done once, because textboxes aren't cleared during clear_map()
     nodeInfoText = new textbox(renderer, "",  g_fontsize, 0, 0, WIN_WIDTH);
     g_config = "edit";
-    nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walkerYellow.bmp"));
+    nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walkerYellow.qoi"));
   }
 
   // set bindings from file
@@ -206,7 +206,7 @@ int WinMain()
   valuestr = line.substr(line.find(' '), line.length());
   value = stoi(valuestr);
   g_brightness = value;
-  SDL_Surface* shadesurface = IMG_Load("engine/black-diffuse.bmp");
+  SDL_Surface* shadesurface = IMG_Load("engine/black-diffuse.qoi");
   g_shade = SDL_CreateTextureFromSurface(renderer, shadesurface);
   //SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
   SDL_SetWindowBrightness(window, g_brightness/100.0 );
@@ -280,7 +280,14 @@ int WinMain()
     g_setsOfInterest.push_back(v);
   }
 
+
+  //for water effect
+  g_wPixels = new Uint32[g_wNumPixels];
+  g_wDistort = IMG_Load("engine/waterRipple.qoi");
+
+
   // init static resources
+
   g_bulletdestroySound = Mix_LoadWAV("static/sounds/step.wav");
   g_preloadedSounds.emplace_back(g_bulletdestroySound, "static/sounds/step.wav");
 
@@ -338,14 +345,17 @@ int WinMain()
   g_spurl_entity = new entity(renderer, "common/spurl");
   g_spurl_entity->msPerFrame = 75;
 
+  g_chain_entity = new entity(renderer, "common/chain");
+  g_chain_entity->msPerFrame = 75;
+
   if(devMode) {
-    g_dijkstraDebugRed = new ui(renderer, "engine/walkerRed.bmp", 0,0,32,32, 3);
+    g_dijkstraDebugRed = new ui(renderer, "engine/walkerRed.qoi", 0,0,32,32, 3);
     g_dijkstraDebugRed->persistent = 1;
     g_dijkstraDebugRed->worldspace = 1;
-    g_dijkstraDebugBlue = new ui(renderer, "engine/walkerBlue.bmp", 0,0,32,32, 3);
+    g_dijkstraDebugBlue = new ui(renderer, "engine/walkerBlue.qoi", 0,0,32,32, 3);
     g_dijkstraDebugBlue->persistent = 1;
     g_dijkstraDebugBlue->worldspace = 1;
-    g_dijkstraDebugYellow = new ui(renderer, "engine/walkerYellow.bmp", 0,0,32,32, 3);
+    g_dijkstraDebugYellow = new ui(renderer, "engine/walkerYellow.qoi", 0,0,32,32, 3);
     g_dijkstraDebugYellow->persistent = 1;
     g_dijkstraDebugYellow->worldspace = 1;
   }
@@ -363,15 +373,15 @@ int WinMain()
     bool special = 0;
     if(letter == ";") {
       //load custom enter graphic
-      textsurface = IMG_Load("static/ui/menu_confirm.bmp");
+      textsurface = IMG_Load("static/ui/menu_confirm.qoi");
       special = 1;
     } else if (letter == "<") {
       //load custom backspace graphic
-      textsurface = IMG_Load("static/ui/menu_back.bmp");
+      textsurface = IMG_Load("static/ui/menu_back.qoi");
       special = 1;
     } else if (letter == "^") {
       //load custom capslock graphic
-      textsurface = IMG_Load("static/ui/menu_upper_empty.bmp");
+      textsurface = IMG_Load("static/ui/menu_upper_empty.qoi");
       special = 1;
     } else {
       textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
@@ -398,15 +408,15 @@ int WinMain()
     bool special = 0;
     if(letter == ";") {
       //load custom enter graphic
-      textsurface = IMG_Load("static/ui/menu_confirm.bmp");
+      textsurface = IMG_Load("static/ui/menu_confirm.qoi");
       special = 1;
     } else if (letter == "<") {
       //load custom backspace graphic
-      textsurface = IMG_Load("static/ui/menu_back.bmp");
+      textsurface = IMG_Load("static/ui/menu_back.qoi");
       special = 1;
     } else if (letter == "^") {
       //load custom capslock graphic
-      textsurface = IMG_Load("static/ui/menu_upper.bmp");
+      textsurface = IMG_Load("static/ui/menu_upper.qoi");
       special = 1;
     } else {
       textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
@@ -469,12 +479,12 @@ int WinMain()
   g_escapeUI = new escapeUI();
   
   { //load static textures
-    string loadSTR = "levelsequence/icons/locked.bmp";
+    string loadSTR = "levelsequence/icons/locked.qoi";
     SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
     g_locked_level_texture = SDL_CreateTextureFromSurface(renderer, loadMe);
     SDL_FreeSurface(loadMe);
 
-    loadSTR = "static/ui/loadout_highlight.bmp";
+    loadSTR = "static/ui/loadout_highlight.qoi";
     loadMe = IMG_Load(loadSTR.c_str());
     g_loadoutHighlightTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
     SDL_FreeSurface(loadMe);
@@ -509,12 +519,18 @@ int WinMain()
      
     string filename = g_levelSequence->levelNodes[0]->mapfilename;
 
+    protag->x = 100000;
+    protag->y = 100000;
+
+    filename = "maps/crypt/g.map"; //temporary
+    g_mapdir = "crypt"; //temporary
+    
     load_map(renderer, filename,"a");
     vector<string> x = splitString(filename, '/');
     g_mapdir = x[1];
+
+    g_mapdir = "crypt"; //temporary
     
-    protag->x = 100000;
-    protag->y = 100000;
   }
   else
   {
@@ -528,7 +544,7 @@ int WinMain()
     adventureUIManager->hideTalkingUI();
   }
 
-  inventoryMarker = new ui(renderer, "static/ui/finger_selector_angled.bmp", 0, 0, 0.1, 0.1, 2);
+  inventoryMarker = new ui(renderer, "static/ui/finger_selector_angled.qoi", 0, 0, 0.1, 0.1, 2);
   inventoryMarker->show = 0;
   inventoryMarker->persistent = 1;
   inventoryMarker->renderOverText = 1;
@@ -554,15 +570,15 @@ int WinMain()
  
 
   // This stuff is for the FoW mechanic
-  // engine/resolution.bmp has resolution 1920 x 1200
-  SDL_Surface *SurfaceA = IMG_Load("engine/resolution.bmp");
+  // engine/resolution.qoi has resolution 1920 x 1200
+  SDL_Surface *SurfaceA = IMG_Load("engine/resolution.qoi");
 
   TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
   TextureD = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 
   SDL_FreeSurface(SurfaceA);
 
-  SDL_Surface *blackbarSurface = IMG_Load("engine/black.bmp");
+  SDL_Surface *blackbarSurface = IMG_Load("engine/black.qoi");
   blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
 
   SDL_FreeSurface(blackbarSurface);
@@ -682,55 +698,55 @@ int WinMain()
   canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
   //canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500); seems to be unused
 
-  SDL_Surface *lightSurface = IMG_Load("engine/light.bmp");
+  SDL_Surface *lightSurface = IMG_Load("engine/light.qoi");
   light = SDL_CreateTextureFromSurface(renderer, lightSurface);
   SDL_FreeSurface(lightSurface);
 
-  SDL_Surface *lightAS = IMG_Load("engine/lighta.bmp");
+  SDL_Surface *lightAS = IMG_Load("engine/lighta.qoi");
   lighta = SDL_CreateTextureFromSurface(renderer, lightAS);
   SDL_FreeSurface(lightAS);
 
-  SDL_Surface *lightBS = IMG_Load("engine/lightb.bmp");
+  SDL_Surface *lightBS = IMG_Load("engine/lightb.qoi");
   lightb = SDL_CreateTextureFromSurface(renderer, lightBS);
   SDL_FreeSurface(lightBS);
 
-  SDL_Surface *lightCS = IMG_Load("engine/lightc.bmp");
+  SDL_Surface *lightCS = IMG_Load("engine/lightc.qoi");
   lightc = SDL_CreateTextureFromSurface(renderer, lightCS);
   SDL_FreeSurface(lightCS);
 
-  SDL_Surface *lightDS = IMG_Load("engine/lightd.bmp");
+  SDL_Surface *lightDS = IMG_Load("engine/lightd.qoi");
   lightd = SDL_CreateTextureFromSurface(renderer, lightDS);
   SDL_FreeSurface(lightDS);
 
-  SDL_Surface *lightASro = IMG_Load("engine/lightaro.bmp");
+  SDL_Surface *lightASro = IMG_Load("engine/lightaro.qoi");
   lightaro = SDL_CreateTextureFromSurface(renderer, lightASro);
   SDL_FreeSurface(lightASro);
 
-  SDL_Surface *lightBSro = IMG_Load("engine/lightbro.bmp");
+  SDL_Surface *lightBSro = IMG_Load("engine/lightbro.qoi");
   lightbro = SDL_CreateTextureFromSurface(renderer, lightBSro);
   SDL_FreeSurface(lightBSro);
 
-  SDL_Surface *lightCSro = IMG_Load("engine/lightcro.bmp");
+  SDL_Surface *lightCSro = IMG_Load("engine/lightcro.qoi");
   lightcro = SDL_CreateTextureFromSurface(renderer, lightCSro);
   SDL_FreeSurface(lightCSro);
 
-  SDL_Surface *lightDSro = IMG_Load("engine/lightdro.bmp");
+  SDL_Surface *lightDSro = IMG_Load("engine/lightdro.qoi");
   lightdro = SDL_CreateTextureFromSurface(renderer, lightDSro);
   SDL_FreeSurface(lightDSro);
 
-  SDL_Surface *lightASri = IMG_Load("engine/lightari.bmp");
+  SDL_Surface *lightASri = IMG_Load("engine/lightari.qoi");
   lightari = SDL_CreateTextureFromSurface(renderer, lightASri);
   SDL_FreeSurface(lightASri);
 
-  SDL_Surface *lightBSri = IMG_Load("engine/lightbri.bmp");
+  SDL_Surface *lightBSri = IMG_Load("engine/lightbri.qoi");
   lightbri = SDL_CreateTextureFromSurface(renderer, lightBSri);
   SDL_FreeSurface(lightBSri);
 
-  SDL_Surface *lightCSri = IMG_Load("engine/lightcri.bmp");
+  SDL_Surface *lightCSri = IMG_Load("engine/lightcri.qoi");
   lightcri = SDL_CreateTextureFromSurface(renderer, lightCSri);
   SDL_FreeSurface(lightCSri);
 
-  SDL_Surface *lightDSri = IMG_Load("engine/lightdri.bmp");
+  SDL_Surface *lightDSri = IMG_Load("engine/lightdri.qoi");
   lightdri = SDL_CreateTextureFromSurface(renderer, lightDSri);
   SDL_FreeSurface(lightDSri);
 
@@ -738,6 +754,7 @@ int WinMain()
 
   while (!quit)
   {
+    breakpoint();
     // debug here
     
     // some event handling
@@ -3117,10 +3134,18 @@ int WinMain()
     g_itemsines[6] = ( sin((g_elapsed_accumulator + (235 * 6) ) / 300) * 10 + 30);
     g_itemsines[7] = ( sin((g_elapsed_accumulator + (235 * 7) ) / 300) * 10 + 30);
 
+
     if (g_elapsed_accumulator > 1800 * M_PI)
     {
       g_elapsed_accumulator -= 1800* M_PI;
     }
+
+    g_wAcc+= 0.1;
+    if(g_wAcc > 512) {
+      g_wAcc -= 512;
+    }
+
+    g_waterTexture = animateWater(renderer, g_waterTexture, g_waterSurface, g_wAcc);
 
     g_protagIsBeingDetectedBySmell = 0; //this will be set in the entity update loop
     g_protagIsBeingDetectedBySight = 0;
@@ -3217,6 +3242,99 @@ int WinMain()
       }
     }
 
+    //familiars
+    if(protag != nullptr) {
+      for(int i = 0; i < g_familiars.size(); i++) {
+        
+        entity* him = g_familiars[i];
+        entity* target;
+        
+        int targetX, targetY;
+        
+        if(i == 0) {
+          target = protag;
+        } else {
+          target = g_familiars[i-1];
+        }
+
+
+        float speedmod = 10;
+        float useDist = 64;
+        
+        if(i == g_familiars.size() - 1) {
+          if(g_chain_time > 0) {
+            useDist = 35;
+            target = protag;
+            speedmod = 5;
+          }
+        }
+
+        float dx = target->getOriginX() - him->getOriginX();
+        float dy = target->getOriginY() - him->getOriginY();
+
+        float dist = pow( dx * dx + dy * dy, 0.5);
+
+        float factor = 1 - (useDist / dist);
+        float speed = speedmod * factor;
+
+
+        if(dist > useDist) {
+          him->x += (dx / dist) * speed;
+          him->y += (dy / dist) * speed;
+
+        }
+      }
+
+      //for familiars which were just linked, display the flashing chain
+      if(g_familiars.size() > 0) {
+        if(g_chain_time > 0) {
+          entity* x = g_familiars.back();
+          g_chain_entity->setOriginX(x->getOriginX());
+          g_chain_entity->setOriginY(x->getOriginY());
+          g_chain_entity->visible = 1;
+          g_chain_time -= elapsed;
+        } else {
+          g_chain_entity->visible = 0;
+        }
+      } else {
+        g_chain_entity->visible = 0;
+      }
+
+      if(g_ex_familiars.size() > 0 && g_exFamiliarTimer > 0) {
+        g_exFamiliarTimer -= elapsed;
+        
+        for(auto x : g_ex_familiars) {
+          const float speed = 0.9;
+          const float r = 1 - speed;
+          float tx = g_exFamiliarParent->getOriginX();
+          float ty = g_exFamiliarParent->getOriginY();
+
+          x->setOriginX(x->getOriginX()*speed + tx*r);
+          x->setOriginY(x->getOriginY()*speed + ty*r);
+
+          if(x->getOriginX() < tx-1) {
+            x->x ++;
+          }
+          if(x->getOriginX() > tx+1) {
+            x->x --;
+          }
+
+          if(x->getOriginY() < ty-1) {
+            x->y ++;
+          }
+          if(x->getOriginY() > ty+1) {
+            x->y --;
+          }
+        }
+      } else {
+        for(auto x : g_ex_familiars) {
+          x->parent = g_exFamiliarParent;
+        }
+        g_ex_familiars.clear();
+
+      }
+    }
+
     g_spurl_entity->setOriginX(protag->getOriginX());
     g_spurl_entity->setOriginY(protag->getOriginY());
     g_spurl_entity->z = protag->z;
@@ -3235,13 +3353,13 @@ int WinMain()
         //and I really want pellets to stick out from fog
         int ydiff = protag_y - x->y;
         if(-ydiff > -85) {
-          x->sortingOffset = 30;
+          //x->sortingOffset = 30;
         } else {
-          x->sortingOffset = 160; //pellets that are close to the fog are artificially boosted in the draw order
+          //x->sortingOffset = 160; //pellets that are close to the fog are artificially boosted in the draw order
         }
   
         if(ydiff < 85 && ydiff > 0) {
-          x->sortingOffset = 30;
+          //x->sortingOffset = 30;
         }
         
         
@@ -5746,7 +5864,7 @@ void toggleDevmode() {
       captexDisplay->show = 1;
       walltexDisplay->show = 1;
     }
-    boxsenabled = 0;
+    //boxsenabled = 0;
   }
   else
   {
