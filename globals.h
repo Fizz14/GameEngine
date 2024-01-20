@@ -767,6 +767,10 @@ extern bool g_protag_jumped_this_frame;
 
 extern entity* g_spurl_entity;
 
+extern entity* g_chain_entity;
+extern float g_chain_time;
+
+
 extern bool storedJump;
 extern bool storedSpin;
 
@@ -844,10 +848,31 @@ extern vector<int> g_creepyLocks;
 //gameplay
 extern float g_invincibleMs;
 
+extern vector<entity*> g_familiars;
+extern vector<entity*> g_ex_familiars;
+extern entity* g_exFamiliarParent;
+extern float g_exFamiliarTimer;
+
+//for firetraps
+extern const vector<int> g_ft_frames;
+extern const vector<bool> g_ft_flipped;
+extern const float g_ft_p;
+extern const vector<float> g_ft_angles;
+
+extern bool g_hide_protag;
+
+extern SDL_Texture* g_waterTexture;
+extern SDL_Surface* g_waterSurface;
+extern bool g_waterAllocated;
+extern Uint32* g_wPixels;
+extern const int g_wNumPixels;
+extern SDL_Surface* g_wDistort;
+extern float g_wAcc;
+extern SDL_Texture* g_wSpec;
+
 bool fileExists(const std::string &name);
 
 void playSound(int channel, Mix_Chunk *sound, int loops);
-
 
 SDL_Texture *MaskTexture(SDL_Renderer *renderer, SDL_Texture *mask, SDL_Texture *diffuse);
 
@@ -876,6 +901,8 @@ int convertAngleToFrame(float angle);
 // measures distance in the world, not by the screen.
 float XYWorldDistance(int x1, int y1, int x2, int y2);
 
+float XYWorldDistance(entity* a, entity* b);
+
 //faster, use this if you can
 float XYWorldDistanceSquared(int x1, int y1, int x2, int y2);
 
@@ -892,5 +919,7 @@ int rng(int min, int max);
 void hurtProtag(int dmg);
 
 void transform3dPoint(float x, float y, float z, float &u, float &v);
+
+void doSpringForce(entity* target, entity* him);
 
 #endif

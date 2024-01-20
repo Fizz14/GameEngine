@@ -284,7 +284,8 @@ int WinMain()
   //for water effect
   g_wPixels = new Uint32[g_wNumPixels];
   g_wDistort = IMG_Load("engine/waterRipple.qoi");
-
+  g_wSpec = IMG_LoadTexture(renderer, "engine/specular.qoi");
+  SDL_SetTextureBlendMode(g_wSpec, SDL_BLENDMODE_ADD);
 
   // init static resources
 
@@ -3145,7 +3146,9 @@ int WinMain()
       g_wAcc -= 512;
     }
 
-    g_waterTexture = animateWater(renderer, g_waterTexture, g_waterSurface, g_wAcc);
+    if(g_waterAllocated) {
+      g_waterTexture = animateWater(renderer, g_waterTexture, g_waterSurface, g_wAcc);
+    }
 
     g_protagIsBeingDetectedBySmell = 0; //this will be set in the entity update loop
     g_protagIsBeingDetectedBySight = 0;
@@ -3620,9 +3623,7 @@ int WinMain()
         if(a->targetFaction == 0) {
 
           if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()) && !g_protagIsWithinBoardable) {
-            protag->hp -= a->damage;
-            protag->flashingMS = g_flashtime;
-            playSound(2, g_playerdamage, 0);
+            hurtProtag(a->damage);
             a->activeMS = -1;
           }
         }

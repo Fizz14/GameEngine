@@ -181,7 +181,7 @@ float g_extraShadowSize = 20; // how much bigger are shadows in comparison to th
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
 bool g_showHealthbar = 0;
-int g_entitySleepDistance = 1048576;
+int g_entitySleepDistance = 1048576*1.5;
 effectIndex *smokeEffect;
 effectIndex *littleSmokeEffect;
 effectIndex *blackSmokeEffect;
@@ -445,7 +445,7 @@ bool g_blinkHidden = 0; //alternates every maxBlinkingMS
 
 // physics
 float g_gravity = 220;
-float g_stepHeight = 15;
+float g_stepHeight = 33;
 int g_hasBeenHoldingJump = 0; //for letting the player hold jump to go higher
 int g_jumpGaranteedAccelMs = 0; 
 int g_maxJumpGaranteedAccelMs = 150; //for x ms protag is garanteed to accelerate, was 150 
@@ -812,6 +812,9 @@ bool g_protag_jumped_this_frame = 0;
 
 entity* g_spurl_entity = 0;
 
+entity* g_chain_entity = 0;
+float g_chain_time = 0;
+
 bool storedJump = 0;
 bool storedSpin = 0;
 
@@ -895,6 +898,29 @@ vector<int> g_creepyLocks = {2, 6, 12, 15};
 
 //gameplay
 float g_invincibleMs = 1000;
+
+vector<entity*> g_familiars;
+vector<entity*> g_ex_familiars;
+entity* g_exFamiliarParent = 0;
+float g_exFamiliarTimer = 0;
+
+//for firetraps
+const vector<int> g_ft_frames = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+const vector<bool> g_ft_flipped = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0, 1,  1,  1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+const float g_ft_p = M_PI/24;
+const vector<float> g_ft_angles = {0, g_ft_p, g_ft_p*2, g_ft_p*3 ,g_ft_p*4, g_ft_p*5, g_ft_p*6, g_ft_p*7, g_ft_p*8, g_ft_p*9, g_ft_p*10, g_ft_p*11, g_ft_p*12, g_ft_p*13, g_ft_p*14, g_ft_p*15, g_ft_p*16, g_ft_p*17, g_ft_p*18, g_ft_p*19, g_ft_p*20, g_ft_p*21, g_ft_p*22, g_ft_p*23, M_PI};
+
+bool g_hide_protag = 0;
+
+SDL_Texture* g_waterTexture = 0;
+SDL_Surface* g_waterSurface = 0;
+bool g_waterAllocated = 0;
+Uint32* g_wPixels = 0;
+const int g_wNumPixels = 512 * 440;
+SDL_Surface* g_wDistort = 0;
+float g_wAcc = 0;
+SDL_Texture* g_wSpec;
+
 
 bool fileExists(const std::string &name)
 {
@@ -1162,6 +1188,17 @@ float XYWorldDistance(int x1, int y1, int x2, int y2)
   return pow(pow((x1 - x2), 2) + pow((y1 - y2), 2), 0.5);
 }
 
+float XYWorldDistance(entity* a, entity* b)
+{
+  int x1 = a->getOriginX();
+  int y1 = a->getOriginY();
+
+  int x2 = b->getOriginX();
+  int y2 = b->getOriginY();
+
+  return XYWorldDistance(x1, y1, x2, y2);
+}
+
 //faster, use this if you can
 float XYWorldDistanceSquared(int x1, int y1, int x2, int y2)
 {
@@ -1266,4 +1303,26 @@ void hurtProtag(int dmg) {
 void transform3dPoint(float x, float y, float z, float &u, float &v) {
   u = floor(x) - g_camera.x;
   v = floor(y) - (floor(z) * XtoZ) - g_camera.y;
+}
+
+void doSpringForce(entity* target, entity* him)
+{
+  int xvec, yvec;
+
+  const float stiffness = 0.08;
+
+  xvec = target->getOriginX() - him->getOriginX();
+  yvec = target->getOriginY() - him->getOriginY();
+
+  float distancemag = XYWorldDistance(target, him);
+
+  float springX = (xvec / distancemag) * (distancemag - 64) * stiffness;
+  float springY = (yvec / distancemag) * (distancemag - 64) * stiffness;
+
+
+  if(distancemag > 1) {
+    him->x += springX;
+    him->y += springY;
+  }
+
 }

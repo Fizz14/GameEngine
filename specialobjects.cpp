@@ -241,6 +241,21 @@ void specialObjectsInit(entity* a) {
       a->targetSteeringAngle = M_PI/4;
       break;
     }
+    case 20:
+    {
+      //collectible familiar
+
+      break;
+    }
+    case 21:
+    {
+      //shortspiketrap
+      M("Made a shortspiketrap");
+      for(auto entry:a->spawnlist) {
+        entry->visible = 0;
+      }
+      break;
+    }
 
     case 100:
     {
@@ -881,6 +896,59 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         }
       }
       a->cooldownA -= elapsed;
+      break;
+    }
+    case 21:
+    {
+      //shortspiketrap
+      a->cooldownA+= elapsed;
+      if(a->cooldownA > 2000)
+      {
+        a->cooldownA = 0;
+        a->flagA = !a->flagA;
+        if(a->flagA) {
+          hitbox* h = new hitbox();
+      
+          h->x = a->x;
+          h->y = a->y;
+          h->z = a->z;
+        
+          h->bounds.x = 0;
+          h->bounds.y = 0;
+          h->bounds.z = 20;
+          h->bounds.width = a->bounds.width;
+          h->bounds.height = a->bounds.height;
+          h->bounds.zeight = 20;
+
+          D(h->x);
+          D(h->y);
+        
+          h->activeMS = 2000;
+          h->sleepingMS = 0;
+
+          playSound(5, g_spiketrapSound, 0);
+          for(auto entry : a->spawnlist) {
+            //show spikes
+            entry->frameInAnimation = 0;
+            entry->loopAnimation = 0;
+            entry->msPerFrame = 50;
+            entry->scriptedAnimation = 1;
+            entry->reverseAnimation = 0;
+            entry->visible = 1;
+          }
+
+        } else {
+          //hide spikes
+          for(auto entry : a->spawnlist) {
+            entry->frameInAnimation = 0;
+            entry->loopAnimation = 0;
+            entry->scriptedAnimation = 0;
+            entry->visible = 0;
+          }
+
+        }
+      }
+      break;
     }
    
     case 100: 

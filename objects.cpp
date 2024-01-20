@@ -900,9 +900,8 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
       g_waterAllocated = 1;
       g_waterSurface = IMG_Load(filename); // the values of this data will not be modified
       g_waterTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 440);
-      texture = g_waterTexture;
       SDL_SetTextureBlendMode(g_waterTexture, SDL_BLENDMODE_BLEND);
-      //SDL_SetTextureAlphaMod(g_waterTexture, 255);
+      texture = g_waterTexture;
     }
 
     if(mask_filename[0] != '&') {
@@ -1117,6 +1116,54 @@ void tile::render(SDL_Renderer * renderer, camera fcamera) {
       SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
     }
 
+    //render specular over water
+    if(texture == g_waterTexture) {
+      SDL_FRect dstrect = { 0, 0, WIN_WIDTH, WIN_HEIGHT};
+      SDL_Rect srcrect = { 0, 0, 256, 220};
+      //minimize the shine if it wouldn't be drawn over the
+      //tile
+      float left, right;
+      float top, bottom;
+      transform3dPoint(x, y, 0, left, top);
+      transform3dPoint(x+width, y+height, 0, right, bottom);
+
+      float tclip = 0, bclip = 0, lclip = 0, rclip = 0;
+      float tp = 0, lp = 0;
+      if(top > 0) {
+        tclip = top/WIN_HEIGHT;
+      }
+      if(bottom < WIN_HEIGHT) {
+        bclip = (WIN_HEIGHT-bottom)/WIN_HEIGHT;
+      }
+
+      if(left > 0) {
+        lclip = left/WIN_WIDTH;
+      }     
+      if(right < WIN_WIDTH) {
+        rclip = (WIN_WIDTH-right)/WIN_WIDTH;
+      }
+      dstrect.y += tclip * WIN_HEIGHT;
+      srcrect.y += (tclip)* 220;
+
+      dstrect.x += lclip * WIN_WIDTH;
+      srcrect.x += (lclip)* 256;
+
+      dstrect.h -= bclip * WIN_HEIGHT;
+      srcrect.h -= bclip * 220;
+
+      dstrect.w -= rclip * WIN_WIDTH;
+      srcrect.w -= rclip* 256;
+      
+      if(dstrect.w + dstrect.x > WIN_WIDTH) {
+        dstrect.w += WIN_WIDTH - (dstrect.w + dstrect.x);
+      }
+
+      if(dstrect.h + dstrect.y > WIN_HEIGHT) {
+        dstrect.h += WIN_HEIGHT - (dstrect.h + dstrect.y);
+      }
+      
+      SDL_RenderCopyF(renderer, g_wSpec, &srcrect, &dstrect);
+    }
   }
 }
 
