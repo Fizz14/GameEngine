@@ -1555,6 +1555,8 @@ class entity:public actor {
     int faction = 0; //0 is player, 1 is most enemies
     bool essential = 0; //if this entity dies in your party, does the game end?
     int flashingMS = 0; //ms to flash red after taking damage
+    float darkenMs = 0; //ms to flash red after taking damage
+    float darkenValue = 255;
     int spinningMS = 0; //have they initiated a dodge backwards recently
     int lastSpinFrame = 0; //used for animating characters whilst dodging
 

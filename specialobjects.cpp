@@ -894,6 +894,50 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           g_familiars.push_back(a);
           g_chain_time = 1000;
         }
+
+        //check familiars to see if we should combine any
+        entity* first = 0;
+        entity* second = 0;
+        entity* third = 0;
+        for(auto x : g_familiars) {
+          int count = 1;
+          for(auto y : g_familiars) {
+            if(y == x) {break;}
+            if(y->name.substr(0, y->name.find('-')) == x->name.substr(0, x->name.find('-'))) {
+              count ++;
+              first = x;
+              if(count == 2) { second = y; }
+              if(count == 3) { third = y; break; }
+            }
+
+
+          }
+          if(count == 3) {
+            //combine these familiars
+            g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), x), g_familiars.end());
+            g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), second), g_familiars.end());
+            g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), third), g_familiars.end());
+            g_combineFamiliars.push_back(x);
+            g_combineFamiliars.push_back(second);
+            g_combineFamiliars.push_back(third);
+
+            g_familiarCombineX = (x->getOriginX() + second->getOriginX() + third->getOriginX()) /3;
+            g_familiarCombineY = (x->getOriginY() + second->getOriginY() + third->getOriginY()) / 3;
+
+            g_combinedFamiliar = new entity(renderer, x->name.substr(0, x->name.find('-')) + "-full");
+            g_combinedFamiliar->x = 0;
+            g_chain_time = 0;
+            x->darkenMs = 300;
+            x->darkenValue = 255;
+            second->darkenMs = 300;
+            x->darkenValue = 255;
+            third->darkenMs = 300;
+            x->darkenValue = 255;
+          }
+
+
+        }
+
       }
       a->cooldownA -= elapsed;
       break;

@@ -3248,6 +3248,8 @@ int WinMain()
     //familiars
     if(protag != nullptr) {
       for(int i = 0; i < g_familiars.size(); i++) {
+        g_familiars[i]->shadow->x = g_familiars[i]->x + g_familiars[i]->shadow->xoffset;
+        g_familiars[i]->shadow->y = g_familiars[i]->y + g_familiars[i]->shadow->yoffset;
         
         entity* him = g_familiars[i];
         entity* target;
@@ -3259,7 +3261,6 @@ int WinMain()
         } else {
           target = g_familiars[i-1];
         }
-
 
         float speedmod = 10;
         float useDist = 64;
@@ -3284,7 +3285,6 @@ int WinMain()
         if(dist > useDist) {
           him->x += (dx / dist) * speed;
           him->y += (dy / dist) * speed;
-
         }
       }
 
@@ -3307,6 +3307,8 @@ int WinMain()
         g_exFamiliarTimer -= elapsed;
         
         for(auto x : g_ex_familiars) {
+          x->shadow->x = x->x + x->shadow->xoffset;
+          x->shadow->y = x->y + x->shadow->yoffset;
           const float speed = 0.9;
           const float r = 1 - speed;
           float tx = g_exFamiliarParent->getOriginX();
@@ -3335,6 +3337,45 @@ int WinMain()
         }
         g_ex_familiars.clear();
 
+      }
+
+      //for combining familiars
+      for(auto x : g_combineFamiliars) {
+        x->shadow->x = x->x + x->shadow->xoffset;
+        x->shadow->y = x->y + x->shadow->yoffset;
+
+        float dx = g_familiarCombineX - x->getOriginX();
+        float dy = g_familiarCombineY - x->getOriginY();
+
+        float dist = pow( dx * dx + dy * dy, 0.5);
+
+        SDL_SetTextureColorMod(x->texture, 120, 120, 120);
+
+        x->flashingMS = 1000;
+
+
+        x->x += (dx / 8);
+        x->y += (dy / 8);
+
+        if(dist < 3) {
+          //idk get rid of these
+          for(auto y : g_combineFamiliars) {
+            y->tangible = 0;
+            g_combineFamiliars.erase(remove(g_combineFamiliars.begin(), g_combineFamiliars.end(), y), g_combineFamiliars.end());
+          }
+        }
+
+
+      }
+
+      if(g_combineFamiliars.size() == 0 && g_combinedFamiliar != 0) {
+        g_combinedFamiliar->setOriginX(g_familiarCombineX);
+        g_combinedFamiliar->setOriginY(g_familiarCombineY);
+        g_familiars.push_back(g_combinedFamiliar);
+        g_chain_time = 0;
+        g_combinedFamiliar->darkenValue = 0;
+        g_combinedFamiliar = 0;
+  
       }
     }
 

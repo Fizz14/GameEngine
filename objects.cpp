@@ -4064,23 +4064,41 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
       if(crmod != rmod || cgmod != gmod || cbmod != bmod) {
         SDL_SetTextureColorMod(texture, rmod, gmod, bmod);
       }
+      if(darkenMs > 0) {
+        SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
+        darkenValue -= elapsed;
+        if(darkenValue <0) {darkenValue = 0;}
+      } else {
+        if(darkenValue < 255) {
+          darkenValue += 10;
+          if(darkenValue > 255) {darkenValue = 255;}
+          SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
+        } else {
+          darkenValue = 255;
+        }
+      }
 
       if(texture != NULL) {
         SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
-      }
-      if(flashingMS > 0) {
-        SDL_SetTextureColorMod(texture, 255, 255, 255);
       }
     } else {
       if(flashingMS > 0) {
         SDL_SetTextureColorMod(texture, 255, 255 * (1 - ((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
       }
+      if(darkenMs > 0) {
+        SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
+      } else {
+        if(darkenValue > 0) {
+          SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
+          darkenValue -= 1;
+        }
+      }
       if(texture != NULL) {
         SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
       }
-      if(flashingMS > 0) {
-        SDL_SetTextureColorMod(texture, 255, 255, 255);
-      }
+//      if(flashingMS > 0) {
+//        SDL_SetTextureColorMod(texture, 255, 255, 255);
+//      }
     }
   }
 
@@ -6259,6 +6277,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
         }
 
         flashingMS -= elapsed;
+        darkenMs -= elapsed;
         if(this->inParty) {
           return nullptr;
         }

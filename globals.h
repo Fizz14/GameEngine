@@ -420,6 +420,7 @@ extern bool g_loadingATM;
 extern SDL_Texture *g_shadowTexture;
 extern SDL_Texture *g_shadowTextureAlternate;
 extern int g_flashtime;
+extern float g_whiteFlashtime;
 extern float g_cameraShove;
 extern float g_cameraAimingOffsetX;
 extern float g_cameraAimingOffsetY;
@@ -852,6 +853,10 @@ extern vector<entity*> g_familiars;
 extern vector<entity*> g_ex_familiars;
 extern entity* g_exFamiliarParent;
 extern float g_exFamiliarTimer;
+extern float g_familiarCombineX;
+extern float g_familiarCombineY;
+extern vector<entity*> g_combineFamiliars;
+extern entity* g_combinedFamiliar;
 
 //for firetraps
 extern const vector<int> g_ft_frames;

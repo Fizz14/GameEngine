@@ -348,6 +348,7 @@ bool g_loadingATM = 0; // are we loading a new map atm?
 SDL_Texture *g_shadowTexture;
 SDL_Texture *g_shadowTextureAlternate;
 int g_flashtime = 300;		 // ms to flash red after taking damage
+float g_whiteFlashtime = 300; 
 float g_cameraShove = 150; // factor of the screen to move the camera when shooting.
 float g_cameraAimingOffsetX = 0;
 float g_cameraAimingOffsetY = 0;
@@ -903,6 +904,10 @@ vector<entity*> g_familiars;
 vector<entity*> g_ex_familiars;
 entity* g_exFamiliarParent = 0;
 float g_exFamiliarTimer = 0;
+float g_familiarCombineX;
+float g_familiarCombineY;
+vector<entity*> g_combineFamiliars;
+entity* g_combinedFamiliar = 0;
 
 //for firetraps
 const vector<int> g_ft_frames = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
