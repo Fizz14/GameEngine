@@ -8,11 +8,14 @@
 #include <chrono>
 #include <thread>
 
+#include "physfs.h"
+
 #include "globals.h"
 #include "objects.h"
 #include "map_editor.h"
 #include "lightcookies.h"
 #include "specialobjects.h"
+#include "utils.h"
 
 using namespace std;
 
@@ -37,6 +40,8 @@ int WinMain()
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
   TTF_Init();
+  PHYSFS_init(NULL);
+
 
   window = SDL_CreateWindow("Game",
       SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
@@ -49,56 +54,48 @@ int WinMain()
   Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
   SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
  
-  //used to be set to 3, changed to 0 to allow "totems" (objects in the world
-  //made of several entities) to not have thin lines between their parts
-  //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
   SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 
+  string currentDirectory = getCurrentDir();
+  PHYSFS_mount(currentDirectory.c_str(), "/", 1);
+
   // for brightness
   // reuse texture for transition, cuz why not
-  SDL_Surface *brightness_a_s = IMG_Load("engine/transition.qoi");
-  SDL_Texture *brightness_a = SDL_CreateTextureFromSurface(renderer, brightness_a_s);
-  SDL_FreeSurface(brightness_a_s);
+  SDL_Texture* brightness_a = loadTexture(renderer, "engine/transition.qoi");
 
-  SDL_Surface *brightness_b_s = IMG_Load("engine/black-diffuse.qoi");
-  SDL_Texture *brightness_b = SDL_CreateTextureFromSurface(renderer, brightness_b_s);
-  SDL_FreeSurface(brightness_b_s);
+  SDL_Texture* brightness_b_s = loadTexture(renderer, "engine/black-diffuse.qoi");
 
   // entities will be made here so have them set as created during loadingtime and not arbitrarily during play
   g_loadingATM = 1;
 
   // set global shadow-texture
 
-  SDL_Surface *image = IMG_Load("engine/shadow.qoi");
-  g_shadowTexture = SDL_CreateTextureFromSurface(renderer, image);
-  SDL_FreeSurface(image);
-  image = IMG_Load("engine/shadow-square.qoi");
-  g_shadowTextureAlternate = SDL_CreateTextureFromSurface(renderer, image);
-  SDL_FreeSurface(image);
+  g_shadowTexture = loadTexture(renderer, "engine/shadow.qoi");
+  g_shadowTextureAlternate = loadTexture(renderer, "engine/shadow-square.qoi");
 
   // narrarator holds scripts caused by things like triggers
-  narrarator = new entity(renderer, "engine/sp-joseph");
+  narrarator = new entity(renderer, "engine/sp-deity");
   narrarator->tangible = 0;
   narrarator->persistentHidden = 1;
 
-  g_pelletNarrarator = new entity(renderer, "engine/sp-joseph");
+  g_pelletNarrarator = new entity(renderer, "engine/sp-deity");
   g_pelletNarrarator->tangible = 0;
   g_pelletNarrarator->persistentHidden = 1;
 
-  g_backpackNarrarator = new entity(renderer, "engine/sp-joseph");
+  g_backpackNarrarator = new entity(renderer, "engine/sp-deity");
   g_backpackNarrarator->tangible = 0;
   g_backpackNarrarator->persistentHidden = 1;
 
   // for transition
-  SDL_Surface *transitionSurface = IMG_Load("engine/transition.qoi");
+  SDL_Surface* transitionSurface = loadSurface("engine/transition.qoi");
 
-  int transitionImageWidth = transitionSurface->w;
-  int transitionImageHeight = transitionSurface->h;
+  const int transitionImageWidth = 300;
+  const int transitionImageHeight = 300;
 
-  SDL_Texture *transitionTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, transitionSurface->w, transitionSurface->h);
+  SDL_Texture *transitionTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 300, 300);
   SDL_SetTextureBlendMode(transitionTexture, SDL_BLENDMODE_BLEND);
 
   void *transitionPixelReference;
@@ -125,7 +122,7 @@ int WinMain()
     // done once, because textboxes aren't cleared during clear_map()
     nodeInfoText = new textbox(renderer, "",  g_fontsize, 0, 0, WIN_WIDTH);
     g_config = "edit";
-    nodeDebug = SDL_CreateTextureFromSurface(renderer, IMG_Load("engine/walkerYellow.qoi"));
+    nodeDebug = loadTexture(renderer, "engine/walkerYellow.qoi");
   }
 
   // set bindings from file
@@ -141,14 +138,6 @@ int WinMain()
   // set vsync and g_fullscreen from config
   string valuestr;
   float value;
-
-  // get vsync
-  //  getline(bindfile, line);
-  //  valuestr = line.substr(line.find(' '), line.length());
-  //  value = stoi(valuestr);
-  //  D(value);
-  //  g_vsync = value;
-  //  D(g_vsync);
 
   // get g_fullscreen
   getline(bindfile, line);
@@ -206,12 +195,9 @@ int WinMain()
   valuestr = line.substr(line.find(' '), line.length());
   value = stoi(valuestr);
   g_brightness = value;
-  SDL_Surface* shadesurface = IMG_Load("engine/black-diffuse.qoi");
-  g_shade = SDL_CreateTextureFromSurface(renderer, shadesurface);
-  //SDL_SetTextureAlphaMod(g_shade, 255 - ( ( g_brightness/100.0 ) * 255));
+  g_shade = loadTexture(renderer, "engine/black-diffuse.qoi");
   SDL_SetWindowBrightness(window, g_brightness/100.0 );
   SDL_SetTextureAlphaMod(g_shade, 0);
-  SDL_FreeSurface(shadesurface);
 
   switch (g_graphicsquality)
   {
@@ -241,8 +227,9 @@ int WinMain()
   SDL_GL_SetSwapInterval(1);
 
   // hide mouse
-  //
+  // REMEMBER SHIPPING JOSEPH
 
+  g_fullscreen = 0; //!!!
   // apply fullscreen
   if (g_fullscreen)
   {
@@ -283,65 +270,21 @@ int WinMain()
 
   //for water effect
   g_wPixels = new Uint32[g_wNumPixels];
-  g_wDistort = IMG_Load("engine/waterRipple.qoi");
-  g_wSpec = IMG_LoadTexture(renderer, "engine/specular.qoi");
+  g_wDistort = loadSurface("engine/waterRipple.qoi");
+  g_wSpec = loadTexture(renderer, "engine/specular.qoi");
   SDL_SetTextureBlendMode(g_wSpec, SDL_BLENDMODE_ADD);
 
   // init static resources
 
-  g_bulletdestroySound = Mix_LoadWAV("static/sounds/step.wav");
-  g_preloadedSounds.emplace_back(g_bulletdestroySound, "static/sounds/step.wav");
+  g_menu_manip_sound = loadWav("static/sounds/manip-menu.wav");
 
-  g_cannonfireSound = Mix_LoadWAV("static/sounds/cannonfire.wav");
-  g_preloadedSounds.emplace_back(g_cannonfireSound , "static/sounds/cannonfire.wav");
+  g_pelletCollectSound = loadWav("static/sounds/pellet.wav");
 
-  g_playerdamage = Mix_LoadWAV("static/sounds/playerdamage.wav");
-  g_preloadedSounds.emplace_back(g_playerdamage, "static/sounds/playerdamage.wav");
+  g_spiketrapSound = loadWav("static/sounds/spiketrap.wav");
 
-  g_enemydamage = Mix_LoadWAV("static/sounds/enemydamage.wav");
-  g_preloadedSounds.emplace_back(g_enemydamage, "static/sounds/enemydamage.wav");
+  g_bladetrapSound = loadWav("static/sounds/bladetrap.wav");
 
-  g_npcdamage = Mix_LoadWAV("static/sounds/npcdamage.wav");
-  g_preloadedSounds.emplace_back(g_npcdamage, "static/sounds/npcdamage.wav");
-
-  g_s_playerdeath = Mix_LoadWAV("static/sounds/playerdeath.wav");
-  g_preloadedSounds.emplace_back(g_s_playerdeath, "static/sounds/playerdeath.wav");
-
-  g_land = Mix_LoadWAV("static/sounds/land.wav");
-  g_preloadedSounds.emplace_back(g_land, "static/sounds/step2.wav");
-
-  g_footstep_a = Mix_LoadWAV("static/sounds/protag-step-1.wav");
-  g_preloadedSounds.emplace_back(g_footstep_a, "static/sounds/protag-step-1.wav");
-
-  g_footstep_b = Mix_LoadWAV("static/sounds/protag-step-2.wav");
-  g_preloadedSounds.emplace_back(g_footstep_b, "static/sounds/protag-step-2.wav");
-
-  g_bonk = Mix_LoadWAV("static/sounds/bonk.wav");
-  g_preloadedSounds.emplace_back(g_bonk, "static/sounds/bonk.wav");
-
-  g_menu_open_sound = Mix_LoadWAV("static/sounds/open-menu.wav");
-  g_preloadedSounds.emplace_back(g_menu_open_sound, "static/sounds/open-menu.wav");
-
-  g_menu_close_sound = Mix_LoadWAV("static/sounds/close-menu.wav");
-  g_preloadedSounds.emplace_back(g_menu_close_sound, "static/sounds/close-menu.wav");
-
-  g_ui_voice = Mix_LoadWAV("static/sounds/voice-low.wav");
-  g_preloadedSounds.emplace_back(g_ui_voice, "static/sounds/voice-low.wav");
-
-  g_menu_manip_sound = Mix_LoadWAV("static/sounds/manip-menu.wav");
-  g_preloadedSounds.emplace_back(g_menu_manip_sound, "static/sounds/manip-menu.wav");
-
-  g_pelletCollectSound = Mix_LoadWAV("static/sounds/pellet.wav");
-  g_preloadedSounds.emplace_back(g_pelletCollectSound, "static/sounds/pellet.wav");
-
-  g_spiketrapSound = Mix_LoadWAV("static/sounds/spiketrap.wav");
-  g_preloadedSounds.emplace_back(g_spiketrapSound, "static/sounds/spiketrap.wav");
-
-  g_bladetrapSound = Mix_LoadWAV("static/sounds/bladetrap.wav");
-  g_preloadedSounds.emplace_back(g_spiketrapSound, "static/sounds/bladetrap.wav");
-
-  g_smarttrapSound = Mix_LoadWAV("static/sounds/smarttrap.wav");
-  g_preloadedSounds.emplace_back(g_spiketrapSound, "static/sounds/smarttrap.wav");
+  g_smarttrapSound = loadWav("static/sounds/smarttrap.wav");
 
   g_spurl_entity = new entity(renderer, "common/spurl");
   g_spurl_entity->msPerFrame = 75;
@@ -374,15 +317,15 @@ int WinMain()
     bool special = 0;
     if(letter == ";") {
       //load custom enter graphic
-      textsurface = IMG_Load("static/ui/menu_confirm.qoi");
+      textsurface = loadSurface("static/ui/menu_confirm.qoi");
       special = 1;
     } else if (letter == "<") {
       //load custom backspace graphic
-      textsurface = IMG_Load("static/ui/menu_back.qoi");
+      textsurface = loadSurface("static/ui/menu_back.qoi");
       special = 1;
     } else if (letter == "^") {
       //load custom capslock graphic
-      textsurface = IMG_Load("static/ui/menu_upper_empty.qoi");
+      textsurface = loadSurface("static/ui/menu_upper_empty.qoi");
       special = 1;
     } else {
       textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
@@ -409,15 +352,15 @@ int WinMain()
     bool special = 0;
     if(letter == ";") {
       //load custom enter graphic
-      textsurface = IMG_Load("static/ui/menu_confirm.qoi");
+      textsurface = loadSurface("static/ui/menu_confirm.qoi");
       special = 1;
     } else if (letter == "<") {
       //load custom backspace graphic
-      textsurface = IMG_Load("static/ui/menu_back.qoi");
+      textsurface = loadSurface("static/ui/menu_back.qoi");
       special = 1;
     } else if (letter == "^") {
       //load custom capslock graphic
-      textsurface = IMG_Load("static/ui/menu_upper.qoi");
+      textsurface = loadSurface("static/ui/menu_upper.qoi");
       special = 1;
     } else {
       textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
@@ -481,15 +424,10 @@ int WinMain()
   
   { //load static textures
     string loadSTR = "levelsequence/icons/locked.qoi";
-    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
-    g_locked_level_texture = SDL_CreateTextureFromSurface(renderer, loadMe);
-    SDL_FreeSurface(loadMe);
+    g_locked_level_texture = loadTexture(renderer, loadSTR);
 
     loadSTR = "static/ui/loadout_highlight.qoi";
-    loadMe = IMG_Load(loadSTR.c_str());
-    g_loadoutHighlightTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
-    SDL_FreeSurface(loadMe);
-
+    g_loadoutHighlightTexture = loadTexture(renderer, loadSTR);
   }
 
   //load levelSequence
@@ -572,17 +510,15 @@ int WinMain()
 
   // This stuff is for the FoW mechanic
   // engine/resolution.qoi has resolution 1920 x 1200
-  SDL_Surface *SurfaceA = IMG_Load("engine/resolution.qoi");
+  SDL_Surface *SurfaceA = loadSurface("engine/resolution.qoi");
 
   TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
   TextureD = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 
   SDL_FreeSurface(SurfaceA);
 
-  SDL_Surface *blackbarSurface = IMG_Load("engine/black.qoi");
-  blackbarTexture = SDL_CreateTextureFromSurface(renderer, blackbarSurface);
+  blackbarTexture = loadTexture(renderer, "engine/black-diffuse.qoi");
 
-  SDL_FreeSurface(blackbarSurface);
 
   result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
   result_c = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
@@ -699,65 +635,37 @@ int WinMain()
   canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
   //canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500); seems to be unused
 
-  SDL_Surface *lightSurface = IMG_Load("engine/light.qoi");
-  light = SDL_CreateTextureFromSurface(renderer, lightSurface);
-  SDL_FreeSurface(lightSurface);
+  light = loadTexture(renderer, "engine/light.qoi");
 
-  SDL_Surface *lightAS = IMG_Load("engine/lighta.qoi");
-  lighta = SDL_CreateTextureFromSurface(renderer, lightAS);
-  SDL_FreeSurface(lightAS);
+  lighta = loadTexture(renderer, "engine/lighta.qoi");
 
-  SDL_Surface *lightBS = IMG_Load("engine/lightb.qoi");
-  lightb = SDL_CreateTextureFromSurface(renderer, lightBS);
-  SDL_FreeSurface(lightBS);
+  lightb = loadTexture(renderer, "engine/lightb.qoi");
 
-  SDL_Surface *lightCS = IMG_Load("engine/lightc.qoi");
-  lightc = SDL_CreateTextureFromSurface(renderer, lightCS);
-  SDL_FreeSurface(lightCS);
+  lightc = loadTexture(renderer, "engine/lightc.qoi");
 
-  SDL_Surface *lightDS = IMG_Load("engine/lightd.qoi");
-  lightd = SDL_CreateTextureFromSurface(renderer, lightDS);
-  SDL_FreeSurface(lightDS);
+  lightd = loadTexture(renderer, "engine/lightd.qoi");
 
-  SDL_Surface *lightASro = IMG_Load("engine/lightaro.qoi");
-  lightaro = SDL_CreateTextureFromSurface(renderer, lightASro);
-  SDL_FreeSurface(lightASro);
+  lightaro = loadTexture(renderer, "engine/lightaro.qoi");
 
-  SDL_Surface *lightBSro = IMG_Load("engine/lightbro.qoi");
-  lightbro = SDL_CreateTextureFromSurface(renderer, lightBSro);
-  SDL_FreeSurface(lightBSro);
+  lightbro = loadTexture(renderer, "engine/lightbro.qoi");
 
-  SDL_Surface *lightCSro = IMG_Load("engine/lightcro.qoi");
-  lightcro = SDL_CreateTextureFromSurface(renderer, lightCSro);
-  SDL_FreeSurface(lightCSro);
+  lightcro = loadTexture(renderer, "engine/lightcro.qoi");
 
-  SDL_Surface *lightDSro = IMG_Load("engine/lightdro.qoi");
-  lightdro = SDL_CreateTextureFromSurface(renderer, lightDSro);
-  SDL_FreeSurface(lightDSro);
+  lightdro = loadTexture(renderer, "engine/lightdro.qoi");
 
-  SDL_Surface *lightASri = IMG_Load("engine/lightari.qoi");
-  lightari = SDL_CreateTextureFromSurface(renderer, lightASri);
-  SDL_FreeSurface(lightASri);
+  lightari = loadTexture(renderer, "engine/lightari.qoi");
 
-  SDL_Surface *lightBSri = IMG_Load("engine/lightbri.qoi");
-  lightbri = SDL_CreateTextureFromSurface(renderer, lightBSri);
-  SDL_FreeSurface(lightBSri);
+  lightbri = loadTexture(renderer, "engine/lightbri.qoi");
 
-  SDL_Surface *lightCSri = IMG_Load("engine/lightcri.qoi");
-  lightcri = SDL_CreateTextureFromSurface(renderer, lightCSri);
-  SDL_FreeSurface(lightCSri);
+  lightcri = loadTexture(renderer, "engine/lightcri.qoi");
 
-  SDL_Surface *lightDSri = IMG_Load("engine/lightdri.qoi");
-  lightdri = SDL_CreateTextureFromSurface(renderer, lightDSri);
-  SDL_FreeSurface(lightDSri);
+  lightdri = loadTexture(renderer, "engine/lightdri.qoi");
 
   g_loadingATM = 0;
 
   while (!quit)
   {
-    breakpoint();
     // debug here
-    
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -945,6 +853,8 @@ int WinMain()
       // if we're paused, freeze gametime
       elapsed = 0;
     }
+  
+    specialObjectsOncePerFrame(elapsed);
 
     // INPUT
     getInput(elapsed);
@@ -988,7 +898,6 @@ int WinMain()
       g_protag_jumped_this_frame = 1;
       g_jumpGaranteedAccelMs = g_maxJumpGaranteedAccelMs;
       storedJump = 0;
-      breakpoint();
       
       //if we're boarded within an entity, unboard
       if(g_protagIsWithinBoardable && !g_transferingByBoardable) {
@@ -2469,6 +2378,45 @@ int WinMain()
       }
     }
 
+    {
+      g_lt_collisions.clear();
+      //for fog of war, keep a list of map Collisions to use 
+      //which are close to the player and on layer 0
+      SDL_FRect cam;
+      cam.x = 0;
+      cam.y = 0;
+      cam.w = g_camera.width;
+      cam.h = g_camera.height;
+      for(auto x : g_impliedSlopes) {
+        SDL_FRect obj;
+        obj.x = (x->bounds.x -g_camera.x)* g_camera.zoom;
+        obj.y = (x->bounds.y -g_camera.y - height) * g_camera.zoom;
+        obj.w = x->bounds.width * g_camera.zoom;
+        obj.h = x->bounds.height * g_camera.zoom;
+
+        if(RectOverlap(obj, cam))
+        {
+          g_lt_collisions.push_back(x);
+        }
+
+      }
+
+      for(auto x : g_boxs[0]) {
+        SDL_FRect obj;
+        obj.x = (x->bounds.x -g_camera.x)* g_camera.zoom;
+        obj.y = (x->bounds.y -g_camera.y - height) * g_camera.zoom;
+        obj.w = x->bounds.width * g_camera.zoom;
+        obj.h = x->bounds.height * g_camera.zoom;
+
+        if(RectOverlap(obj, cam))
+        {
+          g_lt_collisions.push_back(x);
+        }
+
+      }
+      
+    }
+
     if (g_fogofwarEnabled && !devMode)
     {
       // black bars
@@ -2497,7 +2445,7 @@ int WinMain()
       adventureUIManager->healthText->show = 1;
 
       //adventureUIManager->hungerText->updateText(to_string((int)((float)(min(g_foodpoints, g_maxVisibleFoodpoints) * 100) / (float)g_maxVisibleFoodpoints)) + '%', -1, 0.9);
-      adventureUIManager->hungerText->show = 0;
+      //adventureUIManager->hungerText->show = 0;
    
       //animate the guts sometimes
       //heart shake
@@ -3372,8 +3320,9 @@ int WinMain()
         g_combinedFamiliar->setOriginX(g_familiarCombineX);
         g_combinedFamiliar->setOriginY(g_familiarCombineY);
         g_familiars.push_back(g_combinedFamiliar);
-        g_chain_time = 0;
+        //g_familiars.insert(g_familiars.begin(), 1, g_combinedFamiliar);
         g_combinedFamiliar->darkenValue = 0;
+        g_combinedFamiliar->flagA = 1;
         g_combinedFamiliar = 0;
   
       }
@@ -3876,6 +3825,7 @@ int WinMain()
   IMG_Quit();
   Mix_CloseAudio();
   TTF_Quit();
+  PHYSFS_deinit();
 
   return 0;
 }
@@ -3999,7 +3949,7 @@ int interact(float elapsed, entity *protag)
   for (long long unsigned int i = 0; i < g_entities.size(); i++)
   {
 
-    SDL_Rect hisrect = {(int)g_entities[i]->x + g_entities[i]->bounds.x, (int)g_entities[i]->y + g_entities[i]->bounds.y, (int)g_entities[i]->bounds.width, (int)g_entities[i]->bounds.height};
+    SDL_Rect hisrect = {(int)g_entities[i]->x + g_entities[i]->bounds.x + 10, (int)g_entities[i]->y + g_entities[i]->bounds.y + 10, (int)g_entities[i]->bounds.width - 20, (int)g_entities[i]->bounds.height - 20};
     hisrect = transformRect(hisrect);
 
     if (g_entities[i] != protag && RectOverlap(hisrect, srect))

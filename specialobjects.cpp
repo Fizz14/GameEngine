@@ -17,6 +17,17 @@
 #include "objects.h"
 #include "specialobjects.h"
 
+//shared cooldown data
+float cannonCooldown = 0;
+int cannonEvent = 0;
+int cannonToggleEvent = 0;
+float cannonCooldownM = 800;
+int cannonToggleTwo = 0;
+
+float shortSpikesCooldown = 0;
+int shortSpikesState = 0;
+int lastShortSpikesState = -1;
+
 void specialObjectsInit(entity* a) {
   switch(a->identity) {
     case 1:
@@ -45,7 +56,6 @@ void specialObjectsInit(entity* a) {
       for(auto entry:a->spawnlist) {
         entry->visible = 0;
       }
-      a->maxCooldownA = 3000;
       break;
     }
     case 6:
@@ -250,10 +260,12 @@ void specialObjectsInit(entity* a) {
     case 21:
     {
       //shortspiketrap
-      M("Made a shortspiketrap");
       for(auto entry:a->spawnlist) {
         entry->visible = 0;
       }
+
+      a->flagB = 0;
+
       break;
     }
 
@@ -411,8 +423,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     case 3: 
     {
       //cannon
-      a->cooldownA += elapsed;
-      if(a->cooldownA > a->maxCooldownA) {
+      if(cannonEvent) {
         entity *copy = new entity(renderer, a->spawnlist[0]);
         copy->z = a->z + 10;
         copy->dontSave = 1;
@@ -427,7 +438,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         copy->loopAnimation = 1;
         copy->useGravity = 0;
         copy->identity = 4;
-        a->cooldownA = 0;
          
         float offset = 50;
         float yoff = -offset * sin(a->steeringAngle);
@@ -945,55 +955,49 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     case 21:
     {
       //shortspiketrap
-      a->cooldownA+= elapsed;
-      if(a->cooldownA > 2000)
-      {
-        a->cooldownA = 0;
-        a->flagA = !a->flagA;
-        if(a->flagA) {
-          hitbox* h = new hitbox();
-      
-          h->x = a->x;
-          h->y = a->y;
-          h->z = a->z;
-        
-          h->bounds.x = 0;
-          h->bounds.y = 0;
-          h->bounds.z = 20;
-          h->bounds.width = a->bounds.width;
-          h->bounds.height = a->bounds.height;
-          h->bounds.zeight = 20;
+      if(shortSpikesState == 1) {
+        //wait a second, and then extend
+        a->cooldownA += elapsed;
+        //show spikes
+        for(auto entry : a->spawnlist) {
+          entry->frameInAnimation = 0;
+          entry->loopAnimation = 0;
+          entry->msPerFrame = 50;
+          entry->scriptedAnimation = 1;
+          entry->reverseAnimation = 0;
+          entry->visible = 1;
+        }
+        playSound(5, g_spiketrapSound, 0);
+      }
 
-          D(h->x);
-          D(h->y);
-        
-          h->activeMS = 2000;
-          h->sleepingMS = 0;
+      if(lastShortSpikesState == 1) {
+        rect changeMe = a->getMovedBounds();
+        changeMe.zeight = 32;
+        if(RectOverlap3d(changeMe, protag->getMovedBounds())) {
+          hurtProtag(1);
+          a->flagB = 1;
+        }
+      }
 
-          playSound(5, g_spiketrapSound, 0);
-          for(auto entry : a->spawnlist) {
-            //show spikes
-            entry->frameInAnimation = 0;
-            entry->loopAnimation = 0;
-            entry->msPerFrame = 50;
-            entry->scriptedAnimation = 1;
-            entry->reverseAnimation = 0;
-            entry->visible = 1;
-          }
+      if(shortSpikesState == 4) {
+        //hide spikes
+        for(auto entry : a->spawnlist) {
+          entry->frameInAnimation = 1;
+          entry->loopAnimation = 0;
+          entry->msPerFrame = 50;
+          entry->scriptedAnimation = 1;
+          entry->reverseAnimation = 1;
+        }
+        a->flagB = 0;
+      }
 
-        } else {
-          //hide spikes
-          for(auto entry : a->spawnlist) {
-            entry->frameInAnimation = 0;
-            entry->loopAnimation = 0;
-            entry->scriptedAnimation = 0;
-            entry->visible = 0;
-          }
-
+      if(shortSpikesState == 3) {
+        for(auto entry : a->spawnlist) {
+          entry->visible = 0;
         }
       }
       break;
-    }
+    } 
    
     case 100: 
     {
@@ -1470,14 +1474,106 @@ void specialObjectsInteract(entity* a) {
     case 20:
     {
       //collectible familiar
-      if(!a->flagA) {
-        a->dynamic = 0;
-        g_familiars.push_back(a);
-        a->flagA = 1;
-        g_chain_time = 1000;
-      }
+        if(!a->flagA) {
+          a->dynamic = 0;
+          a->flagA = 1;
+          g_familiars.push_back(a);
+          g_chain_time = 1000;
+        }
+
+        //check familiars to see if we should combine any
+        entity* first = 0;
+        entity* second = 0;
+        entity* third = 0;
+        for(auto x : g_familiars) {
+          int count = 1;
+          for(auto y : g_familiars) {
+            if(y == x) {break;}
+            if(y->name.substr(0, y->name.find('-')) == x->name.substr(0, x->name.find('-'))) {
+              count ++;
+              first = x;
+              if(count == 2) { second = y; }
+              if(count == 3) { third = y; break; }
+            }
+
+
+          }
+          if(count == 3) {
+            //combine these familiars
+            g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), x), g_familiars.end());
+            g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), second), g_familiars.end());
+            g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), third), g_familiars.end());
+            g_combineFamiliars.push_back(x);
+            g_combineFamiliars.push_back(second);
+            g_combineFamiliars.push_back(third);
+
+            g_familiarCombineX = (x->getOriginX() + second->getOriginX() + third->getOriginX()) /3;
+            g_familiarCombineY = (x->getOriginY() + second->getOriginY() + third->getOriginY()) / 3;
+
+            g_combinedFamiliar = new entity(renderer, x->name.substr(0, x->name.find('-')) + "-full");
+            g_combinedFamiliar->x = 0;
+            g_chain_time = 0;
+            x->darkenMs = 300;
+            x->darkenValue = 255;
+            second->darkenMs = 300;
+            x->darkenValue = 255;
+            third->darkenMs = 300;
+            x->darkenValue = 255;
+          }
+
+
+        }
     }
   }
+}
+
+void specialObjectsOncePerFrame(float elapsed) 
+{
+  cannonCooldown -= elapsed;
+  cannonEvent = 0;
+  if(cannonCooldown < 0) {
+    cannonEvent = 1;
+    cannonToggleEvent++;
+    if(cannonToggleEvent < 4){
+      if(cannonToggleTwo) {
+        cannonCooldownM = 800;
+        cannonToggleTwo = !cannonToggleTwo;
+      } else {
+        cannonCooldownM = 150;
+      }
+    } else {
+      cannonToggleTwo = !cannonToggleTwo;
+      cannonCooldownM = 800;
+      cannonToggleEvent = 0;
+    }
+    cannonCooldown += cannonCooldownM;
+  }
+
+  shortSpikesCooldown -= elapsed;
+  if(shortSpikesCooldown < 0) {
+    shortSpikesCooldown += 2600;
+  }
+  
+  shortSpikesState = 4;
+
+  if(shortSpikesCooldown < 2450) {
+    shortSpikesState = 3;
+  }
+
+  if(shortSpikesCooldown < 1300) {
+    shortSpikesState = 2;
+  }
+
+  if(shortSpikesCooldown < 1050) {
+    shortSpikesState = 1;
+  }
+
+  if(shortSpikesState == lastShortSpikesState) {
+    shortSpikesState = -1;
+  } else {
+    lastShortSpikesState = shortSpikesState;
+  }
+
 }
 
 void usableItemCode(usable* a) {

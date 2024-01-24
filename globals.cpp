@@ -15,6 +15,10 @@
 #include <string>
 #include <map> //saves
 #include <ctime> //clock display
+#include "windows.h"
+#include "stdio.h"
+#include "tchar.h"
+#include "physfs.h"
 
 // this is unique to the windowsport
 #include "windowsinclude.h"
@@ -926,18 +930,23 @@ SDL_Surface* g_wDistort = 0;
 float g_wAcc = 0;
 SDL_Texture* g_wSpec;
 
+//for optimizing line traces to only use collisions
+//close to the player
+vector<mapCollision*> g_lt_collisions;
+
 
 bool fileExists(const std::string &name)
 {
-  if (FILE *file = fopen(name.c_str(), "r"))
-  {
-    fclose(file);
-    return true;
-  }
-  else
-  {
-    return false;
-  }
+//  if (FILE *file = fopen(name.c_str(), "r"))
+//  {
+//    fclose(file);
+//    return true;
+//  }
+//  else
+//  {
+//    return false;
+//  }
+  return PHYSFS_exists(name.c_str());
 }
 
 
@@ -1330,4 +1339,11 @@ void doSpringForce(entity* target, entity* him)
     him->y += springY;
   }
 
+}
+
+string getCurrentDir() {
+   char buf[6000];
+   GetCurrentDirectory( 6000, buf );
+   string curdir(buf);
+   return curdir;
 }

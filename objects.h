@@ -147,6 +147,7 @@ class pointOfInterest {
 
 class mapCollision {
   public:
+    rect bounds;
     //related to saving/displaying the block
     string walltexture;
     string captexture;
@@ -276,7 +277,7 @@ rect transformRect(rect input);
 
 class box:public mapCollision {
   public:
-    rect bounds;
+    //rect bounds;
     bool active = true;
     int layer = 0;
     bool shineTop = 0;
@@ -307,7 +308,6 @@ class box:public mapCollision {
 //support for layers?
 class impliedSlope:public mapCollision {
 public:
-  rect bounds;
   int layer = 0;
   bool shadeLeft = 0;
   bool shadeRight = 0;
@@ -949,6 +949,9 @@ class adventureUI {
 //      {"darkorange", {175,58,3}},
 //                                   };
 
+    // DIALOG TEXT COLORS
+    // FANCY COLORS
+    // FANCYBOX COLORS
     vector<pair<string,SDL_Color>> textcolors = {
       {"default", {155, 115, 115}}, //0, pink
 
@@ -1417,6 +1420,8 @@ class entity:public actor {
     int shooting = 0; //1 if character is shooting
 
     int opacity = 255; //opacity from 0 to 255, used for hiding shaded entities.
+                       
+    int opacity_delta = 0;
 
     //object-related design
     bool dynamic = true; //true for things such as wallcaps. movement/box is not calculated if this is false
@@ -1555,7 +1560,7 @@ class entity:public actor {
     int faction = 0; //0 is player, 1 is most enemies
     bool essential = 0; //if this entity dies in your party, does the game end?
     int flashingMS = 0; //ms to flash red after taking damage
-    float darkenMs = 0; //ms to flash red after taking damage
+    float darkenMs = 0;
     float darkenValue = 255;
     int spinningMS = 0; //have they initiated a dodge backwards recently
     int lastSpinFrame = 0; //used for animating characters whilst dodging

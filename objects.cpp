@@ -11,7 +11,7 @@
 #include <fstream>
 #include <stdio.h>
 #include <string>
-#include <cctype> //tolower()
+#include <cctype>
 #include <limits>
 #include <stdlib.h>
 
@@ -120,7 +120,7 @@ void parseScriptForLabels(vector<string> &sayings) {
 
 
 heightmap::heightmap(string fname, string fbinding, float fmagnitude) {
-  image = IMG_Load(fbinding.c_str());
+  image = loadSurface(fbinding.c_str());
   name = fname;
   binding = fbinding;
 
@@ -881,24 +881,16 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
   if(cached) {
 
   } else {
-    image = IMG_Load(filename);
+    image = loadSurface(filename);
     texture = SDL_CreateTextureFromSurface(renderer, image);
     if(wall) {
-      //make walls a bit darker
       SDL_SetTextureColorMod(texture, -65, -65, -65);
-    } else {
-      //SDL_SetTextureColorMod(texture, -20, -20, -20);
     }
 
     SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
-    if(fileaddress.find("OCCLUSION") != string::npos) {
-      //SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
-
-    }
-
     if(g_waterAllocated == 0 && fileaddress.find("sp-water") != std::string::npos) {
       g_waterAllocated = 1;
-      g_waterSurface = IMG_Load(filename); // the values of this data will not be modified
+      g_waterSurface = loadSurface(filename); // the values of this data will not be modified
       g_waterTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 440);
       SDL_SetTextureBlendMode(g_waterTexture, SDL_BLENDMODE_BLEND);
       texture = g_waterTexture;
@@ -907,7 +899,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
     if(mask_filename[0] != '&') {
       SDL_DestroyTexture(texture);
 
-      SDL_Surface* smask = IMG_Load(mask_filename);
+      SDL_Surface* smask = loadSurface(mask_filename);
       SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
 
@@ -942,7 +934,7 @@ void tile::reloadTexture() {
   if(asset_sharer) {
 
   } else {
-    image = IMG_Load(fileaddress.c_str());
+    image = loadSurface(filename);
     texture = SDL_CreateTextureFromSurface(renderer, image);
     if(wall) {
       //make walls a bit darker
@@ -959,7 +951,7 @@ void tile::reloadTexture() {
     if(mask_fileaddress[0] != '&') {
       SDL_DestroyTexture(texture);
 
-      SDL_Surface* smask = IMG_Load(mask_fileaddress.c_str());
+      SDL_Surface* smask = loadSurface(mask_fileaddress.c_str());
       SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
 
@@ -1213,61 +1205,47 @@ attack::attack(string filename, bool tryToShareTextures) {
   file >> spritename;
 
   string temp;
-  temp = "maps/" + g_mapdir + "/sprites/" + spritename + ".qoi";
-  if(!fileExists(temp)) {
-    temp = "static/sprites/" + spritename + ".qoi";
-    if(!fileExists(temp)) {
-      temp = "static/sprites/" + spritename + ".qoi";
-      if(!fileExists(temp)) {
-        temp = "static/sprites/default.qoi";
-      }
-    }
-  }
+  temp = "static/sprites/" + spritename + ".qoi";
 
 
   //only try to share textures if this isnt an entity
   //that can ever be part of the party
-  if(tryToShareTextures) {
-    for(auto x : g_attacks){
-      if(x->spritename == this->spritename) {
-        this->texture = x->texture;
-        assetsharer = 1;
-
-      }
-    }
-  }
+//  if(tryToShareTextures) {
+//    for(auto x : g_attacks){
+//      if(x->spritename == this->spritename) {
+//        this->texture = x->texture;
+//        assetsharer = 1;
+//
+//      }
+//    }
+//  }
 
   file >> framewidth;
   file >> frameheight;
   if(!assetsharer) {
-
-    SDL_Surface* image;
-    image = IMG_Load(temp.c_str());
-
-    texture = SDL_CreateTextureFromSurface(renderer, image);
-    SDL_FreeSurface(image);
+    //texture = loadTexture(renderer, temp);
   }
 
   file >> this->maxCooldown;
   float size;
   file >> size;
 
-  SDL_QueryTexture(texture, NULL, NULL, &width, &height);
+  //SDL_QueryTexture(texture, NULL, NULL, &width, &height);
 
-  xframes = width / framewidth;
-  yframes = height / frameheight;
-
-  for (int j = 0; j < height; j+=frameheight) {
-    for (int i = 0; i < width; i+= framewidth) {
-      coord a;
-      a.x = i;
-      a.y = j;
-      framespots.push_back(a);
-    }
-  }
-
-  width = framewidth * size;
-  height = frameheight * size;
+//  xframes = width / framewidth;
+//  yframes = height / frameheight;
+//
+//  for (int j = 0; j < height; j+=frameheight) {
+//    for (int i = 0; i < width; i+= framewidth) {
+//      coord a;
+//      a.x = i;
+//      a.y = j;
+//      framespots.push_back(a);
+//    }
+//  }
+//
+//  width = framewidth * size;
+//  height = frameheight * size;
 
 
 
@@ -1289,14 +1267,13 @@ attack::attack(string filename, bool tryToShareTextures) {
 
 attack::~attack() {
   if(!assetsharer) {
-    SDL_DestroyTexture(texture);
+    //SDL_DestroyTexture(texture);
   }
   g_attacks.erase(remove(g_attacks.begin(), g_attacks.end(), this), g_attacks.end());
 }
 
 
 
-//this is kinda weird, an empty declaration
 weapon::weapon() {}
 
 //add constructor and field on entity object
@@ -1310,13 +1287,8 @@ weapon::weapon(string fname, bool tryToShareGraphics) {
   string address;
 
   //local
-  address = "maps/" + g_mapdir + "/weapons/" + name + ".wep";
-  if(!fileExists(address)) {
-    address = "static/weapons/" + name + ".wep";
-    if(!fileExists(address)) {
-      address = "static/weapons/" + name + ".wep";
-    }
-  }
+  address = "static/weapons/" + name + ".wep";
+  
 
   string field = "";
   string value = "";
@@ -1466,13 +1438,7 @@ void particle::render(SDL_Renderer* renderer, camera fcamera) {
 effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   name = filename;
   string existSTR;
-  existSTR = "maps/" + g_mapdir + "/effects/" + filename + ".eft";
-  if(!fileExists(existSTR)) {
-    existSTR = "static/effects/" + filename + ".eft";
-    if(!fileExists(existSTR)) {
-      existSTR = "static/effects/default.eft";
-    }
-  }
+  existSTR = "static/effects/" + filename + ".eft";
   ifstream file;
   file.open(existSTR);
   string line;
@@ -1494,25 +1460,8 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 
 
   if(1) {
-    existSTR = "maps/" + g_mapdir + "/sprites/" + texname + ".qoi";
-    if(!fileExists(existSTR)) {
-      existSTR = "static/sprites/" + texname + ".qoi";
-      if(!fileExists(existSTR)) {
-        existSTR = "engine/effect-default.qoi";
-        E("Couldn't load effect, using default.");
-      }
-    }
-
-    SDL_Surface* image = IMG_Load(existSTR.c_str());
-    if(image == NULL) {
-      E("Couldn't load surface for effect");
-    }
-
-    texture = SDL_CreateTextureFromSurface(renderer, image);
-    if(texture == NULL) {
-      E("Couldn't load texture for effect");
-    }
-    SDL_FreeSurface(image);
+    existSTR = "static/sprites/" + texname + ".qoi";
+    texture = loadTexture(renderer, existSTR);
   }
 
   //yframes;
@@ -1703,30 +1652,11 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
     }
   }
 
-  //update alpha
-  if(enabled && alphamod != 255) {
-    alphamod+=elapsed;
-    if(alphamod > 255) {
-      alphamod = 255;
-    }
-  } else {
-    if(!enabled && alphamod != 0) {
-      alphamod -=elapsed;
-      if(alphamod < 0) {
-        alphamod = 0;
-      }
-    }
-  }
   //dont clog up other textures forever
   if(alphamod == 0) {return;}
 
-  Uint8 whydoihavetodothis = 255;
-  SDL_GetTextureAlphaMod(this->texture, &whydoihavetodothis);
-
-  if(whydoihavetodothis != alphamod) {
-    //update texture with proper alphamod
-    SDL_SetTextureAlphaMod(this->texture, alphamod);
-  }
+  //update texture with proper alphamod
+  SDL_SetTextureAlphaMod(this->texture, alphamod);
 
   SDL_FRect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (float)(width * size), (float)((height * size)* (637 /640) * 0.9)};
   //SDL_Rect dstrect = {500, 500, 200, 200 };
@@ -1896,7 +1826,7 @@ mapObject::mapObject(SDL_Renderer * renderer, string imageadress, const char* ma
 
   } else {
     const char* plik = imageadress.c_str();
-    SDL_Surface* image = IMG_Load(plik);
+    SDL_Surface* image = loadSurface(plik);
     texture = SDL_CreateTextureFromSurface(renderer, image);
     alternative = SDL_CreateTextureFromSurface(renderer, image);
 
@@ -1909,7 +1839,7 @@ mapObject::mapObject(SDL_Renderer * renderer, string imageadress, const char* ma
 
       SDL_DestroyTexture(texture);
       SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-      SDL_Surface* smask = IMG_Load(mask_filename);
+      SDL_Surface* smask = loadSurface(mask_filename);
       SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
       //SDL_SetTextureColorMod(diffuse, -65, -65, -65);
@@ -1985,7 +1915,7 @@ void mapObject::reloadTexture() {
     SDL_DestroyTexture(alternative);
 
     const char* plik = name.c_str();
-    SDL_Surface* image = IMG_Load(plik);
+    SDL_Surface* image = loadSurface(plik);
     texture = SDL_CreateTextureFromSurface(renderer, image);
     alternative = SDL_CreateTextureFromSurface(renderer, image);
 
@@ -1998,7 +1928,7 @@ void mapObject::reloadTexture() {
 
       SDL_DestroyTexture(texture);
       SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-      SDL_Surface* smask = IMG_Load(mask_fileaddress.c_str());
+      SDL_Surface* smask = loadSurface(mask_fileaddress.c_str());
       SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
       //SDL_SetTextureColorMod(diffuse, -65, -65, -65);
@@ -2156,24 +2086,7 @@ indexItem::indexItem(string fname, bool fisKeyItem) : name(fname), isKeyItem(fis
   //search worlditems for an item with the same texture
   string lstr;
 
-  //is there a special sprite for how it appears in the inv?
-  //if not, just use the standard one
-
-  //check local first
-  if(fileExists("maps/" + g_mapdir + "/items/" + fname + "-inv.qoi")) {
-    lstr = "maps/" + g_mapdir + "/items/" + fname + "-inv.qoi";
-  } else if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".qoi")){
-    lstr = "maps/" + g_mapdir + "/items/" + fname + ".qoi";
-  } else if(fileExists("static/items/" + fname + "-inv.qoi")) {
-    lstr = "static/items/" + fname + "-inv.qoi";
-  } else {
-    if(fileExists("static/items/" + fname + ".qoi")) {
-      lstr = "static/items/" + fname + ".qoi";
-    } else {
-      //failsafe - load an image we know we have
-      lstr = "static/sprites/default.qoi";
-    }
-  }
+  lstr = "static/items/" + fname + "-inv.qoi";
 
 
   bool storeThis = true;
@@ -2184,9 +2097,7 @@ indexItem::indexItem(string fname, bool fisKeyItem) : name(fname), isKeyItem(fis
     }
   }
   if(storeThis) {
-    SDL_Surface* temp = IMG_Load(lstr.c_str());
-    texture = SDL_CreateTextureFromSurface(renderer, temp);
-    SDL_FreeSurface(temp);
+    texture = loadTexture(renderer, lstr);
     g_indexItems.push_back(this);
   }
 
@@ -2195,16 +2106,8 @@ indexItem::indexItem(string fname, bool fisKeyItem) : name(fname), isKeyItem(fis
 
   //check local dir
   string loadstr = "static/items/" + fname + ".txt";
-  if(fileExists("maps/" + g_mapdir + "/items/" + fname + ".txt")) {
-    loadstr = "maps/" + g_mapdir + "/items/" + fname + ".txt";
-  }
 
-  const char* plik = loadstr.c_str();
-  stream.open(plik);
-  string line;
-  while (getline(stream, line)) {
-    script.push_back(line);
-  }
+  vector<string> script = loadText(loadstr);
 
   parseScriptForLabels(script);
 }
@@ -2670,16 +2573,11 @@ worldsound::worldsound(string filename, int fx, int fy) {
   string temp;
   file >> temp;
   string existSTR;
-  existSTR = "maps/" + g_mapdir + "/sounds/" + temp + ".wav";
-  if(!fileExists(existSTR)) {
-    existSTR = "static/sounds/" + temp + ".wav";
-    if(!fileExists(existSTR)) {
-      existSTR = "static/sounds/default.wav";
-    }
-  }
+  existSTR = "static/sounds/" + g_mapdir + "/" + temp + ".wav";
+  
 
 
-  blip = Mix_LoadWAV(existSTR.c_str());
+  blip = loadWav(existSTR.c_str());
 
   x = fx;
   y = fy;
@@ -2800,7 +2698,6 @@ entity::entity() {
 
 //entity constructor
 entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) {
-  //M("entity()");
 
   ifstream file;
   //bool using_default = 0;
@@ -2834,10 +2731,10 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   string spritefilevar;
   spritefilevar = "static/sprites/" + temp + ".qoi";
 
-  if(!fileExists(spritefilevar)) { 
-    spritefilevar = "maps/" + g_mapdir + "/sprites/" + temp + ".qoi";
-    D(spritefilevar);
+  if(temp == "sp-no-texture") {
+    spritefilevar = "engine/sp-no-texture.qoi";
   }
+
 
   if(onionmode) {spritefilevar = "engine/onion.qoi";}
 
@@ -3039,28 +2936,13 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     txtfilename = "static/scripts/" + filename + ".txt";
   }
   
-  //M("Checking " + txtfilename + " for script for " + name);
-
-  ifstream nfile(txtfilename);
-  string line;
 
   //load voice
   string voiceSTR = "static/sounds/voice-normal.wav";
-  voice = Mix_LoadWAV(voiceSTR.c_str());
+  voice = loadWav(voiceSTR.c_str());
 
-  int overflowprotect = 5000;
-  int i = 0;
-  while(getline(nfile, line)) {
-    sayings.push_back(line);
-    if(i > overflowprotect) {
-      E("Prevented overflow reading script for entity " + name);
-      throw("Overflow");
-    }
-    i++;
-  }
-
+  sayings = loadText(txtfilename);
   parseScriptForLabels(sayings);
-
 
   //has another entity already loaded this texture
   for (auto x : g_entities) {
@@ -3079,10 +2961,13 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     } else {
       SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
     }
-    SDL_Surface* image = IMG_Load(spritefile);
 
-    texture = SDL_CreateTextureFromSurface(renderer, image);
-    SDL_FreeSurface(image);
+    
+    if(string(spritefile).find("zarko") != string::npos) {
+      D(name);
+    }
+    texture = loadTexture(renderer, spritefile);
+
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
   }
 
@@ -3223,13 +3108,10 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     } else {
       txtfilename = "static/scripts/" + fieldScript + ".txt";
     }
-    ifstream nfile(txtfilename);
-    string line;
 
-    while(getline(nfile, line)) {
-      contactScript.push_back(line);
-    }
+    this->contactScript = loadText(txtfilename);
     parseScriptForLabels(contactScript);
+
     contactScriptCaller->ownScript = this->contactScript;
   }
 
@@ -3286,17 +3168,11 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     } else {
       txtfilename = "static/scripts/" + boardingScriptName + ".txt";
     }
-    ifstream nfile(txtfilename);
-    string line;
 
-    while(getline(nfile, line)) {
-      boardingScript.push_back(line);
-    }
+    boardingScript = loadText(txtfilename);
     parseScriptForLabels(boardingScript);
 
   }
-
-
 
   if(animationconfig == 0) {
     useAnimForWalking = 1;
@@ -3317,9 +3193,10 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   }
   if(this->isAI) {
     g_ai.push_back(this);
-    ifstream stream;
-    const char* plik = AIloadstr.c_str();
-    stream.open(plik);
+    //istringstream stream;
+    //const char* plik = AIloadstr.c_str();
+    //stream.open(plik);
+    istringstream stream(loadTextAsString(AIloadstr));
 
     string line;
     string comment;
@@ -3334,6 +3211,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       //line contains the name of an ability
       ability newAbility;
       newAbility.name = line;
+      D(newAbility.name);
 
       //they're stored as seconds in the configfile, but ms in the object
       float seconds = 0;
@@ -3401,6 +3279,8 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       newState.interval = stoi(interval);
       newState.nextInterval = stoi(interval);
       newState.blocks = stoi(blocks) * 64;
+      D(newState.name);
+      D(newState.interval);
 
       this->states.push_back(newState);
     }
@@ -3532,7 +3412,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     stream >> comment; //max_aggressiveness
     stream >> maxAggressiveness;
 
-    stream.close();
+    //stream.close();
 
   }
 
@@ -3622,8 +3502,7 @@ entity::entity(SDL_Renderer * renderer, int idk,  string texturename) {
 
   if(onionmode) {spritefilevar = "engine/onion.qoi";}
 
-  SDL_Surface* image = IMG_Load(spritefilevar.c_str());
-  texture = SDL_CreateTextureFromSurface(renderer, image);
+  texture = loadTexture(renderer, spritefilevar);
   //M(spritefilevar );
 
 
@@ -3779,7 +3658,6 @@ entity::entity(SDL_Renderer * renderer, int idk,  string texturename) {
   a.y = 0;
   framespots.push_back(a);
 
-  SDL_FreeSurface(image);
   g_entities.push_back(this);
 }
 
@@ -3885,6 +3763,17 @@ void entity::unsolidify() {
 //entity render function
 void entity::render(SDL_Renderer * renderer, camera fcamera) {
   
+  opacity += opacity_delta;
+  shadow->alphamod += opacity_delta;
+  if(opacity_delta != 0 && opacity <= 0) {
+    if(this->asset_sharer) {
+      this->usingTimeToLive = 1;
+      this->timeToLiveMs = -1;
+    } else {
+      this->tangible = 0;
+    }
+  }
+
   SDL_SetTextureAlphaMod(texture, opacity);
   if(!tangible) {return;}
   if(!visible) {return;}
@@ -4011,7 +3900,7 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
     SDL_FRect dstrect = { (float)obj.x, (float)obj.y, (float)obj.width, (float)obj.height};
     if(animationconfig == 2) {
       //this is used to share a texture between multiple sprites who really just use one frame of the texture, e.g. collectible familiars
-      frame = animWalkFrames;
+      frame = animation * xframes + animWalkFrames;
     }
     //genericmode has just one frame
     if(isWorlditem) {frame = 0;}
@@ -4070,7 +3959,7 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
         if(darkenValue <0) {darkenValue = 0;}
       } else {
         if(darkenValue < 255) {
-          darkenValue += 10;
+          darkenValue += 20;
           if(darkenValue > 255) {darkenValue = 255;}
           SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
         } else {
@@ -4085,14 +3974,21 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
       if(flashingMS > 0) {
         SDL_SetTextureColorMod(texture, 255, 255 * (1 - ((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
       }
+
       if(darkenMs > 0) {
         SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
+        darkenValue -= elapsed;
+        if(darkenValue <0) {darkenValue = 0;}
       } else {
-        if(darkenValue > 0) {
+        if(darkenValue < 255) {
+          darkenValue += 20;
+          if(darkenValue > 255) {darkenValue = 255;}
           SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
-          darkenValue -= 1;
+        } else {
+          darkenValue = 255;
         }
       }
+
       if(texture != NULL) {
         SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
       }
@@ -5761,7 +5657,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
         if(!canFight) {return nullptr;}
 
 
-        hisweapon->comboResetMS+=elapsed;
+        //hisweapon->comboResetMS+=elapsed;
 
         if(shooting) {
           //spawn shot.
@@ -6325,9 +6221,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
               // of range, so lets go with that
               shooting = 0;
               //float distanceToTarget = XYWorldDistance(target->getOriginX(), target->getOriginY(), getOriginX(), getOriginY());
-              if(distanceToTarget < this->hisweapon->attacks[hisweapon->combo]->range) {
-                shooting = 1;
-              }
+//              if(distanceToTarget < this->hisweapon->attacks[hisweapon->combo]->range) {
+//                shooting = 1;
+//              }
 
               float xvector;
               float yvector;
@@ -6508,7 +6404,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           if(customMovement == 0 || distToTarget < movementTypeSwitchRadius)
           { //blindrun movement
             
-            if(( (this->hisweapon->attacks[hisweapon->combo]->melee && (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true)) )  || (distToTarget < 64) ) ) {
+            if(( (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true) )  || (distToTarget < 64) ) ) {
             //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
             targetSteeringAngle = angleToTarget;
             
@@ -6517,7 +6413,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             if(g_protagIsWithinBoardable) {
               rangeToUse = 64 * 3;
             } else {
-              rangeToUse = this->hisweapon->attacks[hisweapon->combo]->range;
+              rangeToUse = 64;
             }
   
             if( distToTarget > rangeToUse) {
@@ -6598,36 +6494,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
               //NOW - use angle to target to get prefered cardinal point
               int index = convertAngleToFrame(angleToTarget);
 
-
-
-              //use this code for strafing
-              //rotate clockwise
-              if(this->hisweapon->attacks[hisweapon->combo]->name == "strafeleft") {
-                index ++;
-                if(index == 8) {index = 0;}
-              }
-
-              //rotate counterclockwise
-              if(this->hisweapon->attacks[hisweapon->combo]->name == "straferight") {
-                index --;
-                if(index == -1) {index = 7;}
-              }
-              if(this->hisweapon->attacks[hisweapon->combo]->name == "strafe") {
-                int flip = rand() % 2;
-                if(flip == 1) {
-                  index --;
-                  if(index == -1) {index = 7;}
-                } else {
-                  index ++;
-                  if(index == 8) {index = 0;}
-                }
-              }
-
-              if(this->hisweapon->attacks[hisweapon->combo]->name == "approach" && (int)hisweapon->attacks.size() > hisweapon->combo) {
-                this->hisweapon->attacks[hisweapon->combo]->range = this->hisweapon->attacks[hisweapon->combo + 1]->range;
-              }
-
-              
               vector<int> ret;
               if(this->hisweapon->attacks[hisweapon->combo]->melee)  {
                 ret = getCardinalPoint(target->getOriginX(), target->getOriginY(), 0, index);
@@ -7014,16 +6880,7 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, i
 
   string loadSTR = "levelsequence/icons/" + lowerName + ".qoi";
 
-
-  if(onionmode) {loadSTR = "engine/onion.qoi";}
-
-  SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
-  if(loadMe == NULL) {
-    E("Error loading level selection icon.");
-    D(loadSTR);
-  }
-  sprite = SDL_CreateTextureFromSurface(renderer, loadMe);
-  SDL_FreeSurface(loadMe);
+  sprite = loadTexture(renderer, loadSTR);
 
 
   for(int i = 0; i < g_levelNodes.size(); i++) {
@@ -7044,9 +6901,7 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, i
 
   if(eyeTexture == nullptr) {
     string loadSTR = "levelsequence/icons/eyes.qoi";
-    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
-    this->eyeTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
-    SDL_FreeSurface(loadMe);
+    this->eyeTexture = loadTexture(renderer, loadSTR);
   }
 
   if(mouthTexture == nullptr) {
@@ -7054,10 +6909,8 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, i
     if(mouthStyle == 1) {
       loadSTR = "levelsequence/icons/mouth.qoi";
     }
-    SDL_Surface* loadMe = IMG_Load(loadSTR.c_str());
 
-    this->mouthTexture = SDL_CreateTextureFromSurface(renderer, loadMe);
-    SDL_FreeSurface(loadMe);
+    this->mouthTexture = loadTexture(renderer, loadSTR);
   }
 
   blinkCooldownMS = rng(minBlinkCooldownMS, maxBlinkCooldownMS);
@@ -7215,9 +7068,7 @@ usable::usable(string fname) {
 
   if(onionmode) {loadstr = "engine/onion.qoi";}
 
-  SDL_Surface* image = IMG_Load(loadstr.c_str());
-  texture = SDL_CreateTextureFromSurface(renderer,image);
-  SDL_FreeSurface(image);
+  texture = loadTexture(renderer, loadstr);
 
 }
 
@@ -7639,19 +7490,27 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer,
         }
       }
     } else {
-      for (long long unsigned int j = 0; j < g_impliedSlopes.size(); j++) {
-        if(RectOverlap(a, g_impliedSlopes[j]->bounds)) {
-          lineTraceX = a.x + a.width/2;
-          lineTraceY = a.y + a.height/2;
-          return false;
-        }
-      }
+//      for (long long unsigned int j = 0; j < g_impliedSlopes.size(); j++) {
+//        if(RectOverlap(a, g_impliedSlopes[j]->bounds)) {
+//          lineTraceX = a.x + a.width/2;
+//          lineTraceY = a.y + a.height/2;
+//          return false;
+//        }
+//      }
 
     }
 
 
-    for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++) {
-      if(RectOverlap(a, g_boxs[layer][j]->bounds) && g_boxs[layer][j]->walltexture != "engine/seethru.qoi") {
+//    for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++) {
+//      if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
+//        lineTraceX = a.x + a.width/2;
+//        lineTraceY = a.y + a.height/2;
+//        return false;
+//      }
+//    }
+
+    for (long long unsigned int j = 0; j < g_lt_collisions.size(); j++) {
+      if(RectOverlap(a, g_lt_collisions[j]->bounds)) {
         lineTraceX = a.x + a.width/2;
         lineTraceY = a.y + a.height/2;
         return false;
@@ -7858,11 +7717,7 @@ ui::ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float
   //M("ui()" );
   filename = ffilename;
 
-  string spritefilevar = filename;
-  if(onionmode) {spritefilevar = "engine/onion.qoi";}
-  image = IMG_Load(spritefilevar.c_str());
-  texture = SDL_CreateTextureFromSurface(renderer, image);
-  SDL_FreeSurface(image);
+  texture = loadTexture(renderer, ffilename);
 
   width = fwidth;
   height = fheight;
@@ -8095,15 +7950,8 @@ musicNode::~musicNode() {
 cueSound::cueSound(string fileaddress, int fx, int fy, int fradius) {
   name = fileaddress;
   string existSTR;
-  existSTR = "maps/" + g_mapdir + "/sounds/" + fileaddress + ".wav";
-  if(!fileExists(existSTR)) {
-    existSTR = "static/sounds/" + fileaddress + ".wav";
-    if(!fileExists(existSTR)) {
-      existSTR = "static/sounds/defaults.wav";
-      E("Couldn't find .wav for " + name);
-    }
-  }
-  blip = Mix_LoadWAV(existSTR.c_str());
+  existSTR = "static/sounds/" + fileaddress + ".wav";
+  blip = loadWav(existSTR.c_str());
   x = fx;
   y = fy;
   radius = fradius;
@@ -8441,7 +8289,6 @@ void clear_map(camera& cameraToReset) {
   }
 
   adventureUIManager->crosshair->show = 0;
-  breakpoint();
   {
 
     //SDL_GL_SetSwapInterval(0);
@@ -8454,7 +8301,7 @@ void clear_map(camera& cameraToReset) {
     transitionMinFrametime = 1/mframes * 1000;
 
 
-    SDL_Surface* transitionSurface = IMG_Load("engine/transition.qoi");
+    SDL_Surface* transitionSurface = loadSurface("engine/transition.qoi");
 
     int imageWidth = transitionSurface->w;
     int imageHeight = transitionSurface->h;
@@ -9470,7 +9317,6 @@ void adventureUI::hideTalkingUI()
 }
 
 void adventureUI::showScoreUI() {
-  breakpoint();
   scoreText->show = 1;
 }
 
@@ -9660,17 +9506,17 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     healthText->dropshadow = 1;
     healthText->layer0 = 1;
 
-    hungerText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
-    hungerText->boxWidth = 0.95;
-    hungerText->width = 0.95;
-    hungerText->boxHeight = 0;
-    hungerText->boxX = 1 - 0.05;
-    hungerText->boxY = 1 - 0.15;
-    hungerText->worldspace = 1;
-    hungerText->show = 1;
-    hungerText->align = 1;
-    hungerText->dropshadow = 1;
-    hungerText->layer0 = 1;
+//    hungerText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
+//    hungerText->boxWidth = 0.95;
+//    hungerText->width = 0.95;
+//    hungerText->boxHeight = 0;
+//    hungerText->boxX = 1 - 0.05;
+//    hungerText->boxY = 1 - 0.15;
+//    hungerText->worldspace = 1;
+//    hungerText->show = 1;
+//    hungerText->align = 1;
+//    hungerText->dropshadow = 1;
+//    hungerText->layer0 = 1;
 
     escText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
 
@@ -9722,17 +9568,17 @@ void adventureUI::initFullUI() {
   adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
   adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
 
-    hungerPicture = new ui(renderer, "static/ui/hunger.qoi", 0.8, 0.6, 0.25, 1, -15);
-    hungerPicture->persistent = 1;
-    hungerPicture->heightFromWidthFactor = 1;
-    hungerPicture->show = 1;
-    hungerPicture->framewidth = 410;
-    hungerPicture->frameheight = 465;
-    hungerPicture->layer0 = 1;
-    hungerPicture->glideSpeed = 0.1;
-    hungerPicture->widthGlideSpeed = 0.1;
-    hungerPicture->priority = -10; //hunger is behind everything
-    hungerPicture->show = 0;
+//    hungerPicture = new ui(renderer, "static/ui/hunger.qoi", 0.8, 0.6, 0.25, 1, -15);
+//    hungerPicture->persistent = 1;
+//    hungerPicture->heightFromWidthFactor = 1;
+//    hungerPicture->show = 1;
+//    hungerPicture->framewidth = 410;
+//    hungerPicture->frameheight = 465;
+//    hungerPicture->layer0 = 1;
+//    hungerPicture->glideSpeed = 0.1;
+//    hungerPicture->widthGlideSpeed = 0.1;
+//    hungerPicture->priority = -10; //hunger is behind everything
+//    hungerPicture->show = 0;
   
   adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
   adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
@@ -9762,10 +9608,7 @@ void adventureUI::initFullUI() {
   hotbarFocus->priority = -7;
   hotbarFocus->dropshadow = 1;
 
-
-  SDL_Surface *surface = IMG_Load("engine/sp-no-texture.qoi");
-  noIconTexture = SDL_CreateTextureFromSurface(renderer, surface);
-  SDL_FreeSurface(surface);
+  noIconTexture = loadTexture(renderer, "engine/sp-no-texture.qoi");
 
   nextUsableIcon = new ui(renderer, "engine/sp-no-texture.qoi", 0.45 + 0.1, 0.84, 0.1, 1, 1);
   nextUsableIcon->persistent = true;
@@ -10161,7 +10004,6 @@ void adventureUI::continueDialogue()
   // loadsavenames
   if (scriptToUse->at(dialogue_index + 1).substr(0,14) == "/menuloadnames")
   {
-    breakpoint();
     vector<string> savenames = {"user/saves/a.save",
                                 "user/saves/b.save",
                                 "user/saves/c.save"};
@@ -10742,7 +10584,6 @@ I("s");
   //
   if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\[[[:digit:]]+\\]")))
   {
-    breakpoint();
     if(selected == nullptr) {E("Accessed selfdata without calling /select first");}
     int j = 1;
     // parse which block of memory we are interested in
@@ -10953,12 +10794,34 @@ I("s");
       } else {
         hopeful->tangible = 0;
       }
+      smokeEffect->happen(hopeful->getOriginX(), hopeful->getOriginY(), hopeful->z, 0);
     }
 
     dialogue_index++;
     this->continueDialogue();
     return;
   }
+
+
+  // fade out entity
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/fadeout")
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    s.erase(0, 9);
+
+    entity* hopeful = searchEntities(s, talker);
+    D(s);
+    if(hopeful != nullptr) {
+      hopeful->opacity_delta = -1;
+    }
+
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+
 
   // set entity's ttl in ms
   // /setttl splatter 500

@@ -262,7 +262,7 @@ struct cmpCoord
 
 #define E(a)                                \
 {                                         \
-  std::cout << "ERROR:" << #a << ": " << (a) << endl; \
+  std::cout << "ERROR: " << (a) << endl; \
 }
 
 
@@ -875,6 +875,8 @@ extern SDL_Surface* g_wDistort;
 extern float g_wAcc;
 extern SDL_Texture* g_wSpec;
 
+extern vector<mapCollision*> g_lt_collisions;
+
 bool fileExists(const std::string &name);
 
 void playSound(int channel, Mix_Chunk *sound, int loops);
@@ -926,5 +928,7 @@ void hurtProtag(int dmg);
 void transform3dPoint(float x, float y, float z, float &u, float &v);
 
 void doSpringForce(entity* target, entity* him);
+
+string getCurrentDir();
 
 #endif

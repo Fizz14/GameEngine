@@ -9,6 +9,7 @@
 #include "globals.h"
 #include "objects.h"
 
+
 void specialObjectsInit(entity* a);
 
 void specialObjectsBump(entity* a, bool xcollide, bool ycollide);
@@ -16,6 +17,8 @@ void specialObjectsBump(entity* a, bool xcollide, bool ycollide);
 void specialObjectsUpdate(entity * a, float elapsed);
 
 void specialObjectsInteract(entity* a);
+
+void specialObjectsOncePerFrame(float elapsed);
 
 void usableItemCode(usable* a);
 

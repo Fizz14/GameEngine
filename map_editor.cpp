@@ -15,6 +15,7 @@
 #include "map_editor.h"
 #include "objects.h"
 #include "globals.h"
+#include "utils.h"
 
 using namespace std;
 
@@ -96,8 +97,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   // hide HUD if this is a special map, show it otherwise
   g_showHUD = !(g_map.substr(0, 3) == "sp-");
 
-  ifstream infile;
-  infile.open(filename);
+  vector<string> strings = loadText(filename);
+
   string line;
   string word, s0, s1, s2, s3, s4;
   float p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10;
@@ -105,15 +106,14 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
   background = 0;
 
-  std::getline(infile, line);
-  line.erase(0, line.find(" "));
-  word = line;
-
   g_budget = 0;
   g_budget = strtol(word.c_str(), NULL, 10);
+  int index = 0;
 
-  while (std::getline(infile, line))
+  while (index < strings.size())
   {
+    line = strings[index];
+    index++;
     istringstream iss(line);
     word = line.substr(0, line.find(" "));
 
@@ -139,11 +139,9 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     if (word == "bg" && g_useBackgrounds)
     {
       iss >> s0 >> backgroundstr;
-      SDL_Surface *bs = IMG_Load(("static/backgrounds/" + backgroundstr + ".qoi").c_str());
-      background = SDL_CreateTextureFromSurface(renderer, bs);
+      background = loadTexture(renderer, "static/backgrounds/" + backgroundstr + "qoi");
       g_backgroundLoaded = 1;
       SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
-      SDL_FreeSurface(bs);
     }
     if (word == "dark")
     {
@@ -336,7 +334,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         }
       }
       if(e->name == "common/doora") {
-        breakpoint();
         D(e->y);
         D(e->bounds.y);
       }
@@ -1226,7 +1223,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   }
 
   Update_NavNode_Costs(g_navNodes);
-  infile.close();
 
   // sort ui by priority
   sort_ui(g_ui);
@@ -1286,19 +1282,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   if (!devMode && fileExists("maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
     string loadstr = "maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
-    //D(loadstr);
-    const char *plik = loadstr.c_str();
-    ifstream stream;
-    stream.open(plik);
-
-    vector<string> script;
-
-    string line;
-
-    while (getline(stream, line))
-    {
-      script.push_back(line);
-    }
+    vector<string> script = loadText(loadstr);
 
     parseScriptForLabels(script);
 
@@ -1440,19 +1424,19 @@ bool mapeditor_save_map(string word)
   word = "maps/" + g_mapdir + "/" + word + ".map";
 
   // make folders for custom assets
-  vector<string> dirs = {"ai", "attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "diffuse", "weapons", "masks", "heightmaps", "backgrounds", "ui", "effects"};
-  for (auto x : dirs)
-  {
-    std::filesystem::create_directories("maps/" + g_mapdir + "/" + x);
-  }
+//  vector<string> dirs = {"ai", "attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "diffuse", "weapons", "masks", "heightmaps", "backgrounds", "ui", "effects"};
+//  for (auto x : dirs)
+//  {
+//    std::filesystem::create_directories("maps/" + g_mapdir + "/" + x);
+//  }
 
   // make INIT.txt
-  if (!fileExists("maps/" + g_mapdir + "/scripts/" + "INIT-" + local_v_mapdir + ".txt"))
-  {
-    ofstream file("maps/" + g_mapdir + "/scripts/" + "INIT-" + local_v_mapdir + ".txt");
-
-    file.close();
-  }
+//  if (!fileExists("maps/" + g_mapdir + "/scripts/" + "INIT-" + local_v_mapdir + ".txt"))
+//  {
+//    ofstream file("maps/" + g_mapdir + "/scripts/" + "INIT-" + local_v_mapdir + ".txt");
+//
+//    file.close();
+//  }
 
   ofile.open(word);
 
@@ -1974,9 +1958,7 @@ void write_map(entity *mapent)
     lx = px;
     ly = py;
     makingbox = 1;
-    selection->image = IMG_Load("engine/trigger.qoi");
-    selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
-    SDL_FreeSurface(selection->image);
+    selection->texture = loadTexture(renderer, "engine/trigger.qoi");
     selection->wraptexture = 0;
   }
   else
@@ -2014,10 +1996,8 @@ void write_map(entity *mapent)
     ly = py;
     makingtile = 1;
 
-    selection->image = IMG_Load(floortex.c_str());
-    selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
+    selection->texture = loadTexture(renderer, floortex);
     SDL_QueryTexture(selection->texture, NULL, NULL, &selection->texwidth, &selection->texheight);
-    SDL_FreeSurface(selection->image);
   }
   else
   {
@@ -2082,9 +2062,7 @@ void write_map(entity *mapent)
       lx = px;
       ly = py;
       makingbox = 1;
-      selection->image = IMG_Load("engine/wall.qoi");
-      selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
-      SDL_FreeSurface(selection->image);
+      selection->texture = loadTexture(renderer, "engine/wall.qoi");
     }
   }
   else
@@ -2201,9 +2179,7 @@ void write_map(entity *mapent)
     lx = px;
     ly = py;
     makingbox = 1;
-    selection->image = IMG_Load("engine/invisiblewall.qoi");
-    selection->texture = SDL_CreateTextureFromSurface(renderer, selection->image);
-    SDL_FreeSurface(selection->image);
+    selection->texture = loadTexture(renderer, "engine/invisiblewall.qoi");
   }
   else
   {
@@ -4688,6 +4664,8 @@ void write_map(entity *mapent)
           D(chosenEntity->opacity);
           D(chosenEntity->visible);
           D(chosenEntity->texture);
+          D(chosenEntity->darkenValue);
+          D(chosenEntity->darkenMs);
           M("");
 
           M("Animation Data:");
@@ -5155,7 +5133,6 @@ void write_map(entity *mapent)
         e->z = wallstart;
         e->shadow->x = e->x + e->shadow->xoffset;
         e->shadow->y = e->y + e->shadow->yoffset;
-        //breakpoint();
         if(smokeEffect != nullptr) {
           //god this is so annoying, keep it off
           //smokeEffect->happen(e->getOriginX(), e->getOriginY(), e->z );
