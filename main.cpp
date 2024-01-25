@@ -304,10 +304,12 @@ int WinMain()
     g_dijkstraDebugYellow->worldspace = 1;
   }
 
+  M("Got here");
   //init user keyboard
   //render each character of the alphabet to a texture
   TTF_Font* alphabetfont = 0;
   alphabetfont = TTF_OpenFont(g_font.c_str(), 60 * g_fontsize);
+  //alphabetfont = loadFont(g_font, 60*g_fontsize);
   SDL_Surface* textsurface = 0;
   SDL_Texture* texttexture = 0;
   g_alphabet_textures = &g_alphabetLower_textures;
@@ -2558,7 +2560,7 @@ int WinMain()
     else
     {
       adventureUIManager->healthText->show = 0;
-      adventureUIManager->hungerText->show = 0;
+      //adventureUIManager->hungerText->show = 0;
     }
 
     //get hungry

@@ -21,4 +21,6 @@ vector<string> loadText(string fileaddress);
 
 string loadTextAsString(string fileaddress);
 
+TTF_Font* loadFont(string fileaddress, int fontsize);
+
 #endif

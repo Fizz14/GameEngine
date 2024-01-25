@@ -934,7 +934,7 @@ void tile::reloadTexture() {
   if(asset_sharer) {
 
   } else {
-    image = loadSurface(filename);
+    image = loadSurface(fileaddress);
     texture = SDL_CreateTextureFromSurface(renderer, image);
     if(wall) {
       //make walls a bit darker
@@ -1282,7 +1282,6 @@ weapon::weapon() {}
 weapon::weapon(string fname, bool tryToShareGraphics) {
   name = fname;
 
-  ifstream file;
   string line;
   string address;
 
@@ -1292,7 +1291,9 @@ weapon::weapon(string fname, bool tryToShareGraphics) {
 
   string field = "";
   string value = "";
-  file.open(address);
+  //file.open(address);
+  istringstream file(loadTextAsString(address));
+
 
   while(getline(file, line)) {
     if(line == "&") { break; }
@@ -1303,7 +1304,6 @@ weapon::weapon(string fname, bool tryToShareGraphics) {
     attacks.push_back(a);
   }
   file >> maxComboResetMS;
-  file.close();
   g_weapons.push_back(this);
 }
 
@@ -2699,46 +2699,26 @@ entity::entity() {
 //entity constructor
 entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) {
 
-  ifstream file;
   //bool using_default = 0;
   this->name = filename;
 
   string loadstr;
   //try to open from local map folder first
 
-  loadstr = "maps/" + g_mapdir + "/entities/" + filename + ".ent";
-  const char* plik = loadstr.c_str();
-
-  file.open(plik);
-
-  if (!file.is_open()) {
-    //load from global folder
+  loadstr = "static/" + g_mapdir + "/entities/" + filename + ".ent";
+  if(!fileExists(loadstr)) {
     loadstr = "static/entities/" + filename + ".ent";
-    const char* plik = loadstr.c_str();
-
-    file.open(plik);
-
-    if (!file.is_open()) {
-      //just make a default entity
-      //using_default = 1;
-      string newfile = "static/entities/default.ent";
-      file.open(newfile);
-    }
   }
+  D(loadstr);
+
+  istringstream file(loadTextAsString(loadstr));
 
   string temp;
   file >> temp;
+  D(temp);
   string spritefilevar;
   spritefilevar = "static/sprites/" + temp + ".qoi";
 
-  if(temp == "sp-no-texture") {
-    spritefilevar = "engine/sp-no-texture.qoi";
-  }
-
-
-  if(onionmode) {spritefilevar = "engine/onion.qoi";}
-
-  const char* spritefile = spritefilevar.c_str();
   float size;
   string comment;
   file >> comment;
@@ -2963,10 +2943,8 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     }
 
     
-    if(string(spritefile).find("zarko") != string::npos) {
-      D(name);
-    }
-    texture = loadTexture(renderer, spritefile);
+    D(name);
+    texture = loadTexture(renderer, spritefilevar);
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
   }
@@ -3418,7 +3396,6 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
 
   specialObjectsInit(this);
 
-  file.close();
 }
 
 //copy constructor
@@ -6938,16 +6915,9 @@ SDL_Rect levelNode::getEyeRect() {
 levelSequence::levelSequence(string filename, SDL_Renderer * renderer){
   filename = "levelsequence/" + filename + ".txt";
   
-  ifstream file;
-  file.open(filename.c_str());
-
-  if(!file.is_open()) {
-    //error opening level sequence file
-    E("Couldn't open level sequence file");
-
-    //we should just crash, but that would make debugging hard
-    return;
-  }
+//  ifstream file;
+//  file.open(filename.c_str());
+  istringstream file(loadTextAsString(filename));
 
   string temp;
   getline(file, temp);
@@ -6979,16 +6949,9 @@ levelSequence::levelSequence(string filename, SDL_Renderer * renderer){
 
 //add levels from a file
 void levelSequence::addLevels(string filename) {
-  ifstream file;
-  file.open(filename.c_str());
-
-  if(!file.is_open()) {
-    //error opening level sequence file
-    E("Couldn't open level sequence file");
-
-    //we should just crash, but that would make debugging hard
-    return;
-  }
+//  ifstream file;
+//  file.open(filename.c_str());
+  istringstream file(loadTextAsString(filename));
 
   string temp;
   getline(file, temp);
@@ -7023,7 +6986,6 @@ void levelSequence::addLevels(string filename) {
 
 usable::usable(string fname) {
   internalName = fname;
-  ifstream file;
   string loadstr;
 
   string filepath = "static/usables/" + fname + "/";
@@ -7031,8 +6993,7 @@ usable::usable(string fname) {
   //open specs file
   loadstr = filepath + "specs_" + fname + ".txt";
 
-  file.open(loadstr);
-  if(!file.is_open()) { E("Couldn't open Specs-file for Usable with Name " + fname); E(loadstr); return;}
+  istringstream file(loadTextAsString(loadstr));
   
   string comment;
   string line;
@@ -7060,7 +7021,7 @@ usable::usable(string fname) {
   getline(file, aboutTxt);
   //getline(file, empty);
 
-  file.close();
+  //file.close();
 
   //load sprite
   loadstr = filepath + "img_" + fname + ".qoi";

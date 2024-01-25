@@ -18,6 +18,7 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
 
   } else {
     E("FNF: " + fileaddress);
+    breakpoint();
     abort();
     return nullptr;
   }
@@ -39,6 +40,7 @@ SDL_Surface* loadSurface(string fileaddress)
 
   } else {
     E("FNF: " + fileaddress);
+    breakpoint();
     abort();
     return nullptr;
   }
@@ -60,6 +62,7 @@ Mix_Chunk* loadWav(string fileaddress)
 
   } else {
     E("FNF: " + fileaddress);
+    breakpoint();
     abort();
     return nullptr;
   }
@@ -113,4 +116,32 @@ string loadTextAsString(string fileaddress)
     //abort();
     return {};
   }
+}
+
+TTF_Font* loadFont(string fileaddress, int fontsize)
+{
+  if(PHYSFS_exists(fileaddress.c_str())) 
+  {
+    PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
+    char* buf;
+    buf = new char[filesize];
+    int length_read = PHYSFS_readBytes(myfile, buf, filesize);
+
+    D(length_read);
+    PHYSFS_close(myfile);
+    TTF_Font* ret;
+    SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
+    ret = TTF_OpenFontRW(myWop, 1, fontsize);
+
+    delete buf;
+    return ret;
+
+  } else {
+    E("FNF: " + fileaddress);
+    breakpoint();
+    abort();
+    return {};
+  }
+
 }
