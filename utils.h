@@ -21,6 +21,8 @@ vector<string> loadText(string fileaddress);
 
 string loadTextAsString(string fileaddress);
 
-TTF_Font* loadFont(string fileaddress, int fontsize);
+TTF_Font* loadFont(string fileaddress, float fontsize);
+
+Mix_Music* loadMusic(string fileaddress);
 
 #endif

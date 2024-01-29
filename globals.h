@@ -43,6 +43,8 @@ class tile;
 
 class door;
 
+class dungeonDoor;
+
 class rect;
 
 class mapCollision;
@@ -119,6 +121,10 @@ class levelSequence;
 
 class usable;
 
+struct dungeonBehemothInfo;
+
+struct dungeonFloorInfo;
+
 class camera
 {
   public:
@@ -171,6 +177,8 @@ extern vector<entity *> g_large_entities;
 extern vector<tile *> g_tiles;
 
 extern vector<door *> g_doors;
+
+extern vector<dungeonDoor*> g_dungeonDoors;
 
 extern vector<vector<box *>> g_boxs;
 
@@ -430,6 +438,7 @@ extern float g_cameraAimingOffsetLerpScale;
 
 extern string g_font;
 extern float g_fontsize;
+extern TTF_Font* g_ttf_font;
 extern float g_minifontsize;
 extern float g_transitionSpeed;
 
@@ -835,6 +844,7 @@ extern tile *cueIcon;
 extern tile *waypointIcon;
 extern tile *poiIcon;
 extern tile *doorIcon;
+extern tile *ddoorIcon;
 extern tile *triggerIcon;
 extern textbox *nodeInfoText;
 extern string entstring;
@@ -876,6 +886,27 @@ extern float g_wAcc;
 extern SDL_Texture* g_wSpec;
 
 extern vector<mapCollision*> g_lt_collisions;
+extern vector<mapCollision*> g_is_collisions;
+
+extern vector<dungeonFloorInfo> g_dungeon;
+extern int g_dungeonIndex;
+
+extern vector<dungeonBehemothInfo> g_dungeonBehemoths;
+extern vector<mapObject*> g_dungeonPersistentMOs;
+extern vector<string> g_dungeonOneFloors;
+extern vector<string> g_dungeonTwoFloors;
+extern vector<string> g_dungeonThreeFloors;
+extern vector<string> g_dungeonRareFloors;
+extern vector<string> g_dungeonSpecialFloors;
+extern int g_dungeonDarkEffectDelta;
+extern int g_dungeonDarkEffect;
+extern bool g_dungeonDoorActivated;
+
+extern bool g_dungeonSystemOn;
+extern bool g_noScreenWipe;
+
+extern Mix_Music* g_dungeonMusic;
+extern Mix_Music* g_chaseMusic;
 
 bool fileExists(const std::string &name);
 
@@ -922,6 +953,8 @@ bool replaceString(std::string &str, const std::string &from, const std::string 
 int yesNoPrompt(string msg);
 
 int rng(int min, int max);
+
+float frng(float min, float max);
 
 void hurtProtag(int dmg);
 

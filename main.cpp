@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 #include "physfs.h"
 
@@ -29,6 +30,7 @@ void toggleFullscreen();
 
 void protagMakesNoise();
 
+void dungeonFlash();
 
 int WinMain()
 {
@@ -62,19 +64,28 @@ int WinMain()
   string currentDirectory = getCurrentDir();
   PHYSFS_mount(currentDirectory.c_str(), "/", 1);
 
+//  PHYSFS_mount("resources/engine.a", "", 0);
+//  PHYSFS_mount("resources/maps.a", "", 0);
+//  PHYSFS_mount("resources/static.a", "", 0);
+//  PHYSFS_mount("resources/levelsequence.a", "", 0);
+  PHYSFS_mount("base.a", "", 0);
+  PHYSFS_mount("update_1.a", "", 0);
+  PHYSFS_mount("update_2.a", "", 0);
+
   // for brightness
   // reuse texture for transition, cuz why not
-  SDL_Texture* brightness_a = loadTexture(renderer, "engine/transition.qoi");
+  SDL_Texture* brightness_a = loadTexture(renderer, "resources/engine/transition.qoi");
 
-  SDL_Texture* brightness_b_s = loadTexture(renderer, "engine/black-diffuse.qoi");
+  SDL_Texture* brightness_b_s = loadTexture(renderer, "resources/engine/black-diffuse.qoi");
 
   // entities will be made here so have them set as created during loadingtime and not arbitrarily during play
   g_loadingATM = 1;
 
+
   // set global shadow-texture
 
-  g_shadowTexture = loadTexture(renderer, "engine/shadow.qoi");
-  g_shadowTextureAlternate = loadTexture(renderer, "engine/shadow-square.qoi");
+  g_shadowTexture = loadTexture(renderer, "resources/engine/shadow.qoi");
+  g_shadowTextureAlternate = loadTexture(renderer, "resources/engine/shadow-square.qoi");
 
   // narrarator holds scripts caused by things like triggers
   narrarator = new entity(renderer, "engine/sp-deity");
@@ -90,7 +101,7 @@ int WinMain()
   g_backpackNarrarator->persistentHidden = 1;
 
   // for transition
-  SDL_Surface* transitionSurface = loadSurface("engine/transition.qoi");
+  SDL_Surface* transitionSurface = loadSurface("resources/engine/transition.qoi");
 
   const int transitionImageWidth = 300;
   const int transitionImageHeight = 300;
@@ -104,7 +115,8 @@ int WinMain()
   float transitionDelta = transitionImageHeight;
 
   // font
-  g_font = "engine/fonts/Rubik-Bold.ttf";
+  g_font = "resources/engine/fonts/Rubik-Bold.ttf";
+  g_ttf_font = loadFont(g_font, 60);
 
   // setup UI
   adventureUIManager = new adventureUI(renderer);
@@ -122,7 +134,7 @@ int WinMain()
     // done once, because textboxes aren't cleared during clear_map()
     nodeInfoText = new textbox(renderer, "",  g_fontsize, 0, 0, WIN_WIDTH);
     g_config = "edit";
-    nodeDebug = loadTexture(renderer, "engine/walkerYellow.qoi");
+    nodeDebug = loadTexture(renderer, "resources/engine/walkerYellow.qoi");
   }
 
   // set bindings from file
@@ -195,7 +207,7 @@ int WinMain()
   valuestr = line.substr(line.find(' '), line.length());
   value = stoi(valuestr);
   g_brightness = value;
-  g_shade = loadTexture(renderer, "engine/black-diffuse.qoi");
+  g_shade = loadTexture(renderer, "resources/engine/black-diffuse.qoi");
   SDL_SetWindowBrightness(window, g_brightness/100.0 );
   SDL_SetTextureAlphaMod(g_shade, 0);
 
@@ -270,21 +282,21 @@ int WinMain()
 
   //for water effect
   g_wPixels = new Uint32[g_wNumPixels];
-  g_wDistort = loadSurface("engine/waterRipple.qoi");
-  g_wSpec = loadTexture(renderer, "engine/specular.qoi");
+  g_wDistort = loadSurface("resources/engine/waterRipple.qoi");
+  g_wSpec = loadTexture(renderer, "resources/engine/specular.qoi");
   SDL_SetTextureBlendMode(g_wSpec, SDL_BLENDMODE_ADD);
 
   // init static resources
 
-  g_menu_manip_sound = loadWav("static/sounds/manip-menu.wav");
+  g_menu_manip_sound = loadWav("resources/static/sounds/manip-menu.wav");
 
-  g_pelletCollectSound = loadWav("static/sounds/pellet.wav");
+  g_pelletCollectSound = loadWav("resources/static/sounds/pellet.wav");
 
-  g_spiketrapSound = loadWav("static/sounds/spiketrap.wav");
+  g_spiketrapSound = loadWav("resources/static/sounds/spiketrap.wav");
 
-  g_bladetrapSound = loadWav("static/sounds/bladetrap.wav");
+  g_bladetrapSound = loadWav("resources/static/sounds/bladetrap.wav");
 
-  g_smarttrapSound = loadWav("static/sounds/smarttrap.wav");
+  g_smarttrapSound = loadWav("resources/static/sounds/smarttrap.wav");
 
   g_spurl_entity = new entity(renderer, "common/spurl");
   g_spurl_entity->msPerFrame = 75;
@@ -293,23 +305,23 @@ int WinMain()
   g_chain_entity->msPerFrame = 75;
 
   if(devMode) {
-    g_dijkstraDebugRed = new ui(renderer, "engine/walkerRed.qoi", 0,0,32,32, 3);
+    g_dijkstraDebugRed = new ui(renderer, "resources/engine/walkerRed.qoi", 0,0,32,32, 3);
     g_dijkstraDebugRed->persistent = 1;
     g_dijkstraDebugRed->worldspace = 1;
-    g_dijkstraDebugBlue = new ui(renderer, "engine/walkerBlue.qoi", 0,0,32,32, 3);
+    g_dijkstraDebugBlue = new ui(renderer, "resources/engine/walkerBlue.qoi", 0,0,32,32, 3);
     g_dijkstraDebugBlue->persistent = 1;
     g_dijkstraDebugBlue->worldspace = 1;
-    g_dijkstraDebugYellow = new ui(renderer, "engine/walkerYellow.qoi", 0,0,32,32, 3);
+    g_dijkstraDebugYellow = new ui(renderer, "resources/engine/walkerYellow.qoi", 0,0,32,32, 3);
     g_dijkstraDebugYellow->persistent = 1;
     g_dijkstraDebugYellow->worldspace = 1;
   }
 
-  M("Got here");
   //init user keyboard
   //render each character of the alphabet to a texture
-  TTF_Font* alphabetfont = 0;
-  alphabetfont = TTF_OpenFont(g_font.c_str(), 60 * g_fontsize);
-  //alphabetfont = loadFont(g_font, 60*g_fontsize);
+  //TTF_Font* alphabetfont = 0;
+  //alphabetfont = TTF_OpenFont(g_font.c_str(), 60 * g_fontsize);
+  //TTF_Font* alphabetfont = loadFont(g_font, 60*g_fontsize, );
+  TTF_Font* alphabetfont = g_ttf_font;
   SDL_Surface* textsurface = 0;
   SDL_Texture* texttexture = 0;
   g_alphabet_textures = &g_alphabetLower_textures;
@@ -319,15 +331,15 @@ int WinMain()
     bool special = 0;
     if(letter == ";") {
       //load custom enter graphic
-      textsurface = loadSurface("static/ui/menu_confirm.qoi");
+      textsurface = loadSurface("resources/static/ui/menu_confirm.qoi");
       special = 1;
     } else if (letter == "<") {
       //load custom backspace graphic
-      textsurface = loadSurface("static/ui/menu_back.qoi");
+      textsurface = loadSurface("resources/static/ui/menu_back.qoi");
       special = 1;
     } else if (letter == "^") {
       //load custom capslock graphic
-      textsurface = loadSurface("static/ui/menu_upper_empty.qoi");
+      textsurface = loadSurface("resources/static/ui/menu_upper_empty.qoi");
       special = 1;
     } else {
       textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
@@ -354,15 +366,15 @@ int WinMain()
     bool special = 0;
     if(letter == ";") {
       //load custom enter graphic
-      textsurface = loadSurface("static/ui/menu_confirm.qoi");
+      textsurface = loadSurface("resources/static/ui/menu_confirm.qoi");
       special = 1;
     } else if (letter == "<") {
       //load custom backspace graphic
-      textsurface = loadSurface("static/ui/menu_back.qoi");
+      textsurface = loadSurface("resources/static/ui/menu_back.qoi");
       special = 1;
     } else if (letter == "^") {
       //load custom capslock graphic
-      textsurface = loadSurface("static/ui/menu_upper.qoi");
+      textsurface = loadSurface("resources/static/ui/menu_upper.qoi");
       special = 1;
     } else {
       textsurface = TTF_RenderText_Blended_Wrapped(alphabetfont, letter.c_str(), g_textcolor, 70);
@@ -412,7 +424,6 @@ int WinMain()
     SDL_FreeSurface(textsurface);
   }
 
-  TTF_CloseFont(alphabetfont);
   g_fancybox = new fancybox();
   g_fancybox->bounds.x = 0.05;
   g_fancybox->bounds.x = 0.7;
@@ -425,10 +436,10 @@ int WinMain()
   g_escapeUI = new escapeUI();
   
   { //load static textures
-    string loadSTR = "levelsequence/icons/locked.qoi";
+    string loadSTR = "resources/levelsequence/icons/locked.qoi";
     g_locked_level_texture = loadTexture(renderer, loadSTR);
 
-    loadSTR = "static/ui/loadout_highlight.qoi";
+    loadSTR = "resources/static/ui/loadout_highlight.qoi";
     g_loadoutHighlightTexture = loadTexture(renderer, loadSTR);
   }
 
@@ -436,12 +447,15 @@ int WinMain()
   g_levelSequence = new levelSequence(g_levelSequenceName, renderer);
 
   //for dlc/custom content, add extra levels from any file that might be there
-  for(const auto & entry : filesystem::directory_iterator("levelsequence/")) {
-    if(entry.path() != "levelsequence/" + g_levelSequenceName + ".txt" && entry.path() != "levelsequence/icons") {
-      string entryStr = entry.path().string();
-      g_levelSequence->addLevels(entryStr);
+  char ** entries = PHYSFS_enumerateFiles("resources/levelsequence");
+  char **i;
+  for(i = entries; *i != NULL; i++) {
+    string fn(*i);
+    if(fn.find(".txt") != string::npos){
+      g_levelSequence->addLevels(*i);
     }
   }
+  PHYSFS_freeList(entries);
 
   //This is used to call scripts triggered by pellet goals
   g_pelletGoalScriptCaller = new adventureUI(renderer, 1);
@@ -463,7 +477,7 @@ int WinMain()
     protag->x = 100000;
     protag->y = 100000;
 
-    filename = "maps/crypt/g.map"; //temporary
+    filename = "resources/maps/crypt/g.map"; //temporary
     g_mapdir = "crypt"; //temporary
     
     load_map(renderer, filename,"a");
@@ -478,14 +492,14 @@ int WinMain()
     SDL_ShowCursor(0);
     loadSave();
     g_inTitleScreen = 1;
-    load_map(renderer, "maps/sp-title/g.map","a");
+    load_map(renderer, "resources/maps/sp-title/g.map","a");
     adventureUIManager->hideBackpackUI();
     adventureUIManager->hideHUD();
     adventureUIManager->hideScoreUI();
     adventureUIManager->hideTalkingUI();
   }
 
-  inventoryMarker = new ui(renderer, "static/ui/finger_selector_angled.qoi", 0, 0, 0.1, 0.1, 2);
+  inventoryMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", 0, 0, 0.1, 0.1, 2);
   inventoryMarker->show = 0;
   inventoryMarker->persistent = 1;
   inventoryMarker->renderOverText = 1;
@@ -512,14 +526,14 @@ int WinMain()
 
   // This stuff is for the FoW mechanic
   // engine/resolution.qoi has resolution 1920 x 1200
-  SDL_Surface *SurfaceA = loadSurface("engine/resolution.qoi");
+  SDL_Surface *SurfaceA = loadSurface("resources/engine/resolution.qoi");
 
   TextureA = SDL_CreateTextureFromSurface(renderer, SurfaceA);
   TextureD = SDL_CreateTextureFromSurface(renderer, SurfaceA);
 
   SDL_FreeSurface(SurfaceA);
 
-  blackbarTexture = loadTexture(renderer, "engine/black-diffuse.qoi");
+  blackbarTexture = loadTexture(renderer, "resources/engine/black-diffuse.qoi");
 
 
   result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
@@ -637,31 +651,31 @@ int WinMain()
   canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
   //canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500); seems to be unused
 
-  light = loadTexture(renderer, "engine/light.qoi");
+  light = loadTexture(renderer, "resources/engine/light.qoi");
 
-  lighta = loadTexture(renderer, "engine/lighta.qoi");
+  lighta = loadTexture(renderer, "resources/engine/lighta.qoi");
 
-  lightb = loadTexture(renderer, "engine/lightb.qoi");
+  lightb = loadTexture(renderer, "resources/engine/lightb.qoi");
 
-  lightc = loadTexture(renderer, "engine/lightc.qoi");
+  lightc = loadTexture(renderer, "resources/engine/lightc.qoi");
 
-  lightd = loadTexture(renderer, "engine/lightd.qoi");
+  lightd = loadTexture(renderer, "resources/engine/lightd.qoi");
 
-  lightaro = loadTexture(renderer, "engine/lightaro.qoi");
+  lightaro = loadTexture(renderer, "resources/engine/lightaro.qoi");
 
-  lightbro = loadTexture(renderer, "engine/lightbro.qoi");
+  lightbro = loadTexture(renderer, "resources/engine/lightbro.qoi");
 
-  lightcro = loadTexture(renderer, "engine/lightcro.qoi");
+  lightcro = loadTexture(renderer, "resources/engine/lightcro.qoi");
 
-  lightdro = loadTexture(renderer, "engine/lightdro.qoi");
+  lightdro = loadTexture(renderer, "resources/engine/lightdro.qoi");
 
-  lightari = loadTexture(renderer, "engine/lightari.qoi");
+  lightari = loadTexture(renderer, "resources/engine/lightari.qoi");
 
-  lightbri = loadTexture(renderer, "engine/lightbri.qoi");
+  lightbri = loadTexture(renderer, "resources/engine/lightbri.qoi");
 
-  lightcri = loadTexture(renderer, "engine/lightcri.qoi");
+  lightcri = loadTexture(renderer, "resources/engine/lightcri.qoi");
 
-  lightdri = loadTexture(renderer, "engine/lightdri.qoi");
+  lightdri = loadTexture(renderer, "resources/engine/lightdri.qoi");
 
   g_loadingATM = 0;
 
@@ -1586,8 +1600,6 @@ int WinMain()
                   g_shc[i][j] += 4 * t->style;
                 }
 
-                // g_fc[i][j] += g_tile_fade_speed * (elapsed/60); if (g_fc[i][j] >255) {g_fc[i][j] = 255;}
-                // g_sc[i][j] -= g_tile_fade_speed * (elapsed/60); if (g_sc[i][j] < 0) {g_sc[i][j] = 0;}
                 break;
               }
             }
@@ -2347,6 +2359,15 @@ int WinMain()
         nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       }
 
+      for (long long unsigned int i = 0; i < g_dungeonDoors.size(); i++)
+      {
+        SDL_Rect obj = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)((g_dungeonDoors[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj);
+        // the wall
+        SDL_Rect obj2 = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)(((128) * XtoZ * g_camera.zoom) + (g_dungeonDoors[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj2);
+      }
+
 
       for (long long unsigned int i = 0; i < g_triggers.size(); i++)
       {
@@ -2398,7 +2419,8 @@ int WinMain()
 
         if(RectOverlap(obj, cam))
         {
-          g_lt_collisions.push_back(x);
+          g_is_collisions.push_back(x);
+
         }
 
       }
@@ -3103,6 +3125,14 @@ int WinMain()
     g_protagIsBeingDetectedBySmell = 0; //this will be set in the entity update loop
     g_protagIsBeingDetectedBySight = 0;
 
+    if(g_dungeonDoorActivated == 0) {
+      g_dungeonDarkEffectDelta = -16;
+    } else { 
+      g_dungeonDarkEffectDelta = 16;
+      elapsed = 0;
+
+    }
+
 
     // ENTITY MOVEMENT (ENTITY UPDATE)
     // dont update movement while transitioning
@@ -3127,7 +3157,7 @@ int WinMain()
           // clear level
 
           // we will now clear the map, so we will save the door's destination map as a string
-          const string savemap = "maps/" + taken->to_map + ".map";
+          const string savemap = "resources/maps/" + taken->to_map + ".map";
           const string dest_waypoint = taken->to_point;
 
           // render this frame
@@ -3194,6 +3224,25 @@ int WinMain()
 
       }
     }
+
+    //dungeon door flash
+    for(auto x : g_dungeonDoors) {
+      rect b = {(int)x->x, (int)x->y, (int)x->width, (int)x->height};
+      if(RectOverlap(b, protag->getMovedBounds())) {
+        g_dungeonDarkEffectDelta = 16;
+      }
+    }
+
+    g_dungeonDarkEffect += g_dungeonDarkEffectDelta;
+    if(g_dungeonDarkEffect > 255) { g_dungeonDarkEffect = 255;}
+    if(g_dungeonDarkEffect < 0) { g_dungeonDarkEffect = 0;}
+    if(g_dungeonDarkEffect == 255) {
+      dungeonFlash();
+    }
+
+    
+    //dungeon flash effect
+    SDL_SetTextureAlphaMod(g_shade, g_dungeonDarkEffect);
 
     //familiars
     if(protag != nullptr) {
@@ -3405,7 +3454,7 @@ int WinMain()
               string loadstr;
               string s = x.second;
           
-              loadstr = "maps/" + g_map + "/scripts/" + s + ".txt";
+              loadstr = "resources/maps/" + g_map + "/scripts/" + s + ".txt";
               const char *plik = loadstr.c_str();
   
               stream.open(plik);
@@ -3552,7 +3601,7 @@ int WinMain()
       {
         clear_map(g_camera);
         SDL_Delay(5000);
-        load_map(renderer, "maps/sp-death/sp-death.map", "a");
+        load_map(renderer, "resources/maps/sp-death/sp-death.map", "a");
       }
       protag->hp = 0.1;
       // if(canSwitchOffDevMode) { init_map_writing(renderer);}
@@ -4930,7 +4979,7 @@ void getInput(float &elapsed)
   
         if(g_escapeUI->positionOfCursor == 1) { //levelselect
           clear_map(g_camera);
-          //load_map(renderer, "maps/base/g.map", "a");
+          //load_map(renderer, "resources/maps/base/g.map", "a");
           //instead of loading the base, open the level-select menu
           g_inventoryUiIsLevelSelect = 1;
           g_inventoryUiIsKeyboard = 0;
@@ -4952,7 +5001,7 @@ void getInput(float &elapsed)
           g_mapdir = "sp-title";
           
 
-          load_map(renderer, "maps/sp-title/g.map","a"); //to menu
+          load_map(renderer, "resources/maps/sp-title/g.map","a"); //to menu
           
         }
 
@@ -5401,19 +5450,145 @@ void getInput(float &elapsed)
     } else {
       //if this level is unlocked, travel to its map
       if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
-  
-        for (long long unsigned int i = 0; i < g_ui.size(); i++)
-        {
-          //g_ui[i]->render(renderer, g_camera);
+
+        string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
+        vector<string> x = splitString(mapName, '/');
+        g_mapdir = x[2];
+
+        //generate the DUNGEON ( :DD )
+        
+        int numFloors = g_levelSequence->levelNodes[inventorySelection]->dungeonFloors;
+
+        if(numFloors > 0){
+          /*
+           * Time to have some structured thought about how this should be done.
+           * I'll keep it basic, but retain some important functionality.
+           * A little bit of "rawness" or "roughness" (e.g., player can be running from a behemoth through
+           * a room which they didn't explore alone, which would be annoying and unfair, lol) is good.
+           * 
+           * But I want this to be simple yet still give me some freedom (some rooms are rarer than others, some rooms
+           * tend to spawn later)
+           *
+           * Maps proceeded with 1_, 2_, 3_, r_, and s_ can be randomly selected to spawn in the dungeon.
+           *
+           * Rooms with 1_ tend to spawn early, 2_'s tend to spawn later, 3_'s tend to spawn in the last third of the level,
+           * r_'s are kinda rare and s_'s are very very rare, and can only spawn if the player will not be chased by a behemoth
+           * in that level (easter eggs)
+           *
+           * See? That should be simple enough to be doable quickly while still mysterious enough and flexible enough for me 
+           * to create many different types of dungeons, including use of the dungeon data params from the levelsequence file
+           * (number of floors, length of a rest sequence, length of a chase sequence, first active floor)
+           *
+           * I'll still have some control over what sort of rooms players see early on and I'll be able to put in some neat secrets
+           * 
+           * start.map is first, and finish.map is last
+           *
+           */
+
+          g_dungeon.clear();
+          g_dungeonIndex = -1;
+          g_dungeonBehemoths.clear();
+          g_dungeonOneFloors.clear();
+          g_dungeonTwoFloors.clear();
+          g_dungeonThreeFloors.clear();
+          g_dungeonRareFloors.clear();
+          g_dungeonSpecialFloors.clear();
+          g_dungeonSystemOn = 1;
+
+          //get list of eligible maps in the mapdir
+          string dir = "resources/maps/" + g_mapdir;
+          char ** entries = PHYSFS_enumerateFiles(dir.c_str());
+          char **i;
+          for(i = entries; *i != NULL; i++) {
+            string fn(*i);
+            if(fn.find(".map") != string::npos && fn.size() > 2 && fn[1] == '-') {
+              if(fn[0] == '1') {g_dungeonOneFloors.push_back(fn);}
+              else if(fn[0] == '2') {g_dungeonTwoFloors.push_back(fn);}
+              else if(fn[0] == '3') {g_dungeonThreeFloors.push_back(fn);}
+              else if(fn[0] == 'r') {g_dungeonRareFloors.push_back(fn);}
+              else if(fn[0] == 's') {g_dungeonSpecialFloors.push_back(fn);}
+            }
+          }
+          PHYSFS_freeList(entries);
+
+          if(g_dungeonTwoFloors.size() == 0) {
+            for(auto x : g_dungeonOneFloors) {
+              g_dungeonTwoFloors.push_back(x);
+            }
+          }
+
+          if(g_dungeonThreeFloors.size() == 0) {
+            for(auto x : g_dungeonOneFloors) {
+              g_dungeonThreeFloors.push_back(x);
+            }
+          }
+
+          //create a dungeon out of 1s, 2s, 3s, and r's. As for s's, those will
+          //replace 3's on-the-fly, since they can only be entered if the player will not
+          //be chased upon entering
+          float oneChance = 8;
+          float twoChance = 4;
+          float threeChance = 1;
+          for(int i = 0; i < numFloors; i++) {
+            float per = i;
+            per /= numFloors;
+            if(per <= 0.33) {
+              oneChance += 1;
+            } else if(per > 0.33 && per <= 0.66) {
+              twoChance += 1;
+              oneChance -= 1;
+            } else if(per > 0.66) {
+              threeChance += 1;
+              twoChance -= 1;
+            }
+
+            float total = oneChance + twoChance + threeChance;
+            float one = oneChance / total;
+            float two = twoChance / total;
+            float three = threeChance / total;
+
+            two += one;
+            three += two;
+
+            float random = frng(0,1);
+            string mapstring = "";
+            char identity = 'a';
+            if(random <= one) {
+              int random = rng(0, g_dungeonOneFloors.size()-1);
+              mapstring = g_dungeonOneFloors.at(random);
+              identity = '1';
+            } else if(random <= two){
+              int random = rng(0, g_dungeonTwoFloors.size()-1);
+              mapstring = g_dungeonTwoFloors.at(random);
+              identity = '2';
+            } else {
+              int random = rng(0, g_dungeonThreeFloors.size()-1);
+              mapstring = g_dungeonThreeFloors.at(random);
+              identity = '3';
+            }
+
+
+            if(frng(0,100) > 98.5) {
+              if(g_dungeonRareFloors.size() > 0) {
+                mapstring = g_dungeonRareFloors.at(rng(0,g_dungeonRareFloors.size()-1));
+                identity = 'r';
+              }
+            }
+
+            dungeonFloorInfo n;
+            n.map = mapstring;
+            n.identity = identity;
+            g_dungeon.push_back(n);
+
+          }
+        } else {
+          g_dungeonSystemOn = 0;
         }
-  
+
         clear_map(g_camera);
   
         inPauseMenu = 0;
   
-        string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
-        vector<string> x = splitString(mapName, '/');
-        g_mapdir = x[1];
   
         //since we are loading a new level, reset the pellets
         g_currentPelletsCollected = 0;
@@ -5428,10 +5603,7 @@ void getInput(float &elapsed)
         protag_is_talking = 0;
         protag_can_move = 1;
         adventureUIManager->showHUD();
-      } else {
-        //play an error noise?
-  
-      }
+      } 
     }
   }
 
@@ -5539,10 +5711,8 @@ void getInput(float &elapsed)
   }
   if (keystate[SDL_SCANCODE_O] && devMode)
   {
-    // enable/disable collisions
+    //make a dungeondoor
     devinput[9] = 1;
-    // mysteriously, this doesn't work anymore
-    // might
   }
   if (keystate[SDL_SCANCODE_KP_5] && devMode)
   {
@@ -5888,4 +6058,40 @@ void protagMakesNoise() {
       }
     }
   }
+}
+
+
+void dungeonFlash() {
+  /*
+   * The goal of dungeonFlash() is to delete all objects created during the last dungeon flash
+   * and load a new map while keeping all of those objects on a list of things to delete for next
+   * time.
+   */
+ 
+  g_dungeonDoorActivated = 0;
+  g_dungeonIndex++;
+  D(g_dungeon.at(g_dungeonIndex).map);
+  g_noScreenWipe = 1;
+  clear_map(g_camera);
+  transition = 0;
+  load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_dungeon.at(g_dungeonIndex).map, "a");
+  protag_is_talking = 0;
+  protag_can_move = 1;
+  g_noScreenWipe = 0;
+  adventureUIManager->showHUD();
+  
+  //reset cookies
+  for(int i = 0; i < g_fogcookies.size(); i++) {
+    for(int j = 0; j < g_fogcookies.size(); j++) {
+      g_fc[i][j] = 0;
+      g_sc[i][j] = 0;
+      g_fogcookies[i][j] = 0;
+    }
+  }
+
+  if (canSwitchOffDevMode)
+  {
+    init_map_writing(renderer);
+  }
+
 }

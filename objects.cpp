@@ -845,8 +845,23 @@ door::door(SDL_Renderer * renderer, const char* fmap, string fto_point,  int fx,
 
 }
 
+
 door::~door() {
   g_doors.erase(remove(g_doors.begin(), g_doors.end(), this), g_doors.end());
+}
+
+dungeonDoor::dungeonDoor(int fx, int fy, int fwidth, int fheight) 
+{
+  x = fx;
+  y = fy;
+  width = fwidth;
+  height = fheight;
+  g_dungeonDoors.push_back(this);
+}
+
+dungeonDoor::~dungeonDoor()
+{
+  g_dungeonDoors.erase(remove(g_dungeonDoors.begin(), g_dungeonDoors.end(), this), g_dungeonDoors.end());
 }
 
 
@@ -1177,35 +1192,15 @@ float attack::sideways(float time) {
 attack::attack(string filename, bool tryToShareTextures) {
   //M("attack()");
   this->name = filename;
-  ifstream file;
   string loadstr;
-  //try to open from local map folder first
+  loadstr = "resources/maps/" + g_mapdir + "/attacks/" + filename + ".atk";
 
-  loadstr = "maps/" + g_mapdir + "/attacks/" + filename + ".atk";
-
-  const char* plik = loadstr.c_str();
-
-  file.open(plik);
-
-  if (!file.is_open()) {
-    //load from global folder
-    loadstr = "static/attacks/" + filename + ".atk";
-    const char* plik = loadstr.c_str();
-
-    file.open(plik);
-
-    if (!file.is_open()) {
-      //just make a default entity
-      string newfile = "static/attacks/default.atk";
-      E("Couldn't find attack file for " + filename);
-      file.open(newfile);
-    }
-  }
+  istringstream file(loadTextAsString(loadstr));
 
   file >> spritename;
 
   string temp;
-  temp = "static/sprites/" + spritename + ".qoi";
+  temp = "resources/static/sprites/" + spritename + ".qoi";
 
 
   //only try to share textures if this isnt an entity
@@ -1286,7 +1281,7 @@ weapon::weapon(string fname, bool tryToShareGraphics) {
   string address;
 
   //local
-  address = "static/weapons/" + name + ".wep";
+  address = "resources/static/weapons/" + name + ".wep";
   
 
   string field = "";
@@ -1438,7 +1433,7 @@ void particle::render(SDL_Renderer* renderer, camera fcamera) {
 effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   name = filename;
   string existSTR;
-  existSTR = "static/effects/" + filename + ".eft";
+  existSTR = "resources/static/effects/" + filename + ".eft";
   ifstream file;
   file.open(existSTR);
   string line;
@@ -1460,7 +1455,7 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
 
 
   if(1) {
-    existSTR = "static/sprites/" + texname + ".qoi";
+    existSTR = "resources/static/sprites/" + texname + ".qoi";
     texture = loadTexture(renderer, existSTR);
   }
 
@@ -2086,7 +2081,7 @@ indexItem::indexItem(string fname, bool fisKeyItem) : name(fname), isKeyItem(fis
   //search worlditems for an item with the same texture
   string lstr;
 
-  lstr = "static/items/" + fname + "-inv.qoi";
+  lstr = "resources/static/items/" + fname + "-inv.qoi";
 
 
   bool storeThis = true;
@@ -2105,7 +2100,7 @@ indexItem::indexItem(string fname, bool fisKeyItem) : name(fname), isKeyItem(fis
   ifstream stream;
 
   //check local dir
-  string loadstr = "static/items/" + fname + ".txt";
+  string loadstr = "resources/static/items/" + fname + ".txt";
 
   vector<string> script = loadText(loadstr);
 
@@ -2553,19 +2548,19 @@ worldsound::worldsound(string filename, int fx, int fy) {
   string loadstr;
   //try to open from local map folder first
 
-  loadstr = "maps/" + g_mapdir + "/worldsounds/" + filename + ".ws";
+  loadstr = "resources/maps/" + g_mapdir + "/worldsounds/" + filename + ".ws";
   const char* plik = loadstr.c_str();
 
   file.open(plik);
 
   if (!file.is_open()) {
-    loadstr = "static/worldsounds/" + filename + ".ws";
+    loadstr = "resources/static/worldsounds/" + filename + ".ws";
     const char* plik = loadstr.c_str();
 
     file.open(plik);
 
     if (!file.is_open()) {
-      string newfile = "static/worldsounds/default.ws";
+      string newfile = "resources/static/worldsounds/default.ws";
       file.open(newfile);
     }
   }
@@ -2573,7 +2568,7 @@ worldsound::worldsound(string filename, int fx, int fy) {
   string temp;
   file >> temp;
   string existSTR;
-  existSTR = "static/sounds/" + g_mapdir + "/" + temp + ".wav";
+  existSTR = "resources/static/sounds/" + g_mapdir + "/" + temp + ".wav";
   
 
 
@@ -2703,22 +2698,20 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   this->name = filename;
 
   string loadstr;
-  //try to open from local map folder first
-
-  loadstr = "static/" + g_mapdir + "/entities/" + filename + ".ent";
-  if(!fileExists(loadstr)) {
-    loadstr = "static/entities/" + filename + ".ent";
-  }
-  D(loadstr);
+  loadstr = "resources/static/entities/" + filename + ".ent";
 
   istringstream file(loadTextAsString(loadstr));
 
   string temp;
   file >> temp;
-  D(temp);
   string spritefilevar;
-  spritefilevar = "static/sprites/" + temp + ".qoi";
+  spritefilevar = "resources/static/sprites/" + temp + ".qoi";
 
+  if(temp == "sp-no-texture") {
+    spritefilevar = "resources/engine/sp-no-texture.qoi";
+  }
+
+  const char* spritefile = spritefilevar.c_str();
   float size;
   string comment;
   file >> comment;
@@ -2910,15 +2903,11 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
 
   string txtfilename = "";
   //open from local folder first
-  if (fileExists("maps/" + g_mapdir + "/scripts/" + filename + ".txt")) {
-    txtfilename = "maps/" + g_mapdir + "/scripts/" + filename + ".txt";
-  } else {
-    txtfilename = "static/scripts/" + filename + ".txt";
-  }
+  txtfilename = "resources/static/scripts/" + filename + ".txt";
   
 
   //load voice
-  string voiceSTR = "static/sounds/voice-normal.wav";
+  string voiceSTR = "resources/static/sounds/voice-normal.wav";
   voice = loadWav(voiceSTR.c_str());
 
   sayings = loadText(txtfilename);
@@ -2942,9 +2931,12 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
     }
 
-    
-    D(name);
-    texture = loadTexture(renderer, spritefilevar);
+    texture = loadTexture(renderer, spritefile);
+    if(texture == nullptr) {
+      E("Error loading texture for entity " + name);
+      D(spritefile);
+
+    }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
   }
@@ -3040,9 +3032,9 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   file >> musicname;
   string fileExistsSTR;
   if(musicname != "0") {
-    fileExistsSTR = "maps/" + g_mapdir + "/music/" + musicname + ".ogg";
+    fileExistsSTR = "resources/maps/" + g_mapdir + "/music/" + musicname + ".ogg";
     if(!fileExists(musicname)) {
-      fileExistsSTR = "static/music/" + musicname + ".ogg";
+      fileExistsSTR = "resources/static/music/" + musicname + ".ogg";
     }
     this->theme = Mix_LoadMUS(fileExistsSTR.c_str());
     g_musicalEntities.push_back(this);
@@ -3081,10 +3073,10 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     contactScriptCaller->talker = this;
 
     string txtfilename = "";
-    if (fileExists("maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt")) {
-      txtfilename = "maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt";
+    if (fileExists("resources/maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt")) {
+      txtfilename = "resources/maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt";
     } else {
-      txtfilename = "static/scripts/" + fieldScript + ".txt";
+      txtfilename = "resources/static/scripts/" + fieldScript + ".txt";
     }
 
     this->contactScript = loadText(txtfilename);
@@ -3141,10 +3133,10 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   if(boardingScriptName != "0") {
     usesBoardingScript = 1;
     string txtfilename = "";
-    if (fileExists("maps/" + g_mapdir + "/scripts/" + boardingScriptName + ".txt")) {
-      txtfilename = "maps/" + g_mapdir + "/scripts/" + boardingScriptName + ".txt";
+    if (fileExists("resources/maps/" + g_mapdir + "/scripts/" + boardingScriptName + ".txt")) {
+      txtfilename = "resources/maps/" + g_mapdir + "/scripts/" + boardingScriptName + ".txt";
     } else {
-      txtfilename = "static/scripts/" + boardingScriptName + ".txt";
+      txtfilename = "resources/static/scripts/" + boardingScriptName + ".txt";
     }
 
     boardingScript = loadText(txtfilename);
@@ -3162,12 +3154,12 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
 
   //load ai-data
   string AIloadstr;
-  if(fileExists("maps/" + g_mapdir + "/ai/" + filename + ".ai")) {
+  if(fileExists("resources/maps/" + g_mapdir + "/ai/" + filename + ".ai")) {
     this->isAI = 1;
-    AIloadstr = "maps/" + g_mapdir + "/ai/" + filename + ".ai";
-  } else if(fileExists("static/ai/"+filename + ".ai")) {
+    AIloadstr = "resources/maps/" + g_mapdir + "/ai/" + filename + ".ai";
+  } else if(fileExists("resources/static/ai/" + filename + ".ai")) {
     this->isAI = 1;
-    AIloadstr = "static/ai/" + filename + ".ai";
+    AIloadstr = "resources/static/ai/" + filename + ".ai";
   }
   if(this->isAI) {
     g_ai.push_back(this);
@@ -3462,7 +3454,7 @@ entity::entity(SDL_Renderer * renderer, int idk,  string texturename) {
   string loadstr;
 
   //load from global folder
-  loadstr = "engine/worlditem.ent";
+  loadstr = "resources/engine/worlditem.ent";
   const char* plik = loadstr.c_str();
 
   file.open(plik);
@@ -3474,10 +3466,10 @@ entity::entity(SDL_Renderer * renderer, int idk,  string texturename) {
   string spritefilevar;
 
   //!!! do something else if there's none, use a generic image or smt
-  spritefilevar = "static/items/" + texturename + ".qoi";
+  spritefilevar = "resources/static/items/" + texturename + ".qoi";
   
 
-  if(onionmode) {spritefilevar = "engine/onion.qoi";}
+  if(onionmode) {spritefilevar = "resources/engine/onion.qoi";}
 
   texture = loadTexture(renderer, spritefilevar);
   //M(spritefilevar );
@@ -6841,11 +6833,20 @@ vector<entity*> gatherEntities(string fname) {
   return ret;
 }
 
-levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, int fmouthStyle) {
+levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, int fmouthStyle, int ffloors, vector<string> fbehemoths, int ffirstfloor, int frestlen, int fchaselen, string fmusic, string fchasemusic) {
   name = p3;
   mapfilename = p4;
   waypointname = p5;
   mouthStyle = fmouthStyle;
+
+  dungeonFloors = ffloors;
+  behemoths = fbehemoths;
+  firstActiveFloor = ffirstfloor;
+  avgRestSequence = frestlen;
+  avgChaseSequence = fchaselen;
+
+  music = fmusic;
+  chasemusic = fchasemusic;
 
   //load graphic
   string lowerName = name;
@@ -6855,7 +6856,7 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, i
   std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), 
       [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } ); //I convinced c++ that e is a number for this uber-efficient line of code
 
-  string loadSTR = "levelsequence/icons/" + lowerName + ".qoi";
+  string loadSTR = "resources/levelsequence/icons/" + lowerName + ".qoi";
 
   sprite = loadTexture(renderer, loadSTR);
 
@@ -6877,14 +6878,14 @@ levelNode::levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, i
   }
 
   if(eyeTexture == nullptr) {
-    string loadSTR = "levelsequence/icons/eyes.qoi";
+    string loadSTR = "resources/levelsequence/icons/eyes.qoi";
     this->eyeTexture = loadTexture(renderer, loadSTR);
   }
 
   if(mouthTexture == nullptr) {
-    string loadSTR = "levelsequence/icons/mouth2.qoi";
+    string loadSTR = "resources/levelsequence/icons/mouth2.qoi";
     if(mouthStyle == 1) {
-      loadSTR = "levelsequence/icons/mouth.qoi";
+      loadSTR = "resources/levelsequence/icons/mouth.qoi";
     }
 
     this->mouthTexture = loadTexture(renderer, loadSTR);
@@ -6913,66 +6914,62 @@ SDL_Rect levelNode::getEyeRect() {
 
 
 levelSequence::levelSequence(string filename, SDL_Renderer * renderer){
-  filename = "levelsequence/" + filename + ".txt";
-  
-//  ifstream file;
-//  file.open(filename.c_str());
-  istringstream file(loadTextAsString(filename));
-
-  string temp;
-  getline(file, temp);
-  
-  string level_name;
-  string map_name;
-  string way_name;
-  getline(file,temp);
-
-  int i = 0;
-  for(;;) {
-
-    getline(file,level_name);
-    getline(file,map_name);
-    getline(file,way_name);
-    map_name = "maps/" + map_name;
-
-    if(file.eof()) {break;}
-
-    bool special = find(g_creepyLocks.begin(), g_creepyLocks.end(), i) != g_creepyLocks.end();
-
-    levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer, special);
-    i++;
-    levelNodes.push_back(newLevelNode);
-    getline(file,temp);
-
-  }
 }
 
 //add levels from a file
 void levelSequence::addLevels(string filename) {
+  filename = "resources/levelsequence/" + filename;
+  
 //  ifstream file;
 //  file.open(filename.c_str());
   istringstream file(loadTextAsString(filename));
 
   string temp;
-  getline(file, temp);
   
   string level_name;
   string map_name;
   string way_name;
-  getline(file,temp);
 
   int i = 0;
   for(;;) {
 
     getline(file,level_name);
+    if(level_name[0] == '-') { break;}
     getline(file,map_name);
     getline(file,way_name);
-    map_name = "maps/" + map_name;
+    level_name.pop_back();
+    map_name.pop_back();
+    way_name.pop_back();
+
+    getline(file, temp);
+    int special = stoi(temp);
+
+    getline(file, temp);
+    int dungeonFloors = stoi(temp);
+
+    getline(file, temp);
+    vector<string> behemoths = splitString(temp, ' ');
+
+    getline(file, temp);
+    int firstActiveFloor = stoi(temp);
+    
+    getline(file, temp);
+    int avgRestSequence = stoi(temp);
+
+    getline(file, temp);
+    int avgChaseSequence = stoi(temp);
+
+    getline(file,temp);
+    string music = temp;
+
+    getline(file,temp);
+    string chasemusic = temp;
+
+    map_name = "resources/maps/" + map_name;
 
     if(file.eof()) {break;}
 
-    bool special = find(g_creepyLocks.begin(), g_creepyLocks.end(), i) != g_creepyLocks.end();
-    levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer, special);
+    levelNode* newLevelNode = new levelNode(level_name, map_name, way_name, renderer, special, dungeonFloors, behemoths, firstActiveFloor, avgRestSequence, avgChaseSequence, music, chasemusic);
     i++;
     levelNodes.push_back(newLevelNode);
     getline(file,temp);
@@ -6988,7 +6985,7 @@ usable::usable(string fname) {
   internalName = fname;
   string loadstr;
 
-  string filepath = "static/usables/" + fname + "/";
+  string filepath = "resources/static/usables/" + fname + "/";
 
   //open specs file
   loadstr = filepath + "specs_" + fname + ".txt";
@@ -7021,13 +7018,9 @@ usable::usable(string fname) {
   getline(file, aboutTxt);
   //getline(file, empty);
 
-  //file.close();
 
   //load sprite
   loadstr = filepath + "img_" + fname + ".qoi";
-
-
-  if(onionmode) {loadstr = "engine/onion.qoi";}
 
   texture = loadTexture(renderer, loadstr);
 
@@ -7451,24 +7444,18 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer,
         }
       }
     } else {
-//      for (long long unsigned int j = 0; j < g_impliedSlopes.size(); j++) {
-//        if(RectOverlap(a, g_impliedSlopes[j]->bounds)) {
-//          lineTraceX = a.x + a.width/2;
-//          lineTraceY = a.y + a.height/2;
-//          return false;
-//        }
-//      }
+
+      for (long long unsigned int j = 0; j < g_is_collisions.size(); j++) {
+        if(RectOverlap(a, g_is_collisions[j]->bounds)) {
+          lineTraceX = a.x + a.width/2;
+          lineTraceY = a.y + a.height/2;
+          return false;
+        }
+      }
 
     }
 
 
-//    for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++) {
-//      if(RectOverlap(a, g_boxs[layer][j]->bounds)) {
-//        lineTraceX = a.x + a.width/2;
-//        lineTraceY = a.y + a.height/2;
-//        return false;
-//      }
-//    }
 
     for (long long unsigned int j = 0; j < g_lt_collisions.size(); j++) {
       if(RectOverlap(a, g_lt_collisions[j]->bounds)) {
@@ -7497,14 +7484,11 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer,
 
 textbox::textbox(SDL_Renderer* renderer, const char* fcontent, float size, float fx, float fy, float fwidth) {
   //M("textbox()" );
-  if(font != NULL) {
-    TTF_CloseFont(font);
-  }
-  font = TTF_OpenFont(g_font.c_str(), size);
   fontsize = size;
   content = fcontent;
+  font = loadFont(g_font, size);
 
-  textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
+  textsurface = TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
 
   int texW = 0;
@@ -7657,10 +7641,8 @@ void textbox::updateText(string content, float size, float fwidth, SDL_Color fco
   if(size < 0) { //easy way to preserve fontsize
     size = fontsize;
   }
-  TTF_CloseFont(font);
   SDL_DestroyTexture(texttexture);
   SDL_FreeSurface(textsurface);
-  font = TTF_OpenFont(fontstr.c_str(), size);
   textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), fcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
   int texW = 0;
@@ -7889,14 +7871,10 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
 musicNode::musicNode(string fileaddress, int fx, int fy) {
   name = fileaddress;
 
-  string temp = "maps/" + g_mapdir + "/music/" + fileaddress + ".ogg";
-  if(!fileExists(temp)) {
-    temp = "static/music/" + fileaddress + ".ogg";
-  }
+  string temp = "resources/static/music/" + fileaddress + ".ogg";
 
-
-
-  blip = Mix_LoadMUS(temp.c_str());
+  //blip = Mix_LoadMUS(temp.c_str());
+  blip = loadMusic(temp);
   x = fx;
   y = fy;
   g_musicNodes.push_back(this);
@@ -7911,7 +7889,7 @@ musicNode::~musicNode() {
 cueSound::cueSound(string fileaddress, int fx, int fy, int fradius) {
   name = fileaddress;
   string existSTR;
-  existSTR = "static/sounds/" + fileaddress + ".wav";
+  existSTR = "resources/static/sounds/" + fileaddress + ".wav";
   blip = loadWav(existSTR.c_str());
   x = fx;
   y = fy;
@@ -8019,7 +7997,7 @@ trigger::trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheigh
   string loadstr;
   //try to open from local map folder first
 
-  loadstr = "maps/" + g_mapdir + "/" + fbinding + ".txt";
+  loadstr = "resources/maps/" + g_mapdir + "/" + fbinding + ".txt";
   const char* plik = loadstr.c_str();
 
   stream.open(plik);
@@ -8074,7 +8052,7 @@ listener::listener(string fname, int fblock, int fcondition, string fbinding, in
   string loadstr;
   //try to open from local map folder first
 
-  loadstr = "maps/" + g_map + "/" + fbinding + ".event";
+  loadstr = "resources/maps/" + g_map + "/" + fbinding + ".event";
   const char* plik = loadstr.c_str();
 
   stream.open(plik);
@@ -8118,7 +8096,7 @@ int listener::update() {
 
 escapeUI::escapeUI() {
 
-  ninePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
+  ninePatch = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
   ninePatch->patchwidth = 213;
   ninePatch->patchscale = 0.4;
   ninePatch->is9patch = true;
@@ -8126,14 +8104,14 @@ escapeUI::escapeUI() {
   ninePatch->show = 1;
   ninePatch->priority = 2;
 
-  handMarker = new ui(renderer, "static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
+  handMarker = new ui(renderer, "resources/static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
   handMarker->persistent = 1;
   handMarker->show = 1;
   handMarker->priority = 3;
   handMarker->heightFromWidthFactor = 1;
   handMarker->renderOverText = 1;
 
-  fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
+  fingerMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
   fingerMarker->persistent = 1;
   fingerMarker->show = 1;
   fingerMarker->priority = 3;
@@ -8151,7 +8129,7 @@ escapeUI::escapeUI() {
   numLines = optionStrings.size();
   float spacing = (yEnd - yStart) / (numLines);
 
-//    backButton = new ui(renderer, "static/ui/menu_back.qoi", bbXStart, bbYStart, bbWidth, 1, 2);
+//    backButton = new ui(renderer, "resources/static/ui/menu_back.qoi", bbXStart, bbYStart, bbWidth, 1, 2);
 //    backButton->heightFromWidthFactor = 1;
 //    backButton->shrinkPercent = 0.03;
 //    backButton->persistent = 1;
@@ -8159,7 +8137,7 @@ escapeUI::escapeUI() {
 //    backButton->priority = 1;
 //    backButton->dropshadow = 1;
 //
-//    bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", bbXStart, bbYStart, bbWidth, 1, 0);
+//    bbNinePatch = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", bbXStart, bbYStart, bbWidth, 1, 0);
 //    bbNinePatch->patchwidth = 213;
 //    bbNinePatch->patchscale = 0.4;
 //    bbNinePatch->is9patch = true;
@@ -8250,7 +8228,7 @@ void clear_map(camera& cameraToReset) {
   }
 
   adventureUIManager->crosshair->show = 0;
-  {
+  if(!g_noScreenWipe){
 
     //SDL_GL_SetSwapInterval(0);
     bool cont = false;
@@ -8262,7 +8240,7 @@ void clear_map(camera& cameraToReset) {
     transitionMinFrametime = 1/mframes * 1000;
 
 
-    SDL_Surface* transitionSurface = loadSurface("engine/transition.qoi");
+    SDL_Surface* transitionSurface = loadSurface("resources/engine/transition.qoi");
 
     int imageWidth = transitionSurface->w;
     int imageHeight = transitionSurface->h;
@@ -8908,6 +8886,11 @@ void clear_map(camera& cameraToReset) {
     delete g_doors[0];
   }
 
+  size = (int)g_dungeonDoors.size();
+  for(int i = 0; i < size; i++) {
+    delete g_dungeonDoors[0];
+  }
+
   size = (int)g_triggers.size();
   for(int i = 0; i < size; i++) {
     delete g_triggers[0];
@@ -9069,7 +9052,7 @@ worldItem::~worldItem() {
 
 settingsUI::settingsUI() {
 
-  ninePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
+  ninePatch = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", xStart, yStart, xEnd-xStart + 0.05, yEnd-yStart + 0.05, 0);
   ninePatch->patchwidth = 213;
   ninePatch->patchscale = 0.4;
   ninePatch->is9patch = true;
@@ -9077,14 +9060,14 @@ settingsUI::settingsUI() {
   ninePatch->show = 1;
   ninePatch->priority = 0;
 
-  handMarker = new ui(renderer, "static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
+  handMarker = new ui(renderer, "resources/static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
   handMarker->persistent = 1;
   handMarker->show = 1;
   handMarker->priority = 3;
   handMarker->heightFromWidthFactor = 1;
   handMarker->renderOverText = 1;
 
-  fingerMarker = new ui(renderer, "static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
+  fingerMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
   fingerMarker->persistent = 1;
   fingerMarker->show = 1;
   fingerMarker->priority = 3;
@@ -9111,7 +9094,7 @@ settingsUI::settingsUI() {
   numLines = optionStrings.size();
   float spacing = (yEnd - yStart) / (numLines);
 
-  backButton = new ui(renderer, "static/ui/menu_back.qoi", bbXStart, bbYStart, bbWidth, 1, 2);
+  backButton = new ui(renderer, "resources/static/ui/menu_back.qoi", bbXStart, bbYStart, bbWidth, 1, 2);
   backButton->heightFromWidthFactor = 1;
   backButton->shrinkPercent = 0.03;
   backButton->persistent = 1;
@@ -9119,7 +9102,7 @@ settingsUI::settingsUI() {
   backButton->priority = 1;
   backButton->dropshadow = 1;
 
-  bbNinePatch = new ui(renderer, "static/ui/menu9patchblack.qoi", bbXStart, bbYStart, bbWidth, 1, 0);
+  bbNinePatch = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", bbXStart, bbYStart, bbWidth, 1, 0);
   bbNinePatch->patchwidth = 213;
   bbNinePatch->patchscale = 0.4;
   bbNinePatch->is9patch = true;
@@ -9312,20 +9295,20 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 {
   this->light = plight;
   if(!light) {
-    talkingBox = new ui(renderer, "static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
+    talkingBox = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
     talkingBox->patchwidth = 213;
     talkingBox->patchscale = 0.4;
     talkingBox->is9patch = true;
     talkingBox->persistent = true;
 
-    dialogProceedIndicator = new ui(renderer, "static/ui/dialog_proceed.qoi", 0.92, 0.88, 0.05, 1, 0);
+    dialogProceedIndicator = new ui(renderer, "resources/static/ui/dialog_proceed.qoi", 0.92, 0.88, 0.05, 1, 0);
     dialogProceedIndicator->heightFromWidthFactor = 1;
     dialogProceedIndicator->persistent = true;
     dialogProceedIndicator->priority = 8;
     dialogProceedIndicator->dropshadow = 1;
     
 
-    // talkingBoxTexture = new ui(renderer, "static/ui/ui-background.qoi", 0.1, 0.45, 0.9, 0.25, 0);
+    // talkingBoxTexture = new ui(renderer, "resources/static/ui/ui-background.qoi", 0.1, 0.45, 0.9, 0.25, 0);
     // talkingBoxTexture->persistent = true;
     /// SDL_SetTextureBlendMode(talkingBoxTexture->texture, SDL_BLENDMODE_ADD);
 
@@ -9374,21 +9357,21 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     //systemClock->show = 0;
 
 
-    inventoryA = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
+    inventoryA = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.01, 0.01, 0.98, 0.75 - 0.01, 1);
     inventoryA->is9patch = true;
     inventoryA->patchwidth = 213;
     inventoryA->patchscale = 0.4;
     inventoryA->persistent = true;
     inventoryA->show = 0;
 
-    inventoryB = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
+    inventoryB = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.01, 0.75 + 0.01, 0.98, 0.25 - 0.02, 1);
     inventoryB->is9patch = true;
     inventoryB->patchwidth = 213;
     inventoryB->patchscale = 0.4;
     inventoryB->persistent = true;
     inventoryB->priority = -4;
 
-    crosshair = new ui(renderer, "static/ui/crosshair.qoi", 0, 0, 0.05, 0.05, -15);
+    crosshair = new ui(renderer, "resources/static/ui/crosshair.qoi", 0, 0, 0.05, 0.05, -15);
     crosshair->persistent = 1;
     crosshair->heightFromWidthFactor = 1;
     crosshair->show = 0;
@@ -9397,7 +9380,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     crosshair->frameheight = 128;
     crosshair->priority = -5; //crosshair goes ontop usable icons
     
-    b0_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+    b0_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b0_element->persistent = 1;
     b0_element->heightFromWidthFactor = 1;
     b0_element->show = 0;
@@ -9406,7 +9389,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b0_element->frameheight = 128;
     b0_element->priority = -5; //crosshair goes ontop usable icons
 
-    b1_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+    b1_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b1_element->persistent = 1;
     b1_element->heightFromWidthFactor = 1;
     b1_element->show = 0;
@@ -9417,7 +9400,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b1_element->priority = -5; //crosshair goes ontop usable icons
 
 
-    b2_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+    b2_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b2_element->persistent = 1;
     b2_element->heightFromWidthFactor = 1;
     b2_element->show = 0;
@@ -9427,7 +9410,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b2_element->frameheight = 128;
     b2_element->priority = -5; //crosshair goes ontop usable icons
 
-    b3_element = new ui(renderer, "static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+    b3_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
     b3_element->persistent = 1;
     b3_element->heightFromWidthFactor = 1;
     b3_element->show = 0;
@@ -9437,13 +9420,13 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b3_element->frameheight = 128;
     b3_element->priority = -5; //crosshair goes ontop usable icons
     
-    hearingDetectable = new ui(renderer, "static/ui/detection-hearing.qoi", 0.85, 0.05, 0.1, 1, -10);
+    hearingDetectable = new ui(renderer, "resources/static/ui/detection-hearing.qoi", 0.85, 0.05, 0.1, 1, -10);
     hearingDetectable->persistent = 1;
     hearingDetectable->heightFromWidthFactor = 1.3392;
     hearingDetectable->show = 1;
     hearingDetectable->priority = -3;
 
-    seeingDetectable = new ui(renderer, "static/ui/detection-seeing.qoi", 0.85, 0.075, 0.1, 1, -10);
+    seeingDetectable = new ui(renderer, "resources/static/ui/detection-seeing.qoi", 0.85, 0.075, 0.1, 1, -10);
     seeingDetectable->persistent = 1;
     seeingDetectable->heightFromWidthFactor = 1;
     seeingDetectable->xframes = 8;
@@ -9514,7 +9497,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 
 void adventureUI::initFullUI() {
 
-//    tastePicture = new ui(renderer, "static/ui/taste.qoi", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
+//    tastePicture = new ui(renderer, "resources/static/ui/taste.qoi", 0.2 + 0.01, 1-0.1, 0.05, 1, -15);
 //    tastePicture->persistent = 1;
 //    tastePicture->heightFromWidthFactor = 1;
 //    tastePicture->show = 1;
@@ -9529,7 +9512,7 @@ void adventureUI::initFullUI() {
   adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
   adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
 
-//    hungerPicture = new ui(renderer, "static/ui/hunger.qoi", 0.8, 0.6, 0.25, 1, -15);
+//    hungerPicture = new ui(renderer, "resources/static/ui/hunger.qoi", 0.8, 0.6, 0.25, 1, -15);
 //    hungerPicture->persistent = 1;
 //    hungerPicture->heightFromWidthFactor = 1;
 //    hungerPicture->show = 1;
@@ -9544,7 +9527,7 @@ void adventureUI::initFullUI() {
   adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
   adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
 
-  healthPicture = new ui(renderer, "static/ui/health.qoi", -0.04, -0.09, 0.25, 1, -15);
+  healthPicture = new ui(renderer, "resources/static/ui/health.qoi", -0.04, -0.09, 0.25, 1, -15);
   healthPicture->persistent = 1;
   healthPicture->heightFromWidthFactor = 1;
   healthPicture->show = 1;
@@ -9555,7 +9538,7 @@ void adventureUI::initFullUI() {
   healthPicture->widthGlideSpeed = 0.1;
   healthPicture->priority = -10; //health is behind everything
 
-  hotbar = new ui(renderer, "static/ui/menu9patchblack.qoi", g_hotbarX + g_backpackHorizontalOffset, 0.84, 0.1, 0.1, 1);
+  hotbar = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", g_hotbarX + g_backpackHorizontalOffset, 0.84, 0.1, 0.1, 1);
   hotbar->is9patch = true;
   hotbar->patchwidth = 213;
   hotbar->patchscale = 0.5;
@@ -9563,15 +9546,15 @@ void adventureUI::initFullUI() {
   hotbar->heightFromWidthFactor = 1;
   hotbar->priority = -8;
 
-  hotbarFocus = new ui(renderer, "static/ui/hotbar_focus.qoi", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
+  hotbarFocus = new ui(renderer, "resources/static/ui/hotbar_focus.qoi", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
   hotbarFocus->persistent = true;
   hotbarFocus->heightFromWidthFactor = 1;
   hotbarFocus->priority = -7;
   hotbarFocus->dropshadow = 1;
 
-  noIconTexture = loadTexture(renderer, "engine/sp-no-texture.qoi");
+  noIconTexture = loadTexture(renderer, "resources/engine/sp-no-texture.qoi");
 
-  nextUsableIcon = new ui(renderer, "engine/sp-no-texture.qoi", 0.45 + 0.1, 0.84, 0.1, 1, 1);
+  nextUsableIcon = new ui(renderer, "resources/engine/sp-no-texture.qoi", 0.45 + 0.1, 0.84, 0.1, 1, 1);
   nextUsableIcon->persistent = true;
   nextUsableIcon->heightFromWidthFactor = 1;
   SDL_DestroyTexture(nextUsableIcon->texture);
@@ -9580,7 +9563,7 @@ void adventureUI::initFullUI() {
   nextUsableIcon->priority = -7;
   nextUsableIcon->show = 0;
 
-  prevUsableIcon = new ui(renderer, "engine/sp-no-texture.qoi", 0.45 - 0.1, 0.84, 0.1, 1, 1);
+  prevUsableIcon = new ui(renderer, "resources/engine/sp-no-texture.qoi", 0.45 - 0.1, 0.84, 0.1, 1, 1);
   prevUsableIcon->persistent = true;
   prevUsableIcon->heightFromWidthFactor = 1;
   SDL_DestroyTexture(prevUsableIcon->texture);
@@ -9588,7 +9571,7 @@ void adventureUI::initFullUI() {
   prevUsableIcon->shrinkPercent = 0.01; 
   prevUsableIcon->priority = -7;
 
-  thisUsableIcon = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
+  thisUsableIcon = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   thisUsableIcon->persistent = true;
   thisUsableIcon->heightFromWidthFactor = 1;
   SDL_DestroyTexture(thisUsableIcon->texture);
@@ -9598,7 +9581,7 @@ void adventureUI::initFullUI() {
 
   float shrinkPercent = 0.015;
 
-  t1 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
+  t1 = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t1->persistent = true;
   t1->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t1->texture);
@@ -9606,7 +9589,7 @@ void adventureUI::initFullUI() {
   t1->shrinkPercent = shrinkPercent; 
   t1->priority = -7;
 
-  t2 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
+  t2 = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t2->persistent = true;
   t2->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t2->texture);
@@ -9614,7 +9597,7 @@ void adventureUI::initFullUI() {
   t2->shrinkPercent = shrinkPercent; 
   t2->priority = -7;
 
-  t3 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
+  t3 = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t3->persistent = true;
   t3->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t3->texture);
@@ -9622,7 +9605,7 @@ void adventureUI::initFullUI() {
   t3->shrinkPercent = shrinkPercent; 
   t3->priority = -6;
 
-  t4 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
+  t4 = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t4->persistent = true;
   t4->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t4->texture);
@@ -9630,7 +9613,7 @@ void adventureUI::initFullUI() {
   t4->shrinkPercent = shrinkPercent; 
   t4->priority = -7;
 
-  t5 = new ui(renderer, "static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
+  t5 = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.84, 0.1, 1, 1);
   t5->persistent = true;
   t5->heightFromWidthFactor = 1;
   SDL_DestroyTexture(t5->texture);
@@ -9648,7 +9631,7 @@ void adventureUI::initFullUI() {
   thisUsableIcon->show = 0;
   nextUsableIcon->show = 0;
 
-  cooldownIndicator = new ui(renderer, "engine/cooldownIndicator.qoi", g_hotbarX + g_backpackHorizontalOffset, 0.83, 0.03, 1, 1);
+  cooldownIndicator = new ui(renderer, "resources/engine/cooldownIndicator.qoi", g_hotbarX + g_backpackHorizontalOffset, 0.83, 0.03, 1, 1);
   cooldownIndicator->priority = -6;
   cooldownIndicator->persistent = 1;
   cooldownIndicator->heightFromWidthFactor = 1;
@@ -9663,7 +9646,7 @@ void adventureUI::initFullUI() {
     x->glideSpeed = 0.3;
   }
 
-  hotbarMutedXIcon = new ui(renderer, "static/ui/red_x.qoi", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
+  hotbarMutedXIcon = new ui(renderer, "resources/static/ui/red_x.qoi", g_hotbarX + g_backpackHorizontalOffset + 0.005, 0.84 + 0.005, 0.1-0.01, 0.1-0.01, 1);
   hotbarMutedXIcon->persistent = true;
   hotbarMutedXIcon->priority = -6;
   hotbarMutedXIcon->heightFromWidthFactor = 1;
@@ -10700,7 +10683,7 @@ I("s");
 
     clear_map(g_camera);
     g_map = name;
-    const string toMap = "maps/" + g_mapdir + "/" + g_map + ".map";
+    const string toMap = "resources/maps/" + g_mapdir + "/" + g_map + ".map";
     load_map(renderer, toMap, dest_waypoint);
 
     // //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
@@ -11546,7 +11529,7 @@ I("s");
     ifstream stream;
     string loadstr;
 
-    loadstr = "maps/" + g_map + "/" + s + ".txt";
+    loadstr = "resources/maps/" + g_map + "/" + s + ".txt";
     const char *plik = loadstr.c_str();
 
     stream.open(plik);
@@ -11592,7 +11575,7 @@ I("s");
     g_mapdir = x[0];
     g_map = x[1];
     
-    //load_map(renderer, "maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+    //load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
     
     string filename = g_levelSequence->levelNodes[0]->mapfilename;
     load_map(renderer, filename,"a");
@@ -12017,7 +12000,7 @@ I("s");
   {
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> split = splitString(s, ' ');
-    string loadstring = "static/sounds/" + split[1] + ".wav";
+    string loadstring = "resources/static/sounds/" + split[1] + ".wav";
 
 
     Mix_Chunk *a = nullptr;

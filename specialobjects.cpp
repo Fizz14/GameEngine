@@ -268,6 +268,10 @@ void specialObjectsInit(entity* a) {
 
       break;
     }
+    case 22:
+    {
+      //dungeon door
+    }
 
     case 100:
     {
@@ -998,6 +1002,10 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       }
       break;
     } 
+    case 22:
+    {
+      //dungeon door
+    }
    
     case 100: 
     {
@@ -1523,6 +1531,12 @@ void specialObjectsInteract(entity* a) {
 
 
         }
+    }
+    case 22:
+    {
+      //dungeon door
+      g_dungeonDoorActivated = 1;
+      
     }
   }
 }

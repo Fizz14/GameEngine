@@ -55,6 +55,8 @@ vector<tile *> g_tiles;
 
 vector<door *> g_doors;
 
+vector<dungeonDoor*> g_dungeonDoors;
+
 vector<vector<box *>> g_boxs;
 
 vector<impliedSlope *> g_impliedSlopes; //slopes which are implied to be behind walls, preventing entities from "hiding" behind them, as in zelda
@@ -363,6 +365,7 @@ float g_cameraAimingOffsetLerpScale = 0.91;
 // text
 string g_font;
 float g_fontsize = 0.031; // 0.021 - 0.04
+TTF_Font* g_ttf_font;
 float g_minifontsize = 0.01;
 float g_transitionSpeed = 3; // 3, 9
 
@@ -769,7 +772,7 @@ int fdebug = -1;
 // world
 int g_layers = 12;							 // max blocks in world
 int g_numberOfInterestSets = 50; // number of individual sets of pointsOfInterest available for entities to use
-string g_first_map = "maps/first/1.map";
+string g_first_map = "resources/maps/first/1.map";
 
 // map editing, mapeditor, map-editor
 bool g_mousemode = 1;
@@ -856,9 +859,9 @@ float mapeditorNavNodeTraceRadius = 150;        // for choosing the radius of th
 vector<string> consolehistory;
 int consolehistoryindex = 0;
 
-string captex = "static/diffuse/mapeditor/cap.bmp";
-string walltex = "static/diffuse/mapeditor/wall.bmp";
-string floortex = "static/diffuse/mapeditor/floor.bmp";
+string captex = "resources/static/diffuse/mapeditor/cap.bmp";
+string walltex = "resources/static/diffuse/mapeditor/wall.bmp";
+string floortex = "resources/static/diffuse/mapeditor/floor.bmp";
 string masktex = "&";
 // vector of strings to be filled with each texture in the user's texture directory, for easier selection
 vector<string> texstrs;
@@ -890,6 +893,7 @@ tile *cueIcon;
 tile *waypointIcon;
 tile *poiIcon;
 tile *doorIcon;
+tile *ddoorIcon;
 tile *triggerIcon;
 textbox *nodeInfoText;
 string entstring = "oilman"; // last entity spawned;
@@ -933,7 +937,31 @@ SDL_Texture* g_wSpec;
 //for optimizing line traces to only use collisions
 //close to the player
 vector<mapCollision*> g_lt_collisions;
+vector<mapCollision*> g_is_collisions;
 
+
+//DUNGEON SYSTEM ( :DD )
+vector<dungeonFloorInfo> g_dungeon;
+int g_dungeonIndex;
+//need a list of behemoths chasing player and how many rooms they will continue to chase
+vector<dungeonBehemothInfo> g_dungeonBehemoths;
+//need a list of mapobjects which are persistent over the course
+//of the dungeon so that we don't have to reload textures constantly
+vector<mapObject*> g_dungeonPersistentMOs;
+vector<string> g_dungeonOneFloors;
+vector<string> g_dungeonTwoFloors;
+vector<string> g_dungeonThreeFloors;
+vector<string> g_dungeonRareFloors;
+vector<string> g_dungeonSpecialFloors;
+int g_dungeonDarkEffect;
+int g_dungeonDarkEffectDelta;
+bool g_dungeonDoorActivated = 0;
+
+bool g_dungeonSystemOn;
+bool g_noScreenWipe;
+
+Mix_Music* g_dungeonMusic;
+Mix_Music* g_chaseMusic;
 
 bool fileExists(const std::string &name)
 {
@@ -1300,7 +1328,12 @@ int yesNoPrompt(string msg)
 
 int rng(int min, int max) {
   if(max == min) {return min;}
-  return ( ((int)rand() % (max-min))  + min);
+  return ( ((int)rand() % (1+max-min))  + min);
+}
+
+float frng(float min, float max) {
+  if(max == min) {return min;}
+  return static_cast<float>(rand()) / (static_cast<float>(RAND_MAX/(max-min)));
 }
 
 void hurtProtag(int dmg) {
@@ -1338,7 +1371,6 @@ void doSpringForce(entity* target, entity* him)
     him->x += springX;
     him->y += springY;
   }
-
 }
 
 string getCurrentDir() {

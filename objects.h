@@ -363,6 +363,17 @@ class door {
 
 };
 
+//unlike doors, dungeon doors don't initiate a loading sequence, they just progress the dungeon
+class dungeonDoor {
+  public:
+    float x = 0;
+    float y = 0;
+    float width = 50;
+    float height = 50;
+    dungeonDoor(int fx, int fy, int fwidth, int fheight);
+    ~dungeonDoor();
+};
+
 
 class tile {
   public:
@@ -1813,7 +1824,15 @@ public:
 
   bool locked = 1;
   bool hidden = 0; //levels can be hidden so it is impossible to return to them (?)
-                  
+  
+  //dungeon data
+  int dungeonFloors = 0; //set this to one to make it a dungeon
+  vector<string> behemoths; //which behemoths can spawn here
+  int firstActiveFloor = 7; //garanteed behemoth encounter here
+  int avgRestSequence = 5; //what is a typical gap between encounters
+                         //with behemoths.
+  int avgChaseSequence = 5; //when a behemoth is chasing the player, for how many floors do they persist before letting the player explore in peace
+
 
   int eyeStyle = 0;
   bool loadedEyes = 0;
@@ -1828,9 +1847,10 @@ public:
   static const int maxBlinkCooldownMS = 10000;
   static const int minBlinkCooldownMS = 2000;
 
+  string music;
+  string chasemusic;
 
-  levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, int fmouthStyle); 
-
+  levelNode(string p3, string p4, string p5, SDL_Renderer * renderer, int fmouthStyle, int ffloors, vector<string> fbehemoths, int ffirstfloor, int frestlen, int fchaselen, string fmusic, string fchasemusic);
 
   ~levelNode(); 
 
@@ -2274,6 +2294,16 @@ class ribbon:public actor {
     ribbon();
     ~ribbon();
     void render(SDL_Renderer * renderer, camera fcamera);
+};
+
+struct dungeonBehemothInfo {
+  int floorsRemaining = 0;
+  entity* ptr;
+};
+
+struct dungeonFloorInfo {
+  string map;
+  char identity; //1, 2, 3, r, s
 };
 
 #endif
