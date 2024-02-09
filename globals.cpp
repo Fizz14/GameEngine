@@ -948,33 +948,35 @@ vector<dungeonBehemothInfo> g_dungeonBehemoths;
 //need a list of mapobjects which are persistent over the course
 //of the dungeon so that we don't have to reload textures constantly
 vector<mapObject*> g_dungeonPersistentMOs;
-vector<string> g_dungeonOneFloors;
-vector<string> g_dungeonTwoFloors;
-vector<string> g_dungeonThreeFloors;
+vector<string> g_dungeonCommonFloors;
+vector<string> g_dungeonUncommonFloors;
 vector<string> g_dungeonRareFloors;
 vector<string> g_dungeonSpecialFloors;
+vector<string> g_dungeonEggFloors;
 int g_dungeonDarkEffect;
 int g_dungeonDarkEffectDelta;
 bool g_dungeonDoorActivated = 0;
 
 bool g_dungeonSystemOn;
-bool g_noScreenWipe;
+bool g_levelFlashing;
 
-Mix_Music* g_dungeonMusic;
-Mix_Music* g_chaseMusic;
+int g_levelSequenceIndex;
+
+Mix_Music* g_dungeonMusic = nullptr;
+Mix_Music* g_dungeonChaseMusic = nullptr;
 
 bool fileExists(const std::string &name)
 {
-//  if (FILE *file = fopen(name.c_str(), "r"))
-//  {
-//    fclose(file);
-//    return true;
-//  }
-//  else
-//  {
-//    return false;
-//  }
-  return PHYSFS_exists(name.c_str());
+  if (FILE *file = fopen(name.c_str(), "r"))
+  {
+    fclose(file);
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+  //return PHYSFS_exists(name.c_str());
 }
 
 

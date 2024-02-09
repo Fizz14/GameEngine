@@ -64,13 +64,7 @@ int WinMain()
   string currentDirectory = getCurrentDir();
   PHYSFS_mount(currentDirectory.c_str(), "/", 1);
 
-//  PHYSFS_mount("resources/engine.a", "", 0);
-//  PHYSFS_mount("resources/maps.a", "", 0);
-//  PHYSFS_mount("resources/static.a", "", 0);
-//  PHYSFS_mount("resources/levelsequence.a", "", 0);
-  PHYSFS_mount("base.a", "", 0);
-  PHYSFS_mount("update_1.a", "", 0);
-  PHYSFS_mount("update_2.a", "", 0);
+  PHYSFS_mount("resources.a", "", 0);
 
   // for brightness
   // reuse texture for transition, cuz why not
@@ -147,6 +141,7 @@ int WinMain()
     bindings[i] = SDL_GetScancodeFromName(line.c_str());
     // D(bindings[i]);
   }
+
   // set vsync and g_fullscreen from config
   string valuestr;
   float value;
@@ -451,7 +446,7 @@ int WinMain()
   char **i;
   for(i = entries; *i != NULL; i++) {
     string fn(*i);
-    if(fn.find(".txt") != string::npos){
+    if(fn.substr(fn.size() - 4, 4) == ".txt"){
       g_levelSequence->addLevels(*i);
     }
   }
@@ -681,7 +676,10 @@ int WinMain()
 
   while (!quit)
   {
-    // debug here
+    // behemoth debug here
+    if(g_behemoth0 != nullptr) {
+    }
+
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -2050,6 +2048,8 @@ int WinMain()
     //check if protag is within hearing-range of any behemoths
     adventureUIManager->hearingDetectable->show = 0;
     for(auto x : g_behemoths) {
+      if(!x->tangible) {break;}
+      if(x->opacity != 255) {break;}
       float hearingRadiusSquared = pow(x->hearingRadius, 2);
       float distToProtagSquared = XYWorldDistanceSquared(x->getOriginX(), x->getOriginY(), protag->getOriginX(), protag->getOriginY());
 //      D(distToProtagSquared);
@@ -3475,8 +3475,6 @@ int WinMain()
   
               parseScriptForLabels(nscript);
               
-              M("About to interpret goalscript.");
-  
               g_pelletGoalScriptCaller->blip = g_ui_voice;
               g_pelletGoalScriptCaller->ownScript = nscript;
               g_pelletGoalScriptCaller->dialogue_index = -1;
@@ -3484,7 +3482,6 @@ int WinMain()
 
               g_pelletGoalScriptCaller->continueDialogue();
   
-              M("Finished interpreting goalscript.");
   
             }
   
@@ -3542,14 +3539,6 @@ int WinMain()
       }
     }
 
-    string scorePrint = "";
-    if(g_currentPelletsCollected < g_pelletsNeededToProgress || 1) {
-      scorePrint = to_string(g_currentPelletsCollected) + "/" + to_string(g_pelletsNeededToProgress);
-    } else {
-      scorePrint = g_leaveStr;
-    }
-
-    adventureUIManager->scoreText->updateText(scorePrint, -1, 1);
 
     //system clock display
     string systemTimePrint = "";
@@ -3739,114 +3728,116 @@ int WinMain()
       }
     }
 
-    if(g_musicSilenceMs > 0) {
-      g_musicSilenceMs -= elapsed;
-      musicUpdateTimer = 500;
-      g_currentMusicPlayingEntity = nullptr;
-      g_closestMusicNode = nullptr;
-    } else { 
-      // update music
-      if (musicUpdateTimer > 500)
-      {
-        musicUpdateTimer = 0;
-  
-        // check musicalentities
-        entity *listenToMe = nullptr;
-        for (auto x : g_musicalEntities)
+    if(!g_dungeonSystemOn) {
+      if(g_musicSilenceMs > 0) {
+        g_musicSilenceMs -= elapsed;
+        musicUpdateTimer = 500;
+        g_currentMusicPlayingEntity = nullptr;
+        g_closestMusicNode = nullptr;
+      } else { 
+        // update music
+        if (musicUpdateTimer > 500)
         {
-          if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
+          musicUpdateTimer = 0;
+    
+          // check musicalentities
+          entity *listenToMe = nullptr;
+          for (auto x : g_musicalEntities)
           {
-            // we should be playing his music
-            // incorporate priority later
-            listenToMe = x;
-          }
-        }
-        if (listenToMe != nullptr)
-        {
-          g_closestMusicNode = nullptr;
-          if (g_currentMusicPlayingEntity != listenToMe)
-          {
-            Mix_FadeOutMusic(200);
-            // Mix_PlayMusic(listenToMe->theme, 0);
-            Mix_VolumeMusic(g_music_volume * 128);
-            entFadeFlag = 1;
-            fadeFlag = 0;
-            musicFadeTimer = 0;
-            g_currentMusicPlayingEntity = listenToMe;
-          }
-        }
-        else
-        {
-          bool hadEntPlayingMusic = 0;
-          if (g_currentMusicPlayingEntity != nullptr)
-          {
-            // stop ent music
-            // Mix_FadeOutMusic(1000);
-            hadEntPlayingMusic = 1;
-            g_currentMusicPlayingEntity = nullptr;
-          }
-          if (g_musicNodes.size() > 0 && !g_mute)
-          {
-            newClosest = protag->Get_Closest_Node(g_musicNodes);
-            if (g_closestMusicNode == nullptr)
+            if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
             {
-              if (!hadEntPlayingMusic)
+              // we should be playing his music
+              // incorporate priority later
+              listenToMe = x;
+            }
+          }
+          if (listenToMe != nullptr)
+          {
+            g_closestMusicNode = nullptr;
+            if (g_currentMusicPlayingEntity != listenToMe)
+            {
+              Mix_FadeOutMusic(200);
+              // Mix_PlayMusic(listenToMe->theme, 0);
+              Mix_VolumeMusic(g_music_volume * 128);
+              entFadeFlag = 1;
+              fadeFlag = 0;
+              musicFadeTimer = 0;
+              g_currentMusicPlayingEntity = listenToMe;
+            }
+          }
+          else
+          {
+            bool hadEntPlayingMusic = 0;
+            if (g_currentMusicPlayingEntity != nullptr)
+            {
+              // stop ent music
+              // Mix_FadeOutMusic(1000);
+              hadEntPlayingMusic = 1;
+              g_currentMusicPlayingEntity = nullptr;
+            }
+            if (g_musicNodes.size() > 0 && !g_mute)
+            {
+              newClosest = protag->Get_Closest_Node(g_musicNodes);
+              if (g_closestMusicNode == nullptr)
               {
-                Mix_PlayMusic(newClosest->blip, -1);
-                Mix_VolumeMusic(g_music_volume * 128);
-                g_closestMusicNode = newClosest;
+                if (!hadEntPlayingMusic)
+                {
+                  Mix_PlayMusic(newClosest->blip, -1);
+                  Mix_VolumeMusic(g_music_volume * 128);
+                  g_closestMusicNode = newClosest;
+                }
+                else
+                {
+                  g_closestMusicNode = newClosest;
+                  // change music
+                  Mix_FadeOutMusic(1000);
+                  musicFadeTimer = 0;
+                  fadeFlag = 1;
+                  entFadeFlag = 0;
+                }
               }
               else
               {
-                g_closestMusicNode = newClosest;
-                // change music
-                Mix_FadeOutMusic(1000);
-                musicFadeTimer = 0;
-                fadeFlag = 1;
-                entFadeFlag = 0;
-              }
-            }
-            else
-            {
-  
-              // Segfaults, todo is initialize these musicNodes to have something
-              if (newClosest->name != g_closestMusicNode->name)
-              {
-                // D(newClosest->name);
-                // if(newClosest->name == "silence") {
-                // Mix_FadeOutMusic(1000);
-                //}
-                g_closestMusicNode = newClosest;
-                // change music
-                Mix_FadeOutMusic(1000);
-                musicFadeTimer = 0;
-                fadeFlag = 1;
-                entFadeFlag = 0;
+    
+                // Segfaults, todo is initialize these musicNodes to have something
+                if (newClosest->name != g_closestMusicNode->name)
+                {
+                  // D(newClosest->name);
+                  // if(newClosest->name == "silence") {
+                  // Mix_FadeOutMusic(1000);
+                  //}
+                  g_closestMusicNode = newClosest;
+                  // change music
+                  Mix_FadeOutMusic(1000);
+                  musicFadeTimer = 0;
+                  fadeFlag = 1;
+                  entFadeFlag = 0;
+                }
               }
             }
           }
-        }
-        // check for any cues
-        for (auto x : g_cueSounds)
-        {
-          if (x->played == 0 && Distance(x->x, x->y, protag->x + protag->width / 2, protag->y) < x->radius)
+          // check for any cues
+          for (auto x : g_cueSounds)
           {
-            x->played = 1;
-            playSound(-1, x->blip, 0);
+            if (x->played == 0 && Distance(x->x, x->y, protag->x + protag->width / 2, protag->y) < x->radius)
+            {
+              x->played = 1;
+              playSound(-1, x->blip, 0);
+            }
           }
         }
-      }
-      if (fadeFlag && musicFadeTimer > 1000 && newClosest != 0)
-      {
-        fadeFlag = 0;
-        Mix_HaltMusic();
-        Mix_FadeInMusic(newClosest->blip, -1, 1000);
-      }
-      if (entFadeFlag && musicFadeTimer > 200)
-      {
-        entFadeFlag = 0;
-        Mix_HaltMusic();
-        Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
+        if (fadeFlag && musicFadeTimer > 1000 && newClosest != 0)
+        {
+          fadeFlag = 0;
+          Mix_HaltMusic();
+          Mix_FadeInMusic(newClosest->blip, -1, 1000);
+        }
+        if (entFadeFlag && musicFadeTimer > 200)
+        {
+          entFadeFlag = 0;
+          Mix_HaltMusic();
+          Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
+        }
       }
     }
 
@@ -5455,9 +5446,15 @@ void getInput(float &elapsed)
         vector<string> x = splitString(mapName, '/');
         g_mapdir = x[2];
 
-        //generate the DUNGEON ( :DD )
+
         
         int numFloors = g_levelSequence->levelNodes[inventorySelection]->dungeonFloors;
+
+        adventureUIManager->showScoreUI();
+        string scorePrint = "0/" + to_string(numFloors);
+        adventureUIManager->scoreText->updateText(scorePrint, 34, 34);
+
+        //generate the DUNGEON ( :DD )
 
         if(numFloors > 0){
           /*
@@ -5469,18 +5466,17 @@ void getInput(float &elapsed)
            * But I want this to be simple yet still give me some freedom (some rooms are rarer than others, some rooms
            * tend to spawn later)
            *
-           * Maps proceeded with 1_, 2_, 3_, r_, and s_ can be randomly selected to spawn in the dungeon.
+           * Maps proceeded with c_, u_, r_, s_, and e_ can be randomly selected to spawn in the dungeon.
            *
-           * Rooms with 1_ tend to spawn early, 2_'s tend to spawn later, 3_'s tend to spawn in the last third of the level,
-           * r_'s are kinda rare and s_'s are very very rare, and can only spawn if the player will not be chased by a behemoth
-           * in that level (easter eggs)
+           * Rooms with c_ are common, u_ are uncommon and r_ are rare.
+           * s_ (special rooms) and e_ (easter-egg rooms) can replace the other types of rooms so long as the player isn't being chased by a behemoth
+           * s_ rooms are garanteed to spawn, but e_ rooms are the rarest type of room in the game (perfect for easter eggs)
+           *
            *
            * See? That should be simple enough to be doable quickly while still mysterious enough and flexible enough for me 
            * to create many different types of dungeons, including use of the dungeon data params from the levelsequence file
            * (number of floors, length of a rest sequence, length of a chase sequence, first active floor)
            *
-           * I'll still have some control over what sort of rooms players see early on and I'll be able to put in some neat secrets
-           * 
            * start.map is first, and finish.map is last
            *
            */
@@ -5488,11 +5484,11 @@ void getInput(float &elapsed)
           g_dungeon.clear();
           g_dungeonIndex = -1;
           g_dungeonBehemoths.clear();
-          g_dungeonOneFloors.clear();
-          g_dungeonTwoFloors.clear();
-          g_dungeonThreeFloors.clear();
+          g_dungeonCommonFloors.clear();
+          g_dungeonUncommonFloors.clear();
           g_dungeonRareFloors.clear();
           g_dungeonSpecialFloors.clear();
+          g_dungeonEggFloors.clear();
           g_dungeonSystemOn = 1;
 
           //get list of eligible maps in the mapdir
@@ -5502,24 +5498,24 @@ void getInput(float &elapsed)
           for(i = entries; *i != NULL; i++) {
             string fn(*i);
             if(fn.find(".map") != string::npos && fn.size() > 2 && fn[1] == '-') {
-              if(fn[0] == '1') {g_dungeonOneFloors.push_back(fn);}
-              else if(fn[0] == '2') {g_dungeonTwoFloors.push_back(fn);}
-              else if(fn[0] == '3') {g_dungeonThreeFloors.push_back(fn);}
-              else if(fn[0] == 'r') {g_dungeonRareFloors.push_back(fn);}
-              else if(fn[0] == 's') {g_dungeonSpecialFloors.push_back(fn);}
+              if(fn[0] == 'c') {g_dungeonCommonFloors.push_back(fn);}
+              else if(fn[0] == 'u') {g_dungeonUncommonFloors.push_back(fn);}
+              else if(fn[0] == 'r') {g_dungeonSpecialFloors.push_back(fn);}
+              else if(fn[0] == 's') {g_dungeonRareFloors.push_back(fn);}
+              else if(fn[0] == 'e') {g_dungeonEggFloors.push_back(fn);}
             }
           }
           PHYSFS_freeList(entries);
 
-          if(g_dungeonTwoFloors.size() == 0) {
-            for(auto x : g_dungeonOneFloors) {
-              g_dungeonTwoFloors.push_back(x);
+          if(g_dungeonUncommonFloors.size() == 0) {
+            for(auto x : g_dungeonCommonFloors) {
+              g_dungeonUncommonFloors.push_back(x);
             }
           }
 
-          if(g_dungeonThreeFloors.size() == 0) {
-            for(auto x : g_dungeonOneFloors) {
-              g_dungeonThreeFloors.push_back(x);
+          if(g_dungeonSpecialFloors.size() == 0) {
+            for(auto x : g_dungeonCommonFloors) {
+              g_dungeonSpecialFloors.push_back(x);
             }
           }
 
@@ -5529,7 +5525,7 @@ void getInput(float &elapsed)
           float oneChance = 8;
           float twoChance = 4;
           float threeChance = 1;
-          for(int i = 0; i < numFloors; i++) {
+          for(int i = 0; i < numFloors-1; i++) {
             float per = i;
             per /= numFloors;
             if(per <= 0.33) {
@@ -5554,16 +5550,16 @@ void getInput(float &elapsed)
             string mapstring = "";
             char identity = 'a';
             if(random <= one) {
-              int random = rng(0, g_dungeonOneFloors.size()-1);
-              mapstring = g_dungeonOneFloors.at(random);
+              int random = rng(0, g_dungeonCommonFloors.size()-1);
+              mapstring = g_dungeonCommonFloors.at(random);
               identity = '1';
             } else if(random <= two){
-              int random = rng(0, g_dungeonTwoFloors.size()-1);
-              mapstring = g_dungeonTwoFloors.at(random);
+              int random = rng(0, g_dungeonUncommonFloors.size()-1);
+              mapstring = g_dungeonUncommonFloors.at(random);
               identity = '2';
             } else {
-              int random = rng(0, g_dungeonThreeFloors.size()-1);
-              mapstring = g_dungeonThreeFloors.at(random);
+              int random = rng(0, g_dungeonSpecialFloors.size()-1);
+              mapstring = g_dungeonSpecialFloors.at(random);
               identity = '3';
             }
 
@@ -5585,6 +5581,11 @@ void getInput(float &elapsed)
           g_dungeonSystemOn = 0;
         }
 
+
+        g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
+        g_dungeon.at(g_dungeon.size() -1).identity = 'e';
+
+
         clear_map(g_camera);
   
         inPauseMenu = 0;
@@ -5594,6 +5595,7 @@ void getInput(float &elapsed)
         g_currentPelletsCollected = 0;
 
         load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
+        g_levelSequenceIndex = inventorySelection;
         adventureUIManager->hideInventoryUI();
   
         if (canSwitchOffDevMode)
@@ -5603,6 +5605,52 @@ void getInput(float &elapsed)
         protag_is_talking = 0;
         protag_can_move = 1;
         adventureUIManager->showHUD();
+
+        if(g_dungeonMusic != nullptr) {
+          Mix_FreeMusic(g_dungeonMusic);
+          g_dungeonMusic = nullptr;
+        }
+
+        if(g_dungeonChaseMusic != nullptr) {
+          Mix_FreeMusic(g_dungeonChaseMusic);
+          g_dungeonChaseMusic = nullptr;
+        }
+
+
+        if(g_levelSequence->levelNodes[inventorySelection]->music != "0") {
+          string l = "resources/static/music/" + g_levelSequence->levelNodes[inventorySelection]->music + ".ogg";
+          g_dungeonMusic = loadMusic(l);
+          l = "resources/static/music/" + g_levelSequence->levelNodes[inventorySelection]->chasemusic + ".ogg";
+          g_dungeonChaseMusic = loadMusic(l);
+  
+          Mix_VolumeMusic(g_music_volume * 128);
+          Mix_PlayMusic(g_dungeonMusic, -1);
+        }
+
+        int setFirst = 0;
+        for(auto x : g_levelSequence->levelNodes[g_levelSequenceIndex]->behemoths) {
+          dungeonBehemothInfo n;
+          n.ptr = new entity(renderer, x);
+          n.ptr->x = 0;
+          n.ptr->y = 0;
+          n.ptr->persistentGeneral = 1;
+          n.ptr->hisweapon->persistent = 1;
+          n.ptr->tangible = 0;
+          if(!setFirst) { 
+            n.waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor; 
+          } else {
+            n.waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor + g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * rng(0.6,1.4); 
+
+          }
+          setFirst = 1;
+
+          for(auto &y : n.ptr->spawnlist) {
+            y->persistentGeneral = 1;
+          }
+
+          g_dungeonBehemoths.push_back(n);
+        }
+
       } 
     }
   }
@@ -6062,36 +6110,107 @@ void protagMakesNoise() {
 
 
 void dungeonFlash() {
-  /*
-   * The goal of dungeonFlash() is to delete all objects created during the last dungeon flash
-   * and load a new map while keeping all of those objects on a list of things to delete for next
-   * time.
-   */
- 
   g_dungeonDoorActivated = 0;
-  g_dungeonIndex++;
-  D(g_dungeon.at(g_dungeonIndex).map);
-  g_noScreenWipe = 1;
-  clear_map(g_camera);
-  transition = 0;
-  load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_dungeon.at(g_dungeonIndex).map, "a");
-  protag_is_talking = 0;
-  protag_can_move = 1;
-  g_noScreenWipe = 0;
-  adventureUIManager->showHUD();
-  
-  //reset cookies
-  for(int i = 0; i < g_fogcookies.size(); i++) {
-    for(int j = 0; j < g_fogcookies.size(); j++) {
-      g_fc[i][j] = 0;
-      g_sc[i][j] = 0;
-      g_fogcookies[i][j] = 0;
+  //oddly, if I put g_dungeon.size() - 1 in the conditional directly it seems to fail inexplicably
+  int size = g_dungeon.size();
+  size -= 1;
+  if(g_dungeonIndex >= size) {
+ 
+    //clear all behemoths
+    for(auto &x : g_dungeonBehemoths) {
+      for(auto &y : x.ptr->spawnlist) {
+        delete y;
+      }
+      delete x.ptr;
     }
-  }
 
-  if (canSwitchOffDevMode)
-  {
-    init_map_writing(renderer);
+    adventureUIManager->hideScoreUI();
+
+    //this dungeon is finished, play the beaten script to probably unlock a level, save the game, and open
+    //the menu select, but it might be to initiate a credits sequence or play a cutscene or something cool
+    string l = "resources/maps/" + g_mapdir + "/beaten.txt";
+
+    
+    vector<string> beatenScript = loadText(l);
+    parseScriptForLabels(beatenScript);
+
+    adventureUIManager->talker = narrarator;
+    adventureUIManager->ownScript = beatenScript;
+    adventureUIManager->dialogue_index = -1;
+    adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+    adventureUIManager->continueDialogue();
+
+  } else {
+
+    adventureUIManager->showScoreUI();
+    string scorePrint = to_string(g_dungeonIndex+2) + "/" + to_string(g_dungeon.size()+1);
+    adventureUIManager->scoreText->updateText(scorePrint, 34, 34);
+
+    //decide if we will end any chases
+    for(auto &x : g_dungeonBehemoths) {
+      if(x.active) {
+        x.floorsRemaining -= 1;
+        if(x.floorsRemaining < 1) {
+          //deactivate this behemoth
+          x.active = 0;
+          x.waitFloors = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * rng(0.6,1.4);
+        }
+
+      } else {
+        x.waitFloors -= 1;
+        if(x.waitFloors < 1) {
+          //activate this behemoth
+          x.active = 1;
+          x.floorsRemaining = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgChaseSequence * rng(0.6,1.4);
+        }
+
+
+      }
+
+    }
+
+
+    g_dungeonIndex++;
+    g_levelFlashing = 1;
+    clear_map(g_camera);
+    transition = 1;
+    load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_dungeon.at(g_dungeonIndex).map, "a");
+    transition = 0;
+    protag_is_talking = 0;
+    protag_can_move = 1;
+    g_levelFlashing = 0;
+    adventureUIManager->showHUD();
+
+
+    //M(" -- Active behemoths:");
+    for(auto &x : g_dungeonBehemoths) {
+      if(x.active) {
+        x.ptr->tangible = 1;
+        x.ptr->semisolid = 0;
+        if(g_waypoints.size() > 0) {
+          x.ptr->setOriginX(g_waypoints.at(0)->x);
+          x.ptr->setOriginY(g_waypoints.at(0)->y);
+          x.ptr->opacity = -350;
+          x.ptr->opacity_delta = 5;
+          x.ptr->agrod = 1;
+          x.ptr->target = protag;
+          x.ptr->shadow->alphamod = -350;
+          x.ptr->hisStatusComponent.stunned.addStatus(2000, 1);
+        }
+      } else {
+        x.ptr->tangible = 0;
+        x.ptr->x = 0;
+        x.ptr->y = 0;
+
+      }
+
+    }
+    
+  
+    if (canSwitchOffDevMode)
+    {
+      init_map_writing(renderer);
+    }
   }
 
 }

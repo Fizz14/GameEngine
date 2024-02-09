@@ -893,20 +893,23 @@ extern int g_dungeonIndex;
 
 extern vector<dungeonBehemothInfo> g_dungeonBehemoths;
 extern vector<mapObject*> g_dungeonPersistentMOs;
-extern vector<string> g_dungeonOneFloors;
-extern vector<string> g_dungeonTwoFloors;
-extern vector<string> g_dungeonThreeFloors;
+extern vector<string> g_dungeonCommonFloors;
+extern vector<string> g_dungeonUncommonFloors;
 extern vector<string> g_dungeonRareFloors;
 extern vector<string> g_dungeonSpecialFloors;
+extern vector<string> g_dungeonEggFloors;
 extern int g_dungeonDarkEffectDelta;
 extern int g_dungeonDarkEffect;
 extern bool g_dungeonDoorActivated;
 
 extern bool g_dungeonSystemOn;
-extern bool g_noScreenWipe;
+extern bool g_levelFlashing;
+
+extern int g_levelSequenceIndex;
 
 extern Mix_Music* g_dungeonMusic;
-extern Mix_Music* g_chaseMusic;
+extern Mix_Music* g_dungeonChaseMusic;
+extern entity* dungeonBehemoth;
 
 bool fileExists(const std::string &name);
 

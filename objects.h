@@ -480,6 +480,8 @@ class weapon {
     float comboResetMS = 0;
     vector<attack*> attacks;
 
+    int persistent = 0;
+
     weapon();
 
     //add constructor and field on entity object
@@ -2299,6 +2301,8 @@ class ribbon:public actor {
 struct dungeonBehemothInfo {
   int floorsRemaining = 0;
   entity* ptr;
+  bool active = 0;
+  int waitFloors = 0;
 };
 
 struct dungeonFloorInfo {

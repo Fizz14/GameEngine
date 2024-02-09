@@ -272,6 +272,28 @@ void specialObjectsInit(entity* a) {
     {
       //dungeon door
     }
+    case 23:
+    {
+      //firering
+      for(auto x : a->spawnlist) {
+        x->msPerFrame = 70;
+        x->loopAnimation = 1;
+        x->scriptedAnimation = 1;
+        x->visible = 1;
+        x->animation = 0;
+      }
+      break;
+    }
+    case 24:
+    {
+      a->msPerFrame = 70;
+      a->loopAnimation = 1;
+      a->scriptedAnimation = 1;
+      a->visible = 1;
+      a->animation = 0;
+
+      break;
+    }
 
     case 100:
     {
@@ -379,7 +401,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
             entry->reverseAnimation = 0;
             entry->visible = 1;
           }
-          playSound(5, g_spiketrapSound, 0);
+          playSoundAtPosition(5, g_spiketrapSound, 0, a->getOriginX(), a->getOriginY(), 0.3);
           a->flagA = 2;
           a->flagB = 0;
           a->cooldownA = 0;
@@ -639,12 +661,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       a->spawnlist[2]->setOriginX(a->getOriginX() + (xoff*dist*3));
       a->spawnlist[2]->setOriginY(a->getOriginY() + (yoff*dist*3));
 
-      for(auto x : a->spawnlist) {
-        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
-          hurtProtag(1);
-        }
-      }
-      
 
       break;
     }
@@ -692,12 +708,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       a->spawnlist[3]->setOriginX(a->getOriginX() + (xoff*dist*4));
       a->spawnlist[3]->setOriginY(a->getOriginY() + (yoff*dist*4));
 
-      for(auto x : a->spawnlist) {
-        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
-          hurtProtag(1);
-        }
-      }
-      
 
       break;
     }
@@ -754,11 +764,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       a->spawnlist[6]->setOriginX(a->getOriginX() + (xoff*dist*7));
       a->spawnlist[6]->setOriginY(a->getOriginY() + (yoff*dist*7));
 
-      for(auto x : a->spawnlist) {
-        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
-          hurtProtag(1);
-        }
-      }
       
 
       break;
@@ -814,15 +819,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       
       a->spawnlist[5]->setOriginX(a->getOriginX() + (xoff*(dist*-3 - coff)));
       a->spawnlist[5]->setOriginY(a->getOriginY() + (yoff*(dist*-3 - coff)));
-
-      
-
-      for(auto x : a->spawnlist) {
-        if(CylinderOverlap(x->getMovedBounds(), protag->getMovedBounds()) && protag->grounded) {
-          hurtProtag(1);
-        }
-      }
-      
 
       break;
     }
@@ -971,7 +967,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           entry->reverseAnimation = 0;
           entry->visible = 1;
         }
-        playSound(5, g_spiketrapSound, 0);
+        playSoundAtPosition(5, g_spiketrapSound, 0, a->getOriginX(), a->getOriginY(), 0.3);
       }
 
       if(lastShortSpikesState == 1) {
@@ -1005,10 +1001,42 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     case 22:
     {
       //dungeon door
+      break;
+    }
+    case 23:
+    {
+      //firering
+      a->steeringAngle += 0.02;
+
+      const int dist = 160;
+
+      float angleToUse = a->steeringAngle;
+
+      for(auto x : a->spawnlist) {
+        angleToUse += M_PI / 2;
+        angleToUse = wrapAngle(angleToUse);
+        float offset = dist;
+        float yoff = -offset * sin(angleToUse);
+        float xoff = offset * cos(angleToUse);
+  
+        x->setOriginX(a->getOriginX() + (xoff));
+        x->setOriginY(a->getOriginY() + (yoff));
+      }
+      break;
+    }
+    case 24:
+    {
+      if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
+        hurtProtag(1);
+      }
+
+      break;
     }
    
     case 100: 
     {
+
+      if(a->stunned) {break;}
       //zombie
       a->cooldownA += elapsed;
       if(a->flagA && a->cooldownA > a->maxCooldownA) {
@@ -1073,29 +1101,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         }
       }
     
-      //aggressiveness
-      //a->bonusSpeed = a->aggressiveness;
-
-      //updatestate
-      if(a->lastState != a->activeState) {
-        if(a->activeState == 0) {
-          //change to passive
-          a->readyForNextTravelInstruction = 1;
-          a->agrod = 0;
-          a->target = nullptr;
-          a->traveling = 1;
-      
-        } else {
-          //change to active
-          a->agrod = 1;
-          a->target = protag;
-          a->traveling = 0;
-      
-        }
-        a->lastState = a->activeState;
-      }
-    
-
       for(int i = 0; i < a->myAbilities.size(); i++) {
         if(a->myAbilities[i].ready) {
           a->myAbilities[i].ready = 0;

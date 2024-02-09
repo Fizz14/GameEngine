@@ -6,7 +6,18 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
+    PHYSFS_getLastErrorCode();
     PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_ErrorCode error = PHYSFS_getLastErrorCode();
+    
+    if(error != 0) {
+      D(fileaddress);
+      D(error);
+      const char* errorStr = PHYSFS_getErrorByCode(error);
+      D(errorStr);
+      breakpoint();
+      abort();
+    }
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
     buf = new char[filesize];
@@ -19,6 +30,7 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
   } else {
     E("FNF: " + fileaddress);
     breakpoint();
+    abort();
     return nullptr;
   }
 }
@@ -27,7 +39,18 @@ SDL_Surface* loadSurface(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
+    PHYSFS_getLastErrorCode();
     PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_ErrorCode error = PHYSFS_getLastErrorCode();
+    
+    if(error != 0) {
+      D(fileaddress);
+      D(error);
+      const char* errorStr = PHYSFS_getErrorByCode(error);
+      D(errorStr);
+      breakpoint();
+      abort();
+    }
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
     buf = new char[filesize];
@@ -40,6 +63,7 @@ SDL_Surface* loadSurface(string fileaddress)
   } else {
     E("FNF: " + fileaddress);
     breakpoint();
+    abort();
     return nullptr;
   }
 }
@@ -48,7 +72,18 @@ Mix_Chunk* loadWav(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
+    PHYSFS_getLastErrorCode();
     PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_ErrorCode error = PHYSFS_getLastErrorCode();
+    
+    if(error != 0) {
+      D(fileaddress);
+      D(error);
+      const char* errorStr = PHYSFS_getErrorByCode(error);
+      D(errorStr);
+      breakpoint();
+      abort();
+    }
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
     buf = new char[filesize];
@@ -61,6 +96,7 @@ Mix_Chunk* loadWav(string fileaddress)
   } else {
     E("FNF: " + fileaddress);
     breakpoint();
+    abort();
     return nullptr;
   }
 }
@@ -69,7 +105,19 @@ vector<string> loadText(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
+    PHYSFS_getLastErrorCode();
     PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_ErrorCode error = PHYSFS_getLastErrorCode();
+    
+    if(error != 0) {
+      D(fileaddress);
+      D(error);
+      const char* errorStr = PHYSFS_getErrorByCode(error);
+      D(errorStr);
+      breakpoint();
+      abort();
+    }
+
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
     buf = new char[filesize];
@@ -83,15 +131,18 @@ vector<string> loadText(string fileaddress)
 
     vector<string> x = splitString(myString, '\n');
     x.pop_back();
+
     for(int i = 0; i < x.size(); i++) {
       x[i].pop_back();
     }
+
     delete buf;
     return x;
 
   } else {
-    //E("FNF: " + fileaddress);
-    //abort();
+    E("FNF: " + fileaddress);
+    breakpoint();
+    abort();
     return {};
   }
 
@@ -101,7 +152,19 @@ string loadTextAsString(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
+    PHYSFS_getLastErrorCode();
     PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_ErrorCode error = PHYSFS_getLastErrorCode();
+    
+    if(error != 0) {
+      D(fileaddress);
+      D(error);
+      const char* errorStr = PHYSFS_getErrorByCode(error);
+      D(errorStr);
+      breakpoint();
+      abort();
+    }
+
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
     buf = new char[filesize];
@@ -113,8 +176,14 @@ string loadTextAsString(string fileaddress)
     return myString;
 
   } else {
-    //E("FNF: " + fileaddress);
-    //abort();
+    E("FNF: " + fileaddress);
+    int i = 0;
+    for(auto x : fileaddress) {
+      cout << i << " : " << x << endl;
+      i++;
+    }
+    breakpoint();
+    abort();
     return {};
   }
 }
@@ -124,7 +193,18 @@ TTF_Font* loadFont(string fileaddress, float fontsize)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
+    PHYSFS_getLastErrorCode();
     PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_ErrorCode error = PHYSFS_getLastErrorCode();
+    
+    if(error != 0) {
+      D(fileaddress);
+      D(error);
+      const char* errorStr = PHYSFS_getErrorByCode(error);
+      D(errorStr);
+      breakpoint();
+      abort();
+    }
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
     buf = new char[filesize];
@@ -150,7 +230,18 @@ Mix_Music* loadMusic(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
+    PHYSFS_getLastErrorCode();
     PHYSFS_file* myfile = PHYSFS_openRead(fileaddress.c_str());
+    PHYSFS_ErrorCode error = PHYSFS_getLastErrorCode();
+    
+    if(error != 0) {
+      D(fileaddress);
+      D(error);
+      const char* errorStr = PHYSFS_getErrorByCode(error);
+      D(errorStr);
+      breakpoint();
+      abort();
+    }
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
     buf = new char[filesize];
@@ -165,7 +256,7 @@ Mix_Music* loadMusic(string fileaddress)
   } else {
     E("FNF: " + fileaddress);
     breakpoint();
+    abort();
     return nullptr;
   }
 }
-

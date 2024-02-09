@@ -1193,7 +1193,7 @@ attack::attack(string filename, bool tryToShareTextures) {
   //M("attack()");
   this->name = filename;
   string loadstr;
-  loadstr = "resources/maps/" + g_mapdir + "/attacks/" + filename + ".atk";
+  loadstr = "resources/static/attacks/" + filename + ".atk";
 
   istringstream file(loadTextAsString(loadstr));
 
@@ -1647,8 +1647,8 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
     }
   }
 
-  //dont clog up other textures forever
-  if(alphamod == 0) {return;}
+  if(alphamod <= 0) {return;}
+  if(alphamod > 255) {alphamod = 255;}
 
   //update texture with proper alphamod
   SDL_SetTextureAlphaMod(this->texture, alphamod);
@@ -2910,8 +2910,10 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   string voiceSTR = "resources/static/sounds/voice-normal.wav";
   voice = loadWav(voiceSTR.c_str());
 
-  sayings = loadText(txtfilename);
-  parseScriptForLabels(sayings);
+  if(PHYSFS_exists(txtfilename.c_str())) {
+    sayings = loadText(txtfilename);
+    parseScriptForLabels(sayings);
+  }
 
   //has another entity already loaded this texture
   for (auto x : g_entities) {
@@ -3073,18 +3075,13 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     contactScriptCaller->talker = this;
 
     string txtfilename = "";
-    if (fileExists("resources/maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt")) {
-      txtfilename = "resources/maps/" + g_mapdir + "/scripts/" + fieldScript + ".txt";
-    } else {
-      txtfilename = "resources/static/scripts/" + fieldScript + ".txt";
-    }
+    txtfilename = "resources/static/scripts/" + fieldScript + ".txt";
 
     this->contactScript = loadText(txtfilename);
     parseScriptForLabels(contactScript);
 
     contactScriptCaller->ownScript = this->contactScript;
   }
-
 
   //script-on-contact-ms
   file >> comment;
@@ -3181,7 +3178,6 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       //line contains the name of an ability
       ability newAbility;
       newAbility.name = line;
-      D(newAbility.name);
 
       //they're stored as seconds in the configfile, but ms in the object
       float seconds = 0;
@@ -3249,8 +3245,6 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       newState.interval = stoi(interval);
       newState.nextInterval = stoi(interval);
       newState.blocks = stoi(blocks) * 64;
-      D(newState.name);
-      D(newState.interval);
 
       this->states.push_back(newState);
     }
@@ -3734,16 +3728,26 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
   
   opacity += opacity_delta;
   shadow->alphamod += opacity_delta;
-  if(opacity_delta != 0 && opacity <= 0) {
+  if(opacity_delta < 0 && opacity <= 0) {
     if(this->asset_sharer) {
       this->usingTimeToLive = 1;
       this->timeToLiveMs = -1;
     } else {
       this->tangible = 0;
     }
+  } else if(opacity_delta > 0 && opacity >= 255) {
+    this->opacity_delta = 0;
+    this->opacity = 255;
+    this->semisolid = 1; //for dungeon behemoths
+
   }
 
-  SDL_SetTextureAlphaMod(texture, opacity);
+  if(opacity < 0) {
+    SDL_SetTextureAlphaMod(texture, 0);
+  } else {
+    SDL_SetTextureAlphaMod(texture, opacity);
+  }
+
   if(!tangible) {return;}
   if(!visible) {return;}
 
@@ -3892,11 +3896,11 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
         //SDL_SetTextureColorMod(texture, 255, 255 * (1-((float)flashingMS/g_flashtime)), 255 * (1-((float)flashingMS/g_flashtime)));
       }
 
-      if(stunned && hisStatusComponent.stunned.statuses.size() > 0) {
-        rmod *= 0.5;
-        gmod *= 0.5;
-        bmod *= 0.5;
-      }
+//      if(stunned && hisStatusComponent.stunned.statuses.size() > 0) {
+//        rmod *= 0.5;
+//        gmod *= 0.5;
+//        bmod *= 0.5;
+//      }
 
       if(marked) {
         rmod *= 0.9;
@@ -4372,6 +4376,8 @@ door* entity::update(vector<door*> doors, float elapsed) {
           forwardsPushVelocity = 0;
         }
 
+        if(stunned) {forwardsVelocity = 0;}
+
         //set xaccel and yaccel from forwardsVelocity
         xaccel = cos(steeringAngle) * forwardsVelocity;
         yaccel = -sin(steeringAngle) * forwardsVelocity;
@@ -4672,10 +4678,10 @@ door* entity::update(vector<door*> doors, float elapsed) {
   //          this->xvel = 0;
   //          this->yvel = 0;
 
-            if(g_showCRMessages) {
-              M("Jiggled an ent out of collisions with solid entities/map geo");
-              D(jiggleOptionIndex);
-            }
+//            if(g_showCRMessages) {
+//              M("Jiggled an ent out of collisions with solid entities/map geo");
+//              D(jiggleOptionIndex);
+//            }
           }
         }
 
@@ -5522,7 +5528,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
                     g_formerBoardedEntity = n;
                     g_transferingByBoardable = 1;
                     g_maxTransferingByBoardableTime = XYWorldDistance(n->getOriginX(), n->getOriginY(), g_boardedEntity->getOriginX(), g_boardedEntity->getOriginY()) / n->transportRate;
-                    D(g_maxTransferingByBoardableTime);
                     g_transferingByBoardableTime = 0;
                   } else {
                     g_boardedEntity = n;
@@ -5764,6 +5769,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
                       ) 
                   {
                     if(x == protag && g_protagIsWithinBoardable) { break;}
+                    if(opacity != 255) {break;}
 
                     //is the monster facing the target? compare angle to target to this steeringangel
 
@@ -5827,7 +5833,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
             } else {
               c_deagroMs -= elapsed;
             }
-            D(c_deagroMs);
             if(c_deagroMs > deagroMs) {
               agrod = 0;
               traveling = 1;
@@ -5959,7 +5964,8 @@ door* entity::update(vector<door*> doors, float elapsed) {
           
           //aggressiveness is frozen if the player is hiding
           if(!g_protagIsWithinBoardable) {
-            if(seesPotentialTarget) {
+            if(seesPotentialTarget && opacity == 255) {
+
               if(target == protag) {
                 g_protagIsBeingDetectedBySight = 1;
               }
@@ -6024,6 +6030,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           }
 
         }
+
 
         //apply statuseffect
         this->stunned = hisStatusComponent.stunned.updateStatuses(elapsed);
@@ -6279,8 +6286,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
                 int clockDistance = numPoiNodes - ounterDistance;
 
-                //D(ounterDistance);
-                //D(clockDistance);
                 if(ounterDistance < clockDistance) {
                   patrolDirection = 0;
                   //M("New Direction is Ounter");
@@ -6920,8 +6925,6 @@ levelSequence::levelSequence(string filename, SDL_Renderer * renderer){
 void levelSequence::addLevels(string filename) {
   filename = "resources/levelsequence/" + filename;
   
-//  ifstream file;
-//  file.open(filename.c_str());
   istringstream file(loadTextAsString(filename));
 
   string temp;
@@ -6950,6 +6953,8 @@ void levelSequence::addLevels(string filename) {
     getline(file, temp);
     vector<string> behemoths = splitString(temp, ' ');
 
+    behemoths.back().pop_back(); // this is a newline char
+
     getline(file, temp);
     int firstActiveFloor = stoi(temp);
     
@@ -6961,9 +6966,11 @@ void levelSequence::addLevels(string filename) {
 
     getline(file,temp);
     string music = temp;
+    music.pop_back();
 
     getline(file,temp);
     string chasemusic = temp;
+    chasemusic.pop_back();
 
     map_name = "resources/maps/" + map_name;
 
@@ -7069,8 +7076,6 @@ int loadSave() {
     try {
       g_saveStrings.insert( pair<string, string>(field, value) );
       //for debugging saved strings
-//      D(field);
-//      D(value);
     } catch(...) {
       E("Error writing save.");
       return -1;
@@ -7159,7 +7164,6 @@ int loadSave() {
   //
   while(getline(file, line)) {
     if(line == "&") { break;}
-    //D(line);
     for(int i = 0; i < g_levelSequence->levelNodes.size(); i++) {
       string lowerName = g_levelSequence->levelNodes[i]->name;
       std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),  [](unsigned char c) { if(c == ' ') {int e = '-'; return e;} else {return std::tolower(c);}  } );
@@ -7276,8 +7280,9 @@ int writeSave() {
   file << "&" << endl; //token to stop writing unlocked levels
   
   //write protag's usables
-  for(auto x : g_backpack) {
+  for(auto x : g_chest) {
     file << x->internalName << endl;
+    D(x->internalName);
   }
   
   file << "&" << endl; //token to stop writing usables
@@ -8212,14 +8217,15 @@ void clear_map(camera& cameraToReset) {
   enemiesMap.clear();
   g_ai.clear();
   g_musicalEntities.clear();
-  g_behemoths.clear();
   g_boardableEntities.clear();
-  Mix_FadeOutMusic(1000);
   g_objective = 0;
-  g_behemoth0 = 0;
-  g_behemoth1 = 0;
-  g_behemoth2 = 0;
-  g_behemoth3 = 0;
+  if(g_dungeonSystemOn == 0) {
+    g_behemoths.clear();
+    g_behemoth0 = 0;
+    g_behemoth1 = 0;
+    g_behemoth2 = 0;
+    g_behemoth3 = 0;
+  }
   
   if(g_waterAllocated) {
     g_waterTexture = 0;
@@ -8228,7 +8234,8 @@ void clear_map(camera& cameraToReset) {
   }
 
   adventureUIManager->crosshair->show = 0;
-  if(!g_noScreenWipe){
+  if(!g_levelFlashing){
+    Mix_FadeOutMusic(1000);
 
     //SDL_GL_SetSwapInterval(0);
     bool cont = false;
@@ -8783,6 +8790,9 @@ void clear_map(camera& cameraToReset) {
       g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
       g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
     } else if(g_entities[0]->persistentGeneral) {
+      g_entities[0]->current = 0;
+      g_entities[0]->dest = 0;
+      g_entities[0]->Destination = 0;
 
       persistentEnts.push_back(g_entities[0]);
       g_entities.erase(remove(g_entities.begin(), g_entities.end(), g_entities[0]), g_entities.end());
@@ -8948,14 +8958,18 @@ void clear_map(camera& cameraToReset) {
   vector<weapon*> persistentweapons;
   size = (int)g_weapons.size();
   for(int i = 0; i < size; i++) {
-    bool partyOwned = false;
+    bool persist = false;
     //check if party members own the weapons
     for(auto x: party) {
       if(x->hisweapon->name == g_weapons[0]->name) {
-        partyOwned = true;
+        persist  = true;
       }
     }
-    if(partyOwned) {
+    if(g_weapons[0]->persistent) {
+      persist = true;
+
+    }
+    if(persist) {
       persistentweapons.push_back(g_weapons[0]);
       g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), g_weapons[0]), g_weapons.end());
     } else {
@@ -9693,11 +9707,9 @@ void adventureUI::pushFancyText(entity * ftalker)
     if(position2 != string::npos) {
       //get the text between those two positions
       string variableName = arrangeText.substr(position + 2, position2 - position -2);
-      D(variableName);
 
       //is there a savestring for that?
       string res = readSaveStringField(variableName);
-      D(res);
       arrangeText.erase(arrangeText.begin() + position, arrangeText.begin() + position2 + 2);
       arrangeText.insert(position, res);
 
@@ -10115,7 +10127,6 @@ void adventureUI::continueDialogue()
   {
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 6);
-    D(s);
     vector<string> x = splitString(s, ' ');
 
     indexItem *a = new indexItem(x[0], 0);
@@ -10150,7 +10161,6 @@ void adventureUI::continueDialogue()
 
     int fail = 0;
     for(int i = 1; i < x.size()-1; i++) {
-      D(x[i]);
       int good = 0;
       for(auto y : g_familiars) {
         if(y->name == x[i]) { good = 1;}
@@ -10185,7 +10195,6 @@ void adventureUI::continueDialogue()
     vector<string> names;
 
     for(int i = 2; i < x.size(); i++) {
-      D(x[i]);
       for(auto y : g_familiars) {
         if(y->name == x[i]) { 
           g_ex_familiars.push_back(y);
@@ -10213,7 +10222,6 @@ void adventureUI::continueDialogue()
     // parse which block of memory we are interested in
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 7);
-    D(s);
     string name = s;
 
     int numberOfEntity = 0;
@@ -10546,8 +10554,6 @@ I("s");
       int condition = stoi(s.substr(0, s.find(':')));
       s.erase(0, s.find(':') + 1);
       int jump = stoi(s);
-      D(selected->data[block]);
-      D(condition);
       if (selected->data[block] <= condition)
       {
         dialogue_index = jump - 3;
@@ -10584,8 +10590,6 @@ I("s");
       response_index = 0;
       playSound(-1, confirm_noise, 0);
       dialogue_index = jump - 3;
-      D(dialogue_index);
-      D(scriptToUse->at(dialogue_index + 1));
       this->continueDialogue();
     }
     else
@@ -10754,7 +10758,6 @@ I("s");
     s.erase(0, 9);
 
     entity* hopeful = searchEntities(s, talker);
-    D(s);
     if(hopeful != nullptr) {
       hopeful->opacity_delta = -1;
     }
@@ -12175,6 +12178,7 @@ I("s");
   // /unlock twistland
   if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/unlocklevel")
   {
+    M("unlocklevel interpreter");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 
@@ -12200,6 +12204,7 @@ I("s");
   // /levelselect
   if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/levelselect")
   {
+    M("level select interp");
     g_inventoryUiIsLevelSelect = 1;
     g_inventoryUiIsKeyboard = 0;
     g_inventoryUiIsLoadout = 0;
@@ -12207,9 +12212,13 @@ I("s");
     inPauseMenu = 1;
     g_firstFrameOfPauseMenu = 1;
     
+    M("level select interp A");
+    clear_map(g_camera);
     adventureUIManager->escText->updateText("", -1, 0.9);
     adventureUIManager->positionInventory();
     adventureUIManager->showInventoryUI();
+    adventureUIManager->hideHUD();
+    M("level select interp B");
 
     // this is the stuff we do when we read '#' (end scripting)
     if (playersUI)
@@ -12217,11 +12226,13 @@ I("s");
       protag_is_talking = 2;
     }
     executingScript = 0;
+    M("level select interp C");
 
     mobilize = 0;
     if(this == adventureUIManager) {
       adventureUIManager->hideTalkingUI();
     }
+    M("level select interp D");
 
     return;
   }
