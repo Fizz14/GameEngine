@@ -286,11 +286,18 @@ void specialObjectsInit(entity* a) {
     }
     case 24:
     {
+      //fireball
       a->msPerFrame = 70;
       a->loopAnimation = 1;
       a->scriptedAnimation = 1;
       a->visible = 1;
       a->animation = 0;
+
+      break;
+    }
+    case 25:
+    {
+      //dungeon lock
 
       break;
     }
@@ -473,7 +480,9 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         copy->setOriginY(a->getOriginY() + yoff);
         
     
-        blackSmokeEffect->happen(a->getOriginX() + xoff, a->getOriginY() + yoff, a->z + 40, a->steeringAngle);
+        if(cannonToggleEvent == 1 || cannonToggleEvent == 3) {
+          blackSmokeEffect->happen(a->getOriginX() + xoff, a->getOriginY() + yoff, a->z + 40, a->steeringAngle);
+        }
         playSoundAtPosition(6, g_cannonfireSound, 0, a->getOriginX(), a->getOriginY(), 0.6);
       }
       break;
@@ -1026,8 +1035,48 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     }
     case 24:
     {
+      //fireball
       if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
         hurtProtag(1);
+      }
+
+      break;
+    }
+    case 25:
+    {
+      //dungeon lock
+
+      break;
+    }
+    case 26:
+    {
+      //prop blocker
+      
+      if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
+        //push this one slightly away from x
+        float r = pow( max(Distance(protag->getOriginX(), protag->getOriginY(), a->getOriginX(), a->getOriginY()), (float)10.0 ), 2);
+        float mag =  10000/r;
+        float xdif = (protag->getOriginX() - a->getOriginX());
+        float ydif = (protag->getOriginY() - a->getOriginY());
+        float len = pow( pow(xdif, 2) + pow(ydif, 2), 0.5);
+        float normx = xdif/len;
+        float normy = ydif/len;
+  
+        if(!isnan(mag * normx) && !isnan(mag * normy)) {
+          protag->x += normx * mag;
+          protag->y += normy * mag;
+
+        }
+      }
+
+      break;
+    }
+    case 27:
+    {
+      //slime puddle
+
+      if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
+        protag->hisStatusComponent.slown.addStatus(10, 0.5);
       }
 
       break;
@@ -1412,6 +1461,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 
 void specialObjectsInteract(entity* a) {
   switch(a->identity) {
+
     case 9:
     {
       //inventory chest
@@ -1536,12 +1586,57 @@ void specialObjectsInteract(entity* a) {
 
 
         }
+        break;
     }
     case 22:
     {
       //dungeon door
       g_dungeonDoorActivated = 1;
+      break;
       
+    }
+    case 25:
+    {
+      //dungeon lock
+
+      {
+        entity* key = 0;
+
+        for(auto &x : g_familiars)
+        {
+          if(x->name == "common/key") {
+            key = x;
+            break;
+          }
+        }
+
+        if(key != 0) {
+          { //suck
+            g_ex_familiars.push_back(key);
+            g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), key), g_familiars.end());
+            g_exFamiliarParent = a;
+            g_exFamiliarTimer = 10000;
+            key->opacity_delta = -7;
+          }
+
+          {
+            //banish
+            a->banished = 1;
+            a->zaccel = 220;
+            a->shadow->alphamod = -1;
+            a->navblock = 0;
+
+
+          }
+        } else {
+          //play a noise to confirm input
+
+        }
+
+
+      }
+      
+      break;
     }
   }
 }
@@ -1555,14 +1650,15 @@ void specialObjectsOncePerFrame(float elapsed)
     cannonToggleEvent++;
     if(cannonToggleEvent < 4){
       if(cannonToggleTwo) {
-        cannonCooldownM = 800;
+        cannonCooldownM = 500;
         cannonToggleTwo = !cannonToggleTwo;
       } else {
-        cannonCooldownM = 150;
+        cannonCooldownM = 166;
+
       }
     } else {
       cannonToggleTwo = !cannonToggleTwo;
-      cannonCooldownM = 800;
+      cannonCooldownM = 1000;
       cannonToggleEvent = 0;
     }
     cannonCooldown += cannonCooldownM;

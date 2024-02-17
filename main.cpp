@@ -64,7 +64,7 @@ int WinMain()
   string currentDirectory = getCurrentDir();
   PHYSFS_mount(currentDirectory.c_str(), "/", 1);
 
-  PHYSFS_mount("resources.a", "", 0);
+  PHYSFS_mount("resources.a", "/", 0);
 
   // for brightness
   // reuse texture for transition, cuz why not
@@ -679,6 +679,7 @@ int WinMain()
     // behemoth debug here
     if(g_behemoth0 != nullptr) {
     }
+
 
     // some event handling
     while (SDL_PollEvent(&event))
@@ -2461,12 +2462,12 @@ int WinMain()
     {
       // !!! segfaults on mapload sometimes
       
-      SDL_Color useThisColor = g_healthtextcolor;
-      if(protag->hp < 5) {
-        useThisColor = g_healthtextlowcolor;
-      }
-      adventureUIManager->healthText->updateText(to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), -1, 0.9,  useThisColor);
-      adventureUIManager->healthText->show = 1;
+//      SDL_Color useThisColor = g_healthtextcolor;
+//      if(protag->hp < 5) {
+//        useThisColor = g_healthtextlowcolor;
+//      }
+//      adventureUIManager->healthText->updateText(to_string(int(protag->hp)) + '/' + to_string(int(protag->maxhp)), -1, 0.9,  useThisColor);
+//      adventureUIManager->healthText->show = 1;
 
       //adventureUIManager->hungerText->updateText(to_string((int)((float)(min(g_foodpoints, g_maxVisibleFoodpoints) * 100) / (float)g_maxVisibleFoodpoints)) + '%', -1, 0.9);
       //adventureUIManager->hungerText->show = 0;
@@ -2474,31 +2475,31 @@ int WinMain()
       //animate the guts sometimes
       //heart shake
       adventureUIManager->heartShakeIntervalMs -= elapsed;
-      if(adventureUIManager->heartShakeIntervalMs < 0) {
-        //make the heart shake back and forth briefly
-        adventureUIManager->heartShakeDurationMs = adventureUIManager->maxHeartShakeDurationMs;
-
-        adventureUIManager->heartShakeIntervalMs = adventureUIManager->maxHeartShakeIntervalMs + rand() % adventureUIManager->heartShakeIntervalRandomMs;
-      }
-
-      if(adventureUIManager->heartShakeDurationMs > 0) {
-        adventureUIManager->heartShakeDurationMs -= elapsed;
-
-        if(adventureUIManager->heartShakeDurationMs % 400 > 200) {
-          //move left
-          adventureUIManager->healthPicture->targetx = -0.04 - 0.005;
-
-        } else {
-          //move right
-          adventureUIManager->healthPicture->targetx = -0.04 + 0.005;
-
-        }
-
-      } else {
-        //move the heart back to its normal position
-        adventureUIManager->healthPicture->targetx = -0.04;
-
-      }
+//      if(adventureUIManager->heartShakeIntervalMs < 0) {
+//        //make the heart shake back and forth briefly
+//        adventureUIManager->heartShakeDurationMs = adventureUIManager->maxHeartShakeDurationMs;
+//
+//        adventureUIManager->heartShakeIntervalMs = adventureUIManager->maxHeartShakeIntervalMs + rand() % adventureUIManager->heartShakeIntervalRandomMs;
+//      }
+//
+//      if(adventureUIManager->heartShakeDurationMs > 0) {
+//        adventureUIManager->heartShakeDurationMs -= elapsed;
+//
+//        if(adventureUIManager->heartShakeDurationMs % 400 > 200) {
+//          //move left
+//          adventureUIManager->healthPicture->targetx = -0.04 - 0.005;
+//
+//        } else {
+//          //move right
+//          adventureUIManager->healthPicture->targetx = -0.04 + 0.005;
+//
+//        }
+//
+//      } else {
+//        //move the heart back to its normal position
+//        adventureUIManager->healthPicture->targetx = -0.04;
+//
+//      }
 
       //stomach shaking
 //      adventureUIManager->stomachShakeIntervalMs -= elapsed;
@@ -2556,32 +2557,32 @@ int WinMain()
 //      }
 
       //heart beating
-      adventureUIManager->heartbeatDurationMs -= elapsed;
-      if(adventureUIManager->heartbeatDurationMs > 200) {
-          //expand
-          adventureUIManager->healthPicture->targetwidth = 0.25;
-
-      } else {
-          //contract
-          adventureUIManager->healthPicture->targetwidth = 0.25 - adventureUIManager->heartShrinkPercent;
-
-      }
-      if(adventureUIManager->heartbeatDurationMs < 0) {
-        adventureUIManager->heartbeatDurationMs = (adventureUIManager->maxHeartbeatDurationMs - 300) * ((float)protag->hp / (float)protag->maxhp) + 300;
-        float hpratio = ((float)protag->hp / (float)protag->maxhp);
-        if(hpratio < 0.6) {
-        adventureUIManager->healthPicture->widthGlideSpeed = 0.1 + min(0.2, 0.3 *((float)protag->hp / (float)protag->maxhp));
-        } else {
-          adventureUIManager->healthPicture->widthGlideSpeed = 0.1;
-
-        }
-      }
+//      adventureUIManager->heartbeatDurationMs -= elapsed;
+//      if(adventureUIManager->heartbeatDurationMs > 200) {
+//          //expand
+//          adventureUIManager->healthPicture->targetwidth = 0.25;
+//
+//      } else {
+//          //contract
+//          adventureUIManager->healthPicture->targetwidth = 0.25 - adventureUIManager->heartShrinkPercent;
+//
+//      }
+//      if(adventureUIManager->heartbeatDurationMs < 0) {
+//        adventureUIManager->heartbeatDurationMs = (adventureUIManager->maxHeartbeatDurationMs - 300) * ((float)protag->hp / (float)protag->maxhp) + 300;
+//        float hpratio = ((float)protag->hp / (float)protag->maxhp);
+//        if(hpratio < 0.6) {
+//        adventureUIManager->healthPicture->widthGlideSpeed = 0.1 + min(0.2, 0.3 *((float)protag->hp / (float)protag->maxhp));
+//        } else {
+//          adventureUIManager->healthPicture->widthGlideSpeed = 0.1;
+//
+//        }
+//      }
 
 
     }
     else
     {
-      adventureUIManager->healthText->show = 0;
+      //adventureUIManager->healthText->show = 0;
       //adventureUIManager->hungerText->show = 0;
     }
 
@@ -3849,9 +3850,10 @@ int WinMain()
 
     //shade
     SDL_RenderCopy(renderer, g_shade, NULL, NULL);
-
+    
     SDL_RenderPresent(renderer);
   }
+  M("Joseph quits the game");
 
   clear_map(g_camera);
   delete adventureUIManager;
@@ -5454,6 +5456,7 @@ void getInput(float &elapsed)
         string scorePrint = "0/" + to_string(numFloors);
         adventureUIManager->scoreText->updateText(scorePrint, 34, 34);
 
+        M("Generating the dungeon");
         //generate the DUNGEON ( :DD )
 
         if(numFloors > 0){
@@ -5490,6 +5493,7 @@ void getInput(float &elapsed)
           g_dungeonSpecialFloors.clear();
           g_dungeonEggFloors.clear();
           g_dungeonSystemOn = 1;
+          M("dungeon generate interp A"); // problem between A and B here? Probably not
 
           //get list of eligible maps in the mapdir
           string dir = "resources/maps/" + g_mapdir;
@@ -5506,6 +5510,7 @@ void getInput(float &elapsed)
             }
           }
           PHYSFS_freeList(entries);
+          M("dungeon generate interp B");
 
           if(g_dungeonUncommonFloors.size() == 0) {
             for(auto x : g_dungeonCommonFloors) {
@@ -5519,56 +5524,24 @@ void getInput(float &elapsed)
             }
           }
 
-          //create a dungeon out of 1s, 2s, 3s, and r's. As for s's, those will
-          //replace 3's on-the-fly, since they can only be entered if the player will not
-          //be chased upon entering
-          float oneChance = 8;
-          float twoChance = 4;
-          float threeChance = 1;
-          for(int i = 0; i < numFloors-1; i++) {
-            float per = i;
-            per /= numFloors;
-            if(per <= 0.33) {
-              oneChance += 1;
-            } else if(per > 0.33 && per <= 0.66) {
-              twoChance += 1;
-              oneChance -= 1;
-            } else if(per > 0.66) {
-              threeChance += 1;
-              twoChance -= 1;
-            }
-
-            float total = oneChance + twoChance + threeChance;
-            float one = oneChance / total;
-            float two = twoChance / total;
-            float three = threeChance / total;
-
-            two += one;
-            three += two;
+          M("dungeon generate interp C");
+          for(int i = 0; i < numFloors; i++) {
 
             float random = frng(0,1);
             string mapstring = "";
             char identity = 'a';
-            if(random <= one) {
+            if(random <= 0.4) {
               int random = rng(0, g_dungeonCommonFloors.size()-1);
               mapstring = g_dungeonCommonFloors.at(random);
-              identity = '1';
-            } else if(random <= two){
+              identity = 'c';
+            } else if(random <= 0.75){
               int random = rng(0, g_dungeonUncommonFloors.size()-1);
               mapstring = g_dungeonUncommonFloors.at(random);
-              identity = '2';
+              identity = 'u';
             } else {
               int random = rng(0, g_dungeonSpecialFloors.size()-1);
               mapstring = g_dungeonSpecialFloors.at(random);
-              identity = '3';
-            }
-
-
-            if(frng(0,100) > 98.5) {
-              if(g_dungeonRareFloors.size() > 0) {
-                mapstring = g_dungeonRareFloors.at(rng(0,g_dungeonRareFloors.size()-1));
-                identity = 'r';
-              }
+              identity = 'r';
             }
 
             dungeonFloorInfo n;
@@ -5580,7 +5553,8 @@ void getInput(float &elapsed)
         } else {
           g_dungeonSystemOn = 0;
         }
-
+        M("dungeon generate interp D");
+        D(g_dungeon.size());
 
         g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
         g_dungeon.at(g_dungeon.size() -1).identity = 'e';
@@ -5597,6 +5571,8 @@ void getInput(float &elapsed)
         load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
         g_levelSequenceIndex = inventorySelection;
         adventureUIManager->hideInventoryUI();
+
+        M("dungeon generate interp E");
   
         if (canSwitchOffDevMode)
         {
@@ -5615,6 +5591,7 @@ void getInput(float &elapsed)
           Mix_FreeMusic(g_dungeonChaseMusic);
           g_dungeonChaseMusic = nullptr;
         }
+        M("dungeon generate interp F");
 
 
         if(g_levelSequence->levelNodes[inventorySelection]->music != "0") {
@@ -6118,11 +6095,17 @@ void dungeonFlash() {
  
     //clear all behemoths
     for(auto &x : g_dungeonBehemoths) {
+//      for(auto &y : x.ptr->spawnlist) {
+//        delete y;
+//      }
+      //delete x.ptr;
+      x.ptr->persistentGeneral = 0;
+      x.ptr->hisweapon->persistent = 0;
       for(auto &y : x.ptr->spawnlist) {
-        delete y;
+        y->persistentGeneral = 0;
       }
-      delete x.ptr;
     }
+    g_dungeonBehemoths.clear();
 
     adventureUIManager->hideScoreUI();
 
@@ -6130,9 +6113,14 @@ void dungeonFlash() {
     //the menu select, but it might be to initiate a credits sequence or play a cutscene or something cool
     string l = "resources/maps/" + g_mapdir + "/beaten.txt";
 
+    clear_map(g_camera);
     
     vector<string> beatenScript = loadText(l);
     parseScriptForLabels(beatenScript);
+
+    for(auto x: beatenScript) {
+      D(x);
+    }
 
     adventureUIManager->talker = narrarator;
     adventureUIManager->ownScript = beatenScript;
@@ -6143,7 +6131,7 @@ void dungeonFlash() {
   } else {
 
     adventureUIManager->showScoreUI();
-    string scorePrint = to_string(g_dungeonIndex+2) + "/" + to_string(g_dungeon.size()+1);
+    string scorePrint = to_string(g_dungeonIndex+2) + "/" + to_string(g_dungeon.size());
     adventureUIManager->scoreText->updateText(scorePrint, 34, 34);
 
     //decide if we will end any chases

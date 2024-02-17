@@ -4850,8 +4850,16 @@ void write_map(entity *mapent)
         for(int i = 0; i < g_entities.size(); i++){
           if("resources/engine" != g_entities[i]->name.substr(0,6)) {
             string iAsString = to_string(i);
-            string printMe = "g_entities[" + iAsString + "]->name: " + g_entities[i]->name;
-            M(printMe);
+            vector<string> exceptions = {"engine/sp-fogslate" , "engine/sp-deity" , "common/spurl" , "common/chain" , "common/fomm-spin"};
+            bool printName = 1;
+            for(auto x : exceptions) {
+              if(g_entities[i]->name == x) {printName = 0;}
+            }
+
+            if(printName) {
+              string printMe = "g_entities[" + iAsString + "]->name: " + g_entities[i]->name;
+              M(printMe);
+            }
           }
         }
         M("}");

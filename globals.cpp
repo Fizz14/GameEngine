@@ -187,7 +187,7 @@ float g_extraShadowSize = 20; // how much bigger are shadows in comparison to th
 int g_fogofwarEnabled = 1;
 int g_fogofwarRays = 100;
 bool g_showHealthbar = 0;
-int g_entitySleepDistance = 1048576*1.5;
+int g_entitySleepDistance = 1048576*5;
 effectIndex *smokeEffect;
 effectIndex *littleSmokeEffect;
 effectIndex *blackSmokeEffect;
@@ -1339,14 +1339,32 @@ float frng(float min, float max) {
 }
 
 void hurtProtag(int dmg) {
+  if(devMode) {return;}
+  if(g_dungeonDoorActivated) {return;} //don't trigger multiple times at once
   //easy way to implement heromode!
-  if(!protag->hisStatusComponent.invincible.check()) {
-    protag->hp -= dmg;
-    protag->hisStatusComponent.invincible.addStatus(g_invincibleMs, 1);
+//  if(!protag->hisStatusComponent.invincible.check()) {
+//    protag->hp -= dmg;
+//    protag->hisStatusComponent.invincible.addStatus(g_invincibleMs, 1);
+//
+//    playSound(2, g_playerdamage, 0);
+//    protag->flashingMS = g_flashtime;
+//  }
 
-    playSound(2, g_playerdamage, 0);
-    protag->flashingMS = g_flashtime;
+  //I have this new concept for the game where damage
+  //resets the level instead of decrementing a healthbar
+  
+  M("Hurt protag");
+  g_dungeonDoorActivated = 1;
+  g_dungeonIndex--;
+
+  for(auto &x : g_dungeonBehemoths) {
+    if(x.active) {
+      x.floorsRemaining += 1;
+    } else {
+      x.waitFloors += 1;
+    }
   }
+  
 }
 
 void transform3dPoint(float x, float y, float z, float &u, float &v) {

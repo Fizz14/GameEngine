@@ -904,6 +904,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
 
     SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
     if(g_waterAllocated == 0 && fileaddress.find("sp-water") != std::string::npos) {
+      M("Found gwater");
       g_waterAllocated = 1;
       g_waterSurface = loadSurface(filename); // the values of this data will not be modified
       g_waterTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 440);
@@ -8219,6 +8220,8 @@ void clear_map(camera& cameraToReset) {
   g_musicalEntities.clear();
   g_boardableEntities.clear();
   g_objective = 0;
+  g_familiars.clear();
+  g_ex_familiars.clear();
   if(g_dungeonSystemOn == 0) {
     g_behemoths.clear();
     g_behemoth0 = 0;
@@ -8226,6 +8229,7 @@ void clear_map(camera& cameraToReset) {
     g_behemoth2 = 0;
     g_behemoth3 = 0;
   }
+
   
   if(g_waterAllocated) {
     g_waterTexture = 0;
@@ -8696,7 +8700,6 @@ void clear_map(camera& cameraToReset) {
     //to stop the clock and the goal text from rendering
     adventureUIManager->scoreText->show = 1;
     adventureUIManager->systemClock->show = 1;
-
 
     SDL_SetRenderTarget(renderer, NULL);
     while (!cont) {
@@ -9452,17 +9455,17 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 
 
 
-    healthText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
-    healthText->boxWidth = 0.95;
-    healthText->width = 0.95;
-    healthText->boxHeight = 0;
-    healthText->boxX = 0.05;
-    healthText->boxY = 0.15; //0.3 to get it under the heart
-    healthText->worldspace = 1;
-    healthText->show = 1;
-    healthText->align = 0;
-    healthText->dropshadow = 1;
-    healthText->layer0 = 1;
+//    healthText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
+//    healthText->boxWidth = 0.95;
+//    healthText->width = 0.95;
+//    healthText->boxHeight = 0;
+//    healthText->boxX = 0.05;
+//    healthText->boxY = 0.15; //0.3 to get it under the heart
+//    healthText->worldspace = 1;
+//    healthText->show = 1;
+//    healthText->align = 0;
+//    healthText->dropshadow = 1;
+//    healthText->layer0 = 1;
 
 //    hungerText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
 //    hungerText->boxWidth = 0.95;
@@ -9541,16 +9544,16 @@ void adventureUI::initFullUI() {
   adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
   adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
 
-  healthPicture = new ui(renderer, "resources/static/ui/health.qoi", -0.04, -0.09, 0.25, 1, -15);
-  healthPicture->persistent = 1;
-  healthPicture->heightFromWidthFactor = 1;
-  healthPicture->show = 1;
-  healthPicture->framewidth = 410;
-  healthPicture->frameheight = 465;
-  healthPicture->layer0 = 1;
-  healthPicture->glideSpeed = 0.1;
-  healthPicture->widthGlideSpeed = 0.1;
-  healthPicture->priority = -10; //health is behind everything
+//  healthPicture = new ui(renderer, "resources/static/ui/health.qoi", -0.04, -0.09, 0.25, 1, -15);
+//  healthPicture->persistent = 1;
+//  healthPicture->heightFromWidthFactor = 1;
+//  healthPicture->show = 1;
+//  healthPicture->framewidth = 410;
+//  healthPicture->frameheight = 465;
+//  healthPicture->layer0 = 1;
+//  healthPicture->glideSpeed = 0.1;
+//  healthPicture->widthGlideSpeed = 0.1;
+//  healthPicture->priority = -10; //health is behind everything
 
   hotbar = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", g_hotbarX + g_backpackHorizontalOffset, 0.84, 0.1, 0.1, 1);
   hotbar->is9patch = true;
@@ -12213,7 +12216,7 @@ I("s");
     g_firstFrameOfPauseMenu = 1;
     
     M("level select interp A");
-    clear_map(g_camera);
+    //clear_map(g_camera);
     adventureUIManager->escText->updateText("", -1, 0.9);
     adventureUIManager->positionInventory();
     adventureUIManager->showInventoryUI();
@@ -12316,8 +12319,8 @@ void adventureUI::positionInventory() {
 //hide heart and other stuff if the player is in the menus
 void adventureUI::hideHUD() {
   showHud = 0;
-  healthPicture->show = 0;
-  healthText->show = 0;
+  //healthPicture->show = 0;
+  //healthText->show = 0;
   hideScoreUI();
   hotbarFocus->show = 0;
   hotbarMutedXIcon->show = 0;
@@ -12328,8 +12331,8 @@ void adventureUI::hideHUD() {
 
 void adventureUI::showHUD() {
   showHud = 1;
-  healthPicture->show = 1;
-  healthText->show = 1;
+  //healthPicture->show = 1;
+  //healthText->show = 1;
   hotbarFocus->show = 1;
   hotbarMutedXIcon->show = 1;
   hotbar->show = 1;
