@@ -1076,7 +1076,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       //slime puddle
 
       if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
-        protag->hisStatusComponent.slown.addStatus(10, 0.5);
+        protag->hisStatusComponent.slown.addStatus(100, 0.5);
       }
 
       break;

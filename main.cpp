@@ -61,10 +61,26 @@ int WinMain()
 
   SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 
-  string currentDirectory = getCurrentDir();
-  PHYSFS_mount(currentDirectory.c_str(), "/", 1);
+  PHYSFS_ErrorCode errnum = PHYSFS_getLastErrorCode();
 
-  PHYSFS_mount("resources.a", "/", 0);
+  if(devMode) {
+    string currentDirectory = getCurrentDir();
+    PHYSFS_mount(currentDirectory.c_str(), "/", 1);
+  }
+  
+  int ret = PHYSFS_mount("resources.a", "/", 0);
+
+  for(char **i = PHYSFS_getSearchPath(); *i != NULL; i++) {
+    printf("[%s] is in the search path.\n", *i);
+  }
+
+  if(PHYSFS_exists("resources/static/entities/common/fomm.ent")) {
+    M("Archive is present"); //this has worked before! Make sure the exe is in the same directory as the archive file
+  } else {
+    M("Archive is NOT present");
+  }
+
+  
 
   // for brightness
   // reuse texture for transition, cuz why not
@@ -3853,7 +3869,6 @@ int WinMain()
     
     SDL_RenderPresent(renderer);
   }
-  M("Joseph quits the game");
 
   clear_map(g_camera);
   delete adventureUIManager;

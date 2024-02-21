@@ -1435,8 +1435,10 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   name = filename;
   string existSTR;
   existSTR = "resources/static/effects/" + filename + ".eft";
-  ifstream file;
-  file.open(existSTR);
+  //ifstream file;
+  //file.open(existSTR);
+
+  istringstream file(loadTextAsString(existSTR));
   string line;
 
   //name of texture
