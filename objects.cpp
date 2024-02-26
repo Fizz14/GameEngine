@@ -6381,7 +6381,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           if(customMovement == 0 || distToTarget < movementTypeSwitchRadius)
           { //blindrun movement
             
-            if(( (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true) )  || (distToTarget < 64) ) ) {
+            if(( (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true) )  || (distToTarget < 180) ) ) {
             //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
             targetSteeringAngle = angleToTarget;
             
@@ -6390,7 +6390,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             if(g_protagIsWithinBoardable) {
               rangeToUse = 64 * 3;
             } else {
-              rangeToUse = 64;
+              rangeToUse = 128;
             }
   
             if( distToTarget > rangeToUse) {

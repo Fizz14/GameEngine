@@ -99,7 +99,6 @@ void specialObjectsInit(entity* a) {
           char c = a->name.at(a->name.size() - 1);
           if(c == b) {
             a->spawnlist.push_back(x);
-            M("Lever found door");
           }
         }
 
@@ -117,7 +116,6 @@ void specialObjectsInit(entity* a) {
           char b = a->name.at(a->name.size() - 1);
           if(c == b) {
             x->spawnlist.push_back(a);
-            M("Door found lever");
           }
         }
 
@@ -298,6 +296,18 @@ void specialObjectsInit(entity* a) {
     case 25:
     {
       //dungeon lock
+
+      break;
+    }
+    case 28:
+    {
+      
+
+      break;
+    }
+    case 29:
+    {
+      a->flagA = 0; //search for crate
 
       break;
     }
@@ -1081,6 +1091,70 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 
       break;
     }
+    case 28:
+    {
+      //pushable heavy crate
+      
+      //left box
+      rect bounds = a->getMovedBounds();
+      int vx = 0;
+      int vy = 0;
+
+      rect left = bounds;
+      left.width = 5;
+      left.x -= 5;
+
+      rect right = bounds;
+      right.x += right.width;
+      right.width = 5;
+
+      rect up = bounds;
+      up.y += up.height;
+      up.height = 5;
+
+      rect down = bounds;
+      down.y -= 5;
+      down.height = 5;
+
+
+      if(RectOverlap3d(protag->getMovedBounds(), left)) {
+        vx = 1;
+      }
+
+      if(RectOverlap3d(protag->getMovedBounds(), right)) {
+        vx = -1;
+      }
+
+      if(RectOverlap3d(protag->getMovedBounds(), up)) {
+        vy = -1;
+      }
+
+      if(RectOverlap3d(protag->getMovedBounds(), down)) {
+        vy = 1;
+      }
+      vx *= 10;
+      vy *= 10;
+      a->xvel += vx;
+      a->yvel += vy;
+      break;
+    }
+    case 29:
+    {
+      //crushable entity
+      
+      //search for crate if we haven't found it yet
+      if(a->flagA == 0) {
+        for(auto &x : g_entities) {
+          if(x->identity == 28) {
+            a->spawnlist.push_back(x);
+            a->flagA = 1;
+            M("found crate");
+          }
+        }
+      }
+
+      break;
+    }
    
     case 100: 
     {
@@ -1129,7 +1203,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           { //create hitbox
             hitbox* h = new hitbox();
       
-            float offset = 150;
+            float offset = 120;
             float yoff = -offset * sin(a->steeringAngle);
             float xoff = offset * cos(a->steeringAngle);
       
@@ -1140,9 +1214,9 @@ void specialObjectsUpdate(entity* a, float elapsed) {
             h->bounds.x = 0;
             h->bounds.y = 0;
             h->bounds.z = 20;
-            h->bounds.width = 192;
-            h->bounds.height = 192;
-            h->bounds.zeight = 128;
+            h->bounds.width = 250;
+            h->bounds.height = 250;
+            h->bounds.zeight = 250;
         
             h->activeMS = 10;
             h->sleepingMS = 0;
@@ -1632,8 +1706,6 @@ void specialObjectsInteract(entity* a) {
           //play a noise to confirm input
 
         }
-
-
       }
       
       break;

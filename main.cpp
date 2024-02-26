@@ -68,7 +68,7 @@ int WinMain()
     PHYSFS_mount(currentDirectory.c_str(), "/", 1);
   }
   
-  int ret = PHYSFS_mount("resources.a", "/", 0);
+  int ret = PHYSFS_mount("resources.a", "/", 0); //to deploy, just zip up the "resources" folder in  the "shipping" directory and change the filetype from .zip to .a
 
   for(char **i = PHYSFS_getSearchPath(); *i != NULL; i++) {
     printf("[%s] is in the search path.\n", *i);
@@ -6151,10 +6151,12 @@ void dungeonFlash() {
 
     //decide if we will end any chases
     for(auto &x : g_dungeonBehemoths) {
+      x.ptr->frameInAnimation = 0;
       if(x.active) {
         x.floorsRemaining -= 1;
         if(x.floorsRemaining < 1) {
           //deactivate this behemoth
+          M("Deactivating a behemoth");
           x.active = 0;
           x.waitFloors = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * rng(0.6,1.4);
         }

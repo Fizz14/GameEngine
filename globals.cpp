@@ -1353,16 +1353,15 @@ void hurtProtag(int dmg) {
   //I have this new concept for the game where damage
   //resets the level instead of decrementing a healthbar
   
-  M("Hurt protag");
   g_dungeonDoorActivated = 1;
   g_dungeonIndex--;
 
   for(auto &x : g_dungeonBehemoths) {
-    if(x.active) {
-      x.floorsRemaining += 1;
-    } else {
-      x.waitFloors += 1;
-    }
+    x.floorsRemaining += 1;
+    x.waitFloors += 1;
+    D(x.floorsRemaining);
+    M("Incremented the behemoth's floorsRemaining count, since we don't wanna deactivate it next");
+    //ongoing issue
   }
   
 }
