@@ -964,6 +964,18 @@ int g_levelSequenceIndex;
 
 Mix_Music* g_dungeonMusic = nullptr;
 Mix_Music* g_dungeonChaseMusic = nullptr;
+bool g_dungeonRedo = 0;
+
+SDL_Texture* g_grossup = 0;
+int g_grossupLoaded = 0;
+int g_grossupShowMs = 0;
+int g_maxGrossupShowMs = 1000;
+
+vector<pair<int, Mix_Chunk*>> g_loadPlaySounds;
+
+//for preventing the player from begining dialog after closing
+//a menu
+int g_menuTalkReset = 0; 
 
 bool fileExists(const std::string &name)
 {
@@ -1341,28 +1353,11 @@ float frng(float min, float max) {
 void hurtProtag(int dmg) {
   if(devMode) {return;}
   if(g_dungeonDoorActivated) {return;} //don't trigger multiple times at once
-  //easy way to implement heromode!
-//  if(!protag->hisStatusComponent.invincible.check()) {
-//    protag->hp -= dmg;
-//    protag->hisStatusComponent.invincible.addStatus(g_invincibleMs, 1);
-//
-//    playSound(2, g_playerdamage, 0);
-//    protag->flashingMS = g_flashtime;
-//  }
-
-  //I have this new concept for the game where damage
-  //resets the level instead of decrementing a healthbar
   
   g_dungeonDoorActivated = 1;
   g_dungeonIndex--;
 
-  for(auto &x : g_dungeonBehemoths) {
-    x.floorsRemaining += 1;
-    x.waitFloors += 1;
-    D(x.floorsRemaining);
-    M("Incremented the behemoth's floorsRemaining count, since we don't wanna deactivate it next");
-    //ongoing issue
-  }
+  g_dungeonRedo = 1; //don't deactive behemoths
   
 }
 

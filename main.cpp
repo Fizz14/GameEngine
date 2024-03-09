@@ -654,6 +654,8 @@ int WinMain()
   sparksEffect = new effectIndex("sparks", renderer);
   sparksEffect->persistent = 1;
 
+
+
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   SDL_RenderPresent(renderer);
   SDL_GL_SetSwapInterval(1);
@@ -889,6 +891,8 @@ int WinMain()
 
     // INPUT
     getInput(elapsed);
+
+    g_menuTalkReset = 0;
     
     //lerp protag to boarded ent smoothly
     if(g_protagIsWithinBoardable) {
@@ -3689,6 +3693,17 @@ int WinMain()
       }
     }
 
+    { // clean up loadplaysounds
+      for(auto &x : g_loadPlaySounds) {
+        if(x.first < 0) {
+          Mix_FreeChunk(x.second);
+          g_loadPlaySounds.erase(remove(g_loadPlaySounds.begin(), g_loadPlaySounds.end(), x), g_loadPlaySounds.end());
+          break;
+        }
+        x.first -= elapsed;
+      }
+    }
+
     // worldsounds
     for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
     {
@@ -3862,6 +3877,18 @@ int WinMain()
     if (adventureUIManager->sleepflag)
     {
       adventureUIManager->continueDialogue();
+    }
+
+    { //grossup effect
+      if(g_grossupShowMs > 0) {
+        SDL_Rect dest;
+        dest.h = WIN_HEIGHT;
+        dest.w = WIN_HEIGHT;
+        dest.x = WIN_WIDTH/2 - WIN_HEIGHT/2;
+        dest.y = 0;
+        SDL_RenderCopy(renderer, g_grossup, NULL, &dest);
+        g_grossupShowMs -= elapsed;
+      }
     }
 
     //shade
@@ -4784,6 +4811,7 @@ void getInput(float &elapsed)
           g_inventoryUiIsLoadout = 0;
           g_inSettingsMenu = 0;
           inPauseMenu = 0;
+          g_menuTalkReset = 1;
           g_settingsUI->hide();
           protag_is_talking = 0;
 
@@ -4978,6 +5006,7 @@ void getInput(float &elapsed)
         g_inEscapeMenu = 0;
         //inPauseMenu = 0;
         protag_is_talking = 0;
+        g_menuTalkReset = 1;
   
         g_escapeUI->hide();
 
@@ -5508,7 +5537,6 @@ void getInput(float &elapsed)
           g_dungeonSpecialFloors.clear();
           g_dungeonEggFloors.clear();
           g_dungeonSystemOn = 1;
-          M("dungeon generate interp A"); // problem between A and B here? Probably not
 
           //get list of eligible maps in the mapdir
           string dir = "resources/maps/" + g_mapdir;
@@ -5519,13 +5547,13 @@ void getInput(float &elapsed)
             if(fn.find(".map") != string::npos && fn.size() > 2 && fn[1] == '-') {
               if(fn[0] == 'c') {g_dungeonCommonFloors.push_back(fn);}
               else if(fn[0] == 'u') {g_dungeonUncommonFloors.push_back(fn);}
-              else if(fn[0] == 'r') {g_dungeonSpecialFloors.push_back(fn);}
-              else if(fn[0] == 's') {g_dungeonRareFloors.push_back(fn);}
+              else if(fn[0] == 'r') {g_dungeonRareFloors.push_back(fn);}
+              else if(fn[0] == 's') {g_dungeonSpecialFloors.push_back(fn);}
               else if(fn[0] == 'e') {g_dungeonEggFloors.push_back(fn);}
             }
           }
           PHYSFS_freeList(entries);
-          M("dungeon generate interp B");
+
 
           if(g_dungeonUncommonFloors.size() == 0) {
             for(auto x : g_dungeonCommonFloors) {
@@ -5539,7 +5567,6 @@ void getInput(float &elapsed)
             }
           }
 
-          M("dungeon generate interp C");
           for(int i = 0; i < numFloors; i++) {
 
             float random = frng(0,1);
@@ -5568,14 +5595,15 @@ void getInput(float &elapsed)
         } else {
           g_dungeonSystemOn = 0;
         }
-        M("dungeon generate interp D");
         D(g_dungeon.size());
 
         g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
         g_dungeon.at(g_dungeon.size() -1).identity = 'e';
 
 
+
         clear_map(g_camera);
+
   
         inPauseMenu = 0;
   
@@ -5587,7 +5615,6 @@ void getInput(float &elapsed)
         g_levelSequenceIndex = inventorySelection;
         adventureUIManager->hideInventoryUI();
 
-        M("dungeon generate interp E");
   
         if (canSwitchOffDevMode)
         {
@@ -5606,7 +5633,6 @@ void getInput(float &elapsed)
           Mix_FreeMusic(g_dungeonChaseMusic);
           g_dungeonChaseMusic = nullptr;
         }
-        M("dungeon generate interp F");
 
 
         if(g_levelSequence->levelNodes[inventorySelection]->music != "0") {
@@ -5649,7 +5675,7 @@ void getInput(float &elapsed)
 
   dialogue_cooldown -= elapsed;
 
-  if (keystate[bindings[11]] && !inPauseMenu && !transition)
+  if (keystate[bindings[11]] && !inPauseMenu && !transition && g_menuTalkReset == 0)
   {
     if (protag_is_talking == 1)
     { // advance or speedup diaglogue
@@ -5752,7 +5778,9 @@ void getInput(float &elapsed)
   if (keystate[SDL_SCANCODE_O] && devMode)
   {
     //make a dungeondoor
-    devinput[9] = 1;
+    //devinput[9] = 1;
+    
+    boxsenabled = !boxsenabled;
   }
   if (keystate[SDL_SCANCODE_KP_5] && devMode)
   {
@@ -6137,10 +6165,14 @@ void dungeonFlash() {
       D(x);
     }
 
+    M("Better do that beaten script!");
+
     adventureUIManager->talker = narrarator;
     adventureUIManager->ownScript = beatenScript;
     adventureUIManager->dialogue_index = -1;
     adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+    g_forceEndDialogue = 0;
+    adventureUIManager->sleepingMS = 0;
     adventureUIManager->continueDialogue();
 
   } else {
@@ -6149,30 +6181,38 @@ void dungeonFlash() {
     string scorePrint = to_string(g_dungeonIndex+2) + "/" + to_string(g_dungeon.size());
     adventureUIManager->scoreText->updateText(scorePrint, 34, 34);
 
-    //decide if we will end any chases
-    for(auto &x : g_dungeonBehemoths) {
-      x.ptr->frameInAnimation = 0;
-      if(x.active) {
-        x.floorsRemaining -= 1;
-        if(x.floorsRemaining < 1) {
-          //deactivate this behemoth
-          M("Deactivating a behemoth");
-          x.active = 0;
-          x.waitFloors = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * rng(0.6,1.4);
+
+    if(!g_dungeonRedo) {
+      //decide if we will end any chases
+      for(auto &x : g_dungeonBehemoths) {
+        if(x.active) {
+          x.floorsRemaining -= 1;
+          if(x.floorsRemaining < 1) {
+            //deactivate this behemoth
+            x.active = 0;
+            x.waitFloors = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * rng(0.6,1.4);
+          }
+  
+        } else {
+          x.waitFloors -= 1;
+          if(x.waitFloors < 1) {
+            //activate this behemoth
+            x.active = 1;
+            x.floorsRemaining = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgChaseSequence * rng(0.6,1.4);
+            M("New behemoth active for:");
+            D(x.floorsRemaining);
+
+          }
+  
+  
         }
-
-      } else {
-        x.waitFloors -= 1;
-        if(x.waitFloors < 1) {
-          //activate this behemoth
-          x.active = 1;
-          x.floorsRemaining = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgChaseSequence * rng(0.6,1.4);
-        }
-
-
+  
       }
-
+    } else {
+      M("Redo floor, not affecting behemoths");
     }
+
+    g_dungeonRedo = 0;
 
 
     g_dungeonIndex++;
@@ -6190,6 +6230,13 @@ void dungeonFlash() {
     //M(" -- Active behemoths:");
     for(auto &x : g_dungeonBehemoths) {
       if(x.active) {
+        x.ptr->frameInAnimation = 0;
+        
+        for (auto &y : x.ptr->spawnlist) {
+          y->tangible = 1;
+        }
+
+        //D(x.ptr->name);
         x.ptr->tangible = 1;
         x.ptr->semisolid = 0;
         if(g_waypoints.size() > 0) {
@@ -6206,6 +6253,10 @@ void dungeonFlash() {
         x.ptr->tangible = 0;
         x.ptr->x = 0;
         x.ptr->y = 0;
+
+        for (auto &y : x.ptr->spawnlist) {
+          y->tangible = 0;
+        }
 
       }
 

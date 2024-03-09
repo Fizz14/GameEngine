@@ -909,7 +909,15 @@ extern int g_levelSequenceIndex;
 
 extern Mix_Music* g_dungeonMusic;
 extern Mix_Music* g_dungeonChaseMusic;
-extern entity* dungeonBehemoth;
+extern bool g_dungeonRedo;
+
+extern SDL_Texture* g_grossup;
+extern int g_grossupLoaded;
+extern int g_grossupShowMs;
+extern int g_maxGrossupShowMs;
+extern vector<pair<int, Mix_Chunk*>> g_loadPlaySounds;
+
+extern int g_menuTalkReset;
 
 bool fileExists(const std::string &name);
 
