@@ -155,7 +155,6 @@ int WinMain()
   {
     getline(bindfile, line);
     bindings[i] = SDL_GetScancodeFromName(line.c_str());
-    // D(bindings[i]);
   }
 
   // set vsync and g_fullscreen from config
@@ -565,8 +564,8 @@ int WinMain()
   //in debugger g_fc[20][19] = g_fc[20][20] = -1414812757
   //but standalone = 0
   //?
-  for(int i = 0; i < g_fogcookies.size(); i++) {
-    for(int j = 0; j < g_fogcookies.size(); j++) {
+  for(int i = 0; i < g_fogwidth; i++) {
+    for(int j = 0; j < g_fogheight; j++) {
       g_fc[i][j] = 0;
       g_sc[i][j] = 0;
       g_fogcookies[i][j] = 0;
@@ -640,6 +639,21 @@ int WinMain()
 
   SDL_DestroyTexture(s->texture);
 
+  for (auto x : g_fogslates)
+  {
+    x->texture = TextureC;
+  }
+
+  for (auto x : g_fogslatesA)
+  {
+    x->texture = TextureC;
+  }
+
+  for (auto x : g_fogslatesB)
+  {
+    x->texture = TextureC;
+  }
+
 
   //this is used when spawning in entities
   smokeEffect = new effectIndex("puff", renderer);
@@ -653,8 +667,6 @@ int WinMain()
 
   sparksEffect = new effectIndex("sparks", renderer);
   sparksEffect->persistent = 1;
-
-
 
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   SDL_RenderPresent(renderer);
@@ -891,8 +903,6 @@ int WinMain()
 
     // INPUT
     getInput(elapsed);
-
-    g_menuTalkReset = 0;
     
     //lerp protag to boarded ent smoothly
     if(g_protagIsWithinBoardable) {
@@ -1416,7 +1426,7 @@ int WinMain()
               for (long long unsigned j = 0; j < g_fogcookies.size(); j++)
               {
                 // check if there was an "old" cookie
-                if ((i + xtileshift >= 0 && i + xtileshift < g_fogcookies.size()) && (j + ytileshift >= 0 && j + ytileshift < g_fogcookies.size() - 2))
+                if ((i + xtileshift >= 0 && i + xtileshift < g_fogcookies.size()) && (j + ytileshift >= 0 && j + ytileshift < g_fogheight) && i >= 0 && i < g_fogwidth && j >= 0 && j < g_fogheight)
                 {
                   g_fogcookies[i][j] = fogcopy[i + xtileshift][j + ytileshift];
                   g_fc[i][j] = fccopy[i + xtileshift][j + ytileshift];
@@ -1513,9 +1523,9 @@ int WinMain()
       // save cookies that are just dark because they are inside of walls to g_savedcookies
       // AND if they tile infront is at 255
 
-      for (long long unsigned i = 0; i < g_fogcookies.size(); i++)
+      for (long long unsigned i = 0; i < g_fogwidth; i++)
       {
-        for (long long unsigned j = 0; j < g_fogcookies[0].size(); j++)
+        for (long long unsigned j = 0; j < g_fogheight; j++)
         {
           int xpos = ((i - 10) * 64) + functionalX;
           int ypos = ((j - 9) * 55) + functionalY;
@@ -1525,7 +1535,7 @@ int WinMain()
           {
             break;
           }
-          if (j + 1 < g_fogcookies.size() && g_fc[i][j + 1] > 0)
+          if (j + 1 < g_fogheight && g_fc[i][j + 1] > 0)
           {
             bool firsttrace = LineTrace(xpos, ypos, xpos, ypos, 0, 15, g_focus->stableLayer + 1, 2, 1, 1);
             bool secondtrace = LineTrace(xpos, ypos + 55, xpos, ypos + 55, 0, 15, g_focus->stableLayer + 1, 2, 1, 1);
@@ -3693,17 +3703,6 @@ int WinMain()
       }
     }
 
-    { // clean up loadplaysounds
-      for(auto &x : g_loadPlaySounds) {
-        if(x.first < 0) {
-          Mix_FreeChunk(x.second);
-          g_loadPlaySounds.erase(remove(g_loadPlaySounds.begin(), g_loadPlaySounds.end(), x), g_loadPlaySounds.end());
-          break;
-        }
-        x.first -= elapsed;
-      }
-    }
-
     // worldsounds
     for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
     {
@@ -3879,18 +3878,6 @@ int WinMain()
       adventureUIManager->continueDialogue();
     }
 
-    { //grossup effect
-      if(g_grossupShowMs > 0) {
-        SDL_Rect dest;
-        dest.h = WIN_HEIGHT;
-        dest.w = WIN_HEIGHT;
-        dest.x = WIN_WIDTH/2 - WIN_HEIGHT/2;
-        dest.y = 0;
-        SDL_RenderCopy(renderer, g_grossup, NULL, &dest);
-        g_grossupShowMs -= elapsed;
-      }
-    }
-
     //shade
     SDL_RenderCopy(renderer, g_shade, NULL, NULL);
     
@@ -3903,11 +3890,7 @@ int WinMain()
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_FreeSurface(transitionSurface);
-  SDL_DestroyTexture(transitionTexture);
   SDL_DestroyTexture(background);
-  SDL_DestroyTexture(g_shade);
-  SDL_DestroyTexture(g_shadowTexture);
-  SDL_DestroyTexture(g_shadowTextureAlternate);
   IMG_Quit();
   Mix_CloseAudio();
   TTF_Quit();
@@ -4811,7 +4794,6 @@ void getInput(float &elapsed)
           g_inventoryUiIsLoadout = 0;
           g_inSettingsMenu = 0;
           inPauseMenu = 0;
-          g_menuTalkReset = 1;
           g_settingsUI->hide();
           protag_is_talking = 0;
 
@@ -5006,7 +4988,6 @@ void getInput(float &elapsed)
         g_inEscapeMenu = 0;
         //inPauseMenu = 0;
         protag_is_talking = 0;
-        g_menuTalkReset = 1;
   
         g_escapeUI->hide();
 
@@ -5537,6 +5518,7 @@ void getInput(float &elapsed)
           g_dungeonSpecialFloors.clear();
           g_dungeonEggFloors.clear();
           g_dungeonSystemOn = 1;
+          M("dungeon generate interp A"); // problem between A and B here? Probably not
 
           //get list of eligible maps in the mapdir
           string dir = "resources/maps/" + g_mapdir;
@@ -5553,7 +5535,7 @@ void getInput(float &elapsed)
             }
           }
           PHYSFS_freeList(entries);
-
+          M("dungeon generate interp B");
 
           if(g_dungeonUncommonFloors.size() == 0) {
             for(auto x : g_dungeonCommonFloors) {
@@ -5567,6 +5549,7 @@ void getInput(float &elapsed)
             }
           }
 
+          M("dungeon generate interp C");
           for(int i = 0; i < numFloors; i++) {
 
             float random = frng(0,1);
@@ -5595,15 +5578,14 @@ void getInput(float &elapsed)
         } else {
           g_dungeonSystemOn = 0;
         }
+        M("dungeon generate interp D");
         D(g_dungeon.size());
 
         g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
         g_dungeon.at(g_dungeon.size() -1).identity = 'e';
 
 
-
         clear_map(g_camera);
-
   
         inPauseMenu = 0;
   
@@ -5615,6 +5597,7 @@ void getInput(float &elapsed)
         g_levelSequenceIndex = inventorySelection;
         adventureUIManager->hideInventoryUI();
 
+        M("dungeon generate interp E");
   
         if (canSwitchOffDevMode)
         {
@@ -5633,6 +5616,7 @@ void getInput(float &elapsed)
           Mix_FreeMusic(g_dungeonChaseMusic);
           g_dungeonChaseMusic = nullptr;
         }
+        M("dungeon generate interp F");
 
 
         if(g_levelSequence->levelNodes[inventorySelection]->music != "0") {
@@ -5675,7 +5659,7 @@ void getInput(float &elapsed)
 
   dialogue_cooldown -= elapsed;
 
-  if (keystate[bindings[11]] && !inPauseMenu && !transition && g_menuTalkReset == 0)
+  if (keystate[bindings[11]] && !inPauseMenu && !transition)
   {
     if (protag_is_talking == 1)
     { // advance or speedup diaglogue
@@ -6157,6 +6141,11 @@ void dungeonFlash() {
     string l = "resources/maps/" + g_mapdir + "/beaten.txt";
 
     clear_map(g_camera);
+
+    if (canSwitchOffDevMode)
+    {
+      init_map_writing(renderer);
+    }
     
     vector<string> beatenScript = loadText(l);
     parseScriptForLabels(beatenScript);
@@ -6165,14 +6154,10 @@ void dungeonFlash() {
       D(x);
     }
 
-    M("Better do that beaten script!");
-
     adventureUIManager->talker = narrarator;
     adventureUIManager->ownScript = beatenScript;
     adventureUIManager->dialogue_index = -1;
     adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-    g_forceEndDialogue = 0;
-    adventureUIManager->sleepingMS = 0;
     adventureUIManager->continueDialogue();
 
   } else {

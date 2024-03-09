@@ -136,7 +136,7 @@ vector<string> loadText(string fileaddress)
       x[i].pop_back();
     }
 
-    delete buf;
+    delete[] buf;
     return x;
 
   } else {
@@ -167,12 +167,13 @@ string loadTextAsString(string fileaddress)
 
     PHYSFS_sint64 filesize = PHYSFS_fileLength(myfile);
     char* buf;
-    buf = new char[filesize];
+    buf = new char[filesize+1];
+    buf[filesize] = '\0';
     int length_read = PHYSFS_readBytes(myfile, buf, filesize);
 
     PHYSFS_close(myfile);
     string myString(buf);
-    delete buf;
+    delete[] buf;
     return myString;
 
   } else {

@@ -1331,14 +1331,13 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   g_loadingATM = 0;
 
   //reset cookies
-  for(int i = 0; i < g_fogcookies.size(); i++) {
-    for(int j = 0; j < g_fogcookies.size(); j++) {
+  for(int i = 0; i < g_fogwidth; i++) {
+    for(int j = 0; j < g_fogheight; j++) {
       g_fc[i][j] = 0;
       g_sc[i][j] = 0;
       g_fogcookies[i][j] = 0;
     }
   }
-
 }
 
 void changeTheme(string str)

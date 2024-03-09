@@ -878,6 +878,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
   this->dyoffset = fdyoffset;
 
   fileaddress = filename;
+
   bool cached = false;
   //has someone else already made a texture?
   for(int i=0; i < (int)g_tiles.size(); i++){
@@ -7054,6 +7055,7 @@ int loadSave() {
   string line;
 
   string address = "user/saves/" + g_saveName + ".save";
+  D(address);
   const char* plik = address.c_str();
   file.open(plik);
 
@@ -7062,6 +7064,8 @@ int loadSave() {
   //load save fields
   while(getline(file, line)) {
     if(line == "&") { break;}
+    D(line == "&");
+    D(line.size());
     field = line.substr(0, line.find(' '));
     value = line.substr(line.find(" "), line.length()-1);
 
@@ -8228,6 +8232,8 @@ void clear_map(camera& cameraToReset) {
   g_objective = 0;
   g_familiars.clear();
   g_ex_familiars.clear();
+  g_lt_collisions.clear();
+  g_is_collisions.clear();
   if(g_dungeonSystemOn == 0) {
     g_behemoths.clear();
     g_behemoth0 = 0;
@@ -8813,6 +8819,12 @@ void clear_map(camera& cameraToReset) {
       delete g_entities[0];
     }
   }
+
+    g_behemoths.clear();
+    g_behemoth0 = 0;
+    g_behemoth1 = 0;
+    g_behemoth2 = 0;
+    g_behemoth3 = 0;
 
   for(int i = 0; i < g_ribbons.size(); i++) {
     delete g_ribbons[0];
@@ -9863,6 +9875,7 @@ void adventureUI::initDialogue() {
 //scripts
 void adventureUI::continueDialogue()
 {
+  breakpoint();
   g_fancybox->show = 0;
   // has our entity died?
   if (g_forceEndDialogue && playersUI)
@@ -9870,7 +9883,6 @@ void adventureUI::continueDialogue()
     g_forceEndDialogue = 0;
     protag_is_talking = 2;
     adventureUIManager->hideTalkingUI();
-    M("quitting intepreter A");
     return;
   }
 
@@ -9880,7 +9892,6 @@ void adventureUI::continueDialogue()
     if( playersUI) {
       protag_is_talking = !mobilize;
     }
-    M("quitting intepreter B");
     return;
   }
   else
@@ -9904,8 +9915,6 @@ void adventureUI::continueDialogue()
   } else {
     scriptToUse = &talker->sayings;
   }
-
-  M("Are we working on that beaten script?");
 
 
   // showTalkingUI();
@@ -10226,32 +10235,6 @@ void adventureUI::continueDialogue()
     return;
   }
 
-
-  //do a grossup- flash an image from the disk 
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/grossup") {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-
-    string file = "";
-    if(x.size() > 1) {
-      file = x.at(1);
-    }
-
-    D(file);
-    file = "resources/static/sprites/" + file +  ".qoi";
-
-    if(g_grossupLoaded) {
-      SDL_DestroyTexture(g_grossup);
-    }
-
-    g_grossup = loadTexture(renderer, file);
-    g_grossupLoaded = 1;
-    g_grossupShowMs = g_maxGrossupShowMs;
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
 
   // check number of living entities by name
   //  /count
@@ -11643,7 +11626,9 @@ I("s");
   // /save
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/save" || scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/writesave")
   {
+    M("in writeSave interpreter");
     writeSave();
+    M("writeSave() finished");
 
     dialogue_index++;
     this->continueDialogue();
@@ -11937,6 +11922,7 @@ I("s");
   // set reverse to 1 to play backwards
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
   {
+    //M("Animate interpreter");
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 9);
     vector<string> split = splitString(s, ' ');
@@ -12037,7 +12023,6 @@ I("s");
   // play a sound from the disk
   if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/loadplaysound")
   {
-    M("loadplay sound");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> split = splitString(s, ' ');
     string loadstring = "resources/static/sounds/" + split[1] + ".wav";
@@ -12051,18 +12036,14 @@ I("s");
       }
     }
 
-
     if(a == nullptr) {
-      a = loadWav(loadstring.c_str());
+      Mix_Chunk *a = Mix_LoadWAV(loadstring.c_str());
     }
 
     if (!g_mute && a != nullptr)
     {
       Mix_PlayChannel(0, a, 0);
     }
-
-    //if the sound is longer than 15 seconds, just place it in the level and play it that way.
-    g_loadPlaySounds.push_back(pair<int, Mix_Chunk*>(15000, a));
 
     dialogue_index++;
     this->continueDialogue();
@@ -12219,6 +12200,7 @@ I("s");
   // /unlock twistland
   if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/unlocklevel")
   {
+    M("unlocklevel interpreter");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 
@@ -12244,6 +12226,7 @@ I("s");
   // /levelselect
   if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/levelselect")
   {
+    M("level select interp");
     g_inventoryUiIsLevelSelect = 1;
     g_inventoryUiIsKeyboard = 0;
     g_inventoryUiIsLoadout = 0;
@@ -12251,11 +12234,13 @@ I("s");
     inPauseMenu = 1;
     g_firstFrameOfPauseMenu = 1;
     
+    M("level select interp A");
     //clear_map(g_camera);
     adventureUIManager->escText->updateText("", -1, 0.9);
     adventureUIManager->positionInventory();
     adventureUIManager->showInventoryUI();
     adventureUIManager->hideHUD();
+    M("level select interp B");
 
     // this is the stuff we do when we read '#' (end scripting)
     if (playersUI)
@@ -12263,11 +12248,13 @@ I("s");
       protag_is_talking = 2;
     }
     executingScript = 0;
+    M("level select interp C");
 
     mobilize = 0;
     if(this == adventureUIManager) {
       adventureUIManager->hideTalkingUI();
     }
+    M("level select interp D");
 
     return;
   }
