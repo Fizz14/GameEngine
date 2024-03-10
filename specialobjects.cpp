@@ -1665,7 +1665,22 @@ void specialObjectsInteract(entity* a) {
     case 22:
     {
       //dungeon door
-      g_dungeonDoorActivated = 1;
+      if(g_dungeonSystemOn) {
+        g_dungeonDoorActivated = 1;
+      } else {
+        clear_map(g_camera);
+        g_inventoryUiIsLevelSelect = 1;
+        g_inventoryUiIsKeyboard = 0;
+        g_inventoryUiIsLoadout = 0;
+        inventorySelection = 0;
+        inPauseMenu = 1;
+        g_firstFrameOfPauseMenu = 1;
+        old_z_value = 1;
+        adventureUIManager->escText->updateText("", -1, 0.9);
+        adventureUIManager->positionInventory();
+        adventureUIManager->showInventoryUI();
+        adventureUIManager->hideHUD();
+      }
       break;
       
     }

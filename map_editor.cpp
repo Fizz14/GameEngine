@@ -84,6 +84,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   mapname = filename;
   g_loadingATM = 1;
   g_hog = 0;
+  protag_is_talking = 0;
 
   // parse name from fileaddress
   auto x = splitString(mapname, '/');
@@ -5049,6 +5050,10 @@ void write_map(entity *mapent)
         mapent->x = x;
         mapent->y = y;
         break;
+      }
+
+      if(word == "whichmap" || word == "map") {
+        M("Map: " + g_mapdir + "/" + g_map);
       }
 
       if(word == "rp" || word == "randomizepellets") {

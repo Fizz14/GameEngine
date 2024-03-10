@@ -905,7 +905,6 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
 
     SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
     if(g_waterAllocated == 0 && fileaddress.find("sp-water") != std::string::npos) {
-      M("Found gwater");
       g_waterAllocated = 1;
       g_waterSurface = loadSurface(filename); // the values of this data will not be modified
       g_waterTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 440);
@@ -3650,7 +3649,7 @@ entity::~entity() {
   //delete hisweapon;
   //if this entity is talking or driving a script, a: the game is probably broken and b: we're about to crash
 
-  if(this == g_talker) {
+  if(this == g_talker && protag_is_talking) {
     g_forceEndDialogue = 1;
   }
 
@@ -8820,11 +8819,11 @@ void clear_map(camera& cameraToReset) {
     }
   }
 
-    g_behemoths.clear();
-    g_behemoth0 = 0;
-    g_behemoth1 = 0;
-    g_behemoth2 = 0;
-    g_behemoth3 = 0;
+  g_behemoths.clear();
+  g_behemoth0 = 0;
+  g_behemoth1 = 0;
+  g_behemoth2 = 0;
+  g_behemoth3 = 0;
 
   for(int i = 0; i < g_ribbons.size(); i++) {
     delete g_ribbons[0];
@@ -9875,11 +9874,14 @@ void adventureUI::initDialogue() {
 //scripts
 void adventureUI::continueDialogue()
 {
-  breakpoint();
+  M("continueDialogue()");
   g_fancybox->show = 0;
   // has our entity died?
   if (g_forceEndDialogue && playersUI)
   {
+    M("Ending dialogue A");
+    D(g_forceEndDialogue);
+    D(playersUI);
     g_forceEndDialogue = 0;
     protag_is_talking = 2;
     adventureUIManager->hideTalkingUI();
@@ -9892,6 +9894,8 @@ void adventureUI::continueDialogue()
     if( playersUI) {
       protag_is_talking = !mobilize;
     }
+    M("Ending dialogue B");
+    D(sleepingMS);
     return;
   }
   else
@@ -9916,12 +9920,11 @@ void adventureUI::continueDialogue()
     scriptToUse = &talker->sayings;
   }
 
+  D(scriptToUse->at(dialogue_index + 1));
+  D(dialogue_index);
+  D(scriptToUse->size());
 
-  // showTalkingUI();
-  // D(dialogue_index);
-  // D(scriptToUse->size());
-  // D(talker->name);
-  if (scriptToUse->size() <= dialogue_index + 1 || scriptToUse->at(dialogue_index + 1) == "#")
+  if (scriptToUse->size() <= dialogue_index + 2 || scriptToUse->at(dialogue_index + 1) == "#")
   {
     if (playersUI)
     {
@@ -10235,6 +10238,31 @@ void adventureUI::continueDialogue()
     return;
   }
 
+
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/grossup") {
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    string file = "";
+    if(x.size() > 1) {
+      file = x.at(1);
+    }
+
+    D(file);
+    file = "resources/static/sprites/" + file +  ".qoi";
+
+    if(g_grossupLoaded) {
+      SDL_DestroyTexture(g_grossup);
+    }
+
+    g_grossup = loadTexture(renderer, file);
+    g_grossupLoaded = 1;
+    g_grossupShowMs = g_maxGrossupShowMs;
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
 
   // check number of living entities by name
   //  /count

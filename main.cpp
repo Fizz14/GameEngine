@@ -710,7 +710,6 @@ int WinMain()
     if(g_behemoth0 != nullptr) {
     }
 
-
     // some event handling
     while (SDL_PollEvent(&event))
     {
@@ -3703,10 +3702,36 @@ int WinMain()
       }
     }
 
+    { //clean up loadplaysounds
+      for(auto &x : g_loadPlaySounds) {
+        if(x.first < 0) {
+          Mix_FreeChunk(x.second);
+          g_loadPlaySounds.erase(remove(g_loadPlaySounds.begin(), g_loadPlaySounds.end(), x), g_loadPlaySounds.end());
+          break;
+
+        }
+        x.first -= elapsed;
+      }
+
+    }
+
+
     // worldsounds
     for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
     {
       g_worldsounds[i]->update(elapsed);
+    }
+
+    { //grossup effect
+      if(g_grossupShowMs > 0) {
+        SDL_Rect dest;
+        dest.h = WIN_HEIGHT;
+        dest.w = WIN_HEIGHT;
+        dest.x = WIN_WIDTH/2 - WIN_HEIGHT/2;
+        dest.y = 0;
+        SDL_RenderCopy(renderer, g_grossup, NULL, &dest);
+        g_grossupShowMs -= elapsed;
+      }
     }
 
     // transition
@@ -4794,6 +4819,7 @@ void getInput(float &elapsed)
           g_inventoryUiIsLoadout = 0;
           g_inSettingsMenu = 0;
           inPauseMenu = 0;
+          g_menuTalkReset = 1;
           g_settingsUI->hide();
           protag_is_talking = 0;
 
@@ -4988,6 +5014,7 @@ void getInput(float &elapsed)
         g_inEscapeMenu = 0;
         //inPauseMenu = 0;
         protag_is_talking = 0;
+        g_menuTalkReset = 1;
   
         g_escapeUI->hide();
 
@@ -5468,6 +5495,7 @@ void getInput(float &elapsed)
     } else {
       //if this level is unlocked, travel to its map
       if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
+        breakpoint();
 
         string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
         vector<string> x = splitString(mapName, '/');
@@ -5535,7 +5563,6 @@ void getInput(float &elapsed)
             }
           }
           PHYSFS_freeList(entries);
-          M("dungeon generate interp B");
 
           if(g_dungeonUncommonFloors.size() == 0) {
             for(auto x : g_dungeonCommonFloors) {
@@ -5549,7 +5576,6 @@ void getInput(float &elapsed)
             }
           }
 
-          M("dungeon generate interp C");
           for(int i = 0; i < numFloors; i++) {
 
             float random = frng(0,1);
@@ -5575,15 +5601,13 @@ void getInput(float &elapsed)
             g_dungeon.push_back(n);
 
           }
+
+          g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
+          g_dungeon.at(g_dungeon.size() -1).identity = 'e';
+
         } else {
           g_dungeonSystemOn = 0;
         }
-        M("dungeon generate interp D");
-        D(g_dungeon.size());
-
-        g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
-        g_dungeon.at(g_dungeon.size() -1).identity = 'e';
-
 
         clear_map(g_camera);
   
@@ -5631,6 +5655,7 @@ void getInput(float &elapsed)
 
         int setFirst = 0;
         for(auto x : g_levelSequence->levelNodes[g_levelSequenceIndex]->behemoths) {
+          if(x == "0" || x == "none") {break;}
           dungeonBehemothInfo n;
           n.ptr = new entity(renderer, x);
           n.ptr->x = 0;
@@ -6153,6 +6178,7 @@ void dungeonFlash() {
     for(auto x: beatenScript) {
       D(x);
     }
+    M("Better do the beaten script");
 
     adventureUIManager->talker = narrarator;
     adventureUIManager->ownScript = beatenScript;
@@ -6210,6 +6236,27 @@ void dungeonFlash() {
     protag_can_move = 1;
     g_levelFlashing = 0;
     adventureUIManager->showHUD();
+
+    //this could be faster.
+    //I added some lines clearing g_behemothx to clear_map() to
+    //prevent a memory error, so this is rather safe
+    //probably not a big deal
+    for(auto x : g_entities) {
+      if(!x->isAI) {continue;}
+      if(x->aiIndex == 0) {
+        g_behemoth0 = x;
+        g_behemoths.push_back(x);
+      } else if(x->aiIndex == 1) {
+        g_behemoth1 = x;
+        g_behemoths.push_back(x);
+      } else if(x->aiIndex == 2) {
+        g_behemoth2 = x;
+        g_behemoths.push_back(x);
+      } else if(x->aiIndex == 3) {
+        g_behemoth3 = x;
+        g_behemoths.push_back(x);
+      }
+    }
 
 
     //M(" -- Active behemoths:");

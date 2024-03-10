@@ -967,6 +967,16 @@ Mix_Music* g_dungeonMusic = nullptr;
 Mix_Music* g_dungeonChaseMusic = nullptr;
 bool g_dungeonRedo = 0;
 
+SDL_Texture* g_grossup = 0;
+int g_grossupLoaded = 0;
+int g_grossupShowMs = 0;
+int g_maxGrossupShowMs = 1000;
+
+vector<pair<int, Mix_Chunk*>> g_loadPlaySounds;
+
+//for preventing the player from begining dialog after closing a menu
+int g_menuTalkReset = 0;
+
 bool fileExists(const std::string &name)
 {
   if (FILE *file = fopen(name.c_str(), "r"))
