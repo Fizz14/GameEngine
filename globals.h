@@ -912,6 +912,9 @@ extern Mix_Music* g_dungeonMusic;
 extern Mix_Music* g_dungeonChaseMusic;
 extern bool g_dungeonRedo;
 
+extern float g_dungeonMs;
+extern int g_dungeonHits;
+
 extern SDL_Texture* g_grossup;
 extern int g_grossupLoaded;
 extern int g_grossupShowMs;

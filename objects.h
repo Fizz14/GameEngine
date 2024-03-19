@@ -1284,6 +1284,7 @@ struct state {
 
 class entity:public actor {
   public:
+    int ignoreSolids = 0;
     float widthmodifier;
     float heightmodifier;
  

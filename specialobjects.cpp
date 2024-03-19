@@ -307,8 +307,21 @@ void specialObjectsInit(entity* a) {
     }
     case 29:
     {
+      a->data[0] = 0;
       a->flagA = 0; //search for crate
+      a->cooldownA = a->bounds.width;
+      a->cooldownB = a->bounds.height;
+      a->spawnlist[0]->setOriginX(0);
+      a->spawnlist[0]->setOriginY(0);
 
+      break;
+    }
+    case 30:
+    {
+      a->msPerFrame = 50;
+      a->scriptedAnimation = 0;
+      a->animation = 0;
+      a->loopAnimation = 0;
       break;
     }
 
@@ -1138,6 +1151,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       a->yvel += vy;
       break;
     }
+
     case 29:
     {
       //crushable entity
@@ -1148,12 +1162,86 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           if(x->identity == 28) {
             a->spawnlist.push_back(x);
             a->flagA = 1;
-            M("found crate");
+            a->flagB = 0;
           }
         }
       }
 
+      if(a->flagA == 1){ //check y crush
+        auto r1 = a->getMovedBounds();
+        auto r2 = a->spawnlist[1]->getMovedBounds();
+
+
+        pair<float,float> L1 = pair<float,float>(r1.x, r1.y);
+        pair<float,float> R1 = pair<float,float>(r1.x + r1.width, r1.y + r1.height);
+
+        pair<float,float> L2 = pair<float,float>(r2.x, r2.y);
+        pair<float,float> R2 = pair<float,float>(r2.x + r2.width, r2.y + r2.height);
+
+        if(a->flagB == 0) { a->flagB = r1.width * r1.height;}
+
+        float xdist = min(R1.first, R2.first) - max(L1.first, L2.first);
+        float ydist = min(R1.second, R2.second) - max(L1.second, L2.second);
+
+        float area = xdist * ydist;
+        if(xdist < 0 || ydist <0) {
+          area = 0;
+        }
+
+        float rat = area / a->flagB;
+
+        float xrat = xdist / r1.width;
+        float yrat = ydist / r1.height;
+
+
+        //how should he respond to the crate?
+        if(rat > 0.1) {
+          a->data[0] = 1;
+          if(xrat < yrat) {
+            a->bounds.width -= 1;
+          } else {
+            a->bounds.height -= 1;
+          }
+        } else {
+          //decompress
+          if(a->bounds.width <= a->cooldownA) {
+            a->bounds.width += 1;
+          }
+
+          if(a->bounds.height <= a->cooldownB) {
+            a->bounds.height += 1;
+          }
+        }
+        float xshmush = a->bounds.width;
+        xshmush /= a->cooldownA;
+
+        float yshmush = a->bounds.height;
+        yshmush /= a->cooldownB;
+
+        if(xshmush < 0.7 || yshmush < 0.7) {
+          a->tangible = 0;
+          a->spawnlist[0]->frameInAnimation = 0;
+          a->spawnlist[0]->msPerFrame = 50;
+          a->spawnlist[0]->setOriginX(a->getOriginX());
+          a->spawnlist[0]->setOriginY(a->getOriginY());
+          a->spawnlist[0]->curwidth = 0;
+          a->spawnlist[0]->curheight = 0;
+        }
+
+        xshmush *= a->width;
+        yshmush *= a->height;
+
+        a->curwidth = xshmush;
+        a->curheight = yshmush;
+
+      }
+
       break;
+    }
+    case 30:
+    {
+      //corpse explosion | common/blood.ent
+
     }
    
     case 100: 
@@ -1786,9 +1874,11 @@ void usableItemCode(usable* a) {
     case 3:
       {
         //radio
-        protag->forwardsPushVelocity = 1700;
+        protag->forwardsPushVelocity = 1900;
         protag->forwardsPushAngle = protag->steeringAngle;
         littleSmokeEffect->happen(protag->getOriginX(), protag->getOriginY(), protag->z, 0);
+        g_lastParticleCreated->accelerationz = 0;
+        g_lastParticleCreated->velocityz = 0;
 
         break;
       }

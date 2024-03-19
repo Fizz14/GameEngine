@@ -80,6 +80,8 @@ void populateMapWithEntities()
 
 void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 {
+  M("Loading map: " + filename);
+  transition = 1;
   debugClock = clock();
   mapname = filename;
   g_loadingATM = 1;
@@ -1339,6 +1341,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       g_fogcookies[i][j] = 0;
     }
   }
+  transition = 0;
 }
 
 void changeTheme(string str)

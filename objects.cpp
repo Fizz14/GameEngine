@@ -2546,32 +2546,18 @@ worldsound::worldsound(string filename, int fx, int fy) {
   name = filename;
   //M("worldsound()" );
 
-  ifstream file;
-
   string loadstr;
   //try to open from local map folder first
 
-  loadstr = "resources/maps/" + g_mapdir + "/worldsounds/" + filename + ".ws";
+  loadstr = "resources/static/worldsounds/" + filename + ".ws";
   const char* plik = loadstr.c_str();
 
-  file.open(plik);
-
-  if (!file.is_open()) {
-    loadstr = "resources/static/worldsounds/" + filename + ".ws";
-    const char* plik = loadstr.c_str();
-
-    file.open(plik);
-
-    if (!file.is_open()) {
-      string newfile = "resources/static/worldsounds/default.ws";
-      file.open(newfile);
-    }
-  }
+  istringstream file(loadTextAsString(plik));
 
   string temp;
   file >> temp;
   string existSTR;
-  existSTR = "resources/static/sounds/" + g_mapdir + "/" + temp + ".wav";
+  existSTR = "resources/static/sounds/" + temp + ".wav";
   
 
 
@@ -2796,10 +2782,15 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
 
   file >> comment;
   file >> this->dynamic;
-  bool solidifyHim = 0;
+  int solidifyHim = 0;
 
   file >> comment;
   file >> solidifyHim;
+
+  if(solidifyHim == 2) {
+    //don't react to solid objects
+    ignoreSolids = 1;
+  }
 
   file >> comment;
   file >> semisolid;
@@ -2827,7 +2818,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     g_large_entities.push_back(this);
   }
 
-  if(solidifyHim) {
+  if(solidifyHim == 1) {
     this->solidify();
     this->canBeSolid = 1;
   }
@@ -3390,6 +3381,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
 //copy constructor
 //first intended for spawning in cannonballs
 entity::entity(SDL_Renderer* renderer, entity* a) {
+  this->growFromFloor = a->growFromFloor;
   this->texture = a->texture;
   this->asset_sharer = 1;
   this->missile = a->missile;
@@ -3425,7 +3417,7 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
   this->zeight = a->zeight;
   this->sortingOffset = a->sortingOffset;
   this->bounds = a->bounds;
-  shadow = new cshadow(renderer, shadowSize);
+  cshadow* shadow = new cshadow(renderer, shadowSize);
   shadow->owner = this;
   this->shadow = shadow;
   this->shadow->width = a->shadow->width;
@@ -3433,6 +3425,8 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
   this->shadow->sortingOffset = a->shadow->sortingOffset;
   this->shadow->xoffset = a->shadow->xoffset;
   this->shadow->yoffset = a->shadow->yoffset;
+  this->shadow->x = a->shadow->x;
+  this->shadow->y = a->shadow->y;
 
   
 
@@ -3545,13 +3539,18 @@ entity::entity(SDL_Renderer * renderer, int idk,  string texturename) {
 
   file >> comment;
   file >> this->dynamic;
-  bool solidifyHim = 0;
+  int solidifyHim = 0;
 
 
   file >> comment;
   file >> solidifyHim;
-  if(solidifyHim) {
+  if(solidifyHim == 1) {
     this->solidify();
+  }
+
+  if(solidifyHim == 2) {
+    //don't react to solid objects
+    ignoreSolids = 1;
   }
 
   file >> comment;
@@ -4255,7 +4254,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
         }
 
 
-
         if(msPerFrame != 0) {
           msTilNextFrame += elapsed;
           if(msTilNextFrame > msPerFrame && xframes > 1) {
@@ -4582,6 +4580,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
                 //potentially not perfect, since this doesn't consider their velocities, but
                 //solid ents aren't really supposed to move
                 for (auto n : g_solid_entities) {
+                  if(this->ignoreSolids) {break;}
                   if(n == this) {continue;}
                   if(!n->tangible) {continue;}
                   //if(n->zeight < g_stepHeight) {continue;} //if you ever wanna solve the bug
@@ -4724,6 +4723,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
           }
           groundedByEntity = 0;
           for (auto n : g_solid_entities) {
+            if(this->ignoreSolids) {break;}
             if(n == this) {continue;}
             if(!n->tangible) {continue;}
             //update bounds with new pos
@@ -5450,6 +5450,8 @@ door* entity::update(vector<door*> doors, float elapsed) {
         if(this == protag || this->isAI) { //seems to be causing slowdown
           groundedByEntity = 0;
           for(auto n : g_solid_entities) {
+            if(this->ignoreSolids) {break;}
+
             if(XYWorldDistanceSquared(this->x, this->y, n->x, n->y) < 102400) //arbitrary distance chosen for optimization, it indicates a origin-to-origin distance of five blocks which is usually enough
             {
               rect thisb = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
@@ -5635,8 +5637,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
         //update combat
         if(isWorlditem) {return nullptr;}
-        if(!canFight) {return nullptr;}
-
 
         //hisweapon->comboResetMS+=elapsed;
 
@@ -6085,7 +6085,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
 
 
-
         //push him away from close entities
         //if we're even slightly stuck, don't bother
         if(this->dynamic && this->pushable && elapsed > 0) {
@@ -6111,6 +6110,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
               if(m && x->tangible && solidfits) {
                 float r = pow( max(Distance(getOriginX(), getOriginY(), x->getOriginX(), x->getOriginY()), (float)10.0 ), 2);
                 float mag =  30000/r;
+                if(identity == 29) {
+                  mag = 0.3/r;
+                }
                 float xdif = (this->getOriginX() - x->getOriginX());
                 float ydif = (this->getOriginY() - x->getOriginY());
                 float len = pow( pow(xdif, 2) + pow(ydif, 2), 0.5);
@@ -7083,6 +7085,7 @@ int loadSave() {
     field = line.substr(0, line.find(' '));
     value = line.substr(line.find(" ")+1, line.length()-1);
 
+
     try {
       g_saveStrings.insert( pair<string, string>(field, value) );
       //for debugging saved strings
@@ -7092,6 +7095,7 @@ int loadSave() {
     }
 
   }
+
 
   file >> g_mapOfLastSave >> g_waypointOfLastSave;
   getline(file,line);
@@ -7245,6 +7249,11 @@ int writeSave() {
   const char* plik = address.c_str();
   file.open(plik);
 
+  //if the loaded name is "Blank", change it to "Fomm"
+  if(readSaveStringField("playername") == "Blank") {
+    writeSaveFieldString("playername", "Fomm");
+  }
+
   auto it = g_save.begin();
 
   while (it != g_save.end() ) {
@@ -7307,7 +7316,7 @@ int checkSaveField(string field) {
   if(it != g_save.end()) {
     return it->second;
   } else {
-    return 0;
+    return -1;
   }
 }
 
@@ -8624,6 +8633,11 @@ void clear_map(camera& cameraToReset) {
               continue;
             }
             SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+            int boosh = 5;
+            drect.w += boosh * 2;
+            drect.h += boosh * 2;
+            drect.x -= boosh;
+            drect.y -= boosh;
   
             //should we draw the locked graphic?
             if(g_levelSequence->levelNodes[j]->locked) {
@@ -9874,14 +9888,10 @@ void adventureUI::initDialogue() {
 //scripts
 void adventureUI::continueDialogue()
 {
-  M("continueDialogue()");
   g_fancybox->show = 0;
   // has our entity died?
   if (g_forceEndDialogue && playersUI)
   {
-    M("Ending dialogue A");
-    D(g_forceEndDialogue);
-    D(playersUI);
     g_forceEndDialogue = 0;
     protag_is_talking = 2;
     adventureUIManager->hideTalkingUI();
@@ -9894,8 +9904,6 @@ void adventureUI::continueDialogue()
     if( playersUI) {
       protag_is_talking = !mobilize;
     }
-    M("Ending dialogue B");
-    D(sleepingMS);
     return;
   }
   else
@@ -9920,9 +9928,6 @@ void adventureUI::continueDialogue()
     scriptToUse = &talker->sayings;
   }
 
-  D(scriptToUse->at(dialogue_index + 1));
-  D(dialogue_index);
-  D(scriptToUse->size());
 
   if (scriptToUse->size() <= dialogue_index + 2 || scriptToUse->at(dialogue_index + 1) == "#")
   {
@@ -10248,7 +10253,6 @@ void adventureUI::continueDialogue()
       file = x.at(1);
     }
 
-    D(file);
     file = "resources/static/sprites/" + file +  ".qoi";
 
     if(g_grossupLoaded) {
@@ -12054,6 +12058,7 @@ I("s");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> split = splitString(s, ' ');
     string loadstring = "resources/static/sounds/" + split[1] + ".wav";
+    D(loadstring);
 
 
     Mix_Chunk *a = nullptr;
@@ -12065,13 +12070,16 @@ I("s");
     }
 
     if(a == nullptr) {
-      Mix_Chunk *a = Mix_LoadWAV(loadstring.c_str());
+      a = loadWav(loadstring.c_str());
     }
 
     if (!g_mute && a != nullptr)
     {
       Mix_PlayChannel(0, a, 0);
     }
+
+    //if the sound is longer than 15 seconds, just place it in the level and call it from the script
+    g_loadPlaySounds.push_back(pair<int,Mix_Chunk*>(15000,a));
 
     dialogue_index++;
     this->continueDialogue();
@@ -12228,6 +12236,7 @@ I("s");
   // /unlock twistland
   if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/unlocklevel")
   {
+    breakpoint();
     M("unlocklevel interpreter");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');

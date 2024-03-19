@@ -376,7 +376,7 @@ vector<usable*> g_backpack; //max six
 vector<usable*> g_chest; //all of the player's usables
 
 vector<int> g_loadout;
-int g_maxLoadoutSize = 6;
+int g_maxLoadoutSize = 5; //maxusables
 SDL_Texture* g_loadoutHighlightTexture = 0;
 
 float g_usableWaitToCycleTime = 0;
@@ -639,7 +639,7 @@ bool left_ui_refresh = false; // used to detect when arrows is pressed and then 
 bool right_ui_refresh = false;
 bool fullscreen_refresh = true;
 bool quit = false;
-string g_config = "default";
+string g_config = "player";
 bool g_holdingCTRL = 0;
 bool g_holdingTAB = 0;
 // this is most noticable with a rifle, but sometimes when you try to shoot
@@ -727,7 +727,7 @@ string g_alphabet = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_lower = "abcdefghijklmnopqrstuvwxyz<^;";
 string g_alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ<^;";
 
-string g_fancyAlphabetChars = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ?!@#$%^&*()+-._:;,\"\'";
+string g_fancyAlphabetChars = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ?!@#$%^&*()+-._:;,\"\'0123456789";
 
 //the pair contains a texture and a width
 std::map<int, std::pair<SDL_Texture*, float>> g_fancyAlphabet{};
@@ -966,6 +966,9 @@ int g_levelSequenceIndex;
 Mix_Music* g_dungeonMusic = nullptr;
 Mix_Music* g_dungeonChaseMusic = nullptr;
 bool g_dungeonRedo = 0;
+
+float g_dungeonMs = 0;
+int g_dungeonHits = 0;
 
 SDL_Texture* g_grossup = 0;
 int g_grossupLoaded = 0;
@@ -1352,8 +1355,9 @@ float frng(float min, float max) {
 
 void hurtProtag(int dmg) {
   if(devMode) {return;}
-  if(g_dungeonDoorActivated) {return;} //don't trigger multiple times at once
-  
+  if(g_dungeonDoorActivated) {return;} //don't trigger multiple times at once, don't get hurt if he already finished the level
+ 
+  g_dungeonHits++;
   g_dungeonDoorActivated = 1;
   g_dungeonIndex--;
 

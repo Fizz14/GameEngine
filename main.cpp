@@ -63,7 +63,7 @@ int WinMain()
 
   PHYSFS_ErrorCode errnum = PHYSFS_getLastErrorCode();
 
-  if(devMode) {
+  if(devMode || 1) {
     string currentDirectory = getCurrentDir();
     PHYSFS_mount(currentDirectory.c_str(), "/", 1);
   }
@@ -143,7 +143,7 @@ int WinMain()
     init_map_writing(renderer);
     // done once, because textboxes aren't cleared during clear_map()
     nodeInfoText = new textbox(renderer, "",  g_fontsize, 0, 0, WIN_WIDTH);
-    g_config = "edit";
+    g_config = "dev";
     nodeDebug = loadTexture(renderer, "resources/engine/walkerYellow.qoi");
   }
 
@@ -502,11 +502,12 @@ int WinMain()
     SDL_ShowCursor(0);
     loadSave();
     g_inTitleScreen = 1;
-    load_map(renderer, "resources/maps/sp-title/g.map","a");
-    adventureUIManager->hideBackpackUI();
-    adventureUIManager->hideHUD();
-    adventureUIManager->hideScoreUI();
-    adventureUIManager->hideTalkingUI();
+    load_map(renderer, "resources/maps/base/start.map","a");
+    //load_map(renderer, "resources/maps/sp-title/g.map","a");
+//    adventureUIManager->hideBackpackUI();
+//    adventureUIManager->hideHUD();
+//    adventureUIManager->hideScoreUI();
+//    adventureUIManager->hideTalkingUI();
   }
 
   inventoryMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", 0, 0, 0.1, 0.1, 2);
@@ -863,9 +864,10 @@ int WinMain()
     // I(elapsed);
 
     // lock time
-    elapsed = 16;
+    elapsed = 16.6666666667;
 
     // cooldowns
+    if(g_dungeonSystemOn) {g_dungeonMs += elapsed;}
     halfsecondtimer += elapsed;
     use_cooldown -= elapsed / 1000;
     musicFadeTimer += elapsed;
@@ -902,6 +904,7 @@ int WinMain()
 
     // INPUT
     getInput(elapsed);
+
     
     //lerp protag to boarded ent smoothly
     if(g_protagIsWithinBoardable) {
@@ -3034,6 +3037,11 @@ int WinMain()
               continue;
             }
             SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+            int boosh = 5;
+            drect.w += boosh * 2;
+            drect.h += boosh * 2;
+            drect.x -= boosh;
+            drect.y -= boosh;
   
             levelNode* tn = g_levelSequence->levelNodes[j];
 
@@ -3570,25 +3578,38 @@ int WinMain()
     }
 
 
-    //system clock display
     string systemTimePrint = "";
-    time_t ttime = time(0);
-    tm *local_time = localtime(&ttime);
-    
-    int useHour = local_time->tm_hour;
-    if(useHour == 0) {useHour = 12;}
-    string useMinString = to_string(local_time->tm_min);
-    if(useMinString.size() == 1) { 
-      useMinString = "0" + useMinString;
-    }
-    string useHourString = to_string(useHour%12);
-    if(useHourString == "0") {useHourString = "12";}
-    systemTimePrint+= useHourString + ":" + useMinString;
-    
-    if(local_time->tm_hour >=12){
-      systemTimePrint += " PM";
+    if(g_dungeonSystemOn) {
+      //timer display
+      int ms = g_dungeonMs;
+      int sec = (ms / 1000) % 60;
+      int min = ms / 60000;
+      string secstr = to_string(sec);
+      if(secstr.size() < 2) {secstr = "0" + secstr;}
+      string minstr = to_string(min);
+      if(minstr.size() < 2) {minstr = "0" + minstr;}
+      
+      systemTimePrint = minstr + ":" + secstr;
     } else {
-      systemTimePrint += " AM";
+      //system clock display
+      time_t ttime = time(0);
+      tm *local_time = localtime(&ttime);
+      
+      int useHour = local_time->tm_hour;
+      if(useHour == 0) {useHour = 12;}
+      string useMinString = to_string(local_time->tm_min);
+      if(useMinString.size() == 1) { 
+        useMinString = "0" + useMinString;
+      }
+      string useHourString = to_string(useHour%12);
+      if(useHourString == "0") {useHourString = "12";}
+      systemTimePrint+= useHourString + ":" + useMinString;
+      
+      if(local_time->tm_hour >=12){
+        systemTimePrint += " PM";
+      } else {
+        systemTimePrint += " AM";
+      }
     }
 
     adventureUIManager->systemClock->updateText(systemTimePrint, -1, 1);
@@ -4170,12 +4191,12 @@ int interact(float elapsed, entity *protag)
         adventureUIManager->talker = g_entities[i];
         
         adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 0;
         g_forceEndDialogue = 0;
         adventureUIManager->continueDialogue();
         // removing this in early july to fix problem moving after a script changes map
         // may cause unexpected problems
         // protag_is_talking = 1;
-        M("continueDialogue() finished, returning from interact()");
         g_ignoreInput = 1;
         return 0;
       }
@@ -5023,6 +5044,15 @@ void getInput(float &elapsed)
         }
   
         if(g_escapeUI->positionOfCursor == 1) { //levelselect
+          //clear all behemoths
+          for(auto &x : g_dungeonBehemoths) {
+            x.ptr->persistentGeneral = 0;
+            x.ptr->hisweapon->persistent = 0;
+            for(auto &y : x.ptr->spawnlist) {
+              y->persistentGeneral = 0;
+            }
+          }
+          g_dungeonBehemoths.clear();
           clear_map(g_camera);
           //load_map(renderer, "resources/maps/base/g.map", "a");
           //instead of loading the base, open the level-select menu
@@ -5037,6 +5067,7 @@ void getInput(float &elapsed)
           adventureUIManager->positionInventory();
           adventureUIManager->showInventoryUI();
           adventureUIManager->hideHUD();
+
         }
   
         if(g_escapeUI->positionOfCursor == 3) {
@@ -5495,7 +5526,6 @@ void getInput(float &elapsed)
     } else {
       //if this level is unlocked, travel to its map
       if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
-        breakpoint();
 
         string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
         vector<string> x = splitString(mapName, '/');
@@ -5509,7 +5539,6 @@ void getInput(float &elapsed)
         string scorePrint = "0/" + to_string(numFloors);
         adventureUIManager->scoreText->updateText(scorePrint, 34, 34);
 
-        M("Generating the dungeon");
         //generate the DUNGEON ( :DD )
 
         if(numFloors > 0){
@@ -5546,7 +5575,6 @@ void getInput(float &elapsed)
           g_dungeonSpecialFloors.clear();
           g_dungeonEggFloors.clear();
           g_dungeonSystemOn = 1;
-          M("dungeon generate interp A"); // problem between A and B here? Probably not
 
           //get list of eligible maps in the mapdir
           string dir = "resources/maps/" + g_mapdir;
@@ -5581,17 +5609,17 @@ void getInput(float &elapsed)
             float random = frng(0,1);
             string mapstring = "";
             char identity = 'a';
-            if(random <= 0.4) {
+            if(random <= 0.55) {
               int random = rng(0, g_dungeonCommonFloors.size()-1);
               mapstring = g_dungeonCommonFloors.at(random);
               identity = 'c';
-            } else if(random <= 0.75){
+            } else if(random <= 0.85){
               int random = rng(0, g_dungeonUncommonFloors.size()-1);
               mapstring = g_dungeonUncommonFloors.at(random);
               identity = 'u';
             } else {
-              int random = rng(0, g_dungeonSpecialFloors.size()-1);
-              mapstring = g_dungeonSpecialFloors.at(random);
+              int random = rng(0, g_dungeonRareFloors.size()-1);
+              mapstring = g_dungeonRareFloors.at(random);
               identity = 'r';
             }
 
@@ -5604,6 +5632,9 @@ void getInput(float &elapsed)
 
           g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
           g_dungeon.at(g_dungeon.size() -1).identity = 'e';
+
+          g_dungeonMs = 0;
+          g_dungeonHits = 0;
 
         } else {
           g_dungeonSystemOn = 0;
@@ -5621,7 +5652,6 @@ void getInput(float &elapsed)
         g_levelSequenceIndex = inventorySelection;
         adventureUIManager->hideInventoryUI();
 
-        M("dungeon generate interp E");
   
         if (canSwitchOffDevMode)
         {
@@ -5640,7 +5670,6 @@ void getInput(float &elapsed)
           Mix_FreeMusic(g_dungeonChaseMusic);
           g_dungeonChaseMusic = nullptr;
         }
-        M("dungeon generate interp F");
 
 
         if(g_levelSequence->levelNodes[inventorySelection]->music != "0") {
@@ -5678,13 +5707,15 @@ void getInput(float &elapsed)
           g_dungeonBehemoths.push_back(n);
         }
 
+
+
       } 
     }
   }
 
   dialogue_cooldown -= elapsed;
 
-  if (keystate[bindings[11]] && !inPauseMenu && !transition)
+  if (keystate[bindings[11]] && !inPauseMenu && !transition && g_menuTalkReset == 0)
   {
     if (protag_is_talking == 1)
     { // advance or speedup diaglogue
@@ -5701,6 +5732,9 @@ void getInput(float &elapsed)
   }
   else
   {
+    if(!keystate[bindings[11]]) {
+      g_menuTalkReset = 0;
+    }
 
     // reset text_speed_up
     text_speed_up = 1;
@@ -6144,6 +6178,26 @@ void dungeonFlash() {
   int size = g_dungeon.size();
   size -= 1;
   if(g_dungeonIndex >= size) {
+
+    {
+      string field = g_levelSequence->levelNodes[g_levelSequenceIndex]->name + "-time";
+      int timeToBeat = checkSaveField(field);
+      if(g_dungeonMs < timeToBeat || timeToBeat == -1) {
+        //new record
+        M("New time record:" + to_string(g_dungeonMs));
+        M("Old value was " + to_string(timeToBeat));
+        writeSaveField(field, g_dungeonMs);
+      }
+      field = g_levelSequence->levelNodes[g_levelSequenceIndex]->name + "-hits";
+      int hitsToBeat = checkSaveField(field);
+      if(g_dungeonHits < hitsToBeat || hitsToBeat == -1) {
+        M("New hits record:" + to_string(g_dungeonHits));
+        M("Old value was " + to_string(hitsToBeat));
+        writeSaveField(field, g_dungeonHits);
+        
+
+      }
+    }
  
     //clear all behemoths
     for(auto &x : g_dungeonBehemoths) {
@@ -6160,12 +6214,16 @@ void dungeonFlash() {
     g_dungeonBehemoths.clear();
 
     adventureUIManager->hideScoreUI();
+    breakpoint(); //screen is black
 
     //this dungeon is finished, play the beaten script to probably unlock a level, save the game, and open
     //the menu select, but it might be to initiate a credits sequence or play a cutscene or something cool
     string l = "resources/maps/" + g_mapdir + "/beaten.txt";
 
+    g_levelFlashing = 1; //don't do an effect
     clear_map(g_camera);
+    g_levelFlashing = 0;
+    transition = 0;
 
     if (canSwitchOffDevMode)
     {
@@ -6243,6 +6301,9 @@ void dungeonFlash() {
     //probably not a big deal
     for(auto x : g_entities) {
       if(!x->isAI) {continue;}
+      x->cooldownA = 0;
+      x->cooldownB = 0;
+      x->cooldownC = 0;
       if(x->aiIndex == 0) {
         g_behemoth0 = x;
         g_behemoths.push_back(x);
