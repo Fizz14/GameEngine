@@ -151,72 +151,6 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
     }
 }
 
-void addLoopCutWithScaling(std::vector<vertex3d>& vertices, std::vector<face>& faces, float scale) {
-    const float epsilon = 0.001f; // Prevent exact 0 or 1 texcoords
-    std::vector<face> newFaces;
-
-    // Calculate texcoords based on world position
-    auto setTexcoords = [&](vertex3d& v) {
-        v.u = std::clamp((v.x / scale), epsilon, 1.0f - epsilon);
-        v.v = std::clamp((v.y / scale), epsilon, 1.0f - epsilon);
-    };
-
-    // Interpolation function
-    auto interpolateVertex = [&](const vertex3d& v1, const vertex3d& v2) {
-        vertex3d mid;
-        mid.x = (v1.x + v2.x) / 2.0f;
-        mid.y = (v1.y + v2.y) / 2.0f;
-        mid.z = (v1.z + v2.z) / 2.0f;
-
-        mid.lu = (v1.lu + v2.lu) / 2.0f;
-        mid.lv = (v1.lv + v2.lv) / 2.0f;
-
-        for (int i = 0; i < 3; ++i) {
-            mid.normal[i] = (v1.normal[i] + v2.normal[i]) / 2.0f;
-        }
-
-        setTexcoords(mid); // Assign texture coordinates based on position
-        return mid;
-    };
-
-    for (const auto& f : faces) {
-        if (f.d == 100) continue; // Skip non-quads for now
-
-        const vertex3d& va = vertices[f.a];
-        const vertex3d& vb = vertices[f.b];
-        const vertex3d& vc = vertices[f.c];
-        const vertex3d& vd = vertices[f.d];
-
-        bool needsCutAB = std::abs(va.u - vb.u) > 0.999f || std::abs(va.v - vb.v) > 0.999f;
-        bool needsCutBC = std::abs(vb.u - vc.u) > 0.999f || std::abs(vb.v - vc.v) > 0.999f;
-        bool needsCutCD = std::abs(vc.u - vd.u) > 0.999f || std::abs(vc.v - vd.v) > 0.999f;
-        bool needsCutDA = std::abs(vd.u - va.u) > 0.999f || std::abs(vd.v - va.v) > 0.999f;
-
-        if (needsCutAB || needsCutBC || needsCutCD || needsCutDA) {
-            M("time for a cut");
-            unsigned int abMid = vertices.size();
-            unsigned int bcMid = vertices.size() + 1;
-            unsigned int cdMid = vertices.size() + 2;
-            unsigned int daMid = vertices.size() + 3;
-
-            if (needsCutAB) vertices.push_back(interpolateVertex(va, vb));
-            if (needsCutBC) vertices.push_back(interpolateVertex(vb, vc));
-            if (needsCutCD) vertices.push_back(interpolateVertex(vc, vd));
-            if (needsCutDA) vertices.push_back(interpolateVertex(vd, va));
-
-            // Adjust face splitting for all cases
-            newFaces.push_back({f.a, abMid, bcMid, daMid});
-            newFaces.push_back({abMid, f.b, f.c, bcMid});
-            newFaces.push_back({bcMid, f.c, f.d, cdMid});
-            newFaces.push_back({daMid, bcMid, cdMid, f.d});
-        } else {
-            newFaces.push_back(f); // Keep original face if no cuts are needed
-        }
-    }
-
-    faces = std::move(newFaces);
-}
-
 
 mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtype) {
     string address = "resources/static/meshes/" + faddress + ".ply";
@@ -334,7 +268,7 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
 
         {
           //now is the time to set texture coords procedurally and add loopcuts to reset the tex coords if needed
-          addLoopCutWithScaling(vertices, faces, 0.1);
+        
         }
 
 
