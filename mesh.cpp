@@ -269,7 +269,7 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
 
         // Convert to face objects
         for (const auto& f : faceIndices) {
-            if (f.size() == 4) { // Ensure it's a triangle
+            if (f.size() == 4) {
               faces.push_back({f[0], f[1], f[2], f[3]});
             } else if (f.size() == 3 && fmtype == meshtype::FLOOR) {
               face n;
@@ -315,11 +315,13 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
                 
                 A.position.x = ((-first.x) * scale);
                 A.position.y = ((first.y * scale)) * XtoY - ((first.z * scale)) * XtoZ;
+                //A.position.y = ((first.y * scale)) * XtoY;
     
                 SDL_Vertex B;
     
                 B.position.x = ((-second.x) * scale);
                 B.position.y = ((second.y * scale)) * XtoY - ((second.z * scale)) * XtoZ;
+                //B.position.y = ((second.y * scale)) * XtoY;
 
                 A.position.x += forigin.x;
                 A.position.y += forigin.y;
@@ -328,10 +330,18 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
 
                 edgeInfo ei;
                 ei.first = A;
+                ei.firstZ = ((first.z * scale)) * XtoZ; //z is subtracted from y
+
+
                 ei.second = B;
+                ei.secondZ = ((second.z * scale)) * XtoZ; //z is subtracted from y
+
+
                 if(ei.first.position.x > ei.second.position.x) {
                   swap(ei.first, ei.second);
                 }
+
+                ei.type = 1;
                 g_wEdges.emplace_back(ei);
                 fail++;
               }
@@ -457,7 +467,8 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
             SDL_Vertex A;
             
             A.position.x = ((-first.x) * scale);
-            A.position.y = ((first.y * scale)) * XtoY - ((first.z * scale)) * XtoZ;
+            //A.position.y = ((first.y * scale)) * XtoY - ((first.z * scale)) * XtoZ;
+            A.position.y = ((first.y * scale)) * XtoY;
             A.position.x += forigin.x;
             A.position.y += forigin.y;
             A.color.r = 0;
@@ -468,7 +479,8 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
             SDL_Vertex B;
 
             B.position.x = ((-second.x) * scale);
-            B.position.y = ((second.y * scale)) * XtoY - ((second.z * scale)) * XtoZ;
+            //B.position.y = ((second.y * scale)) * XtoY - ((second.z * scale)) * XtoZ;
+            B.position.y = ((second.y * scale)) * XtoY;
 
             B.position.x += forigin.x;
             B.position.y += forigin.y;
@@ -479,10 +491,13 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
 
             edgeInfo ei;
             ei.first = A;
+            ei.firstZ = ((first.z * scale)) * XtoZ; //z is subtracted from y
             ei.second = B;
+            ei.secondZ = ((second.z * scale)) * XtoZ; //z is subtracted from y
  
             checkAndSetEdgeInfo(ei, g_meshVWalls[0]);
 
+            ei.type = 0;
             g_oEdges.emplace_back(ei);
           }
         }

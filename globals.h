@@ -310,7 +310,12 @@ extern vector<mesh*> g_meshDecorative;
 
 struct edgeInfo {
   SDL_Vertex first;
+  float firstZ;
+
   SDL_Vertex second;
+  float secondZ;
+
+  unsigned int type = 0; //0 for occluder, 1 for wall
 
   //for O-edges (not W-edges) drawing the wall portion
   //if the o-edge isn't in the same place as a w-edge
@@ -319,6 +324,12 @@ struct edgeInfo {
   vector<int> indices; //the indices of wallMesh to 
                        //render the faces which generate this 
                        //occluding
+  
+  //occluder edges will not interact with walls with the same group
+  //each occluder in the group will be used to draw occlusion,
+  //and then each wall in the group will be drawn.
+  //group 0 is closest to the player, and group one is closer than group 2, etc.
+  int group = 0; 
 };
 
 extern vector<edgeInfo> g_wEdges;

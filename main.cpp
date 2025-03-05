@@ -47,10 +47,10 @@ void sortEdges(std::vector<edgeInfo>& edges, float px, float py) {
     };
 
     // Remove edges where both vertices' y-coordinates are greater than py
-    edges.erase(std::remove_if(edges.begin(), edges.end(),
-        [py](const edgeInfo& e) {
-            return e.first.position.y > py && e.second.position.y > py;
-        }), edges.end());
+//    edges.erase(std::remove_if(edges.begin(), edges.end(),
+//        [py](const edgeInfo& e) {
+//            return e.first.position.y > py && e.second.position.y > py;
+//        }), edges.end());
 
     // Sort the remaining edges based on their minimum distance to (px, py)
     std::sort(edges.begin(), edges.end(), edgeComparator);
@@ -84,11 +84,29 @@ bool segmentsSharePoint(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
 
 
     auto p1 = seg1.first;
-    auto q1 = seg1.second;
-    auto p2 = seg2.first;
+    auto p2 = seg1.second;
+    auto q1 = seg2.first;
     auto q2 = seg2.second;
 
-    return pointsClose(p1, q1) || pointsClose(p1, q2) || pointsClose(p2, q1) || pointsClose(p2, q2);
+    return pointsClose(p2, q1) || pointsClose(p1, q2);
+}
+
+bool segmentsInSamePlace(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
+    auto isClose = [&](float a, float b) {
+        return std::fabs(a - b) < tolerance;
+    };
+
+    auto pointsClose = [&](SDL_Vertex a, SDL_Vertex b) {
+        return isClose(a.position.x, b.position.x) && isClose(a.position.y, b.position.y);
+    };
+
+
+    auto p1 = seg1.first;
+    auto p2 = seg1.second;
+    auto q1 = seg2.first;
+    auto q2 = seg2.second;
+
+    return (pointsClose(p1, q1) && pointsClose(p2, q2));
 }
 
 
@@ -2671,25 +2689,45 @@ g_osEdges.clear();
 }
 
 float px = protag->getOriginX() - g_camera.x;
-float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
+float py = protag->getOriginY() - g_camera.y;
+//float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
+
 
 //remove any entries on g_wEdges which are facing away from the player
 //(kinda like backface-culling)
-D(g_wsEdges.size());
+/*
 g_wsEdges.erase(
         std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
-            // Equation of the line passing through the two points (y - y1) = m(x - x1)
-            // m = (y2 - y1) / (x2 - x1)
-            float m = (edge.second.position.y - edge.first.position.y) / (edge.second.position.x - edge.first.position.x);
-            // y = m * (px - x1) + y1
+            float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ) ) / (edge.second.position.x - edge.first.position.x);
             float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
-            // If point (px, py) is above the line, return true to remove
             return py < y_at_px;
         }), 
         g_wsEdges.end()
     );
+*/
 
-D(g_wsEdges.size());
+g_wsEdges.erase(
+    std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
+        float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ)) /
+                  (edge.second.position.x - edge.first.position.x);
+        float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
+        
+        if (py < y_at_px) {
+            // Edge is below the player and will be removed
+            auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
+                return segmentsInSamePlace(edge, occluder);
+            });
+            
+            if (it != g_osEdges.end()) {
+                g_osEdges.erase(it); // Remove matching occluder edge
+            }
+            return true; // Remove this wall edge
+        }
+        return false;
+    }),
+    g_wsEdges.end()
+);
+
 
 
 //use g_wsEdges and g_osEdges to render floor occlusion
@@ -2697,7 +2735,7 @@ if(1){
     std::vector<SDL_Vertex> vertices;
     const float EXTEND_DISTANCE = 2 * WIN_WIDTH;
 
-    for (const auto& edge : g_osEdges) {
+    for (auto edge : g_osEdges) {
       float dx = edge.first.position.x - px;
       float dy = edge.first.position.y - py;
       float len = pow(dx*dx + dy*dy, 0.5);
@@ -2718,6 +2756,11 @@ if(1){
 
           SDL_Vertex newA = {{nx, ny}, {255,255,255,255}, {0,0}};
           SDL_Vertex newB = {{nx2, ny2}, {255,255,255,255}, {0,0}};
+
+          newA.position.y -= edge.firstZ;
+          newB.position.y -= edge.secondZ;
+          edge.first.position.y -= edge.firstZ;
+          edge.second.position.y -= edge.secondZ;
 
           
           //push quad back to draw
@@ -2747,6 +2790,9 @@ if(1){
           SDL_Vertex newC = {{nx + pdx, ny + pdy}, {255,255,255,255}, {0,0}};
           SDL_Vertex newD = {{nx2 + pdx, ny2 + pdy}, {255,255,255,255}, {0,0}};
 
+          newC.position.y -= edge.firstZ;
+          newD.position.y -= edge.secondZ;
+
           vertices.push_back(newA);
           vertices.push_back(newB);
           vertices.push_back(newC);
@@ -2766,6 +2812,7 @@ sortEdges(g_wsEdges, px, py);
 sortEdges(g_osEdges, px, py);
 
 //visual walls
+//most of these will be drawn later so :S
 if(1) {
   for(auto &x : g_meshVWalls) {
     if(x->visible) {
@@ -2803,153 +2850,218 @@ If A's raycast intersected a wall, AND A2's y coordinate is lower than py we nee
 That's also true for B's raycast and a point B3. If we found A3 and B3, draw a quad A2 B2 A3 B3. If not, draw the traingle A2 B2 A3 or A2 B2 B3. Good?
 */
 
+//for(auto&x : g_osEdges) {
+//  x.group = 1;
+//}
+//
+//for(auto &x : g_wsEdges) {
+//  x.group = 1;
+//}
+
+processEdges(g_osEdges, g_wsEdges, px, py);
+
 //render occluding on visual walls
 if (1){
-  for (const auto& edge : g_osEdges) {
-    std::vector<SDL_Vertex> vertices;
-    SDL_Vertex A = edge.first;
-    SDL_Vertex B = edge.second;
+  int cGroup = 0;
+  int maxGroups = 20;
 
-    float dx = A.position.x - px;
-    float dy = A.position.y - py;
-    float len = sqrt(dx * dx + dy * dy);
+  map<int, vector<edgeInfo>> oGroups;
 
-    float Ax2 = A.position.x + dx / len * WIN_WIDTH;
-    float Ay2 = A.position.y + dy / len * WIN_WIDTH;
+  //for some reason making oGroups and wGroups breaks ftlo ;_;
+  for(const auto& edge : g_osEdges) {
+    oGroups[edge.group].push_back(edge);
+  }
 
-    std::tuple<bool, float, float> AIntersect = std::make_tuple(false, Ax2, Ay2);
-    for (const auto& wall : g_wsEdges) {
-      if(segmentsSharePoint(wall, edge)) {
-        continue;
-      }
+  map<int, vector<edgeInfo>> wGroups;
 
-      auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
-      if (intersects && iy < A.position.y) {
-        AIntersect = std::make_tuple(true, ix, iy);
-        break;
-      }
-    }
-
-    // Repeat for B
-    dx = B.position.x - px;
-    dy = B.position.y - py;
-    len = sqrt(dx * dx + dy * dy);
-
-    float Bx2 = B.position.x + dx / len * WIN_WIDTH;
-    float By2 = B.position.y + dy / len * WIN_WIDTH;
-
-    std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
-    for (const auto& wall : g_wsEdges) {
-      if(segmentsSharePoint(wall, edge)) {
-        continue;
-      }
-      auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
-      if (intersects && iy < B.position.y) {
-        BIntersect = std::make_tuple(true, ix, iy);
-        break;
-      }
-    }
-
-    auto [AIntersects, Ax3, Ay3] = AIntersect;
-    auto [BIntersects, Bx3, By3] = BIntersect;
-
-    SDL_Vertex A2 = {{Ax3, Ay3}, {0, 0, 0, 255}, {0, 0}};
-    SDL_Vertex B2 = {{Bx3, By3}, {0, 0, 0, 255}, {0, 0}};
-
-    // Handle case where there's no intersection
-    if (!AIntersects) {
-      A2 = {{Ax2, Ay2}, {0, 0, 0, 255}, {0, 0}};
-    }
-    if (!BIntersects) {
-      B2 = {{Bx2, By2}, {0, 0, 0, 255}, {0, 0}};
-    }
+  for(const auto& edge : g_wsEdges) {
+    wGroups[edge.group].push_back(edge);
+  }
 
 
-    // Create A3
-    SDL_Vertex A3;
-    if (AIntersects && Ay3 < py) {
-      A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
-    } else {
-      float p_dx = B2.position.y - A2.position.y;
-      float p_dy = A2.position.x - B2.position.x;
-      len = sqrt(p_dx * p_dx + p_dy * p_dy);
-      p_dx = p_dx / len * WIN_WIDTH;
-      p_dy = p_dy / len * WIN_WIDTH;
-
-      float side = (px - A2.position.x) * (B2.position.y - A2.position.y) - (py - A2.position.y) * (B2.position.x - A2.position.x);
-      if (side > 0) { //does this need to be flipped?
-        p_dx = -p_dx;
-        p_dy = -p_dy;
-      }
-
-      A3 = {{A2.position.x + p_dx, A2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
-      //temp
-      //A3 = {{A2.position.x, A2.position.y}, {0, 0, 0, 255}, {0, 0}};
-    }
-
-    // Create B3
-    SDL_Vertex B3;
-    if (BIntersects && By3 < py) {
-      B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
-    } else {
-      float p_dx = B2.position.y - A2.position.y;
-      float p_dy = A2.position.x - B2.position.x;
-      len = sqrt(p_dx * p_dx + p_dy * p_dy);
-      p_dx = p_dx / len * WIN_WIDTH;
-      p_dy = p_dy / len * WIN_WIDTH;
-
-      float side = (px - B2.position.x) * (A2.position.y - B2.position.y) - (py - B2.position.y) * (A2.position.x - B2.position.x);
-      if (side < 0) {
-        p_dx = -p_dx;
-        p_dy = -p_dy;
-      }
-
-      B3 = {{B2.position.x + p_dx, B2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
-      //temp
-      //B3 = {{B2.position.x, B2.position.y}, {0, 0, 0, 255}, {0, 0}};
-    }
-
-    vertices.push_back(A);
-    vertices.push_back(B);
-    vertices.push_back(A2);
-    vertices.push_back(A2);
-    vertices.push_back(B);
-    vertices.push_back(B2);
-
-    vertices.push_back(B2);
-    vertices.push_back(B3);
-    vertices.push_back(A2);
-    vertices.push_back(A2);
-    vertices.push_back(B3);
-    vertices.push_back(A3);
-    SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
-
-    if(edge.wallMesh != nullptr) {
-      SDL_Vertex v[4];
-      int index = 0;
-      for(auto x : edge.indices) {
-        v[index] = edge.wallMesh->vertex[x];
-        v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
-        v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
-        index++;
-      }
-
-      vector<int> indices = {0, 1, 2, 0, 2, 3};
-
-      SDL_RenderGeometry(renderer, edge.wallMesh->texture, v, 4, indices.data(), 6);
-
-      for(int i = 0; i < 6; i++) {
-        v[i].tex_coord.x = edge.wallMesh->vertexExtraData[i].first;
-        v[i].tex_coord.y = edge.wallMesh->vertexExtraData[i].second;
-      }
-
-      SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
+  for(int cGroup = 0; cGroup < maxGroups; cGroup++) {
+  
+    for (auto edge : oGroups[cGroup]) {
+      std::vector<SDL_Vertex> vertices;
+      SDL_Vertex A = edge.first;
+      A.position.y -= edge.firstZ;
+      SDL_Vertex B = edge.second;
+      B.position.y -= edge.secondZ;
+  
+      float dx = A.position.x - px;
+      float dy = A.position.y - py;
+      float len = sqrt(dx * dx + dy * dy);
+  
+      float Ax2 = A.position.x + dx / len * WIN_WIDTH;
+      float Ay2 = A.position.y + dy / len * WIN_WIDTH;
+  
+      std::tuple<bool, float, float> AIntersect = std::make_tuple(false, Ax2, Ay2);
       
+      for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+        for (const auto& wall : wGroups[wGroup]) {
+          if(wGroup == cGroup) {continue;} //don't use walls with that same group
+                                           //of occluders
+//          if(segmentsSharePoint(wall, edge)) {
+//            continue;
+//          }
+    
+          auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+          if (intersects && iy < A.position.y) {
+            AIntersect = std::make_tuple(true, ix, iy);
+            break;
+          }
+        }
+      }
+  
+      // Repeat for B
+      dx = B.position.x - px;
+      dy = B.position.y - py;
+      len = sqrt(dx * dx + dy * dy);
+  
+      float Bx2 = B.position.x + dx / len * WIN_WIDTH;
+      float By2 = B.position.y + dy / len * WIN_WIDTH;
+  
+      std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
+      for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+        for (const auto& wall : wGroups[wGroup]) {
+          if(wGroup == cGroup) {continue;}
+//          if(segmentsSharePoint(wall, edge)) {
+//            continue;
+//          }
+          auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+          if (intersects && iy < B.position.y) {
+            BIntersect = std::make_tuple(true, ix, iy);
+            break;
+          }
+        }
+      }
+  
+      auto [AIntersects, Ax3, Ay3] = AIntersect;
+      auto [BIntersects, Bx3, By3] = BIntersect;
+  
+      SDL_Vertex A2 = {{Ax3, Ay3}, {0, 0, 0, 255}, {0, 0}};
+      SDL_Vertex B2 = {{Bx3, By3}, {0, 0, 0, 255}, {0, 0}};
+  
+      // Handle case where there's no intersection
+      if (!AIntersects) {
+        A2 = {{Ax2, Ay2}, {0, 0, 0, 255}, {0, 0}};
+      }
+      if (!BIntersects) {
+        B2 = {{Bx2, By2}, {0, 0, 0, 255}, {0, 0}};
+      }
+  
+  
+      // Create A3
+      SDL_Vertex A3;
+      if (AIntersects && Ay3 < py) {
+        A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
+      } else {
+        float p_dx = B2.position.y - A2.position.y;
+        float p_dy = A2.position.x - B2.position.x;
+        len = sqrt(p_dx * p_dx + p_dy * p_dy);
+        p_dx = p_dx / len * WIN_WIDTH;
+        p_dy = p_dy / len * WIN_WIDTH;
+  
+        float side = (px - A2.position.x) * (B2.position.y - A2.position.y) - (py - A2.position.y) * (B2.position.x - A2.position.x);
+        if (side > 0) { //does this need to be flipped?
+          p_dx = -p_dx;
+          p_dy = -p_dy;
+        }
+  
+        A3 = {{A2.position.x + p_dx, A2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+      }
+  
+      // Create B3
+      SDL_Vertex B3;
+      if (BIntersects && By3 < py) {
+        B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
+      } else {
+        float p_dx = B2.position.y - A2.position.y;
+        float p_dy = A2.position.x - B2.position.x;
+        len = sqrt(p_dx * p_dx + p_dy * p_dy);
+        p_dx = p_dx / len * WIN_WIDTH;
+        p_dy = p_dy / len * WIN_WIDTH;
+  
+        float side = (px - B2.position.x) * (A2.position.y - B2.position.y) - (py - B2.position.y) * (A2.position.x - B2.position.x);
+        if (side < 0) {
+          p_dx = -p_dx;
+          p_dy = -p_dy;
+        }
+  
+        B3 = {{B2.position.x + p_dx, B2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+      }
+  
+  
+      vertices.push_back(A);
+      vertices.push_back(B);
+      vertices.push_back(A2);
+      vertices.push_back(A2);
+      vertices.push_back(B);
+      vertices.push_back(B2);
+  
+      //these are temporarily commented out
+      vertices.push_back(B2);
+      vertices.push_back(B3);
+      vertices.push_back(A2);
+      vertices.push_back(A2);
+      vertices.push_back(B3);
+      vertices.push_back(A3);
+      SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+  
+  
+  //      for(int i = 0; i < 6; i++) {
+  //        v[i].tex_coord.x = edge.wallMesh->vertexExtraData[i].first;
+  //        v[i].tex_coord.y = edge.wallMesh->vertexExtraData[i].second;
+  //      }
+  //
+  //      SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
+        
+    }
+
+    for (auto edge : oGroups[cGroup]) {
+      if(edge.wallMesh != nullptr) {
+        SDL_Vertex v[4];
+        int index = 0;
+        for(auto x : edge.indices) {
+          v[index] = edge.wallMesh->vertex[x];
+          v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
+          v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
+          index++;
+        }
+
+        vector<int> indices = {0, 1, 2, 0, 2, 3};
+
+        SDL_RenderGeometry(renderer, edge.wallMesh->texture, v, 4, indices.data(), 6);
+
+        index = 0;
+        for(auto x : edge.indices) {
+          v[index].tex_coord.x = edge.wallMesh->vertexExtraData[x].first;
+          v[index].tex_coord.y = edge.wallMesh->vertexExtraData[x].second;
+          index++;
+        }
+
+        SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
+      }
     }
   }
 
   //SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
 }
+
+
+////debugging
+//if(0){
+//SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+//D(g_wsEdges.size());
+//for(auto x : g_wsEdges) {
+//  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y-8, x.second.position.x, x.second.position.y - 8);
+//}
+//
+//SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+//for(auto x : g_osEdges) {
+//  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y, x.second.position.x, x.second.position.y);
+//}
+//}
 
 if(drawhitboxes) {
   for(auto &x : g_meshCollisions) {
@@ -4108,15 +4220,15 @@ int WinMain()
   transition = 1;
 
 
-  mesh* f = loadMeshFromPly("test/floor", {99279, 99455,0}, 60, meshtype::FLOOR);
+  mesh* f = loadMeshFromPly("test/floor", {99279, 99455,0}, 40, meshtype::FLOOR);
   f->texture = loadTexture(renderer, "resources/static/meshes/test/floor.qoi");
  
-  mesh* w = loadMeshFromPly("test/wall", {99279, 99455,0}, 60, meshtype::V_WALL);
+  mesh* w = loadMeshFromPly("test/wall", {99279, 99455,0}, 40, meshtype::V_WALL);
   w->texture = f->texture;
 
   //mesh* c = loadMeshFromPly("test/stage-collision", {99279, 99455,0}, 2, meshtype::COLLISION);
 
-  mesh* o = loadMeshFromPly("test/occluder", {99279, 99455,0}, 60, meshtype::OCCLUDER);
+  mesh* o = loadMeshFromPly("test/occluder", {99279, 99455,0}, 40, meshtype::OCCLUDER);
 
   while (!quit)
   {

@@ -14,6 +14,7 @@
 #include <cctype>
 #include <limits>
 #include <stdlib.h>
+#include <unordered_set>
 
 #include <filesystem> //checking if a usable dir exists
 
@@ -49,6 +50,112 @@ void resetTrivialData() {
   storedSpin = 0;
 
 }
+
+//sort occluder and wall edges into groups
+void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups) {
+    // Helper function to calculate edge length
+    auto edgeLength = [](const SDL_Vertex& v1, const SDL_Vertex& v2) {
+        float dx = v2.position.x - v1.position.x;
+        float dy = v2.position.y - v1.position.y;
+        return std::sqrt(dx * dx + dy * dy);
+    };
+
+    auto edgeLengthInfo = [&](const edgeInfo& edge) {
+        return edgeLength(edge.first, edge.second);
+    };
+
+    // Helper function to check if two edges are connected
+    auto areConnected = [](const edgeInfo& e1, const edgeInfo& e2) {
+        return (e1.first.position.x == e2.first.position.x && e1.first.position.y == e2.first.position.y) ||
+               (e1.first.position.x == e2.second.position.x && e1.first.position.y == e2.second.position.y) ||
+               (e1.second.position.x == e2.first.position.x && e1.second.position.y == e2.first.position.y) ||
+               (e1.second.position.x == e2.second.position.x && e1.second.position.y == e2.second.position.y);
+    };
+
+    // Combine both g_osEdges and g_wsEdges into a single vector
+    std::vector<edgeInfo> allEdges = g_osEdges;
+    allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
+
+    // Group assignment
+    int currentGroup = 0;
+    std::unordered_map<int, std::unordered_set<int>> adjacency;
+    std::vector<bool> visited(allEdges.size(), false);
+
+    // Build adjacency list
+    for (size_t i = 0; i < allEdges.size(); ++i) {
+        for (size_t j = i + 1; j < allEdges.size(); ++j) {
+            if (areConnected(allEdges[i], allEdges[j])) {
+                adjacency[i].insert(j);
+                adjacency[j].insert(i);
+            }
+        }
+    }
+
+    // Depth-first search for group assignment
+    auto dfs = [&](int index, auto&& dfsRef) -> void {
+        visited[index] = true;
+        allEdges[index].group = currentGroup;
+
+        for (int neighbor : adjacency[index]) {
+            if (!visited[neighbor]) {
+                dfsRef(neighbor, dfsRef);
+            }
+        }
+    };
+
+    for (size_t i = 0; i < allEdges.size(); ++i) {
+        if (!visited[i]) {
+            dfs(i, dfs);
+            ++currentGroup;
+
+            // Cap the group at maxGroups
+            if (currentGroup >= maxGroups) {
+                currentGroup = maxGroups; // Group 20 is overflow
+            }
+        }
+    }
+
+    // Calculate weighted distances for sorting
+    std::unordered_map<int, float> groupWeightedDistance;
+    std::unordered_map<int, float> groupTotalLength;
+
+    for (const auto& edge : allEdges) {
+        float length = edgeLengthInfo(edge);
+        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
+        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
+        float distance = std::sqrt((midX - px) * (midX - px) + (midY - py) * (midY - py));
+
+        groupWeightedDistance[edge.group] += distance * length;
+        groupTotalLength[edge.group] += length;
+    }
+
+    for (auto& [group, weightedDistance] : groupWeightedDistance) {
+        weightedDistance /= groupTotalLength[group];
+    }
+
+    // Sort edges by group distance
+    auto sortEdges = [&](std::vector<edgeInfo>& edges) {
+        std::sort(edges.begin(), edges.end(), [&](const edgeInfo& a, const edgeInfo& b) {
+            return groupWeightedDistance[a.group] < groupWeightedDistance[b.group];
+        });
+    };
+
+    // Split back into g_osEdges and g_wsEdges
+    g_osEdges.clear();
+    g_wsEdges.clear();
+    for (const auto& edge : allEdges) {
+        if (edge.type == 0) {
+            g_osEdges.push_back(edge);
+        } else if (edge.type == 1) {
+            g_wsEdges.push_back(edge);
+        }
+    }
+
+    // Sort each edge type
+    sortEdges(g_osEdges);
+    sortEdges(g_wsEdges);
+}
+
 
 // for checking if lines are colliear
 int orientation(float px, float py, float qx, float qy, float rx, float ry) {
@@ -127,10 +234,14 @@ void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targ
 
         edgeInfo newV;
         newV.first = v1;
+        newV.firstZ = edge.firstZ;
         newV.second = v2;
+        newV.secondZ = edge.secondZ;
 
         newV.wallMesh = edge.wallMesh;
         newV.indices = edge.indices;
+
+        newV.type = edge.type;
 
 
         // Check if either vertex is visible
@@ -5811,41 +5922,119 @@ door* entity::update(vector<door*> doors, float elapsed) {
   for(auto m : g_meshFloors) {
     if(Distance(m->origin.x, m->origin.y, getOriginX(), getOriginY()) < m->sleepRadius +(bounds.width + bounds.height)) {
       for (const auto& f : m->faces) {
-        // Get vertices of the face
-        vertex3d vA = m->vertices[f.a];
-        vertex3d vB = m->vertices[f.b];
-        vertex3d vC = m->vertices[f.c];
 
-        // Get barycentric coordinates
-        vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
-        auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
+        if(f.d < 100) {
+          // Get vertices of the face
+          vertex3d vA = m->vertices[f.a];
+          vertex3d vB = m->vertices[f.b];
+          vertex3d vC = m->vertices[f.c];
 
-        // Check if player is within the triangle
-        if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
-          // Calculate interpolated z value (floor)
-          float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
-          floor = interpolatedZ;
-          if(floor < 0) floor = 0;
-          if (abs(z - (floor + 1)) < 2) {
-            z = floor + 1;
-          } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
-            z = floor + 1;
+          // Get barycentric coordinates
+          vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
+          auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
+
+          // Check if player is within the triangle
+          if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
+            // Calculate interpolated z value (floor)
+            float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
+            floor = interpolatedZ;
+            if(floor < 0) floor = 0;
+            if (abs(z - (floor + 1)) < 2) {
+              z = floor + 1;
+            } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
+              z = floor + 1;
+            }
+            this->shadow->z = floor + 1;
+
+            // Calculate normal of the face
+            auto normal = calculateNormal(vA, vB, vC);
+            float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+            float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
+
+            slopeFactor += (1-slopeFactor) * 0.9;
+            if(slopeFactor < 1) {
+              // Adjust velocities based on the slope
+              xvel *= slopeFactor;
+              yvel *= slopeFactor;
+            }
+            break;
+
+          } else {
+            // Get vertices of the face
+            vertex3d vA = m->vertices[f.a];
+            vertex3d vB = m->vertices[f.c];
+            vertex3d vC = m->vertices[f.d];
+
+            // Get barycentric coordinates
+            vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
+            auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
+
+            // Check if player is within the triangle
+            if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
+              // Calculate interpolated z value (floor)
+              float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
+              floor = interpolatedZ;
+              if(floor < 0) floor = 0;
+              if (abs(z - (floor + 1)) < 2) {
+                z = floor + 1;
+              } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
+                z = floor + 1;
+              }
+              this->shadow->z = floor + 1;
+
+              // Calculate normal of the face
+              auto normal = calculateNormal(vA, vB, vC);
+              float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+              float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
+
+              slopeFactor += (1-slopeFactor) * 0.9;
+              if(slopeFactor < 1) {
+                // Adjust velocities based on the slope
+                xvel *= slopeFactor;
+                yvel *= slopeFactor;
+              }
+              break;
+
+            }
           }
-          this->shadow->z = floor + 1;
+        } else {
 
-          // Calculate normal of the face
-          auto normal = calculateNormal(vA, vB, vC);
-          float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
-          float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
+          // Get vertices of the face
+          vertex3d vA = m->vertices[f.a];
+          vertex3d vB = m->vertices[f.b];
+          vertex3d vC = m->vertices[f.c];
 
-          slopeFactor += (1-slopeFactor) * 0.9;
-          if(slopeFactor < 1) {
-            // Adjust velocities based on the slope
-            xvel *= slopeFactor;
-            yvel *= slopeFactor;
+          // Get barycentric coordinates
+          vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
+          auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
+
+          // Check if player is within the triangle
+          if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
+            // Calculate interpolated z value (floor)
+            float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
+            floor = interpolatedZ;
+            if(floor < 0) floor = 0;
+            if (abs(z - (floor + 1)) < 2) {
+              z = floor + 1;
+            } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
+              z = floor + 1;
+            }
+            this->shadow->z = floor + 1;
+
+            // Calculate normal of the face
+            auto normal = calculateNormal(vA, vB, vC);
+            float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+            float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
+
+            slopeFactor += (1-slopeFactor) * 0.9;
+            if(slopeFactor < 1) {
+              // Adjust velocities based on the slope
+              xvel *= slopeFactor;
+              yvel *= slopeFactor;
+            }
+
+            break;
           }
-
-          break;
         }
       }
     }

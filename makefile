@@ -10,7 +10,7 @@ lightcookies.o: lightcookies.cpp
 	g++ lightcookies.cpp -flto -std=c++17  -ggdb -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -O3 -march=native  -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
 main.o: main.cpp
-	g++ main.cpp -std=c++17  -ggdb -flto -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -O0  -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
+	g++ main.cpp -std=c++17  -ggdb -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -O0  -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1
 
 map_editor.o: map_editor.cpp
 	g++ map_editor.cpp -flto -std=c++17  -ggdb -c -Wno-narrowing -LC:\Users\Vrickt\OneDrive\Documents\dev\lib\x64\SDL2 -IC:\Users\Vrickt\OneDrive\Documents\dev\include -O0  -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf -g -fmax-errors=1

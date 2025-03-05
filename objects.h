@@ -33,6 +33,8 @@ using namespace std;
 
 void resetTrivialData();
 
+void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups = 20);
+
 int orientation(float px, float py, float qx, float qy, float rx, float ry);
 
 std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2);
