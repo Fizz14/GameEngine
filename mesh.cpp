@@ -56,28 +56,7 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
     }
 }
 
-int main() {
-    // Example usage
-    mesh m;
-    // Initialize m.faces and m.vertex with sample data...
-
-    edgeInfo ei;
-    // Initialize ei.first and ei.second with edge vertices...
-
-    checkAndSetEdgeInfo(ei, &m);
-
-    if (ei.wallMesh != nullptr) {
-        std::cout << "Match found! Indices: ";
-        for (int index : ei.indices) {
-            std::cout << index << " ";
-        }
-        std::cout << std::endl;
-    } else {
-        std::cout << "No match found." << std::endl;
-    }
-
-    return 0;
-}vec3::vec3(int fx = 0, int fy = 0, int fz = 0) :x(fx), y(fy), z(fz) {}
+vec3::vec3(int fx = 0, int fy = 0, int fz = 0) :x(fx), y(fy), z(fz) {}
 
 mesh::mesh() {
 }
@@ -160,7 +139,7 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
 
         float dotProduct = max(0.0f, vertex.normal[0] * lightDir[0] + vertex.normal[1] * lightDir[1] + vertex.normal[2] * lightDir[2]);
         //dotProduct = 0.2 + 0.8*dotProduct;
-        Uint8 intensity = static_cast<Uint8>(255 * dotProduct);
+        int intensity = 255 * dotProduct;
         if(mtype == meshtype::V_WALL) {
           //don't change red channel
           vertex.color.g = intensity;
@@ -170,6 +149,72 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
           vertex.color = {intensity, intensity, intensity, 255};
         }
     }
+}
+
+void addLoopCutWithScaling(std::vector<vertex3d>& vertices, std::vector<face>& faces, float scale) {
+    const float epsilon = 0.001f; // Prevent exact 0 or 1 texcoords
+    std::vector<face> newFaces;
+
+    // Calculate texcoords based on world position
+    auto setTexcoords = [&](vertex3d& v) {
+        v.u = std::clamp((v.x / scale), epsilon, 1.0f - epsilon);
+        v.v = std::clamp((v.y / scale), epsilon, 1.0f - epsilon);
+    };
+
+    // Interpolation function
+    auto interpolateVertex = [&](const vertex3d& v1, const vertex3d& v2) {
+        vertex3d mid;
+        mid.x = (v1.x + v2.x) / 2.0f;
+        mid.y = (v1.y + v2.y) / 2.0f;
+        mid.z = (v1.z + v2.z) / 2.0f;
+
+        mid.lu = (v1.lu + v2.lu) / 2.0f;
+        mid.lv = (v1.lv + v2.lv) / 2.0f;
+
+        for (int i = 0; i < 3; ++i) {
+            mid.normal[i] = (v1.normal[i] + v2.normal[i]) / 2.0f;
+        }
+
+        setTexcoords(mid); // Assign texture coordinates based on position
+        return mid;
+    };
+
+    for (const auto& f : faces) {
+        if (f.d == 100) continue; // Skip non-quads for now
+
+        const vertex3d& va = vertices[f.a];
+        const vertex3d& vb = vertices[f.b];
+        const vertex3d& vc = vertices[f.c];
+        const vertex3d& vd = vertices[f.d];
+
+        bool needsCutAB = std::abs(va.u - vb.u) > 0.999f || std::abs(va.v - vb.v) > 0.999f;
+        bool needsCutBC = std::abs(vb.u - vc.u) > 0.999f || std::abs(vb.v - vc.v) > 0.999f;
+        bool needsCutCD = std::abs(vc.u - vd.u) > 0.999f || std::abs(vc.v - vd.v) > 0.999f;
+        bool needsCutDA = std::abs(vd.u - va.u) > 0.999f || std::abs(vd.v - va.v) > 0.999f;
+
+        if (needsCutAB || needsCutBC || needsCutCD || needsCutDA) {
+            M("time for a cut");
+            unsigned int abMid = vertices.size();
+            unsigned int bcMid = vertices.size() + 1;
+            unsigned int cdMid = vertices.size() + 2;
+            unsigned int daMid = vertices.size() + 3;
+
+            if (needsCutAB) vertices.push_back(interpolateVertex(va, vb));
+            if (needsCutBC) vertices.push_back(interpolateVertex(vb, vc));
+            if (needsCutCD) vertices.push_back(interpolateVertex(vc, vd));
+            if (needsCutDA) vertices.push_back(interpolateVertex(vd, va));
+
+            // Adjust face splitting for all cases
+            newFaces.push_back({f.a, abMid, bcMid, daMid});
+            newFaces.push_back({abMid, f.b, f.c, bcMid});
+            newFaces.push_back({bcMid, f.c, f.d, cdMid});
+            newFaces.push_back({daMid, bcMid, cdMid, f.d});
+        } else {
+            newFaces.push_back(f); // Keep original face if no cuts are needed
+        }
+    }
+
+    faces = std::move(newFaces);
 }
 
 
@@ -287,15 +332,28 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
             }
         }
 
+        {
+          //now is the time to set texture coords procedurally and add loopcuts to reset the tex coords if needed
+          addLoopCutWithScaling(vertices, faces, 0.1);
+        }
+
+
+
         if(
             fmtype == meshtype::COLLISION ||
             fmtype == meshtype::FLOOR
             ) {
-          const array<float, 3> lightDir = {0, -0.4472, -0.8944};
+          const array<float, 3> lightDir = {0, 0.4472, 0.8944};
           setVertexColors(vertices, faces, lightDir, fmtype);
         } else if(fmtype == meshtype::V_WALL) {
-//          const array<float, 3> lightDir = {0, -0.707, -0.707};
-//          setVertexColors(vertices, faces, lightDir, fmtype);
+          //const array<float, 3> lightDir = {0, 0.707, 0.707};
+          //const array<float, 3> lightDir = {0, 1, 0};
+          //setVertexColors(vertices, faces, lightDir, fmtype);
+          for(int i = 0; i < vertices.size(); i++) {
+            vertices[i].color.g = 220;
+            vertices[i].color.b = 220;
+            vertices[i].color.a = 255;
+          }
         }
 
         
@@ -414,14 +472,6 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
             result->vertex[index].tex_coord.x = v.u;
             result->vertexExtraData[index].first = v.lu;
             result->vertexExtraData[index].second = v.lv;
-//            result->vertex[index].color.r = v.color.r;
-//            result->vertex[index].color.g = v.color.g;
-//            result->vertex[index].color.b = v.color.b;
-            result->vertex[index].color.r = 255;
-            result->vertex[index].color.g = 255;
-            result->vertex[index].color.b = 255;
-
-
             if(dist > maxDistanceFromOrigin) {
               maxDistanceFromOrigin = dist;
             }

@@ -2884,14 +2884,14 @@ if (1){
     for (auto edge : oGroups[cGroup]) {
       std::vector<SDL_Vertex> vertices;
       SDL_Vertex A = edge.first;
-      A.position.y -= edge.firstZ;
       SDL_Vertex B = edge.second;
-      B.position.y -= edge.secondZ;
   
       float dx = A.position.x - px;
       float dy = A.position.y - py;
       float len = sqrt(dx * dx + dy * dy);
-  
+      A.position.y -= edge.firstZ;
+      B.position.y -= edge.secondZ;
+
       float Ax2 = A.position.x + dx / len * WIN_WIDTH;
       float Ay2 = A.position.y + dy / len * WIN_WIDTH;
   
@@ -2901,10 +2901,6 @@ if (1){
         for (const auto& wall : wGroups[wGroup]) {
           if(wGroup == cGroup) {continue;} //don't use walls with that same group
                                            //of occluders
-//          if(segmentsSharePoint(wall, edge)) {
-//            continue;
-//          }
-    
           auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
           if (intersects && iy < A.position.y) {
             AIntersect = std::make_tuple(true, ix, iy);
@@ -2920,14 +2916,11 @@ if (1){
   
       float Bx2 = B.position.x + dx / len * WIN_WIDTH;
       float By2 = B.position.y + dy / len * WIN_WIDTH;
-  
+
       std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
       for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
         for (const auto& wall : wGroups[wGroup]) {
           if(wGroup == cGroup) {continue;}
-//          if(segmentsSharePoint(wall, edge)) {
-//            continue;
-//          }
           auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
           if (intersects && iy < B.position.y) {
             BIntersect = std::make_tuple(true, ix, iy);
@@ -2998,6 +2991,7 @@ if (1){
       vertices.push_back(A2);
       vertices.push_back(B);
       vertices.push_back(B2);
+
   
       //these are temporarily commented out
       vertices.push_back(B2);
@@ -3007,14 +3001,6 @@ if (1){
       vertices.push_back(B3);
       vertices.push_back(A3);
       SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
-  
-  
-  //      for(int i = 0; i < 6; i++) {
-  //        v[i].tex_coord.x = edge.wallMesh->vertexExtraData[i].first;
-  //        v[i].tex_coord.y = edge.wallMesh->vertexExtraData[i].second;
-  //      }
-  //
-  //      SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
         
     }
 
@@ -3026,6 +3012,7 @@ if (1){
           v[index] = edge.wallMesh->vertex[x];
           v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
           v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
+          v[index].color.r = v[index].color.g;
           index++;
         }
 
@@ -3037,6 +3024,9 @@ if (1){
         for(auto x : edge.indices) {
           v[index].tex_coord.x = edge.wallMesh->vertexExtraData[x].first;
           v[index].tex_coord.y = edge.wallMesh->vertexExtraData[x].second;
+          v[index].color.r = 255;
+          v[index].color.g = 255;
+          v[index].color.b = 255;
           index++;
         }
 
