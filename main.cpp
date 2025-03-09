@@ -267,6 +267,8 @@ void ExplorationLoop() {
 
   // INPUT
   getExplorationInput(elapsed);
+  if(g_gamemode != gamemode::EXPLORATION) { return; }
+
 
 
   //lerp protag to boarded ent smoothly
@@ -2252,57 +2254,6 @@ void ExplorationLoop() {
   }
   B("Sounds & grossup");
 
-  // transition
-  {
-    if (transition)
-    {
-      g_forceEndDialogue = 0;
-      // onframe things
-      SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
-
-      memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-      Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-      SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
-      Uint32 *pixels = (Uint32 *)transitionPixelReference;
-      // int numPixels = transitionImageWidth * transitionImageHeight;
-      Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
-      // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
-      transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
-      for (int x = 0; x < transitionImageWidth; x++)
-      {
-        for (int y = 0; y < transitionImageHeight; y++)
-        {
-          int dest = (y * transitionImageWidth) + x;
-
-          if (pow(pow(transitionImageWidth / 2 - x, 2) + pow(transitionImageHeight + y, 2), 0.5) < transitionDelta)
-          {
-            pixels[dest] = 0;
-          }
-          else
-          {
-            pixels[dest] = transparent;
-          }
-        }
-      }
-
-      ticks = SDL_GetTicks();
-      elapsed = ticks - lastticks;
-      //        D(elapsed);
-      //        M("What did I break?");
-
-      SDL_UnlockTexture(transitionTexture);
-      SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
-
-      if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
-      {
-        transition = 0;
-      }
-    }
-    else
-    {
-      transitionDelta = transitionImageHeight;
-    }
-  }
 
   if(!g_dungeonSystemOn) {
     if(g_musicSilenceMs > 0) {
@@ -2971,6 +2922,13 @@ void ExplorationLoop() {
 
   }
 
+  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+  {
+    if (g_tiles[i]->software == 1)
+    {
+      g_tiles[i]->render(renderer, g_camera);
+    }
+  }
 
   //shade
   SDL_RenderCopy(renderer, g_shade, NULL, NULL);
@@ -3443,6 +3401,62 @@ void ExplorationLoop() {
   }
   B("After mapedit");
 
+
+  // transition
+  {
+    if (transition)
+    {
+      g_forceEndDialogue = 0;
+      // onframe things
+      SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
+
+      memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
+      Uint32 format = SDL_PIXELFORMAT_ARGB8888;
+      SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
+      Uint32 *pixels = (Uint32 *)transitionPixelReference;
+      // int numPixels = transitionImageWidth * transitionImageHeight;
+      Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
+      // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+      transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
+      int totalBlack = 0;
+      for (int x = 0; x < transitionImageWidth; x++)
+      {
+        for (int y = 0; y < transitionImageHeight; y++)
+        {
+          int dest = (y * transitionImageWidth) + x;
+
+
+          if (pow(pow(transitionImageWidth / 2 - x, 2) + pow(transitionImageHeight + y, 2), 0.5) < transitionDelta)
+          {
+            pixels[dest] = 0;
+            totalBlack++;
+          }
+          else
+          {
+            pixels[dest] = transparent;
+          }
+        }
+      }
+
+      ticks = SDL_GetTicks();
+      elapsed = ticks - lastticks;
+      //        D(elapsed);
+      //        M("What did I break?");
+
+      SDL_UnlockTexture(transitionTexture);
+      SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+
+      if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
+      {
+        transition = 0;
+      }
+    }
+    else
+    {
+      transitionDelta = transitionImageHeight;
+    }
+  }
+
   SDL_RenderPresent(renderer);
   B("End of frame");
 }
@@ -3452,7 +3466,6 @@ int WinMain()
 {
   locale::global(locale(""));
   cout.imbue(locale());
-
 
   canSwitchOffDevMode = devMode;
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -4009,11 +4022,11 @@ int WinMain()
   blackSmokeEffect->persistent = 1;
 
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-  SDL_RenderPresent(renderer);
+  //SDL_RenderPresent(renderer);
   SDL_GL_SetSwapInterval(1);
 
   // textures for adding operation
-  canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
+  //canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
   //canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500); seems to be unused
 
   g_loadingATM = 0;
@@ -5397,7 +5410,7 @@ void getExplorationInput(float &elapsed)
           inPauseMenu = 0;
           Mix_FadeOutMusic(1000);
           clear_map(g_camera);
-          //transition = 1;
+          transition = 1;
           g_gamemode = gamemode::TITLE;
           titleUIManager->option = 0;
           titleUIManager->showAll();

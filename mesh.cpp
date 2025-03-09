@@ -184,7 +184,7 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
 
         float dotProduct = max(0.0f, vertex.normal[0] * lightDir[0] + vertex.normal[1] * lightDir[1] + vertex.normal[2] * lightDir[2]);
         if(mtype == meshtype::FLOOR) {
-          dotProduct = 0.6 + 0.4*dotProduct;
+          dotProduct = 0.7 + 0.3*dotProduct;
         }
         int intensity = 255 * dotProduct;
         if(mtype == meshtype::V_WALL) {

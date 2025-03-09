@@ -505,7 +505,6 @@ void TitleLoop() {
         SDL_FreeSurface(transitionSurface);
         SDL_DestroyTexture(transitionTexture);
         SDL_DestroyTexture(frame);
-        transition = 1;
         titleUIManager->hideAll();
         SDL_GL_SetSwapInterval(1);
 
@@ -515,6 +514,9 @@ void TitleLoop() {
         }
         D(g_mapOfLastSave);
         load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+
+        transition = 1;
+        M("Set transition to 1");
 
         break;
       };
@@ -692,4 +694,5 @@ void TitleLoop() {
   }
 
   SDL_RenderPresent(renderer);
+  breakpoint();
 }
