@@ -1,8 +1,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include "utils.h"
 #include "happly.h"
-
 #include "mesh.h"
+
+
 void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
     struct VertexComparator {
         bool operator()(const SDL_Vertex& lhs, const SDL_Vertex& rhs) const {
@@ -71,13 +73,56 @@ mesh::~mesh() {
   } else if(mtype == meshtype::OCCLUDER) {
     g_meshOccluders.erase(remove(g_meshOccluders.begin(), g_meshOccluders.end(), this), g_meshOccluders.end());
   } else if(mtype == meshtype::DECORATIVE) {
-
+    g_meshDecorative.erase(remove(g_meshDecorative.begin(), g_meshDecorative.end(), this), g_meshDecorative.end());
   }
 
-  //add support for sharing textures later
-  if(texture != nullptr) {
+  g_meshes.erase(remove(g_meshes.begin(), g_meshes.end(), this), g_meshes.end());
+
+  if(assetSharer == 0 && texture != nullptr) {
     SDL_DestroyTexture(texture);
   }
+
+}
+
+chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale) {
+  g_chunks.push_back(this);
+
+  //look for models to load from fpath
+  
+  path = fpath;
+  floortex = ffloortex;
+  walltex = fwalltex;
+  origin = forigin;
+  scale = fscale;
+
+  string baseAddr = "resources/static/meshes/" + fpath;
+
+  string floorAddr = baseAddr + "-f.ply";
+  string wallAddr = baseAddr + "-w.ply";
+  string collisionAddr = baseAddr + "-c.ply";
+  string occluAddr = baseAddr + "-o.ply";
+
+  if(devMode) {
+    D(floorAddr);
+  }
+
+  if(PHYSFS_exists(floorAddr.c_str())) {
+    floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR);
+  }
+  if(PHYSFS_exists(wallAddr.c_str())) {
+    wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL);
+  }
+  if(PHYSFS_exists(collisionAddr.c_str())) {
+    collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION);
+  }
+  if(PHYSFS_exists(occluAddr.c_str())) {
+    occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER);
+  }
+
+}
+
+chunk::~chunk() {
+  g_chunks.erase(remove(g_chunks.begin(), g_chunks.end(), this), g_chunks.end());
 }
 
 // Function to calculate the normal of a face
@@ -138,7 +183,9 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
         vertex.normal[2] /= length;
 
         float dotProduct = max(0.0f, vertex.normal[0] * lightDir[0] + vertex.normal[1] * lightDir[1] + vertex.normal[2] * lightDir[2]);
-        //dotProduct = 0.2 + 0.8*dotProduct;
+        if(mtype == meshtype::FLOOR) {
+          dotProduct = 0.6 + 0.4*dotProduct;
+        }
         int intensity = 255 * dotProduct;
         if(mtype == meshtype::V_WALL) {
           //don't change red channel
@@ -146,19 +193,36 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
           vertex.color.b = intensity;
           vertex.color.a = 255;
         } else {
-          vertex.color = {intensity, intensity, intensity, 255};
+          //vertex.color.r = intensity;
+          vertex.color.g = intensity;
+          vertex.color.b = intensity;
         }
     }
 }
 
 
-mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtype) {
-    string address = "resources/static/meshes/" + faddress + ".ply";
+mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype) {
+    string address = faddress;
     vector<vertex3d> vertices;
     vector<face> faces;
     mesh* result = new mesh();
     result->origin = forigin;
     result->mtype = fmtype;
+
+
+    if(taddress != "") {
+      result->textureAddress = taddress;
+      for(auto x : g_meshes) {
+        if(x->textureAddress == result->textureAddress) {
+          result->texture = x->texture;
+          result->assetSharer = 1;
+        }
+      }
+
+      if(!result->assetSharer) {
+        result->texture = loadTexture(renderer, "resources/static/diffuse/" + result->textureAddress + ".qoi");
+      }
+    }
 
     if(fmtype == meshtype::FLOOR) {
         g_meshFloors.push_back(result);
@@ -171,6 +235,8 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
     } else if(fmtype == meshtype::DECORATIVE) {
       g_meshDecorative.push_back(result); 
     }
+    g_meshes.push_back(result);
+
 
     string binAddress = "";
 
@@ -269,6 +335,12 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
         {
           //now is the time to set texture coords procedurally and add loopcuts to reset the tex coords if needed
         
+          //make sure that the first uv map for floors and walls
+          //starts in the top-left corner, as-in, no uv coords less than 0 (either axis)
+          //but greater than 1 is okay
+          //Also, no face can have it's individual unwrap span larger than the distance from 0->1
+          //subdivide in that case
+
         }
 
 
@@ -337,6 +409,7 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
                 g_wEdges.emplace_back(ei);
                 fail++;
               }
+
 
               if(vertices[f.a].color.r < 128 && vertices[f.c].color.r < 128) {
                 if(fail) {E("Bad V_WALL, make sure only the bottom verts have 0 red"); abort();}
@@ -408,6 +481,10 @@ mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtyp
             result->vertexExtraData[index].second = v.lv;
             if(dist > maxDistanceFromOrigin) {
               maxDistanceFromOrigin = dist;
+            }
+            if(fmtype == meshtype::FLOOR) {
+              result->vertex[index].color.a = v.color.r;
+              result->vertex[index].color.r = v.color.g;
             }
 
             ++index;

@@ -68,6 +68,8 @@ class mesh {
 public:
   vec3 origin = {0,0,0};
   SDL_Texture* texture = NULL;
+  string textureAddress = "";
+  bool assetSharer = 0;
 
   SDL_Vertex* vertex = NULL;
   int* indices = NULL;
@@ -95,6 +97,37 @@ public:
   ~mesh();
 };
 
-mesh* loadMeshFromPly(string faddress, vec3 forigin, float scale, meshtype fmtype);
+
+//four meshes:
+//a floor, a wall, a collision, and an occluder
+//
+//
+//specifications for each type: (just in case I forget how to model them)
+//
+//floor - quads/tris with two uv channels
+//wall - quads with two uv channels
+//collision - completely vertical walls, inside corners should often be 90*
+//occluder - edges in 3d space, no faces, no colors, no channels
+//
+class chunk {
+ public:
+  mesh* floor = 0;
+  mesh* wall = 0;
+  mesh* collision = 0;
+  mesh* occluder = 0;
+
+  string path = "";
+
+  string floortex = "";
+  string walltex = "";
+  vec3 origin = {0,0,0};
+  float scale;
+
+  chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale);
+
+  ~chunk();
+};
+
+mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype);
 
 #endif

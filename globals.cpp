@@ -150,6 +150,10 @@ vector<mesh*> g_meshOccluders;
 
 vector<mesh*> g_meshDecorative;
 
+vector<mesh*> g_meshes;
+
+vector<chunk*> g_chunks;
+
 vector<edgeInfo> g_wEdges;
 vector<edgeInfo> g_oEdges;
 
@@ -259,21 +263,6 @@ SDL_Texture *result_c;
 SDL_Texture *canvas;
 SDL_Texture *canvas_fc;
 SDL_Texture *light;
-
-SDL_Texture *lighta;
-SDL_Texture *lightb;
-SDL_Texture *lightc;
-SDL_Texture *lightd;
-
-SDL_Texture *lightaro;
-SDL_Texture *lightbro;
-SDL_Texture *lightcro;
-SDL_Texture *lightdro;
-
-SDL_Texture *lightari;
-SDL_Texture *lightbri;
-SDL_Texture *lightcri;
-SDL_Texture *lightdri;
 
 SDL_Texture *blackbarTexture;
 SDL_Texture *spotlightTexture;
@@ -963,6 +952,7 @@ tile *navNodeIconBlue;
 tile *navNodeIconRed;
 tile *navNodeIconYellow;
 tile *worldsoundIcon;
+tile *chunkIcon;
 tile *listenerIcon;
 tile *musicIcon;
 tile *cueIcon;
@@ -1065,6 +1055,8 @@ int g_menuTalkReset = 0;
 float g_entlineDistance = 64;
 
 int g_holddelete = 0;
+
+chunk* moveThisChunk = 0;
 
 int g_globalAccumulator = 0;
 int g_tempAccumulator = 0;

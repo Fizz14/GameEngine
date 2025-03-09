@@ -109,7 +109,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
   vector<string> strings = {};
   if(PHYSFS_exists(filename.c_str())) {
-    D(filename);
     strings = loadText(filename);
   }
 
@@ -136,20 +135,20 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     istringstream iss(line);
     word = line.substr(0, line.find(" "));
 
-    if (word == "enemy")
-    {
-      iss >> s0 >> s1 >> p0;
-      enemiesMap[s1] = p0;
-    }
+//    if (word == "enemy")
+//    {
+//      iss >> s0 >> s1 >> p0;
+//      enemiesMap[s1] = p0;
+//    }
 
-    if (word == "grass") {
-      iss >> s0 >> p0 >> p1 >> p2 >> p3;
-      tallGrass* a = new tallGrass();
-      a->bounds.x = p0;
-      a->bounds.y = p1;
-      a->bounds.width = p2;
-      a->bounds.height = p3;
-    }
+//    if (word == "grass") {
+//      iss >> s0 >> p0 >> p1 >> p2 >> p3;
+//      tallGrass* a = new tallGrass();
+//      a->bounds.x = p0;
+//      a->bounds.y = p1;
+//      a->bounds.width = p2;
+//      a->bounds.height = p3;
+//    }
 
     if (word == "camblocker") {
       iss >> s0 >> p0 >> p1 >> p2 >> p3 >> p4;
@@ -183,19 +182,19 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
     }
 
-    if (word == "limits")
-    {
-      iss >> s0 >> p1 >> p2 >> p3 >> p4;
-      g_camera.lowerLimitX = p1;
-      limits[0] = p1;
-      g_camera.lowerLimitY = p2;
-      limits[1] = p2;
-      g_camera.upperLimitX = p3;
-      limits[2] = p3;
-      g_camera.upperLimitY = p4;
-      limits[3] = p4;
-      g_camera.enforceLimits = 1;
-    }
+//    if (word == "limits")
+//    {
+//      iss >> s0 >> p1 >> p2 >> p3 >> p4;
+//      g_camera.lowerLimitX = p1;
+//      limits[0] = p1;
+//      g_camera.lowerLimitY = p2;
+//      limits[1] = p2;
+//      g_camera.upperLimitX = p3;
+//      limits[2] = p3;
+//      g_camera.upperLimitY = p4;
+//      limits[3] = p4;
+//      g_camera.enforceLimits = 1;
+//    }
     if (word == "bg" && g_useBackgrounds)
     {
       iss >> s0 >> backgroundstr;
@@ -212,10 +211,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       iss >> s0 >> p1;
       g_dungeonDarkness = p1;
     }
-    if(word == "grasschance") {
-      iss >> s0 >> p0;
-      g_encounterChance = p0;
-    }
+//    if(word == "grasschance") {
+//      iss >> s0 >> p0;
+//      g_encounterChance = p0;
+//    }
     if(word == "cbg") { //combat background
       iss >> s0 >> s1;
       loadedBackgrounds.push_back(s1);
@@ -263,25 +262,25 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
 
     }
-    if (word == "box")
-    {
-      // M("loading collisisons" << endl;
-      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> s1 >> s2 >> p6 >> p7 >> p8 >> s3;
-      box *c = new box(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8, s3.c_str());
-      (void)c;
-    }
+//    if (word == "box")
+//    {
+//      // M("loading collisisons" << endl;
+//      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> s1 >> s2 >> p6 >> p7 >> p8 >> s3;
+//      box *c = new box(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8, s3.c_str());
+//      (void)c;
+//    }
     if (word == "islope")
     {
       iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7 >> p8;
       impliedSlope *i = new impliedSlope(p1, p2, p3, p4, p5, p6, p7, p8);
       (void)i;
     }
-    if (word == "islopet")
-    {
-      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6;
-      impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, p5, p6);
-      (void)i;
-    }
+//    if (word == "islopet")
+//    {
+//      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6;
+//      impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, p5, p6);
+//      (void)i;
+//    }
     if (word == "entity")
     {
       // M("loading entity" << endl;
@@ -444,6 +443,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       }
 
     }
+    if(word == "chunk") {
+      iss >> s0 >> s1 >> s2 >> s3 >> p0 >> p1 >> p2 >> p3;
+      chunk* c = new chunk(s1, s2, s3, {p0, p1, p2}, p3);
+    }
     if (word == "tile")
     {
       // M("loading tile" << endl;
@@ -460,13 +463,12 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       tri *t = new tri(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8);
       (void)t;
     }
-    if (word == "ramp")
-    {
-      // ofile << "ramp " << n->x << " " << n->y << " " << i << " " << n->type << " " << n->walltexture << " " << n->captexture << endl;
-      iss >> s0 >> p0 >> p1 >> p2 >> p3 >> s1 >> s2;
-      ramp *r = new ramp(p0, p1, p2, p3, s1, s2);
-      (void)r;
-    }
+//    if (word == "ramp")
+//    {
+//      iss >> s0 >> p0 >> p1 >> p2 >> p3 >> s1 >> s2;
+//      ramp *r = new ramp(p0, p1, p2, p3, s1, s2);
+//      (void)r;
+//    }
     if (word == "mapObject")
     {
       iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
@@ -484,10 +486,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     {
       M("Loaded a ddoor");
       iss >> s0 >> p1 >> p2 >> p3 >> p4;
-      D(p1);
-      D(p2);
-      D(p3);
-      D(p4);
       dungeonDoor *d = new dungeonDoor(p1, p2, p3, p4);
       (void)d;
     }
@@ -570,772 +568,772 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       listener *l = new listener(s1, p1, p2, s2, p3, p4);
       (void)l;
     }
-    if (word == "collisionZone")
-    {
-      iss >> s0 >> p1 >> p2 >> p3 >> p4;
-      collisionZone *c = new collisionZone(p1, p2, p3, p4);
-      (void)c;
-    }
+//    if (word == "collisionZone")
+//    {
+//      iss >> s0 >> p1 >> p2 >> p3 >> p4;
+//      collisionZone *c = new collisionZone(p1, p2, p3, p4);
+//      (void)c;
+//    }
   }
 
-  {
-    mapObject *child;
-
-    // build map from boxs
-    for (long long unsigned int i = 0; i < g_boxs.size(); i++)
-    {
-      for (box *box : g_boxs[i])
-      {
-        // don't calculate lighting by invisible walls
-        if (box->walltexture == "resources/engine/seethru.qoi")
-        {
-          break;
-        }
-        // handle rect
-        child = new mapObject(renderer, box->walltexture, "&", box->bounds.x, box->bounds.y + box->bounds.height, i * 64, box->bounds.width, 55, 1);
-        child->parent = box;
-        box->children.push_back(child);
-        // if there's no box above, make a cap
-        if (box->capped)
-        {
-          // related to resolution of wallcap
-
-          int step = g_platformResolution;
-          for (int i = 0; i < box->bounds.height; i += step)
-          {
-            child = new mapObject(renderer, box->captexture, "&", box->bounds.x, box->bounds.y + i + step, box->layer * 64 + 64, box->bounds.width, step, 0);
-            child->parent = box;
-            box->children.push_back(child);
-          }
-          // child = new mapObject(renderer, box->captexture, "&", box->bounds.x, box->bounds.y + box->bounds.height, box->layer * 64 + 64, box->bounds.width, box->bounds.height, 0);
-          // box->children.push_back(child);
-
-          if (box->shineBot)
-          {
-            // shine
-            child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", box->bounds.x, box->bounds.y + box->bounds.height + 54 / 2, box->layer * 64 + 64, box->bounds.width, 54);
-            child->sortingOffset = -26;
-            child->parent = box;
-
-            box->children.push_back(child);
-          }
-          if (box->shineTop)
-          {
-            // back
-            child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", box->bounds.x, box->bounds.y + 54 / 2, box->layer * 64 + 64, box->bounds.width, 54 / 2);
-            child->parent = box;
-            box->children.push_back(child);
-          }
-        }
-        // floor shadows
-
-        // front shading
-        if (box->shadeBot == 1)
-        {
-          child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", box->bounds.x, box->bounds.y + box->bounds.height + 19 + 2, 64 * box->layer + 2, box->bounds.width, 55);
-          child->parent = box;
-          box->children.push_back(child);
-        }
-        // left
-        int step = g_platformResolution;
-        if (box->shadeLeft)
-        {
-          for (int i = 0; i < box->bounds.height; i += step)
-          {
-            child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", box->bounds.x - 27, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55 / 2, step);
-            child->parent = box;
-            box->children.push_back(child);
-          }
-        }
-        if (box->shadeRight)
-        {
-          for (int i = 0; i < box->bounds.height; i += step)
-          { // 5, 8
-            child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", box->bounds.x + box->bounds.width, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55 / 2, step);
-            child->parent = box;
-            box->children.push_back(child);
-          }
-        }
-
-        // corner a
-        if (box->shadeLeft && box->shadeTop)
-        {
-          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x - (38 - 19), box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
-          child->parent = box;
-          box->children.push_back(child);
-        }
-        // corner b
-        if (box->shadeRight && box->shadeTop)
-        {
-          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x + box->bounds.width, box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
-          child->parent = box;
-          box->children.push_back(child);
-        }
-        // corner c
-        if (box->shadeLeft && (box->shadeBot == 1))
-        {
-          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x - (38 - 19), box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
-          child->parent = box;
-          box->children.push_back(child);
-        }
-        // corner d
-        if (box->shadeRight && (box->shadeBot == 1))
-        {
-          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x + box->bounds.width, box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
-          child->parent = box;
-          box->children.push_back(child);
-        }
-      }
-    }
-   
-    //add shading for implied slopes
-    for (auto i : g_impliedSlopes) {
-      if(!i->shadedAtAll) {continue;}
-      //all implied slopes have top shading
-      child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->bounds.x, i->bounds.y + 19 + 2, 64 * i->layer + 2, i->bounds.width, 55);
-      child->parent = i;
-      i->children.push_back(child);
-
-      if(i->shadeLeft) {
-        for (int j = 0; j < i->bounds.height; j += g_platformResolution)
-        {
-          child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", i->bounds.x - 27, i->bounds.y + j + g_platformResolution, 64 * i->layer, 55 / 2, g_platformResolution);
-          child->parent = i;
-          i->children.push_back(child);
-        }
-
-        child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", i->bounds.x - (38 - 19), i->bounds.y, 64 * i->layer, 19, 19, 0, 0);
-        child->parent = i;
-        i->children.push_back(child);
-
-      }
-
-      if(i->shadeRight) {
-        for (int j = 0; j < i->bounds.height; j += g_platformResolution)
-        { // 5, 8
-          child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", i->bounds.x + i->bounds.width, i->bounds.y + j + g_platformResolution, 64 * i->layer, 55 / 2, g_platformResolution);
-          child->parent = i;
-          i->children.push_back(child);
-        }
-
-        child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", i->bounds.x + i->bounds.width, i->bounds.y, 64 * i->layer, 32, 19, 0, 0);
-        child->parent = i;
-        i->children.push_back(child);
-
-      }
-
-
-    }
-
-    for (auto i : g_impliedSlopeTris) {
-      //0 - straight
-      //1 - outcurve
-      //2 - incurve
-      switch(i->style) {
-        case 0: {
-          if(i->type == 1) {
-
-            int step = g_TiltResolution;
-            for (int j = 0; j < 64; j += step)
-            {
-              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j, i->y1 + 30 - 64+ (j * XtoY) - 1, i->layer * 64, step, 50, 0, -(j * XtoY));
-              child->parent = i;
-              i->children.push_back(child);
-            }
-
-          } else {
-
-            int step = g_TiltResolution;
-            for (int j = 0; j < 64; j += step)
-            {
-              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j - 64, i->y1 + 30 - (j * XtoY) - 1, i->layer * 64, step, 50, 0, (j * XtoY));
-              child->parent = i;
-              i->children.push_back(child);
-            }
-
-          }
-
-          break;
-        }
-        case 1: { //outcurve
-          if(i->type == 1) {
-
-            int step = g_TiltResolution;
-            for (int j = 0; j < 64; j += step)
-            {
-              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j, i->y1 + 35 - (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY) - 0.5 - 32, i->layer * 64, step, 34, 0, (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY));
-              child->parent = i;
-              i->children.push_back(child);
-            }
-
-          } else {
-
-            int step = g_TiltResolution;
-            for (int j = 0; j < 64; j += step)
-            {
-              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 - j, i->y1 + 35 - (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY) - 0.5 - 32, i->layer * 64, step, 34, 0, (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY));
-              child->parent = i;
-              i->children.push_back(child);
-            }
-
-          }
-          break;
-        
-        }
-
-        case 2: { //incurve
-          if(i->type == 1) {
-
-            int step = g_TiltResolution;
-            for (int j = 0; j < 64; j += step)
-            {
-              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 - j + 64, i->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) - 1 - 64, i->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) + 0);
-              child->parent = i;
-              i->children.push_back(child);
-            }
-
-          } else {
-
-            int step = g_TiltResolution;
-            for (int j = 0; j < 64; j += step)
-            {
-              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j - 64, i->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) - 1 - 64, i->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) + 0);
-              child->parent = i;
-              i->children.push_back(child);
-            }
-
-          }
-          break;
-        }
-
-
-      }
-
-
-
-    }
-
-
-    for (vector<tri *> layer : g_triangles)
-    {
-      for (auto triangle : layer)
-      {
-        // handle plain tri
-        if (triangle->style == 0)
-        {
-          if (triangle->type == 0)
-          {
-            int step = g_platformResolution;
-            if (triangle->capped)
-            {
-              for (int i = 0; i < 55; i += step)
-              {
-                child = new mapObject(renderer, triangle->captexture, "resources/engine/a.qoi", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-              // diagonal shine
-              step = g_TiltResolution;
-              for (int i = 0; i < 64; i += step)
-              {
-                child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, (i * XtoY) + 0);
-                child->sortingOffset = -25;
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-
-            step = g_TiltResolution;
-            int vstep = 64;
-            for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
-            {
-              for (float i = 0; i < 64; i += step)
-              {
-                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - (i * XtoY) - 1, j, step, 32, 1, (i * XtoY));
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-
-            step = g_TiltResolution;
-            if (triangle->shaded)
-            {
-              for (int i = 0; i < 64; i += step)
-              {
-
-                child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - (i * XtoY) - 1, triangle->layer * 64, step, 50, 0, (i * XtoY) + 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-          }
-          else
-          {
-            if (triangle->type == 3)
-            {
-              int step = g_platformResolution;
-              if (triangle->capped)
-              {
-                for (int i = 0; i < 55; i += step)
-                {
-                  child = new mapObject(renderer, triangle->captexture, "resources/engine/b.qoi", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-                step = g_TiltResolution;
-                for (int i = 0; i < 64; i += step)
-                {
-                  child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, ((64 - i) * XtoY));
-                  child->sortingOffset = -25;
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-              }
-
-              step = g_TiltResolution;
-              int vstep = 64;
-              for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
-              {
-                for (float i = 0; i < 64; i += step)
-                {
-                  child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - i) * XtoY) - 1, j, step, 32, 1, ((64 - i) * XtoY));
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-              }
-
-              step = g_TiltResolution;
-              if (triangle->shaded)
-              {
-                for (int i = 0; i < 64; i += step)
-                {
-
-                  child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - step) - i) * XtoY) - 1, 64 * triangle->layer, step, 50, 0, ((64 - i) * XtoY));
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-              }
-            }
-            else
-            {
-              if (triangle->type == 2)
-              {
-                if (triangle->capped)
-                {
-                  int step = g_platformResolution;
-                  for (int i = 0; i < 55; i += step)
-                  {
-                    child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                  step = g_TiltResolution;
-                  for (int i = 0; i < 64; i += step)
-                  {
-                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (i * XtoY) + 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                }
-                // child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
-                // triangle->children.push_back(child);
-              }
-              else
-              {
-
-                if (triangle->capped)
-                {
-                  int step = g_platformResolution;
-                  for (int i = 0; i < 55; i += step)
-                  {
-                    child = new mapObject(renderer, triangle->captexture, "resources/engine/d.qoi", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                  step = g_TiltResolution;
-                  for (int i = 0; i < 64; i += step)
-                  {
-                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, ((64 - i) * XtoY));
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                }
-              }
-            }
-          }
-        }
-        else if (triangle->style == 1) //outcurve
-        {
-          if (triangle->type == 0)
-          {
-            int step = g_platformResolution;
-            if (triangle->capped)
-            {
-              for (int i = 0; i < 55; i += step)
-              {
-                child = new mapObject(renderer, triangle->captexture, "resources/engine/aro.qoi", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64, step, 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-              // diagonal shine
-              step = g_TiltResolution;
-              for (int i = 0; i < 64; i += step)
-              {
-                child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) + 0);
-                child->sortingOffset = -15;
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-            step = g_TiltResolution;
-            int vstep = 64;
-            for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
-            {
-              for (float i = 0; i < 64; i += step)
-              {
-                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY), j, step, 33, 1, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY));
-                child->sortingOffset = 15;
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-            step = g_TiltResolution;
-            if (triangle->shaded)
-            {
-              for (int i = 0; i < 64; i += step)
-              {
-
-                child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) + 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-
-              //This is to fill in a "gap" of shading between this corner and the block behind
-              child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x2 + 64, triangle->y1 + 19, 64 * triangle->layer, 19, 19, 0, 0);
-              child->parent = triangle;
-              triangle->children.push_back(child);
-            }
-          }
-          else
-          {
-            if (triangle->type == 3)
-            {
-              int step = g_platformResolution;
-              if (triangle->capped)
-              {
-                for (int i = 0; i < 55; i += step)
-                {
-                  child = new mapObject(renderer, triangle->captexture, "resources/engine/bro.qoi", triangle->x1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64, step, 0);
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-                step = g_TiltResolution;
-                for (int i = 0; i < 64; i += step)
-                {
-                  child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY));
-                  child->sortingOffset = -15;
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-              }
-
-              step = g_TiltResolution;
-              int vstep = 64;
-              for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
-              {
-                for (float i = 0; i < 64; i += step)
-                {
-                  child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY), j, step, 33, 1, ((64 - i) * XtoY));
-                  child->parent = triangle;
-                  child->sortingOffset = 15;
-                  triangle->children.push_back(child);
-                }
-              }
-
-              step = g_TiltResolution;
-              if (triangle->shaded)
-              {
-                for (int i = 0; i < 64; i += step)
-                {
-
-                  child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY), 64 * triangle->layer, step, 50, 0, (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY));
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-                //This is to fill in a "gap" of shading between this corner and the block behind
-                child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x1 - 19, triangle->y1 + 19, 64 * triangle->layer, 19, 19, 0, 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-            else
-            {
-              if (triangle->type == 2)
-              {
-                if (triangle->capped)
-                {
-                  int step = g_platformResolution;
-                  for (int i = 0; i < 55; i += step)
-                  {
-                    child = new mapObject(renderer, triangle->captexture, "resources/engine/cro.qoi", triangle->x1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64, step, 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                  step = g_TiltResolution;
-                  for (int i = 0; i < 64; i += step)
-                  {
-                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (((pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (((pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY) + 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                }
-                // child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
-                // triangle->children.push_back(child);
-              }
-              else
-              {
-                //style is 1 and type is 1
-                if (triangle->capped)
-                {
-                  int step = g_platformResolution;
-                  for (int i = 0; i < 55; i += step)
-                  {
-                    child = new mapObject(renderer, triangle->captexture, "resources/engine/dro.qoi", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64, step, 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                  step = g_TiltResolution;
-                  for (int i = 0; i < 64; i += step)
-                  {
-                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 - (((pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 0.5, triangle->layer * 64 + 64, step, 34, 0, (((pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY));
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                }
-              }
-            }
-          }
-        }
-        else if (triangle->style == 2)
-        {
-          if (triangle->type == 0)
-          {
-            int step = g_platformResolution;
-            if (triangle->capped)
-            {
-              for (int i = 0; i < 55; i += step)
-              {
-                child = new mapObject(renderer, triangle->captexture, "resources/engine/ari.qoi", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-              // diagonal shine
-              step = g_TiltResolution;
-              for (int i = 0; i < 64; i += step)
-              {
-                child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) + 0);
-                child->sortingOffset = -25;
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-            step = g_TiltResolution;
-            int vstep = 64;
-            for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
-            {
-              for (float i = 0; i < 64; i += step)
-              {
-                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i - 1.5, triangle->y1 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY), j, step, 32, 1, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY));
-                child->sortingOffset = 15;
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-            step = g_TiltResolution;
-            if (triangle->shaded)
-            {
-              for (int i = 0; i < 64; i += step)
-              {
-
-                child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i, triangle->y1 + 30 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64, step, 50, 0, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) + 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-
-              }
-
-              //This is to fill in a "gap" of shading between this corner and the block behind
-              child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x2, triangle->y1 + 55, 64 * triangle->layer, 19, 19, 0, 0);
-              child->parent = triangle;
-              triangle->children.push_back(child);
-            }
-          }
-          else
-          {
-            if (triangle->type == 3)
-            {
-              int step = g_platformResolution;
-              if (triangle->capped)
-              {
-                for (int i = 0; i < 55; i += step)
-                {
-                  child = new mapObject(renderer, triangle->captexture, "resources/engine/bri.qoi", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-                step = g_TiltResolution;
-                for (int i = 0; i < 64; i += step)
-                {
-                  child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, -(64 - pow(pow(64, 2) - pow(i, 2), 0.5)));
-                  child->sortingOffset = -25;
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-              }
-
-              step = g_TiltResolution;
-              int vstep = 64;
-              for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
-              {
-                for (float i = 0; i < 64; i += step)
-                {
-                  child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 1, j, step, 32, 1, ((64 - i) * XtoY));
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-              }
-
-              step = g_TiltResolution;
-              if (triangle->shaded)
-              {
-                for (int i = 0; i < 64; i += step)
-                {
-
-                  child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 1, 64 * triangle->layer, step, 50, 0, (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY));
-                  child->parent = triangle;
-                  triangle->children.push_back(child);
-                }
-
-                //This is to fill in a "gap" of shading between this corner and the block behind
-                child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x2 - 19, triangle->y1 + 55, 64 * triangle->layer, 19, 19, 0, 0);
-                child->parent = triangle;
-                triangle->children.push_back(child);
-              }
-            }
-            else
-            {
-              if (triangle->type == 2)
-              {
-                if (triangle->capped)
-                {
-                  int step = g_platformResolution;
-                  for (int i = 0; i < 55; i += step)
-                  {
-                    child = new mapObject(renderer, triangle->captexture, "resources/engine/cri.qoi", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                  step = g_TiltResolution;
-                  for (int i = 0; i < 64; i += step)
-                  {
-                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 35 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY));
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                }
-                // child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
-                // triangle->children.push_back(child);
-              }
-              else
-              {
-
-                if (triangle->capped)
-                {
-                  int step = g_platformResolution;
-                  for (int i = 0; i < 55; i += step)
-                  {
-                    child = new mapObject(renderer, triangle->captexture, "resources/engine/dri.qoi", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                  step = g_TiltResolution;
-                  for (int i = 0; i < 64; i += step)
-                  {
-                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 - ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY));
-                    child->parent = triangle;
-                    triangle->children.push_back(child);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    for (vector<ramp *> layer : g_ramps)
-    {
-      int tiltstep = g_TiltResolution;
-      for (auto r : layer)
-      {
-        if (r->type == 0)
-        {
-          for (int i = 0; i < 64; i += tiltstep)
-          {
-            // make a strip of captex
-            child = new mapObject(renderer, r->captexture, "&", r->x, r->y - ((float)i * 55.0 / 64.0) + 55, r->layer * 64 + i, 64, tiltstep + 2, 0, 0);
-            child->parent = r;
-            r->children.push_back(child);
-          }
-        }
-        else
-        {
-          if (r->type == 1)
-          {
-            for (int i = 0; i < 64; i += tiltstep)
-            {
-              // make a strip of captex
-              child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 55, r->layer * 64 + i, tiltstep, 55, 0, 0);
-              child->parent = r;
-              r->children.push_back(child);
-            }
-            // wall
-            child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
-            child->parent = r;
-            r->children.push_back(child);
-          }
-          else
-          {
-            if (r->type == 2)
-            {
-              for (int i = 0; i < 55; i += tiltstep)
-              {
-                // make a strip of captex
-                child = new mapObject(renderer, r->captexture, "&", r->x, r->y - i + 55, r->layer * 64 + (64 - (i * (64 / 55))), 64, tiltstep, 0, 0);
-                child->parent = r;
-                r->children.push_back(child);
-              }
-              // wall
-              child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
-              child->parent = r;
-              r->children.push_back(child);
-            }
-            else
-            {
-              for (int i = 0; i < 64; i += tiltstep)
-              {
-                // make a strip of captex
-                child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 55, r->layer * 64 + (64 - i), tiltstep, 55, 0, 0);
-                child->parent = r;
-                r->children.push_back(child);
-              }
-              child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
-              child->parent = r;
-              r->children.push_back(child);
-            }
-          }
-        }
-      }
-    }
-  }
+//  {
+//    mapObject *child;
+//
+//    // build map from boxs
+//    for (long long unsigned int i = 0; i < g_boxs.size(); i++)
+//    {
+//      for (box *box : g_boxs[i])
+//      {
+//        // don't calculate lighting by invisible walls
+//        if (box->walltexture == "resources/engine/seethru.qoi")
+//        {
+//          break;
+//        }
+//        // handle rect
+//        child = new mapObject(renderer, box->walltexture, "&", box->bounds.x, box->bounds.y + box->bounds.height, i * 64, box->bounds.width, 55, 1);
+//        child->parent = box;
+//        box->children.push_back(child);
+//        // if there's no box above, make a cap
+//        if (box->capped)
+//        {
+//          // related to resolution of wallcap
+//
+//          int step = g_platformResolution;
+//          for (int i = 0; i < box->bounds.height; i += step)
+//          {
+//            child = new mapObject(renderer, box->captexture, "&", box->bounds.x, box->bounds.y + i + step, box->layer * 64 + 64, box->bounds.width, step, 0);
+//            child->parent = box;
+//            box->children.push_back(child);
+//          }
+//          // child = new mapObject(renderer, box->captexture, "&", box->bounds.x, box->bounds.y + box->bounds.height, box->layer * 64 + 64, box->bounds.width, box->bounds.height, 0);
+//          // box->children.push_back(child);
+//
+//          if (box->shineBot)
+//          {
+//            // shine
+//            child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", box->bounds.x, box->bounds.y + box->bounds.height + 54 / 2, box->layer * 64 + 64, box->bounds.width, 54);
+//            child->sortingOffset = -26;
+//            child->parent = box;
+//
+//            box->children.push_back(child);
+//          }
+//          if (box->shineTop)
+//          {
+//            // back
+//            child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", box->bounds.x, box->bounds.y + 54 / 2, box->layer * 64 + 64, box->bounds.width, 54 / 2);
+//            child->parent = box;
+//            box->children.push_back(child);
+//          }
+//        }
+//        // floor shadows
+//
+//        // front shading
+//        if (box->shadeBot == 1)
+//        {
+//          child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", box->bounds.x, box->bounds.y + box->bounds.height + 19 + 2, 64 * box->layer + 2, box->bounds.width, 55);
+//          child->parent = box;
+//          box->children.push_back(child);
+//        }
+//        // left
+//        int step = g_platformResolution;
+//        if (box->shadeLeft)
+//        {
+//          for (int i = 0; i < box->bounds.height; i += step)
+//          {
+//            child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", box->bounds.x - 27, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55 / 2, step);
+//            child->parent = box;
+//            box->children.push_back(child);
+//          }
+//        }
+//        if (box->shadeRight)
+//        {
+//          for (int i = 0; i < box->bounds.height; i += step)
+//          { // 5, 8
+//            child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", box->bounds.x + box->bounds.width, box->bounds.y + i + g_platformResolution, 64 * box->layer, 55 / 2, step);
+//            child->parent = box;
+//            box->children.push_back(child);
+//          }
+//        }
+//
+//        // corner a
+//        if (box->shadeLeft && box->shadeTop)
+//        {
+//          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x - (38 - 19), box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
+//          child->parent = box;
+//          box->children.push_back(child);
+//        }
+//        // corner b
+//        if (box->shadeRight && box->shadeTop)
+//        {
+//          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x + box->bounds.width, box->bounds.y, 64 * box->layer, 32, 19, 0, 0);
+//          child->parent = box;
+//          box->children.push_back(child);
+//        }
+//        // corner c
+//        if (box->shadeLeft && (box->shadeBot == 1))
+//        {
+//          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x - (38 - 19), box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
+//          child->parent = box;
+//          box->children.push_back(child);
+//        }
+//        // corner d
+//        if (box->shadeRight && (box->shadeBot == 1))
+//        {
+//          child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", box->bounds.x + box->bounds.width, box->bounds.y + box->bounds.height + (38 - 19), 64 * box->layer, 19, 19, 0, 0);
+//          child->parent = box;
+//          box->children.push_back(child);
+//        }
+//      }
+//    }
+//   
+//    //add shading for implied slopes
+//    for (auto i : g_impliedSlopes) {
+//      if(!i->shadedAtAll) {continue;}
+//      //all implied slopes have top shading
+//      child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->bounds.x, i->bounds.y + 19 + 2, 64 * i->layer + 2, i->bounds.width, 55);
+//      child->parent = i;
+//      i->children.push_back(child);
+//
+//      if(i->shadeLeft) {
+//        for (int j = 0; j < i->bounds.height; j += g_platformResolution)
+//        {
+//          child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", i->bounds.x - 27, i->bounds.y + j + g_platformResolution, 64 * i->layer, 55 / 2, g_platformResolution);
+//          child->parent = i;
+//          i->children.push_back(child);
+//        }
+//
+//        child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", i->bounds.x - (38 - 19), i->bounds.y, 64 * i->layer, 19, 19, 0, 0);
+//        child->parent = i;
+//        i->children.push_back(child);
+//
+//      }
+//
+//      if(i->shadeRight) {
+//        for (int j = 0; j < i->bounds.height; j += g_platformResolution)
+//        { // 5, 8
+//          child = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", i->bounds.x + i->bounds.width, i->bounds.y + j + g_platformResolution, 64 * i->layer, 55 / 2, g_platformResolution);
+//          child->parent = i;
+//          i->children.push_back(child);
+//        }
+//
+//        child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", i->bounds.x + i->bounds.width, i->bounds.y, 64 * i->layer, 32, 19, 0, 0);
+//        child->parent = i;
+//        i->children.push_back(child);
+//
+//      }
+//
+//
+//    }
+//
+//    for (auto i : g_impliedSlopeTris) {
+//      //0 - straight
+//      //1 - outcurve
+//      //2 - incurve
+//      switch(i->style) {
+//        case 0: {
+//          if(i->type == 1) {
+//
+//            int step = g_TiltResolution;
+//            for (int j = 0; j < 64; j += step)
+//            {
+//              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j, i->y1 + 30 - 64+ (j * XtoY) - 1, i->layer * 64, step, 50, 0, -(j * XtoY));
+//              child->parent = i;
+//              i->children.push_back(child);
+//            }
+//
+//          } else {
+//
+//            int step = g_TiltResolution;
+//            for (int j = 0; j < 64; j += step)
+//            {
+//              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j - 64, i->y1 + 30 - (j * XtoY) - 1, i->layer * 64, step, 50, 0, (j * XtoY));
+//              child->parent = i;
+//              i->children.push_back(child);
+//            }
+//
+//          }
+//
+//          break;
+//        }
+//        case 1: { //outcurve
+//          if(i->type == 1) {
+//
+//            int step = g_TiltResolution;
+//            for (int j = 0; j < 64; j += step)
+//            {
+//              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j, i->y1 + 35 - (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY) - 0.5 - 32, i->layer * 64, step, 34, 0, (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY));
+//              child->parent = i;
+//              i->children.push_back(child);
+//            }
+//
+//          } else {
+//
+//            int step = g_TiltResolution;
+//            for (int j = 0; j < 64; j += step)
+//            {
+//              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 - j, i->y1 + 35 - (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY) - 0.5 - 32, i->layer * 64, step, 34, 0, (((pow(pow(64, 2) - pow(j, 2), 0.5))) * XtoY));
+//              child->parent = i;
+//              i->children.push_back(child);
+//            }
+//
+//          }
+//          break;
+//        
+//        }
+//
+//        case 2: { //incurve
+//          if(i->type == 1) {
+//
+//            int step = g_TiltResolution;
+//            for (int j = 0; j < 64; j += step)
+//            {
+//              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 - j + 64, i->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) - 1 - 64, i->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) + 0);
+//              child->parent = i;
+//              i->children.push_back(child);
+//            }
+//
+//          } else {
+//
+//            int step = g_TiltResolution;
+//            for (int j = 0; j < 64; j += step)
+//            {
+//              child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", i->x2 + j - 64, i->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) - 1 - 64, i->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(j, 2), 0.5)) * XtoY) + 0);
+//              child->parent = i;
+//              i->children.push_back(child);
+//            }
+//
+//          }
+//          break;
+//        }
+//
+//
+//      }
+//
+//
+//
+//    }
+//
+//
+////    for (vector<tri *> layer : g_triangles)
+////    {
+////      for (auto triangle : layer)
+////      {
+////        // handle plain tri
+////        if (triangle->style == 0)
+////        {
+////          if (triangle->type == 0)
+////          {
+////            int step = g_platformResolution;
+////            if (triangle->capped)
+////            {
+////              for (int i = 0; i < 55; i += step)
+////              {
+////                child = new mapObject(renderer, triangle->captexture, "resources/engine/a.qoi", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////              // diagonal shine
+////              step = g_TiltResolution;
+////              for (int i = 0; i < 64; i += step)
+////              {
+////                child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, (i * XtoY) + 0);
+////                child->sortingOffset = -25;
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////
+////            step = g_TiltResolution;
+////            int vstep = 64;
+////            for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
+////            {
+////              for (float i = 0; i < 64; i += step)
+////              {
+////                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - (i * XtoY) - 1, j, step, 32, 1, (i * XtoY));
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////
+////            step = g_TiltResolution;
+////            if (triangle->shaded)
+////            {
+////              for (int i = 0; i < 64; i += step)
+////              {
+////
+////                child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - (i * XtoY) - 1, triangle->layer * 64, step, 50, 0, (i * XtoY) + 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////          }
+////          else
+////          {
+////            if (triangle->type == 3)
+////            {
+////              int step = g_platformResolution;
+////              if (triangle->capped)
+////              {
+////                for (int i = 0; i < 55; i += step)
+////                {
+////                  child = new mapObject(renderer, triangle->captexture, "resources/engine/b.qoi", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////                step = g_TiltResolution;
+////                for (int i = 0; i < 64; i += step)
+////                {
+////                  child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, ((64 - i) * XtoY));
+////                  child->sortingOffset = -25;
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////              }
+////
+////              step = g_TiltResolution;
+////              int vstep = 64;
+////              for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
+////              {
+////                for (float i = 0; i < 64; i += step)
+////                {
+////                  child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - i) * XtoY) - 1, j, step, 32, 1, ((64 - i) * XtoY));
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////              }
+////
+////              step = g_TiltResolution;
+////              if (triangle->shaded)
+////              {
+////                for (int i = 0; i < 64; i += step)
+////                {
+////
+////                  child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - step) - i) * XtoY) - 1, 64 * triangle->layer, step, 50, 0, ((64 - i) * XtoY));
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////              }
+////            }
+////            else
+////            {
+////              if (triangle->type == 2)
+////              {
+////                if (triangle->capped)
+////                {
+////                  int step = g_platformResolution;
+////                  for (int i = 0; i < 55; i += step)
+////                  {
+////                    child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                  step = g_TiltResolution;
+////                  for (int i = 0; i < 64; i += step)
+////                  {
+////                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (i * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (i * XtoY) + 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                }
+////                // child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
+////                // triangle->children.push_back(child);
+////              }
+////              else
+////              {
+////
+////                if (triangle->capped)
+////                {
+////                  int step = g_platformResolution;
+////                  for (int i = 0; i < 55; i += step)
+////                  {
+////                    child = new mapObject(renderer, triangle->captexture, "resources/engine/d.qoi", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                  step = g_TiltResolution;
+////                  for (int i = 0; i < 64; i += step)
+////                  {
+////                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 - (((64 - step) - i) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, ((64 - i) * XtoY));
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                }
+////              }
+////            }
+////          }
+////        }
+////        else if (triangle->style == 1) //outcurve
+////        {
+////          if (triangle->type == 0)
+////          {
+////            int step = g_platformResolution;
+////            if (triangle->capped)
+////            {
+////              for (int i = 0; i < 55; i += step)
+////              {
+////                child = new mapObject(renderer, triangle->captexture, "resources/engine/aro.qoi", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64, step, 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////              // diagonal shine
+////              step = g_TiltResolution;
+////              for (int i = 0; i < 64; i += step)
+////              {
+////                child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 35 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) + 0);
+////                child->sortingOffset = -15;
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////            step = g_TiltResolution;
+////            int vstep = 64;
+////            for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
+////            {
+////              for (float i = 0; i < 64; i += step)
+////              {
+////                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i, triangle->y1 + 55 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY), j, step, 33, 1, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY));
+////                child->sortingOffset = 15;
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////            step = g_TiltResolution;
+////            if (triangle->shaded)
+////            {
+////              for (int i = 0; i < 64; i += step)
+////              {
+////
+////                child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i, triangle->y1 + 55 + 30 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64, step, 50, 0, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) + 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////
+////              //This is to fill in a "gap" of shading between this corner and the block behind
+////              child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x2 + 64, triangle->y1 + 19, 64 * triangle->layer, 19, 19, 0, 0);
+////              child->parent = triangle;
+////              triangle->children.push_back(child);
+////            }
+////          }
+////          else
+////          {
+////            if (triangle->type == 3)
+////            {
+////              int step = g_platformResolution;
+////              if (triangle->capped)
+////              {
+////                for (int i = 0; i < 55; i += step)
+////                {
+////                  child = new mapObject(renderer, triangle->captexture, "resources/engine/bro.qoi", triangle->x1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64, step, 0);
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////                step = g_TiltResolution;
+////                for (int i = 0; i < 64; i += step)
+////                {
+////                  child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY));
+////                  child->sortingOffset = -15;
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////              }
+////
+////              step = g_TiltResolution;
+////              int vstep = 64;
+////              for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
+////              {
+////                for (float i = 0; i < 64; i += step)
+////                {
+////                  child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY), j, step, 33, 1, ((64 - i) * XtoY));
+////                  child->parent = triangle;
+////                  child->sortingOffset = 15;
+////                  triangle->children.push_back(child);
+////                }
+////              }
+////
+////              step = g_TiltResolution;
+////              if (triangle->shaded)
+////              {
+////                for (int i = 0; i < 64; i += step)
+////                {
+////
+////                  child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY), 64 * triangle->layer, step, 50, 0, (((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY));
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////                //This is to fill in a "gap" of shading between this corner and the block behind
+////                child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x1 - 19, triangle->y1 + 19, 64 * triangle->layer, 19, 19, 0, 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////            else
+////            {
+////              if (triangle->type == 2)
+////              {
+////                if (triangle->capped)
+////                {
+////                  int step = g_platformResolution;
+////                  for (int i = 0; i < 55; i += step)
+////                  {
+////                    child = new mapObject(renderer, triangle->captexture, "resources/engine/cro.qoi", triangle->x1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64, step, 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                  step = g_TiltResolution;
+////                  for (int i = 0; i < 64; i += step)
+////                  {
+////                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 35 - (((pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, (((pow(pow(64, 2) - pow(64 - i, 2), 0.5))) * XtoY) + 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                }
+////                // child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
+////                // triangle->children.push_back(child);
+////              }
+////              else
+////              {
+////                //style is 1 and type is 1
+////                if (triangle->capped)
+////                {
+////                  int step = g_platformResolution;
+////                  for (int i = 0; i < 55; i += step)
+////                  {
+////                    child = new mapObject(renderer, triangle->captexture, "resources/engine/dro.qoi", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64, step, 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                  step = g_TiltResolution;
+////                  for (int i = 0; i < 64; i += step)
+////                  {
+////                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 - (((pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 0.5, triangle->layer * 64 + 64, step, 34, 0, (((pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY));
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                }
+////              }
+////            }
+////          }
+////        }
+////        else if (triangle->style == 2)
+////        {
+////          if (triangle->type == 0)
+////          {
+////            int step = g_platformResolution;
+////            if (triangle->capped)
+////            {
+////              for (int i = 0; i < 55; i += step)
+////              {
+////                child = new mapObject(renderer, triangle->captexture, "resources/engine/ari.qoi", triangle->x2, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////              // diagonal shine
+////              step = g_TiltResolution;
+////              for (int i = 0; i < 64; i += step)
+////              {
+////                child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) + 0);
+////                child->sortingOffset = -25;
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////            step = g_TiltResolution;
+////            int vstep = 64;
+////            for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
+////            {
+////              for (float i = 0; i < 64; i += step)
+////              {
+////                child = new mapObject(renderer, triangle->walltexture, "&", triangle->x2 + i - 1.5, triangle->y1 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY), j, step, 32, 1, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY));
+////                child->sortingOffset = 15;
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////            step = g_TiltResolution;
+////            if (triangle->shaded)
+////            {
+////              for (int i = 0; i < 64; i += step)
+////              {
+////
+////                child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i, triangle->y1 + 30 + ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64, step, 50, 0, -((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) + 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////
+////              }
+////
+////              //This is to fill in a "gap" of shading between this corner and the block behind
+////              child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x2, triangle->y1 + 55, 64 * triangle->layer, 19, 19, 0, 0);
+////              child->parent = triangle;
+////              triangle->children.push_back(child);
+////            }
+////          }
+////          else
+////          {
+////            if (triangle->type == 3)
+////            {
+////              int step = g_platformResolution;
+////              if (triangle->capped)
+////              {
+////                for (int i = 0; i < 55; i += step)
+////                {
+////                  child = new mapObject(renderer, triangle->captexture, "resources/engine/bri.qoi", triangle->x1 + 1, triangle->y1 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////                step = g_TiltResolution;
+////                for (int i = 0; i < 64; i += step)
+////                {
+////                  child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 35 - (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 1, triangle->layer * 64 + 64, step, 55, 0, -(64 - pow(pow(64, 2) - pow(i, 2), 0.5)));
+////                  child->sortingOffset = -25;
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////              }
+////
+////              step = g_TiltResolution;
+////              int vstep = 64;
+////              for (int j = triangle->layer * 64; j < triangle->layer * 64 + 64; j += vstep)
+////              {
+////                for (float i = 0; i < 64; i += step)
+////                {
+////                  child = new mapObject(renderer, triangle->walltexture, "&", triangle->x1 + i, triangle->y1 + 55 - (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 1, j, step, 32, 1, ((64 - i) * XtoY));
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////              }
+////
+////              step = g_TiltResolution;
+////              if (triangle->shaded)
+////              {
+////                for (int i = 0; i < 64; i += step)
+////                {
+////
+////                  child = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 55 + 30 - (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY) - 1, 64 * triangle->layer, step, 50, 0, (((64 - step) - (64 - pow(pow(64, 2) - pow(i, 2), 0.5))) * XtoY));
+////                  child->parent = triangle;
+////                  triangle->children.push_back(child);
+////                }
+////
+////                //This is to fill in a "gap" of shading between this corner and the block behind
+////                child = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", triangle->x2 - 19, triangle->y1 + 55, 64 * triangle->layer, 19, 19, 0, 0);
+////                child->parent = triangle;
+////                triangle->children.push_back(child);
+////              }
+////            }
+////            else
+////            {
+////              if (triangle->type == 2)
+////              {
+////                if (triangle->capped)
+////                {
+////                  int step = g_platformResolution;
+////                  for (int i = 0; i < 55; i += step)
+////                  {
+////                    child = new mapObject(renderer, triangle->captexture, "resources/engine/cri.qoi", triangle->x1 + 1, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                  step = g_TiltResolution;
+////                  for (int i = 0; i < 64; i += step)
+////                  {
+////                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i - 64, triangle->y1 + 35 - ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, ((64 - pow(pow(64, 2) - pow(i, 2), 0.5)) * XtoY));
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                }
+////                // child = new mapObject(renderer, triangle->captexture, "resources/engine/c.qoi", triangle->x1 + 1, triangle->y2 + 55 + 1, triangle->layer * 64 + 64, 64 + 1, 54 + 1, 0, 0, 0);
+////                // triangle->children.push_back(child);
+////              }
+////              else
+////              {
+////
+////                if (triangle->capped)
+////                {
+////                  int step = g_platformResolution;
+////                  for (int i = 0; i < 55; i += step)
+////                  {
+////                    child = new mapObject(renderer, triangle->captexture, "resources/engine/dri.qoi", triangle->x2, triangle->y2 + i + step, triangle->layer * 64 + 64, 64 - 1, step, 0);
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                  step = g_TiltResolution;
+////                  for (int i = 0; i < 64; i += step)
+////                  {
+////                    child = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi", "&", triangle->x2 + i, triangle->y1 + 35 - ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY) - 1, triangle->layer * 64 + 64, step, 34, 0, ((64 - pow(pow(64, 2) - pow(64 - i, 2), 0.5)) * XtoY));
+////                    child->parent = triangle;
+////                    triangle->children.push_back(child);
+////                  }
+////                }
+////              }
+////            }
+////          }
+////        }
+////      }
+////    }
+////    for (vector<ramp *> layer : g_ramps)
+////    {
+////      int tiltstep = g_TiltResolution;
+////      for (auto r : layer)
+////      {
+////        if (r->type == 0)
+////        {
+////          for (int i = 0; i < 64; i += tiltstep)
+////          {
+////            // make a strip of captex
+////            child = new mapObject(renderer, r->captexture, "&", r->x, r->y - ((float)i * 55.0 / 64.0) + 55, r->layer * 64 + i, 64, tiltstep + 2, 0, 0);
+////            child->parent = r;
+////            r->children.push_back(child);
+////          }
+////        }
+////        else
+////        {
+////          if (r->type == 1)
+////          {
+////            for (int i = 0; i < 64; i += tiltstep)
+////            {
+////              // make a strip of captex
+////              child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 55, r->layer * 64 + i, tiltstep, 55, 0, 0);
+////              child->parent = r;
+////              r->children.push_back(child);
+////            }
+////            // wall
+////            child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
+////            child->parent = r;
+////            r->children.push_back(child);
+////          }
+////          else
+////          {
+////            if (r->type == 2)
+////            {
+////              for (int i = 0; i < 55; i += tiltstep)
+////              {
+////                // make a strip of captex
+////                child = new mapObject(renderer, r->captexture, "&", r->x, r->y - i + 55, r->layer * 64 + (64 - (i * (64 / 55))), 64, tiltstep, 0, 0);
+////                child->parent = r;
+////                r->children.push_back(child);
+////              }
+////              // wall
+////              child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
+////              child->parent = r;
+////              r->children.push_back(child);
+////            }
+////            else
+////            {
+////              for (int i = 0; i < 64; i += tiltstep)
+////              {
+////                // make a strip of captex
+////                child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 55, r->layer * 64 + (64 - i), tiltstep, 55, 0, 0);
+////                child->parent = r;
+////                r->children.push_back(child);
+////              }
+////              child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
+////              child->parent = r;
+////              r->children.push_back(child);
+////            }
+////          }
+////        }
+////      }
+////    }
+//  }
 
   for(auto x : g_entities) {
     specialObjectsInit(x);
@@ -1619,8 +1617,7 @@ bool mapeditor_save_map(string word)
   std::filesystem::create_directories("resources/maps/" + g_mapdir);
   string local_v_mapdir = word;
   word = "resources/maps/" + g_mapdir + "/" + word + ".map";
-  M("Writing to this file");
-  D(word);
+  M("Writing to " + word);
 
   // make folders for custom assets
 //  vector<string> dirs = {"ai", "attacks", "entities", "items", "music", "scripts", "sounds", "worldsounds", "sprites", "diffuse", "weapons", "masks", "heightmaps", "backgrounds", "ui", "effects"};
@@ -1640,11 +1637,11 @@ bool mapeditor_save_map(string word)
   ofile.open(word);
 
   // write enemies and budget
-  ofile << "budget " << g_budget << endl;
-  for (std::map<string, int>::iterator it = enemiesMap.begin(); it != enemiesMap.end(); ++it)
-  {
-    ofile << "enemy " << it->first << " " << it->second << endl;
-  }
+//  ofile << "budget " << g_budget << endl;
+//  for (std::map<string, int>::iterator it = enemiesMap.begin(); it != enemiesMap.end(); ++it)
+//  {
+//    ofile << "enemy " << it->first << " " << it->second << endl;
+//  }
 
   // write fow
 
@@ -1652,7 +1649,7 @@ bool mapeditor_save_map(string word)
 
   ofile << "darkness " << g_dungeonDarkness << endl;
 
-  ofile << "grasschance " << g_encounterChance << endl;
+  //ofile << "grasschance " << g_encounterChance << endl;
   
   if(g_encountersFile != "") {
     ofile << "encounters " << g_encountersFile << endl;
@@ -1670,15 +1667,15 @@ bool mapeditor_save_map(string word)
     }
   }
 
-  if (limitflag)
-  {
-    ofile << "limits";
-    for (auto x : limits)
-    {
-      ofile << " " << x;
-    }
-    ofile << endl;
-  }
+//  if (limitflag)
+//  {
+//    ofile << "limits";
+//    for (auto x : limits)
+//    {
+//      ofile << " " << x;
+//    }
+//    ofile << endl;
+//  }
   if (g_backgroundLoaded && backgroundstr != "")
   {
     ofile << "bg " << backgroundstr << endl;
@@ -1691,6 +1688,7 @@ bool mapeditor_save_map(string word)
       ofile << "ui " << x->filename << " " << x->x << " " << x->y << " " << x->width << " " << x->height << " " << x->priority << endl;
     }
   }
+
   for (int i = 0; i < g_layers; i++)
   {
     for (auto n : g_triangles[i])
@@ -1730,61 +1728,61 @@ bool mapeditor_save_map(string word)
 
     ofile << "heightmap " << g_heightmaps[i]->binding << " " << g_heightmaps[i]->name << " " << g_heightmaps[i]->magnitude << endl;
   }
-  for (int j = 0; j < g_layers; j++)
-  {
-    for (long long unsigned int i = 0; i < g_boxs[j].size(); i++)
-    {
-      string shadestring = "";
-      if (g_boxs[j][i]->shadeTop)
-      {
-        shadestring += "1";
-      }
-      else
-      {
-        shadestring += "0";
-      }
-      if (g_boxs[j][i]->shadeBot == 1)
-      {
-        shadestring += "1";
-      }
-      else
-      {
-        if (g_boxs[j][i]->shadeBot == 2)
-        {
-          shadestring += "2";
-        }
-        else
-        {
-          shadestring += "0";
-        }
-      }
-      if (g_boxs[j][i]->shadeLeft)
-      {
-        shadestring += "1";
-      }
-      else
-      {
-        shadestring += "0";
-      }
-      if (g_boxs[j][i]->shadeRight)
-      {
-        shadestring += "1";
-      }
-      else
-      {
-        shadestring += "0";
-      }
-      ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << " " << g_boxs[j][i]->shineTop << " " << g_boxs[j][i]->shineBot << " " << shadestring << endl;
-    }
-  }
+//  for (int j = 0; j < g_layers; j++)
+//  {
+//    for (long long unsigned int i = 0; i < g_boxs[j].size(); i++)
+//    {
+//      string shadestring = "";
+//      if (g_boxs[j][i]->shadeTop)
+//      {
+//        shadestring += "1";
+//      }
+//      else
+//      {
+//        shadestring += "0";
+//      }
+//      if (g_boxs[j][i]->shadeBot == 1)
+//      {
+//        shadestring += "1";
+//      }
+//      else
+//      {
+//        if (g_boxs[j][i]->shadeBot == 2)
+//        {
+//          shadestring += "2";
+//        }
+//        else
+//        {
+//          shadestring += "0";
+//        }
+//      }
+//      if (g_boxs[j][i]->shadeLeft)
+//      {
+//        shadestring += "1";
+//      }
+//      else
+//      {
+//        shadestring += "0";
+//      }
+//      if (g_boxs[j][i]->shadeRight)
+//      {
+//        shadestring += "1";
+//      }
+//      else
+//      {
+//        shadestring += "0";
+//      }
+//      ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << " " << g_boxs[j][i]->shineTop << " " << g_boxs[j][i]->shineBot << " " << shadestring << endl;
+//    }
+//  }
 
   for (auto i : g_impliedSlopes) {
     ofile << "islope " << to_string(i->bounds.x) << " " << to_string(i->bounds.y) << " " << to_string(i->bounds.width) << " " << to_string(i->bounds.height) << " " << to_string(i->layer) << " " << to_string(i->shadeLeft) << " " << to_string(i->shadeRight) << " " << to_string(i->shadedAtAll) << endl;
   }
 
-  for (auto i : g_impliedSlopeTris) {
-    ofile << "islopet " << i->x1 << " " << i->y1 << " " << i->x2 << " " << i->y2 << " " << i->layer << " " << i->style << endl;
-  }
+//  for (auto i : g_impliedSlopeTris) {
+//    ofile << "islopet " << i->x1 << " " << i->y1 << " " << i->x2 << " " << i->y2 << " " << i->layer << " " << i->style << endl;
+//  }
 
   
   for (long long unsigned int i = 0; i < g_doors.size(); i++)
@@ -1858,6 +1856,10 @@ bool mapeditor_save_map(string word)
     }
   }
 
+  for(auto x : g_chunks) {
+    ofile << "chunk " << x->path << " " << x->floortex << " " << x->walltex << " " << x->origin.x << " " << x->origin.y << " " << x->origin.z << " " << x->scale << endl;
+  }
+
   for (long long unsigned int i = 0; i < g_listeners.size(); i++)
   {
     ofile << "listener " << g_listeners[i]->entityName << " " << g_listeners[i]->block << " " << g_listeners[i]->condition << " " << g_listeners[i]->binding << " " << g_listeners[i]->x << " " << g_listeners[i]->y << endl;
@@ -1926,6 +1928,7 @@ void init_map_writing(SDL_Renderer *renderer)
   marker = new tile(renderer, "resources/engine/marker.qoi", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
   markerz = new tile(renderer, "resources/engine/marker.qoi", "&", 0, 0, 0, 0, 2, 0, 0, 0, 0);
   worldsoundIcon = new tile(renderer, "resources/engine/speaker.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+  chunkIcon = new tile(renderer, "resources/engine/chunk-icon.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   listenerIcon = new tile(renderer, "resources/engine/listener.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   navNodeIconBlue = new tile(renderer, "resources/engine/walkerBlue.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   navNodeIconRed = new tile(renderer, "resources/engine/walkerRed.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
@@ -1942,6 +1945,7 @@ void init_map_writing(SDL_Renderer *renderer)
   marker->software = 1;
   markerz->software = 1;
   worldsoundIcon->software = 1;
+  chunkIcon->software = 1;
   listenerIcon->software = 1;
   navNodeIconBlue->software = 1;
   navNodeIconRed->software = 1;
@@ -2036,8 +2040,28 @@ void write_map(entity *mapent)
       py -= round(grid * XtoY);
   }
 
+  if(moveThisChunk != nullptr) {
+    moveThisChunk->origin.x = marker->x + marker->width/2;
+    moveThisChunk->origin.y = marker->y + marker->height/2;
+
+    if(moveThisChunk->floor != nullptr) {
+      moveThisChunk->floor->origin = moveThisChunk->origin;
+    }
+    if(moveThisChunk->wall != nullptr) {
+      moveThisChunk->wall->origin = moveThisChunk->origin;
+    }
+    if(moveThisChunk->collision != nullptr) {
+      moveThisChunk->collision->origin = moveThisChunk->origin;
+    }
+    if(moveThisChunk->occluder != nullptr) {
+      moveThisChunk->occluder->origin = moveThisChunk->origin;
+    }
+  }
+
+
   // set marker
   marker->x = px;
+
   marker->y = py;
   marker->width = grid;
   marker->height = round(grid * XtoY);
@@ -2239,7 +2263,7 @@ void write_map(entity *mapent)
     {
       selection->y = py;
     }
-
+    
     selection->width = abs(lx - px) + grid;
     selection->height = abs(ly - py) + (round(grid * XtoY));
     if (tiling && !makingbox && !makingdoor)
@@ -2353,6 +2377,7 @@ void write_map(entity *mapent)
     // mouse1
     // select entity first
     nudge = 0;
+    int skip = 0;
     for (auto n : g_entities)
     {
       if (n == protag)
@@ -2364,118 +2389,18 @@ void write_map(entity *mapent)
         protag = n;
         nudge = n;
         g_focus = n;
+        skip = 1;
       }
     }
-    if (nudge == 0)
-    {
-      lx = px;
-      ly = py;
-      makingbox = 1;
-      selection->texture = loadTexture(renderer, "resources/engine/wall.qoi");
-    }
-  }
-  else
-  {
-    if (devinput[3] && !olddevinput[3] && makingbox == 1)
-    {
-      if (makingbox)
-      {
 
-        // makes a tile and also a hitbox
-
-        // if(makeboxs) {
-        //     ofile << "box " << to_string(selection->x) << " " << to_string(selection->y) << " " << to_string(selection->width) << " " << to_string(selection->height) << endl;
-        // }
-        // make "cap" or the top of the wall
-
-        makingbox = 0;
-        box *c = 0;
-
-        // spawn related objects
-        // string loadstr = "resources/static/wall.qoi";
-        if (makeboxs)
-        {
-          for (int i = wallstart / 64; i < wallheight / 64; i++)
-          {
-            bool fcap = (!(i + 1 < wallheight / 64)); //&& autoMakeWallcaps;
-            // bool fcap = 1;
-            c = new box(selection->x, selection->y, selection->width, selection->height, i, walltex, captex, fcap, 0, 0, "0000");
-          }
-        }
-        // const char* plik = walltex.c_str();
-        if (autoMakeWallcaps)
-        {
-          int step = g_platformResolution;
-          for (int i = 0; i < selection->height; i += step)
-          {
-            mapObject *e = new mapObject(renderer, captex, "&", selection->x, selection->y + i + step, wallheight, selection->width, step, 0);
-            c->children.push_back(e);
-          }
-        }
-
-        if (autoMakeWalls)
-        {
-          int step = 64;
-          for (int i = wallstart; i < wallheight; i += step)
-          {
-            mapObject *e = new mapObject(renderer, walltex, "&", selection->x, selection->y + selection->height, i, selection->width, 55, 1);
-            c->children.push_back(e);
-          }
-          ////entity* e = new entity(renderer, selection->x, selection->y + selection->height, selection->width, wallheight, walltex, 1);
-          // entity* e = new entity(renderer, walltex, selection->x, selection->y + selection->height, 0, selection->width, (wallheight) * XtoZ + 2, 1);
-        }
-
-        if (shine == 1)
-        {
-          // front
-          // mapObject* f = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi",  "&", selection->x, selection->y + selection->height + marker->height/2,  wallheight + 1, selection->width, marker->height);
-
-          // back
-          // f = new mapObject(renderer, "resources/engine/SMOOTHSHADING.qoi",  "&", selection->x, selection->y + marker->height/2, wallheight + 1, selection->width, marker->height/2);
-        }
-
-        if (shine == 2)
-        {
-          mapObject *f = new mapObject(renderer, "resources/engine/SHARPSHADING.qoi", "&", selection->x, selection->y + selection->height - wallheight + marker->height / 2, 0, selection->width, marker->height);
-          (void)f;
-        }
-
-        if (shine == 3)
-        {
-          mapObject *f = new mapObject(renderer, "resources/engine/SHARPBRIGHTSHADING.qoi", "&", selection->x, selection->y + selection->height - wallheight + marker->height / 2, 0, selection->width, marker->height);
-          (void)f;
-        }
-
-        if (occlusion)
-        {
-          // front shading
-          mapObject *e = new mapObject(renderer, "resources/engine/OCCLUSION.qoi", "&", selection->x, selection->y + selection->height + 19, 0, selection->width, marker->height);
-          c->children.push_back(e);
-          // left
-          int step = g_platformResolution;
-          for (int i = 0; i < selection->height; i += step)
-          {
-            mapObject *e = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", selection->x - 19, selection->y + i + g_platformResolution, 0, 55 / 2, step);
-            c->children.push_back(e);
-          }
-          for (int i = 0; i < selection->height; i += step)
-          {
-            mapObject *e = new mapObject(renderer, "resources/engine/h-OCCLUSION.qoi", "&", selection->x + selection->width, selection->y + i + g_platformResolution, 0, 55 / 2, step);
-            c->children.push_back(e);
-          }
-
-          // corner a
-          e = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", selection->x - (38 - 19), selection->y, 0, 32, 19, 0, 0);
-          c->children.push_back(e);
-          // corner b
-          e = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", selection->x + selection->width, selection->y, 0, 32, 19, 0, 0);
-          c->children.push_back(e);
-          // corner c
-          e = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", selection->x - (38 - 19), selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0);
-          c->children.push_back(e);
-          // corner d
-          e = new mapObject(renderer, "resources/engine/x-OCCLUSION.qoi", "&", selection->x + selection->width, selection->y + selection->height + (38 - 19), 0, 19, 19, 0, 0);
-          c->children.push_back(e);
+    if(skip == 0) {
+      //try to select chunk
+      for(auto c : g_chunks) {
+        rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
+        if (RectOverlap(blah, marker->getMovedBounds())) {
+          moveThisChunk = c;
+          skip = 1;
+          break;
         }
       }
     }
@@ -2737,7 +2662,16 @@ void write_map(entity *mapent)
         vector<pointOfInterest *> deletePois;
         vector<impliedSlopeTri*> deleteIST;
         vector<impliedSlope*> deleteIS;
+        vector<chunk*> deleteChunks;
         rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
+
+        for(auto &c : g_chunks) {
+          rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
+          if (RectOverlap(blah, marker->getMovedBounds())) {
+            deleteChunks.push_back(c);
+            break;
+          }
+        }
 
         for(auto x : g_setsOfInterest) {
           for(auto n : x) {
@@ -2987,6 +2921,13 @@ void write_map(entity *mapent)
               break;
             }
           }
+        }
+        if(deleteChunks.size() > 0 && deleteflag) {
+          delete deleteChunks[0]->floor;
+          delete deleteChunks[0]->wall;
+          delete deleteChunks[0]->collision;
+          delete deleteChunks[0]->occluder;
+          delete deleteChunks[0];
         }
       }
     }
@@ -3484,6 +3425,49 @@ void write_map(entity *mapent)
     //instruction
     while (line >> word)
     {
+      if(word == "chunk" || word == "c") {
+        line >> word;
+        string floor;
+        string wall;
+        float scale;
+        line >> floor;
+        line >> wall;
+        line >> scale;
+        chunk* c = new chunk(word, floor, wall, {marker->x + marker->width/2, marker->y + marker->height/2, marker->z}, scale);
+        break;
+      }
+      if(word == "scalechunk" || word == "scale") {
+        float scale;
+        line >> scale;
+
+        for(auto c : g_chunks) {
+          rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
+          if (RectOverlap(blah, marker->getMovedBounds())) {
+            string path = c->path;
+            string floor = c->floortex;
+            string wall = c->walltex;
+            vec3 origin = c->origin;
+
+            if(c->floor != 0) {
+              delete c->floor;
+            }
+            if(c->wall != 0) {
+              delete c->wall;
+            }
+            if(c->collision != 0) {
+              delete c->collision;
+            }
+            if(c->occluder != 0) {
+              delete c->occluder;
+            }
+            delete c;
+            chunk* c = new chunk(path, floor, wall, origin, scale);
+            break;
+          }
+        }
+
+        
+      }
       if(word == "runtime") {
         long long ms = SDL_GetTicks();
         long long totalsec = ms / 1000;
@@ -3497,6 +3481,11 @@ void write_map(entity *mapent)
       if(word == "darkness") {
         line >> word;
         g_dungeonDarkness = stoi(word);
+        break;
+      }
+      if(word == "dark") {
+        line >> word;
+        g_spotlightEnabled = stoi(word);
         break;
       }
       if(word == "benchmarking") {
@@ -4642,6 +4631,12 @@ void write_map(entity *mapent)
         line >> word;
         D(word);
 
+        if(word == "dark") {
+          line >> word;
+          g_spotlightEnabled = stoi(word);
+          break;
+        }
+
         if(word == "entline") {
           line >> word;
           float val = stof(word);
@@ -5556,6 +5551,7 @@ void write_map(entity *mapent)
         }
         break;
       }
+
       if (word == "sound" || word == "snd" || word == "worldsound" || word == "ws")
       {
         line >> entstring;
@@ -5792,15 +5788,15 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap, 0);
     }
-    if (autoMakeWallcaps)
-    {
-      int step = g_platformResolution;
-      for (int i = 0; i < 55; i += step)
-      {
-        mapObject *e = new mapObject(renderer, captex, "resources/engine/a.qoi", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
-        n->children.push_back(e);
-      }
-    }
+//    if (autoMakeWallcaps)
+//    {
+//      int step = g_platformResolution;
+//      for (int i = 0; i < 55; i += step)
+//      {
+//        mapObject *e = new mapObject(renderer, captex, "resources/engine/a.qoi", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+//        n->children.push_back(e);
+//      }
+//    }
 
     int step = 2;
     int vstep = 64;
@@ -5828,15 +5824,15 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap, 0);
     }
-    if (autoMakeWallcaps)
-    {
-      int step = g_platformResolution;
-      for (int i = 0; i < 55; i += step)
-      {
-        mapObject *e = new mapObject(renderer, captex, "resources/engine/b.qoi", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
-        n->children.push_back(e);
-      }
-    }
+//    if (autoMakeWallcaps)
+//    {
+//      int step = g_platformResolution;
+//      for (int i = 0; i < 55; i += step)
+//      {
+//        mapObject *e = new mapObject(renderer, captex, "resources/engine/b.qoi", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+//        n->children.push_back(e);
+//      }
+//    }
 
     // a tile on the floor to help with the edge of the diagonal wall pieces
     // tile* t = new tile(renderer, walltex.c_str(), "resources/engine/b.qoi", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
@@ -5864,12 +5860,12 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap, 0);
     }
-    int step = g_platformResolution;
-    for (int i = 0; i < 55; i += step)
-    {
-      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/c.qoi", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
-      n->children.push_back(child);
-    }
+//    int step = g_platformResolution;
+//    for (int i = 0; i < 55; i += step)
+//    {
+//      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/c.qoi", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+//      n->children.push_back(child);
+//    }
   }
   if (devinput[15] && !olddevinput[15])
   {
@@ -5880,12 +5876,12 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap, 0);
     }
-    int step = g_platformResolution;
-    for (int i = 0; i < 55; i += step)
-    {
-      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/d.qoi", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
-      n->children.push_back(child);
-    }
+//    int step = g_platformResolution;
+//    for (int i = 0; i < 55; i += step)
+//    {
+//      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/d.qoi", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+//      n->children.push_back(child);
+//    }
   }
 
   // make rounded triangles
@@ -5898,15 +5894,15 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap, 0, 1);
     }
-    if (autoMakeWallcaps)
-    {
-      int step = g_platformResolution;
-      for (int i = 0; i < 55; i += step)
-      {
-        mapObject *e = new mapObject(renderer, captex, "resources/engine/aro.qoi", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
-        n->children.push_back(e);
-      }
-    }
+//    if (autoMakeWallcaps)
+//    {
+//      int step = g_platformResolution;
+//      for (int i = 0; i < 55; i += step)
+//      {
+//        mapObject *e = new mapObject(renderer, captex, "resources/engine/aro.qoi", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+//        n->children.push_back(e);
+//      }
+//    }
 
     int step = 2;
     int vstep = 64;
@@ -5934,15 +5930,15 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap, 0, 1);
     }
-    if (autoMakeWallcaps)
-    {
-      int step = g_platformResolution;
-      for (int i = 0; i < 55; i += step)
-      {
-        mapObject *e = new mapObject(renderer, captex, "resources/engine/bro.qoi", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
-        n->children.push_back(e);
-      }
-    }
+//    if (autoMakeWallcaps)
+//    {
+//      int step = g_platformResolution;
+//      for (int i = 0; i < 55; i += step)
+//      {
+//        mapObject *e = new mapObject(renderer, captex, "resources/engine/bro.qoi", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+//        n->children.push_back(e);
+//      }
+//    }
 
     // a tile on the floor to help with the edge of the diagonal wall pieces
     // tile* t = new tile(renderer, walltex.c_str(), "resources/engine/b.qoi", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
@@ -5971,12 +5967,12 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap, 0, 1);
     }
-    int step = g_platformResolution;
-    for (int i = 0; i < 55; i += step)
-    {
-      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/cro.qoi", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
-      n->children.push_back(child);
-    }
+//    int step = g_platformResolution;
+//    for (int i = 0; i < 55; i += step)
+//    {
+//      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/cro.qoi", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+//      n->children.push_back(child);
+//    }
   }
   if (devinput[29] && !olddevinput[29])
   {
@@ -5987,12 +5983,12 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap, 0, 1);
     }
-    int step = g_platformResolution;
-    for (int i = 0; i < 55; i += step)
-    {
-      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/dro.qoi", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
-      n->children.push_back(child);
-    }
+//    int step = g_platformResolution;
+//    for (int i = 0; i < 55; i += step)
+//    {
+//      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/dro.qoi", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+//      n->children.push_back(child);
+//    }
   }
 
   // make rounded triangles
@@ -6005,15 +6001,15 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap, 0, 2);
     }
-    if (autoMakeWallcaps)
-    {
-      int step = g_platformResolution;
-      for (int i = 0; i < 55; i += step)
-      {
-        mapObject *e = new mapObject(renderer, captex, "resources/engine/ari.qoi", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
-        n->children.push_back(e);
-      }
-    }
+//    if (autoMakeWallcaps)
+//    {
+//      int step = g_platformResolution;
+//      for (int i = 0; i < 55; i += step)
+//      {
+//        mapObject *e = new mapObject(renderer, captex, "resources/engine/ari.qoi", marker->x, marker->y + i + step, wallheight, 64 - 1, step, 0);
+//        n->children.push_back(e);
+//      }
+//    }
 
     int step = 2;
     int vstep = 64;
@@ -6041,15 +6037,15 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap, 0, 2);
     }
-    if (autoMakeWallcaps)
-    {
-      int step = g_platformResolution;
-      for (int i = 0; i < 55; i += step)
-      {
-        mapObject *e = new mapObject(renderer, captex, "resources/engine/bri.qoi", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
-        n->children.push_back(e);
-      }
-    }
+//    if (autoMakeWallcaps)
+//    {
+//      int step = g_platformResolution;
+//      for (int i = 0; i < 55; i += step)
+//      {
+//        mapObject *e = new mapObject(renderer, captex, "resources/engine/bri.qoi", marker->x + 1, marker->y + i + step, wallheight, 64 - 1, step, 0);
+//        n->children.push_back(e);
+//      }
+//    }
 
     // a tile on the floor to help with the edge of the diagonal wall pieces
     // tile* t = new tile(renderer, walltex.c_str(), "resources/engine/b.qoi", marker->x + 1, marker->y - 1, 64 - 1, 54 + 1, layer, 1, 1, 0, 0);
@@ -6078,12 +6074,12 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap, 0, 2);
     }
-    int step = g_platformResolution;
-    for (int i = 0; i < 55; i += step)
-    {
-      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/cri.qoi", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
-      n->children.push_back(child);
-    }
+//    int step = g_platformResolution;
+//    for (int i = 0; i < 55; i += step)
+//    {
+//      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/cri.qoi", n->x1, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+//      n->children.push_back(child);
+//    }
   }
 
   if (devinput[33] && !olddevinput[33])
@@ -6095,12 +6091,12 @@ void write_map(entity *mapent)
       bool fcap = (!(i + 1 < wallheight / 64));
       n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap, 0, 2);
     }
-    int step = g_platformResolution;
-    for (int i = 0; i < 55; i += step)
-    {
-      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/dri.qoi", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
-      n->children.push_back(child);
-    }
+//    int step = g_platformResolution;
+//    for (int i = 0; i < 55; i += step)
+//    {
+//      mapObject *child = new mapObject(renderer, n->captexture, "resources/engine/dri.qoi", n->x2, n->y2 + i + step, n->layer * 64 + 64, 64 - 1, step, 0);
+//      n->children.push_back(child);
+//    }
   }
 
   if (devinput[37] && !olddevinput[37]) {

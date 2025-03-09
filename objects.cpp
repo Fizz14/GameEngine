@@ -119,19 +119,35 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
     std::unordered_map<int, float> groupWeightedDistance;
     std::unordered_map<int, float> groupTotalLength;
 
-    for (const auto& edge : allEdges) {
-        float length = edgeLengthInfo(edge);
+    for(int i = 0; i < 20; i++) {
+      groupWeightedDistance[i] = 10000;
+    }
+
+    for(const auto& edge : allEdges) {
         float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
         float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
-        float distance = std::sqrt((midX - px) * (midX - px) + (midY - py) * (midY - py));
+        float distance = abs(midY - py) + abs(midX - px);
 
-        groupWeightedDistance[edge.group] += distance * length;
-        groupTotalLength[edge.group] += length;
+        if(groupWeightedDistance[edge.group] > distance) {
+          groupWeightedDistance[edge.group] = distance;
+        }
+//        groupWeightedDistance[edge.group] += distance * length;
+//        groupTotalLength[edge.group] += length;
     }
 
-    for (auto& [group, weightedDistance] : groupWeightedDistance) {
-        weightedDistance /= groupTotalLength[group];
-    }
+//    for (const auto& edge : allEdges) {
+//        float length = edgeLengthInfo(edge);
+//        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
+//        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
+//        float distance = std::sqrt((midX - px) * (midX - px) + (midY - py) * (midY - py));
+//
+//        groupWeightedDistance[edge.group] += distance * length;
+//        groupTotalLength[edge.group] += length;
+//    }
+
+//    for (auto& [group, weightedDistance] : groupWeightedDistance) {
+//        weightedDistance /= groupTotalLength[group];
+//    }
 
     // Sort edges by group distance
     auto sortEdges = [&](std::vector<edgeInfo>& edges) {
@@ -257,11 +273,12 @@ void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targ
 
 // Function to check if an occluder is between the start and end points with debug lines
 bool isOccluderBetween(float startX, float startY, float endX, float endY) {
+  if(devMode) {return 0;}
   for (const auto& edge : g_osEdges) {
     auto [intersects, ix, iy] = getIntersection(
         startX, startY, endX, endY,
-        edge.first.position.x, edge.first.position.y,
-        edge.second.position.x, edge.second.position.y
+        edge.first.position.x, edge.first.position.y - edge.firstZ,
+        edge.second.position.x, edge.second.position.y - edge.secondZ
         );
 
     if (intersects) {
@@ -355,6 +372,17 @@ CollisionInfo isEntityInsideWall(entity* entity, float xvel = 0.0f, float yvel =
                 }
             }
         }
+
+        //also check verts since that might prevent common problems
+        for(vertex3d& v : mesh->vertices) {
+          float da = abs(adjustedEntityX - v.x);
+          float db = abs(adjustedEntityY - v.y);
+          if(da < entity->bounds.height/2 && db < entity->bounds.height/2) {
+
+            //can we avoid the collision if we negate the xvel?
+            return {true, {0,0,0}};
+          }
+        }
       }
     }
 
@@ -369,6 +397,27 @@ void adjustVelocityForWallCollision(entity* entity, float& xvel, float& yvel) {
     auto collision = isEntityInsideWall(entity, xvel, yvel);
 
     if (collision.isColliding) {
+      if(collision.normal[0] == 0 && collision.normal[1] == 0) {
+        //she bumped into a vertex
+        collision = isEntityInsideWall(entity, xvel, 0);
+        if(!collision.isColliding) {
+          //it's safe to use xvel and yvel of 0
+          yvel = 0;
+          return;
+
+        } else {
+          collision = isEntityInsideWall(entity, 0, yvel);
+          if(!collision.isColliding) {
+            xvel = 0;
+            return;
+          }
+        }
+
+        // :/
+        xvel = 0;
+        yvel = 0;
+
+      } else {
         // Calculate the dot product of the velocity and the normal
         
 
@@ -410,6 +459,7 @@ void adjustVelocityForWallCollision(entity* entity, float& xvel, float& yvel) {
             xvel = adjustedXvel;
             yvel = adjustedYvel;
         }
+      }
     }
 }
 
@@ -1412,6 +1462,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
 
   SDL_FreeSurface(image);
   g_tiles.push_back(this);
+ 
 }
 
 tile::~tile() {
@@ -1501,6 +1552,7 @@ void tile::render(SDL_Renderer * renderer, camera fcamera) {
       yoffset = 0;
     }
   }
+
 
   if(RectOverlap(obj, cam)) {
 
@@ -4766,31 +4818,13 @@ door* entity::update(vector<door*> doors, float elapsed) {
     steeringAngle = wrapAngle(steeringAngle);
   }
 
-  if(mobile) {xmaxspeed = baseMaxSpeed + bonusSpeed;} else 
-  {xmaxspeed = baseMaxSpeed;}
+  if(!devMode || this != protag || !g_holdingCTRL) {
+    if(mobile) {xmaxspeed = baseMaxSpeed + bonusSpeed;} else 
+    {xmaxspeed = baseMaxSpeed;}
+  }
 
-  if(devMode && this == protag) {
-    protag->turningSpeed = 1.4;
-    protag->baseMaxSpeed = 160;
-    if(g_holdingTAB) {
-      protag->baseMaxSpeed = 0;
-      protag->turningSpeed = 16;
-    }
-    if (keystate[SDL_SCANCODE_LSHIFT])
-    {
-      protag->baseMaxSpeed = 160;
-      protag->turningSpeed = 1.4;
-    }
-    if (keystate[SDL_SCANCODE_LCTRL])
-    {
-      protag->baseMaxSpeed = 10;
-      protag->turningSpeed = 16;
-    }
-    if (keystate[SDL_SCANCODE_CAPSLOCK])
-    {
-      protag->xmaxspeed = 750;
-      protag->turningSpeed = 16;
-    }
+  if(g_holdingTAB) {
+    xmaxspeed = 0;
   }
 
   //normalize accel vector
@@ -7375,7 +7409,6 @@ int loadSave() {
   for(int i = 0; i < size; i++) {
     delete g_keyItems[0];
   }
-  D(g_keyItems.size());
 
   string address = "user/saves/" + g_saveName + ".save";
   const char* plik = address.c_str();
@@ -8906,6 +8939,43 @@ void clear_map(camera& cameraToReset) {
   g_behemoth1 = 0;
   g_behemoth2 = 0;
   g_behemoth3 = 0;
+
+  {
+    g_meshes.clear();
+  
+    size = g_meshFloors.size();
+    for(int i = 0; i < size; i++) {
+      delete g_meshFloors[0];
+    }
+
+    size = g_meshVWalls.size();
+    for(int i = 0; i < size; i++) {
+      delete g_meshVWalls[0];
+    }
+
+    size = g_meshCollisions.size();
+    for(int i = 0; i < size; i++) {
+      delete g_meshCollisions[0];
+    }
+
+    size = g_meshOccluders.size();
+    for(int i = 0; i < size; i++) {
+      delete g_meshOccluders[0];
+    }
+    g_oEdges.clear();
+    g_wEdges.clear();
+
+    size = g_meshDecorative.size();
+    for(int i = 0; i < size; i++) {
+      delete g_meshDecorative[0];
+    }
+
+    size = g_chunks.size();
+    for(int i = 0; i < size; i++) {
+      delete g_chunks[0];
+    }
+
+  }
 
   size = g_tallGrasses.size();
   for(int i = 0; i < size; i++) {

@@ -144,6 +144,8 @@ class keyItemInfo;
 
 class mesh;
 
+class chunk;
+
 class camera
 {
   public:
@@ -307,6 +309,10 @@ extern vector<mesh*> g_meshCollisions;
 extern vector<mesh*> g_meshOccluders;
 
 extern vector<mesh*> g_meshDecorative;
+
+extern vector<mesh*> g_meshes;
+
+extern vector<chunk*> g_chunks;
 
 struct edgeInfo {
   SDL_Vertex first;
@@ -475,21 +481,6 @@ extern SDL_Texture *result_c;
 extern SDL_Texture *canvas;
 extern SDL_Texture *canvas_fc;
 extern SDL_Texture *light;
-
-extern SDL_Texture *lighta;
-extern SDL_Texture *lightb;
-extern SDL_Texture *lightc;
-extern SDL_Texture *lightd;
-
-extern SDL_Texture *lightaro;
-extern SDL_Texture *lightbro;
-extern SDL_Texture *lightcro;
-extern SDL_Texture *lightdro;
-
-extern SDL_Texture *lightari;
-extern SDL_Texture *lightbri;
-extern SDL_Texture *lightcri;
-extern SDL_Texture *lightdri;
 
 extern SDL_Texture *blackbarTexture;
 extern SDL_Texture *spotlightTexture;
@@ -1053,6 +1044,7 @@ extern tile *navNodeIconBlue;
 extern tile *navNodeIconRed;
 extern tile *navNodeIconYellow;
 extern tile *worldsoundIcon;
+extern tile *chunkIcon;
 extern tile *listenerIcon;
 extern tile *musicIcon;
 extern tile *cueIcon;
@@ -1148,6 +1140,7 @@ extern float g_entlineDistance;
 
 extern int g_holddelete;
 
+extern chunk* moveThisChunk;
 
 enum gamemode {
   EXPLORATION,

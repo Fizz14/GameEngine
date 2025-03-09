@@ -4,7 +4,6 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_mixer.h>
-#include <SDL2/SDL_gpu.h>
 #include <stdlib.h>
 #include <chrono>
 #include <thread>
@@ -39,74 +38,73 @@ void protagMakesNoise();
 void dungeonFlash();
 
 void sortEdges(std::vector<edgeInfo>& edges, float px, float py) {
-    auto edgeComparator = [&](const edgeInfo& a, const edgeInfo& b) {
+  auto edgeComparator = [&](const edgeInfo& a, const edgeInfo& b) {
 
-        float minDistA = Distance( (a.first.position.x + a.second.position.x) / 2, (a.first.position.y + a.second.position.y)/2, px, py);
-        float minDistB = Distance( (b.first.position.x + b.second.position.x) / 2, (b.first.position.y + b.second.position.y)/2, px, py);
-        return minDistA > minDistB;
-    };
+    float minDistA = Distance( (a.first.position.x + a.second.position.x) / 2, (a.first.position.y + a.second.position.y)/2, px, py);
+    float minDistB = Distance( (b.first.position.x + b.second.position.x) / 2, (b.first.position.y + b.second.position.y)/2, px, py);
+    return minDistA > minDistB;
+  };
 
-    // Remove edges where both vertices' y-coordinates are greater than py
-//    edges.erase(std::remove_if(edges.begin(), edges.end(),
-//        [py](const edgeInfo& e) {
-//            return e.first.position.y > py && e.second.position.y > py;
-//        }), edges.end());
+  // Remove edges where both vertices' y-coordinates are greater than py
+  //    edges.erase(std::remove_if(edges.begin(), edges.end(),
+  //        [py](const edgeInfo& e) {
+  //            return e.first.position.y > py && e.second.position.y > py;
+  //        }), edges.end());
 
-    // Sort the remaining edges based on their minimum distance to (px, py)
-    std::sort(edges.begin(), edges.end(), edgeComparator);
+  // Sort the remaining edges based on their minimum distance to (px, py)
+  std::sort(edges.begin(), edges.end(), edgeComparator);
 }
 
 SDL_FPoint calculateIntersection(float x1, float y1, float z1, float x2, float y2, float z2) {
-    // Compute direction vector
-    float dx = x2 - x1;
-    float dy = y2 - y1;
-    float dz = z2 - z1;
+  // Compute direction vector
+  float dx = x2 - x1;
+  float dy = y2 - y1;
+  float dz = z2 - z1;
 
-    // Scale direction vector to move to edge of the screen
-    float maxDim = std::max(WIN_WIDTH*2, WIN_HEIGHT*2);
-    float scaleFactor = maxDim / std::sqrt(dx * dx + dy * dy + dz * dz);
+  // Scale direction vector to move to edge of the screen
+  float maxDim = std::max(WIN_WIDTH*2, WIN_HEIGHT*2);
+  float scaleFactor = maxDim / std::sqrt(dx * dx + dy * dy + dz * dz);
 
-    SDL_FPoint intersection;
-    intersection.x = x1 + dx * scaleFactor;
-    intersection.y = y1 + dy * scaleFactor;
+  SDL_FPoint intersection;
+  intersection.x = x1 + dx * scaleFactor;
+  intersection.y = y1 + dy * scaleFactor;
 
-    return intersection;
+  return intersection;
 }
 
 bool segmentsSharePoint(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
-    auto isClose = [&](float a, float b) {
-        return std::fabs(a - b) < tolerance;
-    };
+  auto isClose = [&](float a, float b) {
+    return std::fabs(a - b) < tolerance;
+  };
 
-    auto pointsClose = [&](SDL_Vertex a, SDL_Vertex b) {
-        return isClose(a.position.x, b.position.x) && isClose(a.position.y, b.position.y);
-    };
+  auto pointsClose = [&](SDL_Vertex a, SDL_Vertex b) {
+    return isClose(a.position.x, b.position.x) && isClose(a.position.y, b.position.y);
+  };
 
 
-    auto p1 = seg1.first;
-    auto p2 = seg1.second;
-    auto q1 = seg2.first;
-    auto q2 = seg2.second;
+  auto p1 = seg1.first;
+  auto p2 = seg1.second;
+  auto q1 = seg2.first;
+  auto q2 = seg2.second;
 
-    return pointsClose(p2, q1) || pointsClose(p1, q2);
+  return pointsClose(p2, q1) || pointsClose(p1, q2);
 }
 
 bool segmentsInSamePlace(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
-    auto isClose = [&](float a, float b) {
-        return std::fabs(a - b) < tolerance;
-    };
+  auto isClose = [&](float a, float b) {
+    return std::fabs(a - b) < tolerance;
+  };
 
-    auto pointsClose = [&](SDL_Vertex a, SDL_Vertex b) {
-        return isClose(a.position.x, b.position.x) && isClose(a.position.y, b.position.y);
-    };
+  auto pointsClose = [&](SDL_Vertex a, SDL_Vertex b) {
+    return isClose(a.position.x, b.position.x) && isClose(a.position.y, b.position.y);
+  };
 
+  auto p1 = seg1.first;
+  auto p2 = seg1.second;
+  auto q1 = seg2.first;
+  auto q2 = seg2.second;
 
-    auto p1 = seg1.first;
-    auto p2 = seg1.second;
-    auto q1 = seg2.first;
-    auto q2 = seg2.second;
-
-    return (pointsClose(p1, q1) && pointsClose(p2, q2));
+  return (pointsClose(p1, q1) && pointsClose(p2, q2));
 }
 
 
@@ -116,8 +114,6 @@ void drawUI() {
   if((g_amState == amState::SPIRIT || g_amState == amState::SPIRITSELECT || g_amState == amState::STARGETING || g_amState == amState::ITARGETING || g_amState == amState::ITEM) && !protag_is_talking ) {
     drawCombatants();
   }
-
-
 
   //bottom-most layer of ui
   for (long long unsigned int i = 0; i < g_ui.size(); i++)
@@ -207,9 +203,9 @@ void updateWindowResolution() {
     WIN_HEIGHT = WIN_WIDTH * 0.625;
   }
 
-//  SDL_DestroyTexture(g_occluderTarget);
-//  g_occluderTarget = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH*g_occluderResolutionRatio, WIN_HEIGHT*g_occluderResolutionRatio);
-//  SDL_SetTextureBlendMode(g_occluderTarget, SDL_BLENDMODE_MOD);
+  //  SDL_DestroyTexture(g_occluderTarget);
+  //  g_occluderTarget = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH*g_occluderResolutionRatio, WIN_HEIGHT*g_occluderResolutionRatio);
+  //  SDL_SetTextureBlendMode(g_occluderTarget, SDL_BLENDMODE_MOD);
 }
 
 void ExplorationLoop() {
@@ -1755,96 +1751,717 @@ void ExplorationLoop() {
 
   }
 
-  //tallgrass update
-  /*{
-    int grassX = protag->getOriginX();
-    int grassY = protag->getOriginY();
-    grassX -= grassX % 64;
-    grassY -= grassY % 55;
-    if(grassX != g_lastGrassX || grassY != g_lastGrassY) {
-    g_protagIsBeingDetectedBySight = 0;
-    for(auto x : g_tallGrasses) {
-    if(RectOverlap(protag->getMovedBounds(), x->bounds)) {
-    g_protagIsBeingDetectedBySight = 1;
-    if(frng(0,1) <= g_encounterChance) {
-    int randomIndex = rng(0, loadedEncounters.size()-1);
-    for(auto x : loadedEncounters[randomIndex]) {
-    combatant* a = new combatant(x.first, x.second);
-    a->level = x.second;
-    a->maxHealth = a->baseHealth + (a->healthGain * a->level);
-    a->health = a->maxHealth;
-    g_enemyCombatants.push_back(a);
-    }
+  B("Tall grass update");
 
-    M("Lets load some bgrounds");
-    string bgstr;
-    if(loadedBackgrounds.size() > randomIndex) {
-    bgstr = loadedBackgrounds[randomIndex];
+  if(!devMode){ //set frames for protags
+
+    for(auto &x : party) {
+      if(x->hisCombatant->health <= 0) {
+        x->frameInAnimation = 2;
+        x->animlimit = 0;
+      } else {
+        x->animlimit = 0.01;
+        if(x->flashingMS > 0) {
+          x->frameInAnimation = 1;
+        } else {
+          x->frameInAnimation = 0;
+        }
+      }
+
+    }
+    if(protag->hisCombatant->health <= 0) {
+      g_spin_entity->animation = 1;
     } else {
-    if(loadedBackgrounds.size() == 0) {E("No loaded combat backgrounds for map " + g_mapdir + "/" + g_map); abort();}
-    bgstr = loadedBackgrounds[0];
+      g_spin_entity->animation = 0;
     }
 
-    string loadme = "resources/static/backgrounds/json/" + bgstr + ".json";
-    M("Fuck");
-    combatUIManager->loadedBackground = bground(renderer, loadme.c_str());
+  }
 
-    if(combatUIManager->sb1 != 0) {
-    SDL_FreeSurface(combatUIManager->sb1);
+  {
+    //for moving entities quickly or slowly in devmode
+    if(devMode && protag != nullptr) {
+      if(g_holdingTAB) {
+        protag->turningSpeed = 16;
+      }
+      if (keystate[SDL_SCANCODE_LSHIFT])
+      {
+        protag->xmaxspeed = 160;
+        protag->turningSpeed = 1.4;
+      }
+      if (keystate[SDL_SCANCODE_LCTRL])
+      {
+        protag->xmaxspeed = 10;
+        protag->turningSpeed = 16;
+      }
+      if (keystate[SDL_SCANCODE_CAPSLOCK])
+      {
+        protag->xmaxspeed = 750;
+        protag->turningSpeed = 16;
+      }
     }
-
-    loadme = "resources/static/backgrounds/textures/" + to_string(combatUIManager->loadedBackground.texture) + ".qoi";
-    combatUIManager->sb1 = IMG_Load(loadme.c_str());
-
-    if(combatUIManager->scene !=0) {
-    SDL_DestroyTexture(combatUIManager->scene);
-    }
-    loadme = "resources/static/backgrounds/scenes/" + combatUIManager->loadedBackground.scene + ".qoi";
-    combatUIManager->scene = loadTexture(renderer, loadme);
+  }
 
 
-    cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
-
+  // ENTITY MOVEMENT (ENTITY UPDATE)
+  // dont update movement while transitioning
+  if (1)
+  {
+    for (long long unsigned int i = 0; i < g_entities.size(); i++)
     {
-    g_gamemode = gamemode::COMBAT;
-    g_submode = submode::INWIPE;
-    writeSave();
-    transitionDelta = transitionImageHeight;
-    g_combatEntryType = 1;
+      if (g_entities[i]->isWorlditem || (g_entities[i]->identity == 35&& g_entities[i]->usingTimeToLive == 0))
+      {
+        // make it bounce
+        int index = g_entities[i]->bounceindex;
+        g_entities[i]->floatheight = g_itemsines[index];
+      }
+      door* taken = nullptr;
+      if( (protag_is_talking == 0 && g_amState == amState::CLOSED && inPauseMenu == 0)) {
+        taken = g_entities[i]->update(g_doors, elapsed);
+        if(g_breakFromPrimarySwitch) {
+          g_breakFromPrimarySwitch = 0;
+          return;
+        }
+      }
 
-    combatUIManager->partyHealthBox->show = 1;
-    combatUIManager->partyText->show = 1;
-    combatUIManager->finalText = "It's an enemy encounter!";
-    combatUIManager->currentText = "";
-    combatUIManager->dialogProceedIndicator->y = 0.25;
 
+      // added the !transition because if a player went into a map with a door located in the same place
+      // as they are in the old map (before going to the waypoint) they would instantly take that door
+      if (taken != nullptr && !transition)
+      {
+        // player took this door
+        {
+          g_wayOffsetX = 0;
+          g_wayOffsetY = 0;
+          M("Set old door vals");
+          g_oldDoorWidth = taken->width;
+          g_oldDoorHeight = taken->height;
+
+          if(taken->width > taken->height) {
+            g_wayOffsetX = protag->getOriginX() - (taken->x + (taken->width)/2);
+            g_useOffset = 1;
+          } else {
+            g_wayOffsetY = protag->getOriginY() - (taken->y + (taken->height)/2);
+            g_useOffset = 2;
+          }
+        }
+
+        // clear level
+
+        // we will now clear the map, so we will save the door's destination map as a string
+        const string savemap = "resources/maps/" + taken->to_map + ".map";
+        const string dest_waypoint = taken->to_point;
+
+        // render this frame
+
+        clear_map(g_camera);
+        load_map(renderer, savemap, dest_waypoint);
+
+        // clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
+        if (canSwitchOffDevMode)
+        {
+          init_map_writing(renderer);
+        }
+
+        writeSave();
+
+        break;
+      }
+
+      if(g_entities[i]->usingTimeToLive) {
+
+        if(g_entities[i]->timeToLiveMs < 0) {
+          if(g_entities[i]->dontSave) {
+            if(!g_entities[i]->asset_sharer) {
+              g_entities[i]->tangible = 0;
+              g_entities[i]->usingTimeToLive = 0;
+            } else {
+              delete g_entities[i];
+            }
+
+          } else {
+
+            g_entities[i]->height = 0;
+            g_entities[i]->width = 0;
+
+            g_entities[i]->shrinking = 1;
+
+            if(!g_entities[i]->wasPellet) { 
+              g_entities[i]->dynamic = 0;
+              g_entities[i]->xvel = 0;
+              g_entities[i]->yvel = 0;
+              g_entities[i]->missile = 0;
+            }
+
+
+            if(g_entities[i]->curheight < 1) {
+              //remove this entity from it's parent's 
+              //list of children
+              if(g_entities[i]->isOrbital) {
+                g_entities[i]->parent->children.erase(remove(g_entities[i]->parent->children.begin(), g_entities[i]->parent->children.end(), g_entities[i]), g_entities[i]->parent->children.end());
+                g_entities[i]->isOrbital = 0;
+              }
+
+
+
+              if(!g_entities[i]->asset_sharer) {
+                g_entities[i]->tangible = 0;
+                g_entities[i]->usingTimeToLive = 0;
+              } else {
+                delete g_entities[i];
+              }
+            }
+          }
+        } 
+
+      }
+
+    }
+  }
+  B("Entity update");
+  if(g_breakFromPrimarySwitch) {
+    g_breakFromPrimarySwitch = 0;
+    return;
+  }
+
+
+  //dungeon door flash
+  for(auto x : g_dungeonDoors) {
+    rect b = {(int)x->x, (int)x->y, (int)x->width, (int)x->height};
+    if(RectOverlap(b, protag->getMovedBounds())) {
+      g_dungeonDarkEffectDelta = 16;
+    }
+  }
+
+  g_dungeonDarkEffect += g_dungeonDarkEffectDelta;
+  if(g_dungeonDarkEffect > 255) { g_dungeonDarkEffect = 255;}
+  if(g_dungeonDarkEffect < g_dungeonDarkness) { g_dungeonDarkEffect = g_dungeonDarkness;}
+  if(g_dungeonDarkEffect == 255) {
+    dungeonFlash();
+  }
+
+
+  //dungeon flash effect
+  SDL_SetTextureAlphaMod(g_shade, g_dungeonDarkEffect);
+
+  //familiars
+  if(protag != nullptr) {
+    for(int i = 0; i < g_familiars.size(); i++) {
+      g_familiars[i]->shadow->x = g_familiars[i]->x + g_familiars[i]->shadow->xoffset;
+      g_familiars[i]->shadow->y = g_familiars[i]->y + g_familiars[i]->shadow->yoffset;
+
+      entity* him = g_familiars[i];
+      entity* target;
+
+      int targetX, targetY;
+
+      if(i == 0) {
+        target = protag;
+      } else {
+        target = g_familiars[i-1];
+      }
+
+      float speedmod = 10;
+      float useDist = 64;
+
+      if(i == g_familiars.size() - 1) {
+        if(g_chain_time > 0) {
+          useDist = 35;
+          target = protag;
+          speedmod = 5;
+        }
+      }
+
+      float dx = target->getOriginX() - him->getOriginX();
+      float dy = target->getOriginY() - him->getOriginY();
+
+      float dist = pow( dx * dx + dy * dy, 0.5);
+
+      float factor = 1 - (useDist / dist);
+      float speed = speedmod * factor;
+
+
+      if(dist > useDist) {
+        him->x += (dx / dist) * speed;
+        him->y += (dy / dist) * speed;
+      }
+    }
+
+    //for familiars which were just linked, display the flashing chain
+    if(g_familiars.size() > 0) {
+      if(g_chain_time > 0) {
+        entity* x = g_familiars.back();
+        g_chain_entity->setOriginX(x->getOriginX());
+        g_chain_entity->setOriginY(x->getOriginY());
+        g_chain_entity->visible = 1;
+        g_chain_time -= elapsed;
+      } else {
+        g_chain_entity->visible = 0;
+      }
+    } else {
+      g_chain_entity->visible = 0;
+    }
+
+    if(g_ex_familiars.size() > 0 && g_exFamiliarTimer > 0) {
+      g_exFamiliarTimer -= elapsed;
+      for(auto x : g_ex_familiars) {
+        if(x->shadow != nullptr) {
+          x->shadow->x = x->x + x->shadow->xoffset;
+          x->shadow->y = x->y + x->shadow->yoffset;
+        }
+        const float speed = 0.9;
+        const float r = 1 - speed;
+        float tx = g_exFamiliarParent->getOriginX();
+        float ty = g_exFamiliarParent->getOriginY();
+
+        x->setOriginX(x->getOriginX()*speed + tx*r);
+        x->setOriginY(x->getOriginY()*speed + ty*r);
+
+        if(x->getOriginX() < tx-1) {
+          x->x ++;
+        }
+        if(x->getOriginX() > tx+1) {
+          x->x --;
+        }
+
+        if(x->getOriginY() < ty-1) {
+          x->y ++;
+        }
+        if(x->getOriginY() > ty+1) {
+          x->y --;
+        }
+      }
+    } else {
+      for(auto x : g_ex_familiars) {
+        x->parent = g_exFamiliarParent;
+      }
+      g_ex_familiars.clear();
+
+    }
+
+    //for combining familiars
+    for(auto x : g_combineFamiliars) {
+      x->shadow->x = x->x + x->shadow->xoffset;
+      x->shadow->y = x->y + x->shadow->yoffset;
+
+      float dx = g_familiarCombineX - x->getOriginX();
+      float dy = g_familiarCombineY - x->getOriginY();
+
+      float dist = pow( dx * dx + dy * dy, 0.5);
+
+      SDL_SetTextureColorMod(x->texture, 120, 120, 120);
+
+      x->flashingMS = 1000;
+
+
+      x->x += (dx / 8);
+      x->y += (dy / 8);
+
+      if(dist < 3) {
+        //idk get rid of these
+        for(auto y : g_combineFamiliars) {
+          y->tangible = 0;
+          g_combineFamiliars.erase(remove(g_combineFamiliars.begin(), g_combineFamiliars.end(), y), g_combineFamiliars.end());
+        }
+      }
+
+
+    }
+
+    if(g_combineFamiliars.size() == 0 && g_combinedFamiliar != 0) {
+      g_combinedFamiliar->setOriginX(g_familiarCombineX);
+      g_combinedFamiliar->setOriginY(g_familiarCombineY);
+      g_familiars.push_back(g_combinedFamiliar);
+      //g_familiars.insert(g_familiars.begin(), 1, g_combinedFamiliar);
+      g_combinedFamiliar->darkenValue = 0;
+      g_combinedFamiliar->flagA = 1;
+      g_combinedFamiliar = 0;
+
+    }
+  }
+  B("familiars");
+
+  g_spurl_entity->setOriginX(protag->getOriginX());
+  g_spurl_entity->setOriginY(protag->getOriginY());
+  g_spurl_entity->z = protag->z;
+
+  //did the protag collect a pellet?
+  float protag_x = protag->getOriginX();
+  float protag_y = protag->getOriginY();
+  if(g_showPellets) {
+    for(int i = 0; i < g_pellets.size(); i++) {
+      entity* x = g_pellets[i];
+
+      //well, this is shitty. Somehow I find myself in an unfortunate situation which I dont understand
+      //Somehow, I can't get pellets to appear ontopof the lowest fogsheet yet behind fomm, if he's
+      //infront.
+      //I'm going to cheat and change their sorting offset based on distance to the protag, so they'll still be jank (e.g., other enemy is close to a cupcake), but whatever, it's better than nothin
+      //and I really want pellets to stick out from fog
+      int ydiff = protag_y - x->y;
+      if(-ydiff > -85) {
+        //x->sortingOffset = 30;
+      } else {
+        //x->sortingOffset = 160; //pellets that are close to the fog are artificially boosted in the draw order
+      }
+
+      if(ydiff < 85 && ydiff > 0) {
+        //x->sortingOffset = 30;
+      }
+    }
+  }
+
+  //    string systemTimePrint = "";
+  //    if(g_dungeonSystemOn) {
+  //      //timer display
+  //      int ms = g_dungeonMs;
+  //      int sec = (ms / 1000) % 60;
+  //      int min = ms / 60000;
+  //      string secstr = to_string(sec);
+  //      if(secstr.size() < 2) {secstr = "0" + secstr;}
+  //      string minstr = to_string(min);
+  //      if(minstr.size() < 2) {minstr = "0" + minstr;}
+  //      
+  //      systemTimePrint = minstr + ":" + secstr;
+  //    } else {
+  //      //system clock display
+  //      time_t ttime = time(0);
+  //      tm *local_time = localtime(&ttime);
+  //      
+  //      int useHour = local_time->tm_hour;
+  //      if(useHour == 0) {useHour = 12;}
+  //      string useMinString = to_string(local_time->tm_min);
+  //      if(useMinString.size() == 1) { 
+  //        useMinString = "0" + useMinString;
+  //      }
+  //      string useHourString = to_string(useHour%12);
+  //      if(useHourString == "0") {useHourString = "12";}
+  //      systemTimePrint+= useHourString + ":" + useMinString;
+  //      
+  //      if(local_time->tm_hour >=12){
+  //        systemTimePrint += " PM";
+  //      } else {
+  //        systemTimePrint += " AM";
+  //      }
+  //    }
+
+  //adventureUIManager->systemClock->updateText(systemTimePrint, -1, 1);
+
+  // update projectiles
+  for (auto n : g_projectiles)
+  {
+    n->update(elapsed);
+  }
+
+  // delete projectiles with expired lifetimes
+  for (long long unsigned int i = 0; i < g_projectiles.size(); i++)
+  {
+    if (g_projectiles[i]->lifetime <= 0)
     {
-  //SDL_GL_SetSwapInterval(0);
-  bool cont = false;
-  float ticks = 0;
-  float lastticks = 0;
-  float transitionElapsed = 5;
-  float mframes = 60;
-  float transitionMinFrametime = 5;
-  transitionMinFrametime = 1/mframes * 1000;
+      delete g_projectiles[i];
+      i--;
+    }
+  }
+
+  // triggers
+  for (long long unsigned i = 0; i < g_triggers.size(); i++)
+  {
+    if (!g_triggers[i]->active)
+    {
+      continue;
+    }
+    rect trigger = {g_triggers[i]->x, g_triggers[i]->y, g_triggers[i]->width, g_triggers[i]->height};
+    entity *checkHim = searchEntities(g_triggers[i]->targetEntity);
+    if (checkHim == nullptr)
+    {
+      continue;
+    }
+    rect movedbounds = rect(checkHim->bounds.x + checkHim->x, checkHim->bounds.y + checkHim->y, checkHim->bounds.width, checkHim->bounds.height);
+    if (RectOverlap(movedbounds, trigger) && (checkHim->z > g_triggers[i]->z && checkHim->z < g_triggers[i]->z + g_triggers[i]->zeight))
+    {
+      adventureUIManager->blip = g_ui_voice;
+      adventureUIManager->ownScript = g_triggers[i]->script;
+      adventureUIManager->talker = narrarator;
+      adventureUIManager->dialogue_index = -1;
+      narrarator->sayings = g_triggers[i]->script;
+      adventureUIManager->continueDialogue();
+      if (transition)
+      {
+        break;
+      }
+
+      g_triggers[i]->active = 0;
+    }
+  }
+  B("Triggers update");
+
+  //hitboxes
+  for(auto a : g_hitboxes) {
+    if(a->active) {
+      a->activeMS -= elapsed;
+      if(a->targetFaction == 0) {
+
+        if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()) && !g_protagIsWithinBoardable) {
+          hurtProtag(a->damage);
+          a->activeMS = -1;
+        }
+      }
+    } else {
+      a->sleepingMS -= elapsed;
+      if(a->sleepingMS <= 0) {
+        a->active = 1;
+      }
+    }
+  }
+
+  for(int i = 0; i < g_hitboxes.size(); i++) {
+    if(g_hitboxes[i]->activeMS <= 0) {
+      delete g_hitboxes[i];
+      i--;
+    }
+  }
+
+  { //clean up loadplaysounds
+    for(auto &x : g_loadPlaySounds) {
+      if(x.first < 0) {
+        Mix_FreeChunk(x.second);
+        g_loadPlaySounds.erase(remove(g_loadPlaySounds.begin(), g_loadPlaySounds.end(), x), g_loadPlaySounds.end());
+        break;
+
+      }
+      x.first -= elapsed;
+    }
+
+  }
 
 
-  SDL_Surface* transitionSurface = loadSurface("resources/engine/transition.qoi");
+  // worldsounds
+  for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
+  {
+    g_worldsounds[i]->update(elapsed);
+  }
 
-  int imageWidth = transitionSurface->w;
-  int imageHeight = transitionSurface->h;
+  { //grossup effect
+    if(g_grossupShowMs > 0) {
+      SDL_Rect dest;
+      dest.h = WIN_HEIGHT;
+      dest.w = WIN_HEIGHT;
+      dest.x = WIN_WIDTH/2 - WIN_HEIGHT/2;
+      dest.y = 0;
+      SDL_RenderCopy(renderer, g_grossup, NULL, &dest);
+      g_grossupShowMs -= elapsed;
+    }
+  }
+  B("Sounds & grossup");
 
-  SDL_Texture* transitionTexture = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, transitionSurface->w, transitionSurface->h );
-  SDL_SetTextureBlendMode(transitionTexture, SDL_BLENDMODE_BLEND);
+  // transition
+  {
+    if (transition)
+    {
+      g_forceEndDialogue = 0;
+      // onframe things
+      SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
+
+      memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
+      Uint32 format = SDL_PIXELFORMAT_ARGB8888;
+      SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
+      Uint32 *pixels = (Uint32 *)transitionPixelReference;
+      // int numPixels = transitionImageWidth * transitionImageHeight;
+      Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
+      // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+      transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
+      for (int x = 0; x < transitionImageWidth; x++)
+      {
+        for (int y = 0; y < transitionImageHeight; y++)
+        {
+          int dest = (y * transitionImageWidth) + x;
+
+          if (pow(pow(transitionImageWidth / 2 - x, 2) + pow(transitionImageHeight + y, 2), 0.5) < transitionDelta)
+          {
+            pixels[dest] = 0;
+          }
+          else
+          {
+            pixels[dest] = transparent;
+          }
+        }
+      }
+
+      ticks = SDL_GetTicks();
+      elapsed = ticks - lastticks;
+      //        D(elapsed);
+      //        M("What did I break?");
+
+      SDL_UnlockTexture(transitionTexture);
+      SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+
+      if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
+      {
+        transition = 0;
+      }
+    }
+    else
+    {
+      transitionDelta = transitionImageHeight;
+    }
+  }
+
+  if(!g_dungeonSystemOn) {
+    if(g_musicSilenceMs > 0) {
+      g_musicSilenceMs -= elapsed;
+      musicUpdateTimer = 500;
+      g_currentMusicPlayingEntity = nullptr;
+      g_closestMusicNode = nullptr;
+    } else { 
+      // update music
+      if (musicUpdateTimer > 500)
+      {
+        musicUpdateTimer = 0;
+
+        // check musicalentities
+        entity *listenToMe = nullptr;
+        for (auto x : g_musicalEntities)
+        {
+          if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
+          {
+            // we should be playing his music
+            // incorporate priority later
+            listenToMe = x;
+          }
+        }
+        if (listenToMe != nullptr)
+        {
+          g_closestMusicNode = nullptr;
+          if (g_currentMusicPlayingEntity != listenToMe)
+          {
+            Mix_FadeOutMusic(200);
+            // Mix_PlayMusic(listenToMe->theme, 0);
+            Mix_VolumeMusic(g_music_volume * 128);
+            entFadeFlag = 1;
+            fadeFlag = 0;
+            musicFadeTimer = 0;
+            g_currentMusicPlayingEntity = listenToMe;
+          }
+        }
+        else
+        {
+          bool hadEntPlayingMusic = 0;
+          if (g_currentMusicPlayingEntity != nullptr)
+          {
+            // stop ent music
+            // Mix_FadeOutMusic(1000);
+            hadEntPlayingMusic = 1;
+            g_currentMusicPlayingEntity = nullptr;
+          }
+          if (g_musicNodes.size() > 0 && !g_mute)
+          {
+            newClosest = protag->Get_Closest_Node(g_musicNodes);
+            if (g_closestMusicNode == nullptr)
+            {
+              if (!hadEntPlayingMusic)
+              {
+                Mix_PlayMusic(newClosest->blip, -1);
+                Mix_VolumeMusic(g_music_volume * 128);
+                g_closestMusicNode = newClosest;
+              }
+              else
+              {
+                g_closestMusicNode = newClosest;
+                // change music
+                Mix_FadeOutMusic(1000);
+                musicFadeTimer = 0;
+                fadeFlag = 1;
+                entFadeFlag = 0;
+              }
+            }
+            else
+            {
+
+              // Segfaults, todo is initialize these musicNodes to have something
+              if (newClosest->name != g_closestMusicNode->name)
+              {
+                // D(newClosest->name);
+                // if(newClosest->name == "silence") {
+                // Mix_FadeOutMusic(1000);
+                //}
+                g_closestMusicNode = newClosest;
+                // change music
+                Mix_FadeOutMusic(1000);
+                musicFadeTimer = 0;
+                fadeFlag = 1;
+                entFadeFlag = 0;
+              }
+            }
+          }
+        }
+        // check for any cues
+        for (auto x : g_cueSounds)
+        {
+          if (x->played == 0 && Distance(x->x, x->y, protag->x + protag->width / 2, protag->y) < x->radius)
+          {
+            x->played = 1;
+            playSound(-1, x->blip, 0);
+          }
+        }
+      }
+      if (fadeFlag && musicFadeTimer > 1000 && newClosest != 0)
+      {
+        fadeFlag = 0;
+        Mix_HaltMusic();
+        Mix_FadeInMusic(newClosest->blip, -1, 1000);
+      }
+      if (entFadeFlag && musicFadeTimer > 200)
+      {
+        entFadeFlag = 0;
+        Mix_HaltMusic();
+        Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
+      }
+    }
+  }
+  B("Music update");
+
+  // wakeup manager if it is sleeping
+  if (adventureUIManager->sleepflag)
+  {
+    adventureUIManager->continueDialogue();
+  }
 
 
-  void* pixelReference;
-  int pitch;
+  //PUNISHMENT!
+  punishValue += punishValueDegrade;
+  punishValueDegrade = (punishValueDegrade*0.9 + basePunishValueDegrade*0.1);
 
-  float offset = imageHeight;
+  if(punishValue > 1) {
+    SDL_GL_SetSwapInterval(0);
+    if(rng(0,1) == 1) {
+      SDL_Delay(pow(rng(1,punishValue),2));
+    }
+  } else {
+    SDL_GL_SetSwapInterval(1);
+  }
 
-  SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
-  SDL_SetRenderTarget(renderer, frame);
+  g_spin_entity->setOriginX(protag->getOriginX() + protag->xvel * ((double)elapsed/256.0));
+  g_spin_entity->setOriginY(protag->getOriginY() + protag->yvel * ((double)elapsed/256.0));
+  g_spin_entity->z = protag->z;
+
+
+  if (freecamera)
+  {
+    g_camera.update_movement(elapsed, camx, camy);
+  }
+  else
+  {
+    float zoomoffsetx = ((float)WIN_WIDTH / 2) / g_zoom_mod;
+    float zoomoffsety = ((float)WIN_HEIGHT / 2) / g_zoom_mod;
+    // g_camera.zoom = 0.9;
+
+    if(g_hog == 0) {
+      g_camera.update_movement(elapsed, g_focus->getOriginX() - zoomoffsetx, ((g_focus->getOriginY() - XtoZ * g_focus->z) - zoomoffsety));
+    } else {
+      int avgX = g_focus->getOriginX() + g_hog->getOriginX(); avgX *= 0.5;
+      int avgY = g_focus->getOriginY() + g_hog->getOriginY(); avgY *= 0.5;
+      g_camera.update_movement(elapsed, avgX - zoomoffsetx, ((avgY - XtoZ * g_focus->z) - zoomoffsety));
+    }
+  }
+
 
   // tiles
   for (long long unsigned int i = 0; i < g_tiles.size(); i++)
@@ -1863,13 +2480,6 @@ void ExplorationLoop() {
     }
   }
 
-  // sort
-  sort_by_y(g_actors);
-  for (long long unsigned int i = 0; i < g_actors.size(); i++)
-  {
-    g_actors[i]->render(renderer, g_camera);
-  }
-
   for (long long unsigned int i = 0; i < g_tiles.size(); i++)
   {
     if (g_tiles[i]->z == 2)
@@ -1878,860 +2488,81 @@ void ExplorationLoop() {
     }
   }
 
-  SDL_SetRenderTarget(renderer, NULL);
-  while (!cont) {
-
-    //onframe things
-    SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
-
-    memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-    Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-    SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
-    Uint32* pixels = (Uint32*)pixelReference;
-    Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
-
-    offset += g_transitionSpeed + 0.02 * offset;
-
-    for(int x = 0;  x < imageWidth; x++) {
-      for(int y = 0; y < imageHeight; y++) {
-
-
-        int dest = (y * imageWidth) + x;
-        //int src =  (y * imageWidth) + x;
-
-        if(pow(pow(imageWidth/2 - x,2) + pow(imageHeight + y,2),0.5) < offset) {
-          pixels[dest] = transparent;
-        } else {
-          pixels[dest] = 0;
-        }
-
+  //meshes
+  for(auto &x : g_meshFloors) {
+    if(x->visible) {
+      SDL_Vertex v[x->numVertices];
+      for(int i = 0; i < x->numVertices; i++) {
+        v[i] = x->vertex[i];
+        v[i].position.x += x->origin.x - g_camera.x;
+        v[i].position.y += x->origin.y - g_camera.y;
+        v[i].color.a = x->vertex[i].color.a;
       }
-    }
 
+      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
 
-
-
-
-    ticks = SDL_GetTicks();
-    transitionElapsed = ticks - lastticks;
-
-
-    //lock framerate
-    if(transitionElapsed < transitionMinFrametime) {
-      SDL_Delay(transitionMinFrametime - transitionElapsed);
-      ticks = SDL_GetTicks();
-      transitionElapsed = ticks - lastticks;
-    }
-    lastticks = ticks;
-
-    SDL_RenderClear(renderer);
-    //render last frame
-    SDL_RenderCopy(renderer, frame, NULL, NULL);
-    SDL_UnlockTexture(transitionTexture);
-    SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-
-    if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
-      cont = 1;
-    }
-  }
-  SDL_FreeSurface(transitionSurface);
-  SDL_DestroyTexture(transitionTexture);
-  SDL_DestroyTexture(frame);
-  transition = 1;
-  titleUIManager->hideAll();
-  SDL_GL_SetSwapInterval(1);
-}
-
-}
-
-
-}
-}
-}
-}
-g_lastGrassX = grassX;
-g_lastGrassY = grassY;
-}*/
-B("Tall grass update");
-
-{ //set frames for protags
-
-  for(auto &x : party) {
-    if(x->hisCombatant->health <= 0) {
-      x->frameInAnimation = 2;
-      x->animlimit = 0;
-    } else {
-      x->animlimit = 0.01;
-      if(x->flashingMS > 0) {
-        x->frameInAnimation = 1;
-      } else {
-        x->frameInAnimation = 0;
+      //render shade
+      for(int i = 0; i < x->numVertices; i++) {
+        v[i].tex_coord.x = x->vertexExtraData[i].first;
+        v[i].tex_coord.y = x->vertexExtraData[i].second;
       }
+
+      SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+
     }
-
-  }
-  if(protag->hisCombatant->health <= 0) {
-    g_spin_entity->animation = 1;
-  } else {
-    g_spin_entity->animation = 0;
   }
 
-}
-
-
-// ENTITY MOVEMENT (ENTITY UPDATE)
-// dont update movement while transitioning
-if (1)
-{
-  for (long long unsigned int i = 0; i < g_entities.size(); i++)
+  g_wsEdges.clear();
+  g_osEdges.clear();
   {
-    if (g_entities[i]->isWorlditem || (g_entities[i]->identity == 35&& g_entities[i]->usingTimeToLive == 0))
-    {
-      // make it bounce
-      int index = g_entities[i]->bounceindex;
-      g_entities[i]->floatheight = g_itemsines[index];
-    }
-    door* taken = nullptr;
-    if( (protag_is_talking == 0 && g_amState == amState::CLOSED && inPauseMenu == 0)) {
-      taken = g_entities[i]->update(g_doors, elapsed);
-      if(g_breakFromPrimarySwitch) {
-        g_breakFromPrimarySwitch = 0;
-        return;
-      }
-    }
-
-
-    // added the !transition because if a player went into a map with a door located in the same place
-    // as they are in the old map (before going to the waypoint) they would instantly take that door
-    if (taken != nullptr && !transition)
-    {
-      // player took this door
-      {
-        g_wayOffsetX = 0;
-        g_wayOffsetY = 0;
-        M("Set old door vals");
-        g_oldDoorWidth = taken->width;
-        g_oldDoorHeight = taken->height;
-
-        if(taken->width > taken->height) {
-          g_wayOffsetX = protag->getOriginX() - (taken->x + (taken->width)/2);
-          g_useOffset = 1;
-        } else {
-          g_wayOffsetY = protag->getOriginY() - (taken->y + (taken->height)/2);
-          g_useOffset = 2;
-        }
-      }
-
-      // clear level
-
-      // we will now clear the map, so we will save the door's destination map as a string
-      const string savemap = "resources/maps/" + taken->to_map + ".map";
-      const string dest_waypoint = taken->to_point;
-
-      // render this frame
-
-      clear_map(g_camera);
-      load_map(renderer, savemap, dest_waypoint);
-
-      // clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
-      if (canSwitchOffDevMode)
-      {
-        init_map_writing(renderer);
-      }
-
-      writeSave();
-
-      break;
-    }
-
-    if(g_entities[i]->usingTimeToLive) {
-
-      if(g_entities[i]->timeToLiveMs < 0) {
-        if(g_entities[i]->dontSave) {
-          if(!g_entities[i]->asset_sharer) {
-            g_entities[i]->tangible = 0;
-            g_entities[i]->usingTimeToLive = 0;
-          } else {
-            delete g_entities[i];
-          }
-
-        } else {
-
-          g_entities[i]->height = 0;
-          g_entities[i]->width = 0;
-
-          g_entities[i]->shrinking = 1;
-
-          if(!g_entities[i]->wasPellet) { 
-            g_entities[i]->dynamic = 0;
-            g_entities[i]->xvel = 0;
-            g_entities[i]->yvel = 0;
-            g_entities[i]->missile = 0;
-          }
-
-
-          if(g_entities[i]->curheight < 1) {
-            //remove this entity from it's parent's 
-            //list of children
-            if(g_entities[i]->isOrbital) {
-              g_entities[i]->parent->children.erase(remove(g_entities[i]->parent->children.begin(), g_entities[i]->parent->children.end(), g_entities[i]), g_entities[i]->parent->children.end());
-              g_entities[i]->isOrbital = 0;
-            }
-
-
-
-            if(!g_entities[i]->asset_sharer) {
-              g_entities[i]->tangible = 0;
-              g_entities[i]->usingTimeToLive = 0;
-            } else {
-              delete g_entities[i];
-            }
-          }
-        }
-      } 
-
-    }
-
-  }
-}
-B("Entity update");
-if(g_breakFromPrimarySwitch) {
-  g_breakFromPrimarySwitch = 0;
-  return;
-}
-
-
-//dungeon door flash
-for(auto x : g_dungeonDoors) {
-  rect b = {(int)x->x, (int)x->y, (int)x->width, (int)x->height};
-  if(RectOverlap(b, protag->getMovedBounds())) {
-    g_dungeonDarkEffectDelta = 16;
-  }
-}
-
-g_dungeonDarkEffect += g_dungeonDarkEffectDelta;
-if(g_dungeonDarkEffect > 255) { g_dungeonDarkEffect = 255;}
-if(g_dungeonDarkEffect < g_dungeonDarkness) { g_dungeonDarkEffect = g_dungeonDarkness;}
-if(g_dungeonDarkEffect == 255) {
-  dungeonFlash();
-}
-
-
-//dungeon flash effect
-SDL_SetTextureAlphaMod(g_shade, g_dungeonDarkEffect);
-
-//familiars
-if(protag != nullptr) {
-  for(int i = 0; i < g_familiars.size(); i++) {
-    g_familiars[i]->shadow->x = g_familiars[i]->x + g_familiars[i]->shadow->xoffset;
-    g_familiars[i]->shadow->y = g_familiars[i]->y + g_familiars[i]->shadow->yoffset;
-
-    entity* him = g_familiars[i];
-    entity* target;
-
-    int targetX, targetY;
-
-    if(i == 0) {
-      target = protag;
-    } else {
-      target = g_familiars[i-1];
-    }
-
-    float speedmod = 10;
-    float useDist = 64;
-
-    if(i == g_familiars.size() - 1) {
-      if(g_chain_time > 0) {
-        useDist = 35;
-        target = protag;
-        speedmod = 5;
-      }
-    }
-
-    float dx = target->getOriginX() - him->getOriginX();
-    float dy = target->getOriginY() - him->getOriginY();
-
-    float dist = pow( dx * dx + dy * dy, 0.5);
-
-    float factor = 1 - (useDist / dist);
-    float speed = speedmod * factor;
-
-
-    if(dist > useDist) {
-      him->x += (dx / dist) * speed;
-      him->y += (dy / dist) * speed;
-    }
+    updateEdges(g_wEdges, g_wsEdges);
+    updateEdges(g_oEdges, g_osEdges);
   }
 
-  //for familiars which were just linked, display the flashing chain
-  if(g_familiars.size() > 0) {
-    if(g_chain_time > 0) {
-      entity* x = g_familiars.back();
-      g_chain_entity->setOriginX(x->getOriginX());
-      g_chain_entity->setOriginY(x->getOriginY());
-      g_chain_entity->visible = 1;
-      g_chain_time -= elapsed;
-    } else {
-      g_chain_entity->visible = 0;
-    }
-  } else {
-    g_chain_entity->visible = 0;
-  }
-
-  if(g_ex_familiars.size() > 0 && g_exFamiliarTimer > 0) {
-    g_exFamiliarTimer -= elapsed;
-    for(auto x : g_ex_familiars) {
-      if(x->shadow != nullptr) {
-        x->shadow->x = x->x + x->shadow->xoffset;
-        x->shadow->y = x->y + x->shadow->yoffset;
-      }
-      const float speed = 0.9;
-      const float r = 1 - speed;
-      float tx = g_exFamiliarParent->getOriginX();
-      float ty = g_exFamiliarParent->getOriginY();
-
-      x->setOriginX(x->getOriginX()*speed + tx*r);
-      x->setOriginY(x->getOriginY()*speed + ty*r);
-
-      if(x->getOriginX() < tx-1) {
-        x->x ++;
-      }
-      if(x->getOriginX() > tx+1) {
-        x->x --;
-      }
-
-      if(x->getOriginY() < ty-1) {
-        x->y ++;
-      }
-      if(x->getOriginY() > ty+1) {
-        x->y --;
-      }
-    }
-  } else {
-    for(auto x : g_ex_familiars) {
-      x->parent = g_exFamiliarParent;
-    }
-    g_ex_familiars.clear();
-
-  }
-
-  //for combining familiars
-  for(auto x : g_combineFamiliars) {
-    x->shadow->x = x->x + x->shadow->xoffset;
-    x->shadow->y = x->y + x->shadow->yoffset;
-
-    float dx = g_familiarCombineX - x->getOriginX();
-    float dy = g_familiarCombineY - x->getOriginY();
-
-    float dist = pow( dx * dx + dy * dy, 0.5);
-
-    SDL_SetTextureColorMod(x->texture, 120, 120, 120);
-
-    x->flashingMS = 1000;
-
-
-    x->x += (dx / 8);
-    x->y += (dy / 8);
-
-    if(dist < 3) {
-      //idk get rid of these
-      for(auto y : g_combineFamiliars) {
-        y->tangible = 0;
-        g_combineFamiliars.erase(remove(g_combineFamiliars.begin(), g_combineFamiliars.end(), y), g_combineFamiliars.end());
-      }
-    }
-
-
-  }
-
-  if(g_combineFamiliars.size() == 0 && g_combinedFamiliar != 0) {
-    g_combinedFamiliar->setOriginX(g_familiarCombineX);
-    g_combinedFamiliar->setOriginY(g_familiarCombineY);
-    g_familiars.push_back(g_combinedFamiliar);
-    //g_familiars.insert(g_familiars.begin(), 1, g_combinedFamiliar);
-    g_combinedFamiliar->darkenValue = 0;
-    g_combinedFamiliar->flagA = 1;
-    g_combinedFamiliar = 0;
-
-  }
-}
-B("familiars");
-
-g_spurl_entity->setOriginX(protag->getOriginX());
-g_spurl_entity->setOriginY(protag->getOriginY());
-g_spurl_entity->z = protag->z;
-
-//did the protag collect a pellet?
-float protag_x = protag->getOriginX();
-float protag_y = protag->getOriginY();
-if(g_showPellets) {
-  for(int i = 0; i < g_pellets.size(); i++) {
-    entity* x = g_pellets[i];
-
-    //well, this is shitty. Somehow I find myself in an unfortunate situation which I dont understand
-    //Somehow, I can't get pellets to appear ontopof the lowest fogsheet yet behind fomm, if he's
-    //infront.
-    //I'm going to cheat and change their sorting offset based on distance to the protag, so they'll still be jank (e.g., other enemy is close to a cupcake), but whatever, it's better than nothin
-    //and I really want pellets to stick out from fog
-    int ydiff = protag_y - x->y;
-    if(-ydiff > -85) {
-      //x->sortingOffset = 30;
-    } else {
-      //x->sortingOffset = 160; //pellets that are close to the fog are artificially boosted in the draw order
-    }
-
-    if(ydiff < 85 && ydiff > 0) {
-      //x->sortingOffset = 30;
-    }
-  }
-}
-
-//    string systemTimePrint = "";
-//    if(g_dungeonSystemOn) {
-//      //timer display
-//      int ms = g_dungeonMs;
-//      int sec = (ms / 1000) % 60;
-//      int min = ms / 60000;
-//      string secstr = to_string(sec);
-//      if(secstr.size() < 2) {secstr = "0" + secstr;}
-//      string minstr = to_string(min);
-//      if(minstr.size() < 2) {minstr = "0" + minstr;}
-//      
-//      systemTimePrint = minstr + ":" + secstr;
-//    } else {
-//      //system clock display
-//      time_t ttime = time(0);
-//      tm *local_time = localtime(&ttime);
-//      
-//      int useHour = local_time->tm_hour;
-//      if(useHour == 0) {useHour = 12;}
-//      string useMinString = to_string(local_time->tm_min);
-//      if(useMinString.size() == 1) { 
-//        useMinString = "0" + useMinString;
-//      }
-//      string useHourString = to_string(useHour%12);
-//      if(useHourString == "0") {useHourString = "12";}
-//      systemTimePrint+= useHourString + ":" + useMinString;
-//      
-//      if(local_time->tm_hour >=12){
-//        systemTimePrint += " PM";
-//      } else {
-//        systemTimePrint += " AM";
-//      }
-//    }
-
-//adventureUIManager->systemClock->updateText(systemTimePrint, -1, 1);
-
-// update projectiles
-for (auto n : g_projectiles)
-{
-  n->update(elapsed);
-}
-
-// delete projectiles with expired lifetimes
-for (long long unsigned int i = 0; i < g_projectiles.size(); i++)
-{
-  if (g_projectiles[i]->lifetime <= 0)
-  {
-    delete g_projectiles[i];
-    i--;
-  }
-}
-
-// triggers
-for (long long unsigned i = 0; i < g_triggers.size(); i++)
-{
-  if (!g_triggers[i]->active)
-  {
-    continue;
-  }
-  rect trigger = {g_triggers[i]->x, g_triggers[i]->y, g_triggers[i]->width, g_triggers[i]->height};
-  entity *checkHim = searchEntities(g_triggers[i]->targetEntity);
-  if (checkHim == nullptr)
-  {
-    continue;
-  }
-  rect movedbounds = rect(checkHim->bounds.x + checkHim->x, checkHim->bounds.y + checkHim->y, checkHim->bounds.width, checkHim->bounds.height);
-  if (RectOverlap(movedbounds, trigger) && (checkHim->z > g_triggers[i]->z && checkHim->z < g_triggers[i]->z + g_triggers[i]->zeight))
-  {
-    adventureUIManager->blip = g_ui_voice;
-    adventureUIManager->ownScript = g_triggers[i]->script;
-    adventureUIManager->talker = narrarator;
-    adventureUIManager->dialogue_index = -1;
-    narrarator->sayings = g_triggers[i]->script;
-    adventureUIManager->continueDialogue();
-    if (transition)
-    {
-      break;
-    }
-
-    g_triggers[i]->active = 0;
-  }
-}
-B("Triggers update");
-
-//hitboxes
-for(auto a : g_hitboxes) {
-  if(a->active) {
-    a->activeMS -= elapsed;
-    if(a->targetFaction == 0) {
-
-      if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()) && !g_protagIsWithinBoardable) {
-        hurtProtag(a->damage);
-        a->activeMS = -1;
-      }
-    }
-  } else {
-    a->sleepingMS -= elapsed;
-    if(a->sleepingMS <= 0) {
-      a->active = 1;
-    }
-  }
-}
-
-for(int i = 0; i < g_hitboxes.size(); i++) {
-  if(g_hitboxes[i]->activeMS <= 0) {
-    delete g_hitboxes[i];
-    i--;
-  }
-}
-
-{ //clean up loadplaysounds
-  for(auto &x : g_loadPlaySounds) {
-    if(x.first < 0) {
-      Mix_FreeChunk(x.second);
-      g_loadPlaySounds.erase(remove(g_loadPlaySounds.begin(), g_loadPlaySounds.end(), x), g_loadPlaySounds.end());
-      break;
-
-    }
-    x.first -= elapsed;
-  }
-
-}
-
-
-// worldsounds
-for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
-{
-  g_worldsounds[i]->update(elapsed);
-}
-
-{ //grossup effect
-  if(g_grossupShowMs > 0) {
-    SDL_Rect dest;
-    dest.h = WIN_HEIGHT;
-    dest.w = WIN_HEIGHT;
-    dest.x = WIN_WIDTH/2 - WIN_HEIGHT/2;
-    dest.y = 0;
-    SDL_RenderCopy(renderer, g_grossup, NULL, &dest);
-    g_grossupShowMs -= elapsed;
-  }
-}
-B("Sounds & grossup");
-
-// transition
-{
-  if (transition)
-  {
-    g_forceEndDialogue = 0;
-    // onframe things
-    SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
-
-    memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-    Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-    SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
-    Uint32 *pixels = (Uint32 *)transitionPixelReference;
-    // int numPixels = transitionImageWidth * transitionImageHeight;
-    Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
-    // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
-    transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
-    for (int x = 0; x < transitionImageWidth; x++)
-    {
-      for (int y = 0; y < transitionImageHeight; y++)
-      {
-        int dest = (y * transitionImageWidth) + x;
-
-        if (pow(pow(transitionImageWidth / 2 - x, 2) + pow(transitionImageHeight + y, 2), 0.5) < transitionDelta)
-        {
-          pixels[dest] = 0;
-        }
-        else
-        {
-          pixels[dest] = transparent;
-        }
-      }
-    }
-
-    ticks = SDL_GetTicks();
-    elapsed = ticks - lastticks;
-    //        D(elapsed);
-    //        M("What did I break?");
-
-    SDL_UnlockTexture(transitionTexture);
-    SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
-
-    if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
-    {
-      transition = 0;
-    }
-  }
-  else
-  {
-    transitionDelta = transitionImageHeight;
-  }
-}
-
-if(!g_dungeonSystemOn) {
-  if(g_musicSilenceMs > 0) {
-    g_musicSilenceMs -= elapsed;
-    musicUpdateTimer = 500;
-    g_currentMusicPlayingEntity = nullptr;
-    g_closestMusicNode = nullptr;
-  } else { 
-    // update music
-    if (musicUpdateTimer > 500)
-    {
-      musicUpdateTimer = 0;
-
-      // check musicalentities
-      entity *listenToMe = nullptr;
-      for (auto x : g_musicalEntities)
-      {
-        if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
-        {
-          // we should be playing his music
-          // incorporate priority later
-          listenToMe = x;
-        }
-      }
-      if (listenToMe != nullptr)
-      {
-        g_closestMusicNode = nullptr;
-        if (g_currentMusicPlayingEntity != listenToMe)
-        {
-          Mix_FadeOutMusic(200);
-          // Mix_PlayMusic(listenToMe->theme, 0);
-          Mix_VolumeMusic(g_music_volume * 128);
-          entFadeFlag = 1;
-          fadeFlag = 0;
-          musicFadeTimer = 0;
-          g_currentMusicPlayingEntity = listenToMe;
-        }
-      }
-      else
-      {
-        bool hadEntPlayingMusic = 0;
-        if (g_currentMusicPlayingEntity != nullptr)
-        {
-          // stop ent music
-          // Mix_FadeOutMusic(1000);
-          hadEntPlayingMusic = 1;
-          g_currentMusicPlayingEntity = nullptr;
-        }
-        if (g_musicNodes.size() > 0 && !g_mute)
-        {
-          newClosest = protag->Get_Closest_Node(g_musicNodes);
-          if (g_closestMusicNode == nullptr)
-          {
-            if (!hadEntPlayingMusic)
-            {
-              Mix_PlayMusic(newClosest->blip, -1);
-              Mix_VolumeMusic(g_music_volume * 128);
-              g_closestMusicNode = newClosest;
-            }
-            else
-            {
-              g_closestMusicNode = newClosest;
-              // change music
-              Mix_FadeOutMusic(1000);
-              musicFadeTimer = 0;
-              fadeFlag = 1;
-              entFadeFlag = 0;
-            }
-          }
-          else
-          {
-
-            // Segfaults, todo is initialize these musicNodes to have something
-            if (newClosest->name != g_closestMusicNode->name)
-            {
-              // D(newClosest->name);
-              // if(newClosest->name == "silence") {
-              // Mix_FadeOutMusic(1000);
-              //}
-              g_closestMusicNode = newClosest;
-              // change music
-              Mix_FadeOutMusic(1000);
-              musicFadeTimer = 0;
-              fadeFlag = 1;
-              entFadeFlag = 0;
-            }
-          }
-        }
-      }
-      // check for any cues
-      for (auto x : g_cueSounds)
-      {
-        if (x->played == 0 && Distance(x->x, x->y, protag->x + protag->width / 2, protag->y) < x->radius)
-        {
-          x->played = 1;
-          playSound(-1, x->blip, 0);
-        }
-      }
-    }
-    if (fadeFlag && musicFadeTimer > 1000 && newClosest != 0)
-    {
-      fadeFlag = 0;
-      Mix_HaltMusic();
-      Mix_FadeInMusic(newClosest->blip, -1, 1000);
-    }
-    if (entFadeFlag && musicFadeTimer > 200)
-    {
-      entFadeFlag = 0;
-      Mix_HaltMusic();
-      Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
-    }
-  }
-}
-B("Music update");
-
-// wakeup manager if it is sleeping
-if (adventureUIManager->sleepflag)
-{
-  adventureUIManager->continueDialogue();
-}
-
-
-//PUNISHMENT!
-punishValue += punishValueDegrade;
-punishValueDegrade = (punishValueDegrade*0.9 + basePunishValueDegrade*0.1);
-
-if(punishValue > 1) {
-  SDL_GL_SetSwapInterval(0);
-  if(rng(0,1) == 1) {
-    SDL_Delay(pow(rng(1,punishValue),2));
-  }
-} else {
-  SDL_GL_SetSwapInterval(1);
-}
-
-g_spin_entity->setOriginX(protag->getOriginX() + protag->xvel * ((double)elapsed/256.0));
-g_spin_entity->setOriginY(protag->getOriginY() + protag->yvel * ((double)elapsed/256.0));
-g_spin_entity->z = protag->z;
-
-
-if (freecamera)
-{
-  g_camera.update_movement(elapsed, camx, camy);
-}
-else
-{
-  float zoomoffsetx = ((float)WIN_WIDTH / 2) / g_zoom_mod;
-  float zoomoffsety = ((float)WIN_HEIGHT / 2) / g_zoom_mod;
-  // g_camera.zoom = 0.9;
-
-  if(g_hog == 0) {
-    g_camera.update_movement(elapsed, g_focus->getOriginX() - zoomoffsetx, ((g_focus->getOriginY() - XtoZ * g_focus->z) - zoomoffsety));
-  } else {
-    int avgX = g_focus->getOriginX() + g_hog->getOriginX(); avgX *= 0.5;
-    int avgY = g_focus->getOriginY() + g_hog->getOriginY(); avgY *= 0.5;
-    g_camera.update_movement(elapsed, avgX - zoomoffsetx, ((avgY - XtoZ * g_focus->z) - zoomoffsety));
-  }
-}
-
-
-// tiles
-for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-{
-  if (g_tiles[i]->z == 0)
-  {
-    g_tiles[i]->render(renderer, g_camera);
-  }
-}
-
-for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-{
-  if (g_tiles[i]->z == 1)
-  {
-    g_tiles[i]->render(renderer, g_camera);
-  }
-}
-
-//meshes
-for(auto &x : g_meshFloors) {
-  if(x->visible) {
-    SDL_Vertex v[x->numVertices];
-    for(int i = 0; i < x->numVertices; i++) {
-      v[i] = x->vertex[i];
-      v[i].position.x += x->origin.x - g_camera.x;
-      v[i].position.y += x->origin.y - g_camera.y;
-    }
-
-    SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-
-    //render shade
-    for(int i = 0; i < x->numVertices; i++) {
-      v[i].tex_coord.x = x->vertexExtraData[i].first;
-      v[i].tex_coord.y = x->vertexExtraData[i].second;
-    }
-    
-    SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-  
-  }
-}
-
-g_wsEdges.clear();
-g_osEdges.clear();
-{
-  updateEdges(g_wEdges, g_wsEdges);
-  updateEdges(g_oEdges, g_osEdges);
-}
-
-float px = protag->getOriginX() - g_camera.x;
-float py = protag->getOriginY() - g_camera.y;
-//float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
-
-
-//remove any entries on g_wEdges which are facing away from the player
-//(kinda like backface-culling)
-/*
-g_wsEdges.erase(
-        std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
-            float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ) ) / (edge.second.position.x - edge.first.position.x);
-            float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
-            return py < y_at_px;
-        }), 
-        g_wsEdges.end()
-    );
-*/
-
-g_wsEdges.erase(
-    std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
+  float px = protag->getOriginX() - g_camera.x;
+  float py = protag->getOriginY() - g_camera.y;
+  //float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
+
+
+  //remove any entries on g_wEdges which are facing away from the player
+  //(kinda like backface-culling)
+  /*
+     g_wsEdges.erase(
+     std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
+     float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ) ) / (edge.second.position.x - edge.first.position.x);
+     float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
+     return py < y_at_px;
+     }), 
+     g_wsEdges.end()
+     );
+     */
+
+  g_wsEdges.erase(
+      std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
         float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ)) /
-                  (edge.second.position.x - edge.first.position.x);
+        (edge.second.position.x - edge.first.position.x);
         float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
-        
+
         if (py < y_at_px) {
-            // Edge is below the player and will be removed
-            auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
-                return segmentsInSamePlace(edge, occluder);
+        // Edge is below the player and will be removed
+        auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
+            return segmentsInSamePlace(edge, occluder);
             });
-            
-            if (it != g_osEdges.end()) {
-                g_osEdges.erase(it); // Remove matching occluder edge
-            }
-            return true; // Remove this wall edge
+
+        if (it != g_osEdges.end()) {
+        g_osEdges.erase(it); // Remove matching occluder edge
+        }
+        return true; // Remove this wall edge
         }
         return false;
-    }),
-    g_wsEdges.end()
-);
+        }),
+      g_wsEdges.end()
+      );
 
 
 
-//use g_wsEdges and g_osEdges to render floor occlusion
-if(1){
+  //use g_wsEdges and g_osEdges to render floor occlusion
+  if(devMode == 0){
     std::vector<SDL_Vertex> vertices;
     const float EXTEND_DISTANCE = 2 * WIN_WIDTH;
 
@@ -2762,17 +2593,17 @@ if(1){
           edge.first.position.y -= edge.firstZ;
           edge.second.position.y -= edge.secondZ;
 
-          
+
           //push quad back to draw
           vertices.push_back(edge.first);
           vertices.push_back(edge.second);
           vertices.push_back(newA);
-          
+
           vertices.push_back(newB);
           vertices.push_back(edge.second);
           vertices.push_back(newA);
 
-          
+
           // Calculate the perpendicular direction
           float pdx = ny2 - ny;
           float pdy = nx - nx2;
@@ -2786,7 +2617,7 @@ if(1){
             pdx = -pdx;
             pdy = -pdy;
           }
-          
+
           SDL_Vertex newC = {{nx + pdx, ny + pdy}, {255,255,255,255}, {0,0}};
           SDL_Vertex newD = {{nx2 + pdx, ny2 + pdy}, {255,255,255,255}, {0,0}};
 
@@ -2796,7 +2627,7 @@ if(1){
           vertices.push_back(newA);
           vertices.push_back(newB);
           vertices.push_back(newC);
-          
+
           vertices.push_back(newD);
           vertices.push_back(newB);
           vertices.push_back(newC);
@@ -2805,482 +2636,581 @@ if(1){
     }
 
     SDL_RenderGeometry(renderer, blackbarTexture, vertices.data(), vertices.size(), nullptr, 0);
-}
+  }
 
-//sort g_wsEdges and g_osEdges
-sortEdges(g_wsEdges, px, py);
-sortEdges(g_osEdges, px, py);
+  //sort g_wsEdges and g_osEdges
+  sortEdges(g_wsEdges, px, py);
+  sortEdges(g_osEdges, px, py);
 
-//visual walls
-//most of these will be drawn later so :S
-if(1) {
-  for(auto &x : g_meshVWalls) {
-    if(x->visible) {
-      SDL_Vertex v[x->numVertices];
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i] = x->vertex[i];
-        v[i].position.x += x->origin.x - g_camera.x;
-        v[i].position.y += x->origin.y - g_camera.y;
-        v[i].color.r = v[i].color.g;
+  //visual walls
+  //most of these will be drawn later so :S
+  if(1) {
+    for(auto &x : g_meshVWalls) {
+      if(x->visible) {
+        SDL_Vertex v[x->numVertices];
+        for(int i = 0; i < x->numVertices; i++) {
+          v[i] = x->vertex[i];
+          v[i].position.x += x->origin.x - g_camera.x;
+          v[i].position.y += x->origin.y - g_camera.y;
+          v[i].color.r = v[i].color.g;
+        }
+
+        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+        //render shade
+        for(int i = 0; i < x->numVertices; i++) {
+          v[i].tex_coord.x = x->vertexExtraData[i].first;
+          v[i].tex_coord.y = x->vertexExtraData[i].second;
+        }
+
+        SDL_RenderGeometry(renderer, g_wallShadeTexture, v, x->numVertices, x->indices, x->numIndices);
       }
-    
-      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-  
-      //render shade
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i].tex_coord.x = x->vertexExtraData[i].first;
-        v[i].tex_coord.y = x->vertexExtraData[i].second;
-      }
-      
-      SDL_RenderGeometry(renderer, g_wallShadeTexture, v, x->numVertices, x->indices, x->numIndices);
     }
   }
-}
 
-/*
-g_osEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
-That segment represents an occluder, which casts a shadow. g_wsEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
-That segment represents an wall, which catches a shadow. Let's walk through drawing a shadow. 
-Say we have a pair from g_osEdges, and we call that pair Opair. Let's call the two vertices of Opair A and B. 
-We will find point A2 from point A and point B2 from B. 
-We'll do this by using std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) to find an intersection on the segment from A to a point WIN_WIDTH away in the direction of the vector from (px,py) to point A. 
-Do the same to find B2. These are intersections with any element of g_wsEdges There might not be an intersection, and in that case, put A2 and B2 at the end of the raycast, WIN_WIDTH away from A and B, respectively. 
-If both lines intersect a wall segment, prepare to draw the quad A B A2 B2 (B2 or A2 maybe be at the end of the raycast, offscreen in that case). 
-If A's raycast intersected a wall, AND A2's y coordinate is lower than py we need to find the point A3 which is at y=0 and A2's x. 
-That's also true for B's raycast and a point B3. If we found A3 and B3, draw a quad A2 B2 A3 B3. If not, draw the traingle A2 B2 A3 or A2 B2 B3. Good?
-*/
+  /*
+     g_osEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
+     That segment represents an occluder, which casts a shadow. g_wsEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
+     That segment represents an wall, which catches a shadow. Let's walk through drawing a shadow. 
+     Say we have a pair from g_osEdges, and we call that pair Opair. Let's call the two vertices of Opair A and B. 
+     We will find point A2 from point A and point B2 from B. 
+     We'll do this by using std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) to find an intersection on the segment from A to a point WIN_WIDTH away in the direction of the vector from (px,py) to point A. 
+     Do the same to find B2. These are intersections with any element of g_wsEdges There might not be an intersection, and in that case, put A2 and B2 at the end of the raycast, WIN_WIDTH away from A and B, respectively. 
+     If both lines intersect a wall segment, prepare to draw the quad A B A2 B2 (B2 or A2 maybe be at the end of the raycast, offscreen in that case). 
+     If A's raycast intersected a wall, AND A2's y coordinate is lower than py we need to find the point A3 which is at y=0 and A2's x. 
+     That's also true for B's raycast and a point B3. If we found A3 and B3, draw a quad A2 B2 A3 B3. If not, draw the traingle A2 B2 A3 or A2 B2 B3. Good?
+     */
 
-//for(auto&x : g_osEdges) {
-//  x.group = 1;
-//}
-//
-//for(auto &x : g_wsEdges) {
-//  x.group = 1;
-//}
+  //for(auto&x : g_osEdges) {
+  //  x.group = 1;
+  //}
+  //
+  //for(auto &x : g_wsEdges) {
+  //  x.group = 1;
+  //}
 
-processEdges(g_osEdges, g_wsEdges, px, py);
+  processEdges(g_osEdges, g_wsEdges, px, py);
 
-//render occluding on visual walls
-if (1){
-  int cGroup = 0;
-  int maxGroups = 20;
+  //render occluding on visual walls
+  if (devMode == 0){
+    int cGroup = 0;
+    int maxGroups = 20;
 
-  map<int, vector<edgeInfo>> oGroups;
+    map<int, vector<edgeInfo>> oGroups;
 
-  //for some reason making oGroups and wGroups breaks ftlo ;_;
-  for(const auto& edge : g_osEdges) {
-    oGroups[edge.group].push_back(edge);
-  }
+    //for some reason making oGroups and wGroups breaks ftlo ;_;
+    for(const auto& edge : g_osEdges) {
+      oGroups[edge.group].push_back(edge);
+    }
 
-  map<int, vector<edgeInfo>> wGroups;
+    map<int, vector<edgeInfo>> wGroups;
 
-  for(const auto& edge : g_wsEdges) {
-    wGroups[edge.group].push_back(edge);
-  }
+    for(const auto& edge : g_wsEdges) {
+      wGroups[edge.group].push_back(edge);
+    }
 
 
-  for(int cGroup = 0; cGroup < maxGroups; cGroup++) {
-  
-    for (auto edge : oGroups[cGroup]) {
-      std::vector<SDL_Vertex> vertices;
-      SDL_Vertex A = edge.first;
-      SDL_Vertex B = edge.second;
-  
-      float dx = A.position.x - px;
-      float dy = A.position.y - py;
-      float len = sqrt(dx * dx + dy * dy);
-      A.position.y -= edge.firstZ;
-      B.position.y -= edge.secondZ;
+    for(int cGroup = 0; cGroup < maxGroups; cGroup++) {
 
-      float Ax2 = A.position.x + dx / len * WIN_WIDTH;
-      float Ay2 = A.position.y + dy / len * WIN_WIDTH;
-  
-      std::tuple<bool, float, float> AIntersect = std::make_tuple(false, Ax2, Ay2);
-      
-      for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
-        for (const auto& wall : wGroups[wGroup]) {
-          if(wGroup == cGroup) {continue;} //don't use walls with that same group
-                                           //of occluders
-          auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
-          if (intersects && iy < A.position.y) {
-            AIntersect = std::make_tuple(true, ix, iy);
-            break;
+      for (auto edge : oGroups[cGroup]) {
+        std::vector<SDL_Vertex> vertices;
+        SDL_Vertex A = edge.first;
+        SDL_Vertex B = edge.second;
+
+        float dx = A.position.x - px;
+        float dy = A.position.y - py;
+        float len = sqrt(dx * dx + dy * dy);
+        A.position.y -= edge.firstZ;
+        B.position.y -= edge.secondZ;
+
+        float Ax2 = A.position.x + dx / len * WIN_WIDTH;
+        float Ay2 = A.position.y + dy / len * WIN_WIDTH;
+
+        std::tuple<bool, float, float> AIntersect = std::make_tuple(false, Ax2, Ay2);
+
+        for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+          for (const auto& wall : wGroups[wGroup]) {
+            if(wGroup == cGroup) {continue;} //don't use walls with that same group
+                                             //of occluders
+            auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+            if (intersects && iy < A.position.y) {
+              AIntersect = std::make_tuple(true, ix, iy);
+              break;
+            }
           }
         }
-      }
-  
-      // Repeat for B
-      dx = B.position.x - px;
-      dy = B.position.y - py;
-      len = sqrt(dx * dx + dy * dy);
-  
-      float Bx2 = B.position.x + dx / len * WIN_WIDTH;
-      float By2 = B.position.y + dy / len * WIN_WIDTH;
 
-      std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
-      for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
-        for (const auto& wall : wGroups[wGroup]) {
-          if(wGroup == cGroup) {continue;}
-          auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
-          if (intersects && iy < B.position.y) {
-            BIntersect = std::make_tuple(true, ix, iy);
-            break;
+        // Repeat for B
+        dx = B.position.x - px;
+        dy = B.position.y - py;
+        len = sqrt(dx * dx + dy * dy);
+
+        float Bx2 = B.position.x + dx / len * WIN_WIDTH;
+        float By2 = B.position.y + dy / len * WIN_WIDTH;
+
+        std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
+        for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+          for (const auto& wall : wGroups[wGroup]) {
+            if(wGroup == cGroup) {continue;}
+            auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+            if (intersects && iy < B.position.y) {
+              BIntersect = std::make_tuple(true, ix, iy);
+              break;
+            }
           }
         }
-      }
-  
-      auto [AIntersects, Ax3, Ay3] = AIntersect;
-      auto [BIntersects, Bx3, By3] = BIntersect;
-  
-      SDL_Vertex A2 = {{Ax3, Ay3}, {0, 0, 0, 255}, {0, 0}};
-      SDL_Vertex B2 = {{Bx3, By3}, {0, 0, 0, 255}, {0, 0}};
-  
-      // Handle case where there's no intersection
-      if (!AIntersects) {
-        A2 = {{Ax2, Ay2}, {0, 0, 0, 255}, {0, 0}};
-      }
-      if (!BIntersects) {
-        B2 = {{Bx2, By2}, {0, 0, 0, 255}, {0, 0}};
-      }
-  
-  
-      // Create A3
-      SDL_Vertex A3;
-      if (AIntersects && Ay3 < py) {
-        A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
-      } else {
-        float p_dx = B2.position.y - A2.position.y;
-        float p_dy = A2.position.x - B2.position.x;
-        len = sqrt(p_dx * p_dx + p_dy * p_dy);
-        p_dx = p_dx / len * WIN_WIDTH;
-        p_dy = p_dy / len * WIN_WIDTH;
-  
-        float side = (px - A2.position.x) * (B2.position.y - A2.position.y) - (py - A2.position.y) * (B2.position.x - A2.position.x);
-        if (side > 0) { //does this need to be flipped?
-          p_dx = -p_dx;
-          p_dy = -p_dy;
-        }
-  
-        A3 = {{A2.position.x + p_dx, A2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
-      }
-  
-      // Create B3
-      SDL_Vertex B3;
-      if (BIntersects && By3 < py) {
-        B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
-      } else {
-        float p_dx = B2.position.y - A2.position.y;
-        float p_dy = A2.position.x - B2.position.x;
-        len = sqrt(p_dx * p_dx + p_dy * p_dy);
-        p_dx = p_dx / len * WIN_WIDTH;
-        p_dy = p_dy / len * WIN_WIDTH;
-  
-        float side = (px - B2.position.x) * (A2.position.y - B2.position.y) - (py - B2.position.y) * (A2.position.x - B2.position.x);
-        if (side < 0) {
-          p_dx = -p_dx;
-          p_dy = -p_dy;
-        }
-  
-        B3 = {{B2.position.x + p_dx, B2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
-      }
-  
-  
-      vertices.push_back(A);
-      vertices.push_back(B);
-      vertices.push_back(A2);
-      vertices.push_back(A2);
-      vertices.push_back(B);
-      vertices.push_back(B2);
 
-  
-      //these are temporarily commented out
-      vertices.push_back(B2);
-      vertices.push_back(B3);
-      vertices.push_back(A2);
-      vertices.push_back(A2);
-      vertices.push_back(B3);
-      vertices.push_back(A3);
-      SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
-        
+        auto [AIntersects, Ax3, Ay3] = AIntersect;
+        auto [BIntersects, Bx3, By3] = BIntersect;
+
+        SDL_Vertex A2 = {{Ax3, Ay3}, {0, 0, 0, 255}, {0, 0}};
+        SDL_Vertex B2 = {{Bx3, By3}, {0, 0, 0, 255}, {0, 0}};
+
+        // Handle case where there's no intersection
+        if (!AIntersects) {
+          A2 = {{Ax2, Ay2}, {0, 0, 0, 255}, {0, 0}};
+        }
+        if (!BIntersects) {
+          B2 = {{Bx2, By2}, {0, 0, 0, 255}, {0, 0}};
+        }
+
+
+        // Create A3
+        SDL_Vertex A3;
+        if (AIntersects && Ay3 < py) {
+          A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
+        } else {
+          float p_dx = B2.position.y - A2.position.y;
+          float p_dy = A2.position.x - B2.position.x;
+          len = sqrt(p_dx * p_dx + p_dy * p_dy);
+          p_dx = p_dx / len * WIN_WIDTH;
+          p_dy = p_dy / len * WIN_WIDTH;
+
+          float side = (px - A2.position.x) * (B2.position.y - A2.position.y) - (py - A2.position.y) * (B2.position.x - A2.position.x);
+          if (side > 0) { //does this need to be flipped?
+            p_dx = -p_dx;
+            p_dy = -p_dy;
+          }
+
+          A3 = {{A2.position.x + p_dx, A2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+        }
+
+        // Create B3
+        SDL_Vertex B3;
+        if (BIntersects && By3 < py) {
+          B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
+        } else {
+          float p_dx = B2.position.y - A2.position.y;
+          float p_dy = A2.position.x - B2.position.x;
+          len = sqrt(p_dx * p_dx + p_dy * p_dy);
+          p_dx = p_dx / len * WIN_WIDTH;
+          p_dy = p_dy / len * WIN_WIDTH;
+
+          float side = (px - B2.position.x) * (A2.position.y - B2.position.y) - (py - B2.position.y) * (A2.position.x - B2.position.x);
+          if (side < 0) {
+            p_dx = -p_dx;
+            p_dy = -p_dy;
+          }
+
+          B3 = {{B2.position.x + p_dx, B2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+        }
+
+
+        vertices.push_back(A);
+        vertices.push_back(B);
+        vertices.push_back(A2);
+        vertices.push_back(A2);
+        vertices.push_back(B);
+        vertices.push_back(B2);
+
+
+        //these are temporarily commented out
+        vertices.push_back(B2);
+        vertices.push_back(B3);
+        vertices.push_back(A2);
+        vertices.push_back(A2);
+        vertices.push_back(B3);
+        vertices.push_back(A3);
+        SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+
+      }
+
+      for (auto edge : oGroups[cGroup]) {
+        if(edge.wallMesh != nullptr) {
+          SDL_Vertex v[4];
+          int index = 0;
+          for(auto x : edge.indices) {
+            v[index] = edge.wallMesh->vertex[x];
+            v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
+            v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
+            v[index].color.r = v[index].color.g;
+            index++;
+          }
+
+          vector<int> indices = {0, 1, 2, 0, 2, 3};
+
+          SDL_RenderGeometry(renderer, edge.wallMesh->texture, v, 4, indices.data(), 6);
+
+          index = 0;
+          for(auto x : edge.indices) {
+            v[index].tex_coord.x = edge.wallMesh->vertexExtraData[x].first;
+            v[index].tex_coord.y = edge.wallMesh->vertexExtraData[x].second;
+            v[index].color.r = 255;
+            v[index].color.g = 255;
+            v[index].color.b = 255;
+            index++;
+          }
+
+          SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
+        }
+      }
     }
 
-    for (auto edge : oGroups[cGroup]) {
-      if(edge.wallMesh != nullptr) {
-        SDL_Vertex v[4];
-        int index = 0;
-        for(auto x : edge.indices) {
-          v[index] = edge.wallMesh->vertex[x];
-          v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
-          v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
-          v[index].color.r = v[index].color.g;
-          index++;
+    //SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+  }
+
+
+  ////debugging
+  //if(0){
+  //SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+  //D(g_wsEdges.size());
+  //for(auto x : g_wsEdges) {
+  //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y-8, x.second.position.x, x.second.position.y - 8);
+  //}
+  //
+  //SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+  //for(auto x : g_osEdges) {
+  //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y, x.second.position.x, x.second.position.y);
+  //}
+  //}
+
+  if(drawhitboxes) {
+    for(auto &x : g_meshCollisions) {
+      if(x->visible) {
+        SDL_Vertex v[x->numVertices];
+        for(int i = 0; i < x->numVertices; i++) {
+          v[i] = x->vertex[i];
+          v[i].position.x += x->origin.x - g_camera.x;
+          v[i].position.y += x->origin.y - g_camera.y;
         }
 
-        vector<int> indices = {0, 1, 2, 0, 2, 3};
+        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
 
-        SDL_RenderGeometry(renderer, edge.wallMesh->texture, v, 4, indices.data(), 6);
-
-        index = 0;
-        for(auto x : edge.indices) {
-          v[index].tex_coord.x = edge.wallMesh->vertexExtraData[x].first;
-          v[index].tex_coord.y = edge.wallMesh->vertexExtraData[x].second;
-          v[index].color.r = 255;
-          v[index].color.g = 255;
-          v[index].color.b = 255;
-          index++;
-        }
-
-        SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
       }
     }
   }
 
-  //SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
-}
-
-
-////debugging
-//if(0){
-//SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-//D(g_wsEdges.size());
-//for(auto x : g_wsEdges) {
-//  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y-8, x.second.position.x, x.second.position.y - 8);
-//}
-//
-//SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-//for(auto x : g_osEdges) {
-//  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y, x.second.position.x, x.second.position.y);
-//}
-//}
-
-if(drawhitboxes) {
-  for(auto &x : g_meshCollisions) {
-    if(x->visible) {
-      SDL_Vertex v[x->numVertices];
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i] = x->vertex[i];
-        v[i].position.x += x->origin.x - g_camera.x;
-        v[i].position.y += x->origin.y - g_camera.y;
-      }
-    
-      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
-  
-      }
+  // sort
+  sort_by_y(g_actors);
+  for (long long unsigned int i = 0; i < g_actors.size(); i++)
+  {
+    g_actors[i]->render(renderer, g_camera);
   }
-}
 
-// sort
-sort_by_y(g_actors);
-for (long long unsigned int i = 0; i < g_actors.size(); i++)
-{
-  g_actors[i]->render(renderer, g_camera);
-}
+  //render black bars
+  if(!devMode && g_spotlightEnabled) {
+    //occluders
 
-//render black bars
-if(!devMode) {
-//occluders
+    SDL_Rect blackrect;
 
-  SDL_Rect blackrect;
-
-  blackrect = {
-    g_camera.desiredX - g_camera.width,
-    g_camera.desiredY - g_camera.height,
-    g_camera.width,
-    g_camera.height*3
-  };
+    blackrect = {
+      g_camera.desiredX - g_camera.width,
+      g_camera.desiredY - g_camera.height,
+      g_camera.width,
+      g_camera.height*3
+    };
 
 
-  blackrect = transformRect(blackrect);
+    blackrect = transformRect(blackrect);
 
-  SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
 
-  blackrect = {
-    g_camera.desiredX + g_camera.width,
-    g_camera.desiredY - g_camera.height,
-    g_camera.width,
-    g_camera.height*3
-  };
-
-
-  blackrect = transformRect(blackrect);
-
-  SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-  blackrect = {
-    g_camera.desiredX,
-    g_camera.desiredY - g_camera.height,
-    g_camera.width,
-    g_camera.height
-  };
-
-  blackrect = transformRect(blackrect);
-
-  SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-  blackrect = {
-    g_camera.desiredX,
-    g_camera.desiredY + g_camera.height,
-    g_camera.width,
-    g_camera.height
-  };
-
-  blackrect = transformRect(blackrect);
-
-  SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-  blackrect = {
-    g_camera.desiredX,
-    g_camera.desiredY,
-    g_camera.width,
-    g_camera.height
-  };
-
-  blackrect = transformRect(blackrect);
-  SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
-
-}
+    blackrect = {
+      g_camera.desiredX + g_camera.width,
+      g_camera.desiredY - g_camera.height,
+      g_camera.width,
+      g_camera.height*3
+    };
 
 
-//shade
-SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+    blackrect = transformRect(blackrect);
 
-drawUI();
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
 
-//render fancybox
-g_fancybox->render();
-g_fancybox->update(elapsed);
+    blackrect = {
+      g_camera.desiredX,
+      g_camera.desiredY - g_camera.height,
+      g_camera.width,
+      g_camera.height
+    };
+
+    blackrect = transformRect(blackrect);
+
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+    blackrect = {
+      g_camera.desiredX,
+      g_camera.desiredY + g_camera.height,
+      g_camera.width,
+      g_camera.height
+    };
+
+    blackrect = transformRect(blackrect);
+
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+    blackrect = {
+      g_camera.desiredX,
+      g_camera.desiredY,
+      g_camera.width,
+      g_camera.height
+    };
+
+    blackrect = transformRect(blackrect);
+      SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+
+  }
 
 
-// settings menu
-if (g_inSettingsMenu) 
-{
-  //move reticle to the correct position
-  if(!g_settingsUI->cursorIsOnBackButton) {
-    g_settingsUI->handMarker->targety
-      = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
-      + (g_settingsUI->handOffset);
+  //shade
+  SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
-    g_settingsUI->handMarker->targetx
-      = g_settingsUI->markerHandX;
+  drawUI();
 
-    g_settingsUI->fingerMarker->targety
-      = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
-      + (g_settingsUI->fingerOffset);
-
-    g_settingsUI->fingerMarker->targetx
-      = g_settingsUI->markerFingerX;
+  //render fancybox
+  g_fancybox->render();
+  g_fancybox->update(elapsed);
 
 
-  } else {
+  // settings menu
+  if (g_inSettingsMenu) 
+  {
+    //move reticle to the correct position
+    if(!g_settingsUI->cursorIsOnBackButton) {
+      g_settingsUI->handMarker->targety
+        = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
+        + (g_settingsUI->handOffset);
+
+      g_settingsUI->handMarker->targetx
+        = g_settingsUI->markerHandX;
+
+      g_settingsUI->fingerMarker->targety
+        = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
+        + (g_settingsUI->fingerOffset);
+
+      g_settingsUI->fingerMarker->targetx
+        = g_settingsUI->markerFingerX;
+
+
+    } else {
+      float ww = WIN_WIDTH;
+      float wh = WIN_HEIGHT;
+
+      g_settingsUI->fingerMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+      g_settingsUI->fingerMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
+
+      g_settingsUI->handMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+      g_settingsUI->handMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
+    }
+
+    if(g_firstFrameOfSettingsMenu) {
+      g_firstFrameOfSettingsMenu = 0;
+      g_settingsUI->handMarker->x = g_settingsUI->handMarker->targetx;
+      g_settingsUI->handMarker->y = g_settingsUI->handMarker->targety;
+      g_settingsUI->fingerMarker->x = g_settingsUI->fingerMarker->targetx;
+      g_settingsUI->fingerMarker->y = g_settingsUI->fingerMarker->targety;
+
+    }
+
+  }
+
+  //this is the menu for quitting or going back to the "overworld"
+  if (g_inEscapeMenu) 
+  {
+    elapsed = 0;
+    //move reticle to the correct position
+    g_escapeUI->handMarker->targety
+      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+      + (g_escapeUI->handOffset);
+
+    g_escapeUI->handMarker->targetx
+      = g_escapeUI->markerHandX;
+
+    g_escapeUI->fingerMarker->targety
+      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+      + (g_escapeUI->fingerOffset);
+
     float ww = WIN_WIDTH;
-    float wh = WIN_HEIGHT;
-
-    g_settingsUI->fingerMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
-    g_settingsUI->fingerMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
-
-    g_settingsUI->handMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
-    g_settingsUI->handMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
-  }
-
-  if(g_firstFrameOfSettingsMenu) {
-    g_firstFrameOfSettingsMenu = 0;
-    g_settingsUI->handMarker->x = g_settingsUI->handMarker->targetx;
-    g_settingsUI->handMarker->y = g_settingsUI->handMarker->targety;
-    g_settingsUI->fingerMarker->x = g_settingsUI->fingerMarker->targetx;
-    g_settingsUI->fingerMarker->y = g_settingsUI->fingerMarker->targety;
-
-  }
-
-}
-
-//this is the menu for quitting or going back to the "overworld"
-if (g_inEscapeMenu) 
-{
-  elapsed = 0;
-  //move reticle to the correct position
-  g_escapeUI->handMarker->targety
-    = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
-    + (g_escapeUI->handOffset);
-
-  g_escapeUI->handMarker->targetx
-    = g_escapeUI->markerHandX;
-
-  g_escapeUI->fingerMarker->targety
-    = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
-    + (g_escapeUI->fingerOffset);
-
-  float ww = WIN_WIDTH;
-  float fwidth = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->width;
-  g_escapeUI->fingerMarker->targetx
-    = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxX + 
-    fwidth / ww / 2;
+    float fwidth = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->width;
+    g_escapeUI->fingerMarker->targetx
+      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxX + 
+      fwidth / ww / 2;
 
 
 
-  if(g_firstFrameOfSettingsMenu) {
-    g_firstFrameOfSettingsMenu = 0;
-    g_escapeUI->handMarker->x = g_escapeUI->handMarker->targetx;
-    g_escapeUI->handMarker->y = g_escapeUI->handMarker->targety;
-    g_escapeUI->fingerMarker->x = g_escapeUI->fingerMarker->targetx;
-    g_escapeUI->fingerMarker->y = g_escapeUI->fingerMarker->targety;
+    if(g_firstFrameOfSettingsMenu) {
+      g_firstFrameOfSettingsMenu = 0;
+      g_escapeUI->handMarker->x = g_escapeUI->handMarker->targetx;
+      g_escapeUI->handMarker->y = g_escapeUI->handMarker->targety;
+      g_escapeUI->fingerMarker->x = g_escapeUI->fingerMarker->targetx;
+      g_escapeUI->fingerMarker->y = g_escapeUI->fingerMarker->targety;
+
+    }
 
   }
 
-}
+  // draw pause screen
+  if (inPauseMenu)
+  {
+    adventureUIManager->crosshair->x = 5;
 
-// draw pause screen
-if (inPauseMenu)
-{
-  adventureUIManager->crosshair->x = 5;
+    // iterate thru inventory and draw items on screen
+    float defaultX = WIN_WIDTH * 0.05;
+    float defaultY = WIN_HEIGHT * adventureUIManager->inventoryYStart;
+    float x = defaultX;
+    float y = defaultY;
+    float maxX = WIN_WIDTH * 0.9;
+    float maxY = WIN_HEIGHT * adventureUIManager->inventoryYEnd;
+    float itemWidth = WIN_WIDTH * 0.07;
+    float padding = WIN_WIDTH * 0.01;
 
-  // iterate thru inventory and draw items on screen
-  float defaultX = WIN_WIDTH * 0.05;
-  float defaultY = WIN_HEIGHT * adventureUIManager->inventoryYStart;
-  float x = defaultX;
-  float y = defaultY;
-  float maxX = WIN_WIDTH * 0.9;
-  float maxY = WIN_HEIGHT * adventureUIManager->inventoryYEnd;
-  float itemWidth = WIN_WIDTH * 0.07;
-  float padding = WIN_WIDTH * 0.01;
+    int i = 0;
 
-  int i = 0;
-
-  if (g_inventoryUiIsLevelSelect == 0) {
-    if(g_inventoryUiIsKeyboard == 1) {
-      //draw a letter in each box and append to a string
+    if (g_inventoryUiIsLevelSelect == 0) {
+      if(g_inventoryUiIsKeyboard == 1) {
+        //draw a letter in each box and append to a string
 
 
-      for(int j = 0; j < g_alphabet.size(); j++) {
+        for(int j = 0; j < g_alphabet.size(); j++) {
+          if( i < itemsPerRow * inventoryScroll) {
+            i++;
+            continue;
+          }
+
+          SDL_Rect drect;
+          if(g_alphabet == g_alphabet_lower) {
+            drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230) , (int)y, (int)itemWidth * (g_alphabet_widths[i] / 60), (int)itemWidth}; 
+          } else {
+            drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230), (int)y, (int)itemWidth * (g_alphabet_upper_widths[i] / 60), (int)itemWidth}; 
+          }
+
+          // draw the ith letter of "alphabet" in drect
+          if(1) {
+            SDL_Rect shadowRect = drect;
+            float booshAmount = g_textDropShadowDist  * (60 * g_fontsize);
+            shadowRect.x += booshAmount;
+            shadowRect.y += booshAmount;
+            SDL_SetTextureColorMod(g_alphabet_textures->at(i), g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+            SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &shadowRect);
+            SDL_SetTextureColorMod(g_alphabet_textures->at(i), 255,255,255);
+          }
+          SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
+
+
+          if (i == inventorySelection || g_firstFrameOfPauseMenu)
+          {
+            // this item should have the marker
+            inventoryMarker->show = 1;
+            float biggen = 0; // !!! resolutions : might have problems with diff resolutions
+
+            if(g_firstFrameOfPauseMenu) {
+              inventoryMarker->x = x / WIN_WIDTH;
+              inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->x -= biggen;
+              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              //now that it's a hand
+              inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->targetx = inventoryMarker->x;
+              inventoryMarker->targety = inventoryMarker->y;
+              g_firstFrameOfPauseMenu = 0;
+            } else {
+              inventoryMarker->targetx = x / WIN_WIDTH;
+              inventoryMarker->targety = y / WIN_HEIGHT;
+              inventoryMarker->targetx -= biggen;
+              inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              //now that it's a hand
+              inventoryMarker->targetx += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+
+            inventoryMarker->width = itemWidth / WIN_WIDTH;
+
+            inventoryMarker->width += biggen * 2;
+            //inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+          }
+
+          x += itemWidth + padding;
+          if (x > maxX)
+          {
+            x = defaultX;
+            y += itemWidth + padding;
+            if (y > maxY)
+            {
+              // we filled up the entire inventory, so lets leave
+              break;
+            }
+          }
+          i++;
+
+        }
+
+        //draw current input in the bottom box
+        adventureUIManager->inputText->updateText(g_keyboardInput.c_str(), -1, 0.9);
+        adventureUIManager->escText->updateText(adventureUIManager->keyboardPrompt, -1, 0.9);
+
+
+        g_itemsInInventory = g_alphabet.size();
+
+
+      }
+    } else {
+      //populate the UI based on the loaded level sequence.
+      for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
         if( i < itemsPerRow * inventoryScroll) {
           i++;
           continue;
         }
+        SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+        int boosh = 5;
+        drect.w += boosh * 2;
+        drect.h += boosh * 2;
+        drect.x -= boosh;
+        drect.y -= boosh;
 
-        SDL_Rect drect;
-        if(g_alphabet == g_alphabet_lower) {
-          drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230) , (int)y, (int)itemWidth * (g_alphabet_widths[i] / 60), (int)itemWidth}; 
+        levelNode* tn = g_levelSequence->levelNodes[j];
+
+        //should we draw the locked graphic?
+        if(tn->locked) {
+
+          SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+
+          //render the face
+          SDL_RenderCopy(renderer, tn->mouthTexture, NULL, &drect);
+
+          SDL_Rect srect = tn->getEyeRect();
+          SDL_RenderCopy(renderer, tn->eyeTexture, &srect, &drect);
+          g_levelSequence->levelNodes[j]->blinkCooldownMS -= 16;
+          if(tn->blinkCooldownMS < 0) { tn->blinkCooldownMS = rng(tn->minBlinkCooldownMS, tn->maxBlinkCooldownMS); }
         } else {
-          drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230), (int)y, (int)itemWidth * (g_alphabet_upper_widths[i] / 60), (int)itemWidth}; 
+          SDL_RenderCopy(renderer, tn->sprite, NULL, &drect);
         }
 
-        // draw the ith letter of "alphabet" in drect
-        if(1) {
-          SDL_Rect shadowRect = drect;
-          float booshAmount = g_textDropShadowDist  * (60 * g_fontsize);
-          shadowRect.x += booshAmount;
-          shadowRect.y += booshAmount;
-          SDL_SetTextureColorMod(g_alphabet_textures->at(i), g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
-          SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &shadowRect);
-          SDL_SetTextureColorMod(g_alphabet_textures->at(i), 255,255,255);
-        }
-        SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
 
-
-        if (i == inventorySelection || g_firstFrameOfPauseMenu)
+        if (i == inventorySelection)
         {
+
+          if(g_levelSequence->levelNodes[i]->locked) {
+            adventureUIManager->escText->updateText("Locked", -1, 0.9);
+          } else {
+            string dispText = g_levelSequence->levelNodes[i]->name;
+            std::replace(dispText.begin(), dispText.end(),'_',' ');
+            adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
+          }
+
           // this item should have the marker
           inventoryMarker->show = 1;
-          float biggen = 0; // !!! resolutions : might have problems with diff resolutions
+          float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
 
           if(g_firstFrameOfPauseMenu) {
             inventoryMarker->x = x / WIN_WIDTH;
@@ -3288,7 +3218,7 @@ if (inPauseMenu)
             inventoryMarker->x -= biggen;
             inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             //now that it's a hand
-            inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             inventoryMarker->targetx = inventoryMarker->x;
             inventoryMarker->targety = inventoryMarker->y;
@@ -3299,14 +3229,14 @@ if (inPauseMenu)
             inventoryMarker->targetx -= biggen;
             inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             //now that it's a hand
-            inventoryMarker->targetx += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            inventoryMarker->targetx += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
             inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
           }
 
           inventoryMarker->width = itemWidth / WIN_WIDTH;
 
           inventoryMarker->width += biggen * 2;
-          //inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+          inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
         }
 
         x += itemWidth + padding;
@@ -3323,222 +3253,72 @@ if (inPauseMenu)
         i++;
 
       }
-
-      //draw current input in the bottom box
-      adventureUIManager->inputText->updateText(g_keyboardInput.c_str(), -1, 0.9);
-      adventureUIManager->escText->updateText(adventureUIManager->keyboardPrompt, -1, 0.9);
-
-
-      g_itemsInInventory = g_alphabet.size();
-
+      g_itemsInInventory = g_levelSequence->levelNodes.size();
 
     }
-  } else {
-    //populate the UI based on the loaded level sequence.
-    for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
-      if( i < itemsPerRow * inventoryScroll) {
-        i++;
-        continue;
-      }
-      SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
-      int boosh = 5;
-      drect.w += boosh * 2;
-      drect.h += boosh * 2;
-      drect.x -= boosh;
-      drect.y -= boosh;
 
-      levelNode* tn = g_levelSequence->levelNodes[j];
+    //re-render inventory reticle so it goes on top of the items/level icons
+    inventoryMarker->render(renderer, g_camera, 0);
+    inventoryMarker->show = 0;
 
-      //should we draw the locked graphic?
-      if(tn->locked) {
+  }
+  else
+  {
+    inventoryMarker->show = 0;
+    inventoryText->show = 0;
+  }
 
-        SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+  // map editing
+  if (devMode)
+  {
+    nodeInfoText->textcolor = {0, 0, 0};
+    nodeInfoText->show = 1;
 
-        //render the face
-        SDL_RenderCopy(renderer, tn->mouthTexture, NULL, &drect);
+    for(int i = 0; i < g_chunks.size(); i++) {
+      SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 
-        SDL_Rect srect = tn->getEyeRect();
-        SDL_RenderCopy(renderer, tn->eyeTexture, &srect, &drect);
-        g_levelSequence->levelNodes[j]->blinkCooldownMS -= 16;
-        if(tn->blinkCooldownMS < 0) { tn->blinkCooldownMS = rng(tn->minBlinkCooldownMS, tn->maxBlinkCooldownMS); }
-      } else {
-        SDL_RenderCopy(renderer, tn->sprite, NULL, &drect);
-      }
-
-
-      if (i == inventorySelection)
-      {
-
-        if(g_levelSequence->levelNodes[i]->locked) {
-          adventureUIManager->escText->updateText("Locked", -1, 0.9);
-        } else {
-          string dispText = g_levelSequence->levelNodes[i]->name;
-          std::replace(dispText.begin(), dispText.end(),'_',' ');
-          adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
-        }
-
-        // this item should have the marker
-        inventoryMarker->show = 1;
-        float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-
-        if(g_firstFrameOfPauseMenu) {
-          inventoryMarker->x = x / WIN_WIDTH;
-          inventoryMarker->y = y / WIN_HEIGHT;
-          inventoryMarker->x -= biggen;
-          inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          //now that it's a hand
-          inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          inventoryMarker->targetx = inventoryMarker->x;
-          inventoryMarker->targety = inventoryMarker->y;
-          g_firstFrameOfPauseMenu = 0;
-        } else {
-          inventoryMarker->targetx = x / WIN_WIDTH;
-          inventoryMarker->targety = y / WIN_HEIGHT;
-          inventoryMarker->targetx -= biggen;
-          inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          //now that it's a hand
-          inventoryMarker->targetx += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-        }
-
-        inventoryMarker->width = itemWidth / WIN_WIDTH;
-
-        inventoryMarker->width += biggen * 2;
-        inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-      }
-
-      x += itemWidth + padding;
-      if (x > maxX)
-      {
-        x = defaultX;
-        y += itemWidth + padding;
-        if (y > maxY)
-        {
-          // we filled up the entire inventory, so lets leave
-          break;
-        }
-      }
-      i++;
-
+      SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
     }
-    g_itemsInInventory = g_levelSequence->levelNodes.size();
 
-  }
-
-  //re-render inventory reticle so it goes on top of the items/level icons
-  inventoryMarker->render(renderer, g_camera, 0);
-  inventoryMarker->show = 0;
-
-}
-else
-{
-  inventoryMarker->show = 0;
-  inventoryText->show = 0;
-}
-
-// map editing
-if (devMode)
-{
-  nodeInfoText->textcolor = {0, 0, 0};
-  nodeInfoText->show = 1;
-
-  // draw nodes
-  for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
-  {
-    SDL_Rect obj = {(int)((g_worldsounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-    SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
-
-    SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-    //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-    //        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-    //
-    //        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-    //
-    //        SDL_FreeSurface(textsurface);
-    //        SDL_DestroyTexture(texttexture);
-
-    nodeInfoText->x = obj.x;
-    nodeInfoText->y = obj.y - 20;
-    nodeInfoText->updateText(g_worldsounds[i]->name, -1, 15);
-    nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-  }
-
-
-  //draw precede node(s)
-  if(precedeProtagNode != nullptr) {
-    SDL_Rect obj = { precedeProtagNode->x, precedeProtagNode->y, 40, 40};
-
-    obj = transformRect(obj);
-    SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
-  }
-
-  for (long long unsigned int i = 0; i < g_musicNodes.size(); i++)
-  {
-    SDL_Rect obj = {(int)((g_musicNodes[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-    SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
-
-    SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-    SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-    SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-    SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-    SDL_FreeSurface(textsurface);
-    SDL_DestroyTexture(texttexture);
-  }
-
-  for (long long unsigned int i = 0; i < g_cueSounds.size(); i++)
-  {
-    SDL_Rect obj = {(int)((g_cueSounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-    SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
-    SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-    SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-    SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-    SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-    SDL_FreeSurface(textsurface);
-    SDL_DestroyTexture(texttexture);
-  }
-
-  for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
-  {
-    if(!drawhitboxes) {break;}
-    SDL_Rect obj = {(int)((g_waypoints[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-    SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
-    SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-    nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
-    nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
-    nodeInfoText->boxX -= 0.02;
-    nodeInfoText->boxY -= 0.03;
-    nodeInfoText->updateText(g_waypoints[i]->name, -1, 15);
-    nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-
-    //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-    //SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-    //nodeInfoText->updateText(g_waypoints[i]->name
-
-    //SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-    //SDL_FreeSurface(textsurface);
-    //SDL_DestroyTexture(texttexture);
-  }
-
-  for (auto x : g_setsOfInterest)
-  {
-    for (auto y : x)
+    // draw nodes
+    for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
     {
-      SDL_Rect obj = {(int)((y->x - g_camera.x - 20) * g_camera.zoom), (int)((y->y - g_camera.y - 20) * g_camera.zoom), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-      SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
+      SDL_Rect obj = {(int)((g_worldsounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
+
+      SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+      //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      //        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+      //
+      //        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+      //
+      //        SDL_FreeSurface(textsurface);
+      //        SDL_DestroyTexture(texttexture);
+
+      nodeInfoText->x = obj.x;
+      nodeInfoText->y = obj.y - 20;
+      nodeInfoText->updateText(g_worldsounds[i]->name, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+
+
+    //draw precede node(s)
+    if(precedeProtagNode != nullptr) {
+      SDL_Rect obj = { precedeProtagNode->x, precedeProtagNode->y, 40, 40};
+
+      obj = transformRect(obj);
+      SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
+    }
+
+    for (long long unsigned int i = 0; i < g_musicNodes.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_musicNodes[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
 
       SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
 
-      SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
       SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
 
       SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
@@ -3546,68 +3326,125 @@ if (devMode)
       SDL_FreeSurface(textsurface);
       SDL_DestroyTexture(texttexture);
     }
+
+    for (long long unsigned int i = 0; i < g_cueSounds.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_cueSounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
+      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+      SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+      SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+      SDL_FreeSurface(textsurface);
+      SDL_DestroyTexture(texttexture);
+    }
+
+    for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
+    {
+      if(!drawhitboxes) {break;}
+      SDL_Rect obj = {(int)((g_waypoints[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
+      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+      nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
+      nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
+      nodeInfoText->boxX -= 0.02;
+      nodeInfoText->boxY -= 0.03;
+      nodeInfoText->updateText(g_waypoints[i]->name, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+
+      //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      //SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+      //nodeInfoText->updateText(g_waypoints[i]->name
+
+      //SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+      //SDL_FreeSurface(textsurface);
+      //SDL_DestroyTexture(texttexture);
+    }
+
+    for (auto x : g_setsOfInterest)
+    {
+      for (auto y : x)
+      {
+        SDL_Rect obj = {(int)((y->x - g_camera.x - 20) * g_camera.zoom), (int)((y->y - g_camera.y - 20) * g_camera.zoom), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+        SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
+
+        SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+        SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+        SDL_FreeSurface(textsurface);
+        SDL_DestroyTexture(texttexture);
+      }
+    }
+
+    // doors
+    for (long long unsigned int i = 0; i < g_doors.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
+      SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
+      // the wall
+      SDL_Rect obj2 = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - (g_doors[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(((g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
+      //SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
+      nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
+      nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
+      nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+
+    for (long long unsigned int i = 0; i < g_dungeonDoors.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)((g_dungeonDoors[i]->height * g_camera.zoom))};
+      SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj);
+      // the wall
+      SDL_Rect obj2 = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)(((128) * XtoZ * g_camera.zoom) + (g_dungeonDoors[i]->height * g_camera.zoom))};
+      SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj2);
+    }
+
+
+    for (long long unsigned int i = 0; i < g_triggers.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
+      SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
+      // the wall
+      SDL_Rect obj2 = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(((g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
+      SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
+
+      nodeInfoText->x = obj.x + 25;
+      nodeInfoText->y = obj.y + 25;
+      nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+
+    // listeners
+    for (long long unsigned int i = 0; i < g_listeners.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_listeners[i]->x - g_camera.x - 20) * g_camera.zoom), (int)((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
+      SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
+      nodeInfoText->x = obj.x;
+      nodeInfoText->y = obj.y - 20;
+      nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+
+    write_map(protag);
+    for (int i = 0; i < 50; i++)
+    {
+      devinput[i] = 0;
+    }
+    nodeInfoText->show = 0;
   }
+  B("After mapedit");
 
-  // doors
-  for (long long unsigned int i = 0; i < g_doors.size(); i++)
-  {
-    SDL_Rect obj = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
-    SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
-    // the wall
-    SDL_Rect obj2 = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - (g_doors[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(((g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
-    //SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
-    nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
-    nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
-    nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
-    nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-  }
-
-  for (long long unsigned int i = 0; i < g_dungeonDoors.size(); i++)
-  {
-    SDL_Rect obj = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)((g_dungeonDoors[i]->height * g_camera.zoom))};
-    SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj);
-    // the wall
-    SDL_Rect obj2 = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)(((128) * XtoZ * g_camera.zoom) + (g_dungeonDoors[i]->height * g_camera.zoom))};
-    SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj2);
-  }
-
-
-  for (long long unsigned int i = 0; i < g_triggers.size(); i++)
-  {
-    SDL_Rect obj = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
-    SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
-    // the wall
-    SDL_Rect obj2 = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(((g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
-    SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
-
-    nodeInfoText->x = obj.x + 25;
-    nodeInfoText->y = obj.y + 25;
-    nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
-    nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-  }
-
-  // listeners
-  for (long long unsigned int i = 0; i < g_listeners.size(); i++)
-  {
-    SDL_Rect obj = {(int)((g_listeners[i]->x - g_camera.x - 20) * g_camera.zoom), (int)((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
-    SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
-    nodeInfoText->x = obj.x;
-    nodeInfoText->y = obj.y - 20;
-    nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, -1, 15);
-    nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-  }
-
-  write_map(protag);
-  for (int i = 0; i < 50; i++)
-  {
-    devinput[i] = 0;
-  }
-  nodeInfoText->show = 0;
-}
-B("After mapedit");
-
-SDL_RenderPresent(renderer);
-B("End of frame");
+  SDL_RenderPresent(renderer);
+  B("End of frame");
 }
 
 
@@ -4124,14 +3961,14 @@ int WinMain()
   inventoryText->show = 0;
   inventoryText->align = 1;
 
-    g_itemsines.push_back( sin(g_elapsed_accumulator / 300) * 10 + 30);
-    g_itemsines.push_back( sin((g_elapsed_accumulator - 1400) / 300) * 10 + 30);
-    g_itemsines.push_back( sin((g_elapsed_accumulator + 925) / 300) * 10 + 30);
-    g_itemsines.push_back( sin((g_elapsed_accumulator + 500) / 300) * 10 + 30);
-    g_itemsines.push_back( sin((g_elapsed_accumulator + 600) / 300) * 10 + 30);
-    g_itemsines.push_back( sin((g_elapsed_accumulator + 630) / 300) * 10 + 30);
-    g_itemsines.push_back( sin((g_elapsed_accumulator + 970) / 300) * 10 + 30);
-    g_itemsines.push_back( sin((g_elapsed_accumulator + 1020) / 300) * 10 + 30);
+  g_itemsines.push_back( sin(g_elapsed_accumulator / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator - 1400) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 925) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 500) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 600) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 630) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 970) / 300) * 10 + 30);
+  g_itemsines.push_back( sin((g_elapsed_accumulator + 1020) / 300) * 10 + 30);
 
 
   g_occluderTarget = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH*g_occluderResolutionRatio, WIN_HEIGHT *g_occluderResolutionRatio);
@@ -4179,46 +4016,9 @@ int WinMain()
   canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500);
   //canvas_fc = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 500); seems to be unused
 
-  light = loadTexture(renderer, "resources/engine/light.qoi");
-
-  lighta = loadTexture(renderer, "resources/engine/lighta.qoi");
-
-  lightb = loadTexture(renderer, "resources/engine/lightb.qoi");
-
-  lightc = loadTexture(renderer, "resources/engine/lightc.qoi");
-
-  lightd = loadTexture(renderer, "resources/engine/lightd.qoi");
-
-  lightaro = loadTexture(renderer, "resources/engine/lightaro.qoi");
-
-  lightbro = loadTexture(renderer, "resources/engine/lightbro.qoi");
-
-  lightcro = loadTexture(renderer, "resources/engine/lightcro.qoi");
-
-  lightdro = loadTexture(renderer, "resources/engine/lightdro.qoi");
-
-  lightari = loadTexture(renderer, "resources/engine/lightari.qoi");
-
-  lightbri = loadTexture(renderer, "resources/engine/lightbri.qoi");
-
-  lightcri = loadTexture(renderer, "resources/engine/lightcri.qoi");
-
-  lightdri = loadTexture(renderer, "resources/engine/lightdri.qoi");
-
   g_loadingATM = 0;
   transitionDelta = transitionImageHeight;
   transition = 1;
-
-
-  mesh* f = loadMeshFromPly("test/floor", {99279, 99455,0}, 40, meshtype::FLOOR);
-  f->texture = loadTexture(renderer, "resources/static/meshes/test/floor.qoi");
- 
-  mesh* w = loadMeshFromPly("test/wall", {99279, 99455,0}, 40, meshtype::V_WALL);
-  w->texture = f->texture;
-
-  //mesh* c = loadMeshFromPly("test/stage-collision", {99279, 99455,0}, 2, meshtype::COLLISION);
-
-  mesh* o = loadMeshFromPly("test/occluder", {99279, 99455,0}, 40, meshtype::OCCLUDER);
 
   while (!quit)
   {
@@ -4354,6 +4154,9 @@ int WinMain()
         case SDL_MOUSEBUTTONUP:
           if(event.button.button == SDL_BUTTON_RIGHT) {
             g_holddelete = 0;
+          }
+          if(event.button.button == SDL_BUTTON_LEFT) {
+            moveThisChunk = nullptr;
           }
           break;
         case SDL_MOUSEBUTTONDOWN:
@@ -4848,7 +4651,7 @@ void getExplorationInput(float &elapsed)
 
   //for portability, use the input[] array to drive controls
   //some actions are not bound, e.g. navigation of the settings menu
-  
+
 
   if(devMode) {
     if(keystate[SDL_SCANCODE_LALT]) { 
@@ -4856,7 +4659,7 @@ void getExplorationInput(float &elapsed)
     } else {
       g_holdingTAB = 0;
     }
-  
+
     if(keystate[SDL_SCANCODE_TAB]) { 
       g_holdingCTRL = 1;
     } else {
@@ -6496,6 +6299,7 @@ void toggleDevmode() {
   }
   else
   {
+    protag->turningSpeed = 1.4;
     floortexDisplay->show = 0;
     captexDisplay->show = 0;
     walltexDisplay->show = 0;
