@@ -109,7 +109,6 @@ bool segmentsInSamePlace(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
 
 
 void drawUI() {
-
   adventureUIManager->dialogpointer->render(renderer, g_camera);
   if((g_amState == amState::SPIRIT || g_amState == amState::SPIRITSELECT || g_amState == amState::STARGETING || g_amState == amState::ITARGETING || g_amState == amState::ITEM) && !protag_is_talking ) {
     drawCombatants();
@@ -390,11 +389,53 @@ void ExplorationLoop() {
                   curCombatantIndex = 0;
                   break;
                 }
+              case 5:
+                {
+
+                  //not sure what to use this menu option for
+
+//                  //help
+//                  vector<string> helpScript = {};
+//                  adventureUIManager->talker = narrarator;
+//                  adventureUIManager->dPointToMe = narrarator;
+//
+//                  //keep trying to get language data until it fails
+//                  int i = 0;
+//                  for(;;) {
+//                    string arg = "Help" + to_string(i) + "-" + g_mapdir + "/" + g_map;
+//                    string resp = getLanguageData(arg);
+//                    if(resp == "") {break;}
+//                    helpScript.push_back(resp);
+//                    i++;
+//                    if(i > 40) {
+//                      E("Stuck trying to pull dialog for help");
+//                      abort();
+//                    }
+//                  }
+//                  if(helpScript.size() == 0) {
+//                    helpScript.push_back(getLanguageData("NoHelp"));
+//                  }
+//                  helpScript.push_back("#");
+//
+//                  adventureUIManager->ownScript = helpScript;
+//                  adventureUIManager->dialogue_index = -1;
+//                  adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+//                  adventureUIManager->sleepingMS = 0;
+//                  protag_is_talking = 1;
+//                  g_forceEndDialogue = 0;
+//                  g_keyItemFlavorDisplay = 1;
+//                  adventureUIManager->continueDialogue();
+//
+//                  break;
+                  break;
+                }
               case 4:
                 {
-                  //help
-                  vector<string> helpScript = {};
-                  adventureUIManager->talker = narrarator;
+                  if(party.size() > 1 && party[1]->name == "common/neheten") {
+                    //wife
+                    adventureUIManager->talker = party[1];
+                    adventureUIManager->dPointToMe = party[1];
+                    vector<string> helpScript = {};
 
                   //keep trying to get language data until it fails
                   int i = 0;
@@ -408,10 +449,11 @@ void ExplorationLoop() {
                       E("Stuck trying to pull dialog for help");
                       abort();
                     }
-                    breakpoint();
                   }
                   if(helpScript.size() == 0) {
                     helpScript.push_back(getLanguageData("NoHelp"));
+                    adventureUIManager->talker = narrarator;
+                    adventureUIManager->dPointToMe = narrarator;
                   }
                   helpScript.push_back("#");
 
@@ -425,47 +467,7 @@ void ExplorationLoop() {
                   adventureUIManager->continueDialogue();
 
                   break;
-                }
-              case 5:
-                {
-                  //I think that the text from wifechat will not vary by map,
-                  //but based on story progression, so scripts will have some way
-                  //of updating the wifechatindex, which will be used to pull text
-                  if(party.size() > 1 && party[1]->name == "common/neheten") {
-                    //wife
-                    vector<string> helpScript = {};
-                    adventureUIManager->talker = party[1];
 
-                    //keep trying to get language data until it fails
-                    int i = 0;
-                    int wifeValue = checkSaveField("wifeValue");
-                    for(;;) {
-                      string arg = "Wife" + to_string(wifeValue) + "-" + to_string(i);
-                      string resp = getLanguageData(arg);
-                      if(resp == "") {break;}
-                      helpScript.push_back(resp);
-                      i++;
-                      if(i > 40) {
-                        E("Stuck trying to pull dialog for help");
-                        abort();
-                      }
-                      breakpoint();
-                    }
-                    if(helpScript.size() == 0) {
-                      helpScript.push_back("");
-                      E("Couldn't find wifescript");
-                      abort();
-                    }
-                    helpScript.push_back("#");
-
-                    adventureUIManager->ownScript = helpScript;
-                    adventureUIManager->dialogue_index = -1;
-                    adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-                    adventureUIManager->sleepingMS = 0;
-                    protag_is_talking = 1;
-                    g_forceEndDialogue = 0;
-                    g_keyItemFlavorDisplay = 1;
-                    adventureUIManager->continueDialogue();
 
                   }
                   break;
@@ -522,6 +524,7 @@ void ExplorationLoop() {
               if(adventureUIManager->kiIndex < g_keyItems.size()) {
                 //show flavortext
                 adventureUIManager->talker = narrarator;
+                adventureUIManager->dPointToMe = 0;
                 vector<string> flavorScript = {};
                 flavorScript.push_back(getLanguageData("KeyItem" + to_string(g_keyItems[adventureUIManager->kiIndex]->index) + "Flavor"));
                 flavorScript.push_back("#");
@@ -961,11 +964,11 @@ void ExplorationLoop() {
 
   //position dialog pointer
   {
-    if(adventureUIManager->talker != nullptr) {
+    if(protag_is_talking && adventureUIManager->dPointToMe != nullptr) {
 
-      adventureUIManager->dialogpointer->x1 = adventureUIManager->talker->getOriginX();
-      adventureUIManager->dialogpointer->y1 = adventureUIManager->talker->getOriginY();
-      transform3dPoint(adventureUIManager->dialogpointer->x1, adventureUIManager->dialogpointer->y1, adventureUIManager->talker->z + adventureUIManager->talker->bounds.zeight, adventureUIManager->dialogpointer->x1, adventureUIManager->dialogpointer->y1);
+      adventureUIManager->dialogpointer->x1 = adventureUIManager->dPointToMe->getOriginX();
+      adventureUIManager->dialogpointer->y1 = adventureUIManager->dPointToMe->getOriginY();
+      transform3dPoint(adventureUIManager->dialogpointer->x1, adventureUIManager->dialogpointer->y1, adventureUIManager->dPointToMe->z + adventureUIManager->dPointToMe->bounds.zeight, adventureUIManager->dialogpointer->x1, adventureUIManager->dialogpointer->y1);
       adventureUIManager->dialogpointer->x1 /= WIN_WIDTH;
       adventureUIManager->dialogpointer->y1 /= WIN_HEIGHT;
 
@@ -976,6 +979,9 @@ void ExplorationLoop() {
       {
         adventureUIManager->dialogpointer->visible = 0;
         adventureUIManager->dialogpointergap->show = 0;
+      } else {
+        adventureUIManager->dialogpointer->visible = 1;
+        adventureUIManager->dialogpointergap->show = 1;
       }
 
       {
@@ -1771,7 +1777,7 @@ void ExplorationLoop() {
       }
 
     }
-    if(protag->hisCombatant->health <= 0) {
+    if(protag->hisCombatant != nullptr && protag->hisCombatant->health <= 0) {
       g_spin_entity->animation = 1;
     } else {
       g_spin_entity->animation = 0;
@@ -1831,7 +1837,7 @@ void ExplorationLoop() {
       if (taken != nullptr && !transition)
       {
         // player took this door
-        {
+        if(0){ //change this to re-enable way offsets, I don't wanna bother with it
           g_wayOffsetX = 0;
           g_wayOffsetY = 0;
           M("Set old door vals");
@@ -1855,8 +1861,11 @@ void ExplorationLoop() {
 
         // render this frame
 
+        M("About to clear the map");
         clear_map(g_camera);
+        M("Done clearing the map");
         load_map(renderer, savemap, dest_waypoint);
+        transition = 1;
 
         // clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
         if (canSwitchOffDevMode)
@@ -2168,29 +2177,53 @@ void ExplorationLoop() {
   {
     if (!g_triggers[i]->active)
     {
+      if(g_triggers[i]->msCooldown > g_triggers[i]->msRefresh) {
+
+        if(g_triggers[i]->msRefresh > 0 ) { //0 means don't reactivate
+          //reactivate
+          g_triggers[i]->active = 1;
+        }
+      } else {
+        if(g_triggers[i]->msRefresh > 0 && protag_is_talking == 0) {
+          g_triggers[i]->msCooldown += elapsed;
+        }
+      }
+
       continue;
     }
+
     rect trigger = {g_triggers[i]->x, g_triggers[i]->y, g_triggers[i]->width, g_triggers[i]->height};
-    entity *checkHim = searchEntities(g_triggers[i]->targetEntity);
+    if(g_triggers[i]->checkMe == 0) { g_triggers[i]->checkMe = searchEntities(g_triggers[i]->targetEntity);}
+
+    entity* checkHim = g_triggers[i]->checkMe;
+
     if (checkHim == nullptr)
     {
       continue;
     }
+
+
     rect movedbounds = rect(checkHim->bounds.x + checkHim->x, checkHim->bounds.y + checkHim->y, checkHim->bounds.width, checkHim->bounds.height);
     if (RectOverlap(movedbounds, trigger) && (checkHim->z > g_triggers[i]->z && checkHim->z < g_triggers[i]->z + g_triggers[i]->zeight))
     {
-      adventureUIManager->blip = g_ui_voice;
-      adventureUIManager->ownScript = g_triggers[i]->script;
-      adventureUIManager->talker = narrarator;
-      adventureUIManager->dialogue_index = -1;
-      narrarator->sayings = g_triggers[i]->script;
-      adventureUIManager->continueDialogue();
-      if (transition)
-      {
-        break;
+      if(protag_is_talking == 0) {
+        adventureUIManager->blip = g_ui_voice;
+        adventureUIManager->ownScript = g_triggers[i]->script;
+        adventureUIManager->talker = narrarator;
+        adventureUIManager->dPointToMe = nullptr;
+        adventureUIManager->dialogpointer->visible = 0;
+        adventureUIManager->dialogpointergap->show = 0;
+        adventureUIManager->dialogue_index = -1;
+        narrarator->sayings = g_triggers[i]->script;
+        adventureUIManager->continueDialogue();
+        if (transition)
+        {
+          break;
+        }
+  
+        g_triggers[i]->active = 0;
+        g_triggers[i]->msCooldown = 0;
       }
-
-      g_triggers[i]->active = 0;
     }
   }
   B("Triggers update");
@@ -2456,6 +2489,34 @@ void ExplorationLoop() {
       for(int i = 0; i < x->numVertices; i++) {
         v[i].tex_coord.x = x->vertexExtraData[i].first;
         v[i].tex_coord.y = x->vertexExtraData[i].second;
+        v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
+      }
+
+      SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+
+    }
+  }
+
+
+  //decorative meshes
+  for(auto &x : g_meshDecorative) {
+    //D("There is an decorative mesh");
+    if(x->visible) {
+      SDL_Vertex v[x->numVertices];
+      for(int i = 0; i < x->numVertices; i++) {
+        v[i] = x->vertex[i];
+        v[i].position.x += x->origin.x - g_camera.x;
+        v[i].position.y += x->origin.y - g_camera.y;
+        v[i].color.a = x->vertex[i].color.a;
+      }
+
+      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+      //render shade
+      for(int i = 0; i < x->numVertices; i++) {
+        v[i].tex_coord.x = x->vertexExtraData[i].first;
+        v[i].tex_coord.y = x->vertexExtraData[i].second;
+        v[i].color.a = 255; //alpha is done in the texture for this
       }
 
       SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
@@ -2919,7 +2980,6 @@ void ExplorationLoop() {
 
     blackrect = transformRect(blackrect);
       SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
-
   }
 
   for (long long unsigned int i = 0; i < g_tiles.size(); i++)
@@ -3232,10 +3292,13 @@ void ExplorationLoop() {
     nodeInfoText->textcolor = {0, 0, 0};
     nodeInfoText->show = 1;
 
-    for(int i = 0; i < g_chunks.size(); i++) {
-      SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
 
-      SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
+    if(drawhitboxes) {
+      for(int i = 0; i < g_chunks.size(); i++) {
+        SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+  
+        SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
+      }
     }
 
     // draw nodes
@@ -4625,6 +4688,9 @@ int interact(float elapsed, entity *protag)
         adventureUIManager->blip = g_ui_voice;
         //adventureUIManager->sayings = &g_entities[i]->sayings;
         adventureUIManager->talker = g_entities[i];
+        if(g_entities[i]->turnToFacePlayer) {
+          adventureUIManager->dPointToMe = g_entities[i];
+        }
 
         adventureUIManager->dialogue_index = -1;
         adventureUIManager->useOwnScriptInsteadOfTalkersScript = 0;
@@ -5176,6 +5242,7 @@ void getExplorationInput(float &elapsed)
           g_menuTalkReset = 1;
           g_settingsUI->hide();
           protag_is_talking = 0;
+          adventureUIManager->dPointToMe = 0;
 
         } else {
           for(int i = 0; i < g_settingsUI->valueTextboxes.size(); i++) {
@@ -5368,6 +5435,7 @@ void getExplorationInput(float &elapsed)
         g_inEscapeMenu = 0;
         //inPauseMenu = 0;
         protag_is_talking = 0;
+        adventureUIManager->dPointToMe = 0;
         g_menuTalkReset = 1;
 
         g_escapeUI->hide();
@@ -5854,6 +5922,7 @@ void getExplorationInput(float &elapsed)
           init_map_writing(renderer);
         }
         protag_is_talking = 0;
+        adventureUIManager->dPointToMe = 0;
         protag_can_move = 1;
         adventureUIManager->showHUD();
 
@@ -5963,6 +6032,7 @@ void getExplorationInput(float &elapsed)
   if (protag_is_talking == 2)
   {
     protag_is_talking = 0;
+    adventureUIManager->dPointToMe = 0;
     dialogue_cooldown = 500;
   }
 
@@ -6492,6 +6562,7 @@ void dungeonFlash() {
     }
     transition = 0;
     protag_is_talking = 0;
+    adventureUIManager->dPointToMe = 0;
     protag_can_move = 1;
     protag->zvel = 0;
     protag->z = 0;

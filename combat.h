@@ -176,6 +176,8 @@ public:
 
   int gender = 0; //0- male, 1- female, 2-ungendered
 
+  int article = 0; //0-> a, 1-> an, 2-> the
+
   combatant(string filename, int level);
 
   ~combatant();

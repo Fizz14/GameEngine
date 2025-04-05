@@ -115,6 +115,7 @@ class chunk {
   mesh* wall = 0;
   mesh* collision = 0;
   mesh* occluder = 0;
+  mesh* decorative = 0;
 
   string path = "";
 

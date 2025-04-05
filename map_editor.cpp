@@ -492,9 +492,9 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
     if (word == "trigger")
     {
-      iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> s2;
+      iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> s2 >> p7;
       const char *binding = s1.c_str();
-      trigger *t = new trigger(binding, p1, p2, p3, p4, p5, p6, s2);
+      trigger *t = new trigger(binding, p1, p2, p3, p4, p5, p6, s2, p7);
       (void)t;
     }
     if (word == "worldsound")
@@ -1796,7 +1796,7 @@ bool mapeditor_save_map(string word)
   }
   for (long long unsigned int i = 0; i < g_triggers.size(); i++)
   {
-    ofile << "trigger " << g_triggers[i]->binding << " " << g_triggers[i]->x << " " << g_triggers[i]->y << " " << g_triggers[i]->z << " " << g_triggers[i]->width << " " << g_triggers[i]->height << " " << g_triggers[i]->zeight << " " << g_triggers[i]->targetEntity << endl;
+    ofile << "trigger " << g_triggers[i]->binding << " " << g_triggers[i]->x << " " << g_triggers[i]->y << " " << g_triggers[i]->z << " " << g_triggers[i]->width << " " << g_triggers[i]->height << " " << g_triggers[i]->zeight << " " << g_triggers[i]->targetEntity << " " << g_triggers[i]->msRefresh << endl;
   }
   for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
   {
@@ -2056,6 +2056,9 @@ void write_map(entity *mapent)
     if(moveThisChunk->occluder != nullptr) {
       moveThisChunk->occluder->origin = moveThisChunk->origin;
     }
+    if(moveThisChunk->decorative != nullptr) {
+      moveThisChunk->decorative->origin = moveThisChunk->origin;
+    }
   }
 
 
@@ -2299,7 +2302,7 @@ void write_map(entity *mapent)
     if (devinput[0] && !olddevinput[0] && makingbox)
     {
       makingbox = 0;
-      trigger *t = new trigger("unset", selection->x, selection->y, wallstart, selection->width, selection->height, wallheight, "protag");
+      trigger *t = new trigger("unset", selection->x, selection->y, wallstart, selection->width, selection->height, wallheight, "protag", 0);
       t->targetEntity = "protag"; // protag by default
       // set to unactive so that if we walk into it, we dont crash
       // t->active = false;
@@ -3442,6 +3445,8 @@ void write_map(entity *mapent)
 
         for(auto c : g_chunks) {
           rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
+          D(blah.x);
+          D(marker->getMovedBounds().x);
           if (RectOverlap(blah, marker->getMovedBounds())) {
             string path = c->path;
             string floor = c->floortex;
@@ -3516,12 +3521,14 @@ void write_map(entity *mapent)
         line >> word;
         loadedBackgrounds.push_back(word);
       }
-      if(word == "grasschance" || word == "chance" || word == "encounterchance") {
-        line >> word;
-        g_encounterChance = stof(word);
-        D(g_encounterChance);
+//      if(word == "grasschance" || word == "chance" || word == "encounterchance") {
+//        line >> word;
+//        g_encounterChance = stof(word);
+//        D(g_encounterChance);
+//
+//      }
 
-      }
+      //set encounters by typing "enc [a file in resources/static/encounters/ without the folders]"
       if(word == "encounters" || word == "enc") {
         line >> word;
         g_encountersFile = word;
@@ -4383,9 +4390,18 @@ void write_map(entity *mapent)
         }
       }
 
+      if(word == "backup" || word == "bk") {
+        if (g_map != "")
+        {
+          mapeditor_save_map(g_map);
+        }
+        ofile.close();
+        word = "resources/maps/" + g_mapdir + "/" + g_map + "-bk.map";
+        break;
+      }
+
       if (word == "reload" || word == "r")
       {
-
         if (g_map != "")
         {
           mapeditor_save_map(g_map);
@@ -5619,12 +5635,30 @@ void write_map(entity *mapent)
           g_doors[g_doors.size() - 1]->to_point = waydest;
         }
       }
+
+      //trigger desert/tickets-warning protag 3000
+      //use 0 for no refresh
       if (word == "trigger" || word == "t")
       {
         string fbinding;
         string fentity;
+        int cooldownMs;
         line >> fbinding;
         line >> fentity;
+        line >> cooldownMs;
+        M("Lets look for trigger");
+        for(auto &x : g_triggers) {
+          rect bounds = {x->x, x->y, x->width, x->height};
+          if(RectOverlap(bounds, marker->getMovedBounds())) {
+              M("Found trigger");
+
+              x->binding = fbinding;
+              x->targetEntity = fentity;
+              x->msRefresh = int(cooldownMs);
+          }
+
+        }
+
         if (g_triggers.size() > 0)
         {
           g_triggers[g_triggers.size() - 1]->binding = fbinding;

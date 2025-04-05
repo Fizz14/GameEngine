@@ -1033,6 +1033,7 @@ class adventureUI {
     //vector<string>* sayings;
     vector<string>* scriptToUse;
     entity* talker = 0;
+    entity* dPointToMe = 0;
     entity* selected = nullptr; //this is used for setting selfdata, instead of just using the talker pointer (that was limited)
     bool askingQuestion = false; //set if current cue is a question
     string response = "tired"; //contains the last response the player gave to a question
@@ -1452,7 +1453,9 @@ class entity:public actor {
     int shooting = 0; //1 if character is shooting
 
     int opacity = 255; //opacity from 0 to 255, used for hiding shaded entities.
-                       
+    
+    int fadeOpacity = 255; //the displayed opacity of an ent is the smaller of opacity (from map occlusion) and fadeOpacity (used when you want to make an ent fade out)
+
     int opacity_delta = 0;
 
     //object-related design
@@ -2060,10 +2063,13 @@ class trigger {
     string binding;
     vector<string> script;
     bool active = 1;
+    int msRefresh = 0; //if nonzero, trigger refreshes itself after this many ms
+    int msCooldown = 0; //counts up to msRefresh
 
     string targetEntity = "protag"; //what entity will activate the trigger
+    entity* checkMe = 0;
 
-    trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheight, int fzeight, string ftargetEntity);
+    trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheight, int fzeight, string ftargetEntity, int fMsRefresh);
 
     ~trigger(); 
 };

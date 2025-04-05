@@ -4097,17 +4097,15 @@ void entity::unsolidify() {
 
 //entity render function
 void entity::render(SDL_Renderer * renderer, camera fcamera) {
-  opacity += opacity_delta;
+  fadeOpacity += opacity_delta;
   shadow->alphamod += opacity_delta;
-  if(opacity_delta < 0 && opacity <= 0) {
+  if(opacity_delta < 0 && fadeOpacity  <= 0) {
     this->tangible = 0;
-  } else if(opacity_delta > 0 && opacity >= 255) {
+  } else if(opacity_delta > 0 && fadeOpacity >= 255) {
     this->opacity_delta = 0;
-    this->opacity = 255;
-    this->semisolid = 1; //for dungeon behemoths
-
+    this->fadeOpacity = 255;
   }
-
+  opacity = min(fadeOpacity, opacity);
 
   if(opacity < 0) {
     SDL_SetTextureAlphaMod(texture, 0);
@@ -5985,7 +5983,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
             float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
 
-            slopeFactor += (1-slopeFactor) * 0.9;
+            slopeFactor += (slope) * 0.95;
             if(slopeFactor < 1) {
               // Adjust velocities based on the slope
               xvel *= slopeFactor;
@@ -5993,7 +5991,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             }
             break;
 
-          } else {
+          } else { //use A C *D* now, since it's a quad
             // Get vertices of the face
             vertex3d vA = m->vertices[f.a];
             vertex3d vB = m->vertices[f.c];
@@ -6021,7 +6019,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
               float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
               float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
 
-              slopeFactor += (1-slopeFactor) * 0.9;
+              slopeFactor += (slope) * 0.95;
               if(slopeFactor < 1) {
                 // Adjust velocities based on the slope
                 xvel *= slopeFactor;
@@ -6060,7 +6058,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
             float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
 
-            slopeFactor += (1-slopeFactor) * 0.9;
+            slopeFactor += (slope) * 0.95;
             if(slopeFactor < 1) {
               // Adjust velocities based on the slope
               xvel *= slopeFactor;
@@ -6939,9 +6937,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
     g_dijkstraEntity = this;
     blindrun = 0;
 
+
     if(1)
     {
-
       if(( (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true) )  || (distToTarget < 180) ) ) {
         //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
         targetSteeringAngle = angleToTarget;
@@ -7191,6 +7189,7 @@ void entity::BasicNavigate(navNode* ultimateTargetNode) {
 }
 
 //search entity by name
+//searchentities definition
 entity* searchEntities(string fname, entity* caller) {
   if(fname == "protag") {
     return protag;
@@ -7622,6 +7621,14 @@ int loadSave() {
     }
   }
 
+  //load keyitems
+  while(getline(file, line)) {
+    if(line[0] == '&') { break;}
+    keyItemInfo* k = new keyItemInfo(stoi(line));
+  }
+
+  
+
 
   file.close();
 
@@ -7635,13 +7642,14 @@ int writeSave() {
   const char* plik = address.c_str();
   file.open(plik);
 
-  //if the loaded name is "Blank", change it to "Fomm"
-  if(readSaveStringField("playername") == "Blank") {
-    writeSaveFieldString("playername", "Fomm");
-  }
+//  //if the loaded name is "Blank", change it to "Fomm"
+//  if(readSaveStringField("playername") == "Blank") {
+//    writeSaveFieldString("playername", "Fomm");
+//  }
 
   auto it = g_save.begin();
 
+  //generic, allpurpose savefields
   while (it != g_save.end() ) {
     file << it->first << " " << it->second << endl;
     it++;
@@ -7726,6 +7734,12 @@ int writeSave() {
     file << x << endl;
   }
   file << "&" << endl; //token to stop writing combat items
+
+  for(auto x : g_keyItems) {
+    file << x->index << endl;
+  }
+  file << "&" << endl; //token to stop writing key items
+
 
   file.close();
   return 0;
@@ -8433,7 +8447,7 @@ waypoint::~waypoint() {
 }
 
 
-trigger::trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheight, int fzeight, string ftargetEntity) {
+trigger::trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheight, int fzeight, string ftargetEntity, int fMsRefresh) {
   x = fx;
   y = fy;
   z = fz;
@@ -8442,31 +8456,17 @@ trigger::trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheigh
   zeight = fzeight;
   binding = fbinding;
   targetEntity = ftargetEntity;
+  msRefresh = fMsRefresh;
   g_triggers.push_back(this);
+
   //open and read from the script file
-  ifstream stream;
-  string loadstr;
+
   //try to open from local map folder first
-
-  loadstr = "resources/maps/" + g_mapdir + "/" + fbinding + ".txt";
-  const char* plik = loadstr.c_str();
-
-  stream.open(plik);
-
-  if (!stream.is_open()) {
-    stream.open("scripts/" + fbinding + ".txt");
-  }
-  string line;
-
-  getline(stream, line);
-
-  while (getline(stream, line)) {
-    script.push_back(line);
-  }
+  string loadstr;
+  loadstr = "resources/static/scripts/" + fbinding + ".txt";
+  script =  loadText(loadstr);
 
   parseScriptForLabels(script);
-  // for(auto x : script) {
-  // }
 }
 
 trigger::~trigger() {
@@ -8741,12 +8741,6 @@ void clear_map(camera& cameraToReset) {
         }
       }
 
-
-      for (long long unsigned int i = 0; i < g_actors.size(); i++)
-      {
-        g_actors[i]->render(renderer, g_camera);
-      }
-
       for (long long unsigned int i = 0; i < g_tiles.size(); i++)
       {
         if (g_tiles[i]->z == 2)
@@ -8755,10 +8749,460 @@ void clear_map(camera& cameraToReset) {
         }
       }
 
-      drawUI();
+      //meshes
+      
+      M("Lets draw the meshfloors");
+      for(auto &x : g_meshFloors) {
+        M("Draw this meshfloor");
+        if(x->visible) {
+          SDL_Vertex v[x->numVertices];
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i] = x->vertex[i];
+            v[i].position.x += x->origin.x - g_camera.x;
+            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].color.a = x->vertex[i].color.a;
+          }
+
+          SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+          //render shade
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
+            v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
+          }
+
+          SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+
+        }
+      }
+
+      //decorative meshes
+      for(auto &x : g_meshDecorative) {
+        //D("There is an decorative mesh");
+        if(x->visible) {
+          SDL_Vertex v[x->numVertices];
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i] = x->vertex[i];
+            v[i].position.x += x->origin.x - g_camera.x;
+            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].color.a = x->vertex[i].color.a;
+          }
+    
+          SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+    
+          //render shade
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
+            v[i].color.a = 255; //alpha is done in the texture for this
+          }
+    
+          SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+    
+        }
+      }
+
+
+      g_wsEdges.clear();
+      g_osEdges.clear();
+      {
+        updateEdges(g_wEdges, g_wsEdges);
+        updateEdges(g_oEdges, g_osEdges);
+      }
+
+      float px = protag->getOriginX() - g_camera.x;
+      float py = protag->getOriginY() - g_camera.y;
+      //float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
+
+
+      //remove any entries on g_wEdges which are facing away from the player
+      //(kinda like backface-culling)
+      /*
+         g_wsEdges.erase(
+         std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
+         float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ) ) / (edge.second.position.x - edge.first.position.x);
+         float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
+         return py < y_at_px;
+         }), 
+         g_wsEdges.end()
+         );
+         */
+
+      g_wsEdges.erase(
+          std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
+            float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ)) /
+            (edge.second.position.x - edge.first.position.x);
+            float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
+
+            if (py < y_at_px) {
+            // Edge is below the player and will be removed
+            auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
+                return segmentsInSamePlace(edge, occluder, 1);
+                });
+
+            if (it != g_osEdges.end()) {
+            g_osEdges.erase(it); // Remove matching occluder edge
+            }
+            return true; // Remove this wall edge
+            }
+            return false;
+            }),
+          g_wsEdges.end()
+          );
+
+
+
+      //use g_wsEdges and g_osEdges to render floor occlusion
+      if(devMode == 0){
+        std::vector<SDL_Vertex> vertices;
+        const float EXTEND_DISTANCE = 2 * WIN_WIDTH;
+
+        for (auto edge : g_osEdges) {
+          float dx = edge.first.position.x - px;
+          float dy = edge.first.position.y - py;
+          float len = pow(dx*dx + dy*dy, 0.5);
+          if(len > 0) {
+            float nx = dx/len * WIN_WIDTH;
+            float ny = dy/len * WIN_WIDTH;
+            nx += px;
+            ny += py;
+
+            dx = edge.second.position.x - px;
+            dy = edge.second.position.y - py;
+            len = pow(dx*dx + dy*dy, 0.5);
+            if(len > 0) {
+              float nx2 = dx/len * WIN_WIDTH;
+              float ny2 = dy/len * WIN_WIDTH;
+              nx2 += px;
+              ny2 += py;
+
+              SDL_Vertex newA = {{nx, ny}, {255,255,255,255}, {0,0}};
+              SDL_Vertex newB = {{nx2, ny2}, {255,255,255,255}, {0,0}};
+
+              newA.position.y -= edge.firstZ;
+              newB.position.y -= edge.secondZ;
+              edge.first.position.y -= edge.firstZ;
+              edge.second.position.y -= edge.secondZ;
+
+
+              //push quad back to draw
+              vertices.push_back(edge.first);
+              vertices.push_back(edge.second);
+              vertices.push_back(newA);
+
+              vertices.push_back(newB);
+              vertices.push_back(edge.second);
+              vertices.push_back(newA);
+
+
+              // Calculate the perpendicular direction
+              float pdx = ny2 - ny;
+              float pdy = nx - nx2;
+              len = pow(pdx*pdx + pdy*pdy, 0.5);
+              pdx = pdx / len * WIN_WIDTH;
+              pdy = pdy / len * WIN_WIDTH;
+
+              // Check which side of the line px, py is on and flip if needed
+              float side = (px - nx) * (ny2 - ny) - (py - ny) * (nx2 - nx);
+              if (side > 0) {
+                pdx = -pdx;
+                pdy = -pdy;
+              }
+
+              SDL_Vertex newC = {{nx + pdx, ny + pdy}, {255,255,255,255}, {0,0}};
+              SDL_Vertex newD = {{nx2 + pdx, ny2 + pdy}, {255,255,255,255}, {0,0}};
+
+              newC.position.y -= edge.firstZ;
+              newD.position.y -= edge.secondZ;
+
+              vertices.push_back(newA);
+              vertices.push_back(newB);
+              vertices.push_back(newC);
+
+              vertices.push_back(newD);
+              vertices.push_back(newB);
+              vertices.push_back(newC);
+            }
+          }
+        }
+
+        SDL_RenderGeometry(renderer, blackbarTexture, vertices.data(), vertices.size(), nullptr, 0);
+      }
+
+      //sort g_wsEdges and g_osEdges
+      sortEdges(g_wsEdges, px, py);
+      sortEdges(g_osEdges, px, py);
+
+      //visual walls
+      //most of these will be drawn later so :S
+      if(1) {
+        for(auto &x : g_meshVWalls) {
+          if(x->visible) {
+            SDL_Vertex v[x->numVertices];
+            for(int i = 0; i < x->numVertices; i++) {
+              v[i] = x->vertex[i];
+              v[i].position.x += x->origin.x - g_camera.x;
+              v[i].position.y += x->origin.y - g_camera.y;
+              v[i].color.r = v[i].color.g;
+            }
+
+            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+            //render shade
+            for(int i = 0; i < x->numVertices; i++) {
+              v[i].tex_coord.x = x->vertexExtraData[i].first;
+              v[i].tex_coord.y = x->vertexExtraData[i].second;
+            }
+
+            SDL_RenderGeometry(renderer, g_wallShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+          }
+        }
+      }
+
+      /*
+         g_osEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
+         That segment represents an occluder, which casts a shadow. g_wsEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
+         That segment represents an wall, which catches a shadow. Let's walk through drawing a shadow. 
+         Say we have a pair from g_osEdges, and we call that pair Opair. Let's call the two vertices of Opair A and B. 
+         We will find point A2 from point A and point B2 from B. 
+         We'll do this by using std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) to find an intersection on the segment from A to a point WIN_WIDTH away in the direction of the vector from (px,py) to point A. 
+         Do the same to find B2. These are intersections with any element of g_wsEdges There might not be an intersection, and in that case, put A2 and B2 at the end of the raycast, WIN_WIDTH away from A and B, respectively. 
+         If both lines intersect a wall segment, prepare to draw the quad A B A2 B2 (B2 or A2 maybe be at the end of the raycast, offscreen in that case). 
+         If A's raycast intersected a wall, AND A2's y coordinate is lower than py we need to find the point A3 which is at y=0 and A2's x. 
+         That's also true for B's raycast and a point B3. If we found A3 and B3, draw a quad A2 B2 A3 B3. If not, draw the traingle A2 B2 A3 or A2 B2 B3. Good?
+         */
+
+      //for(auto&x : g_osEdges) {
+      //  x.group = 1;
+      //}
+      //
+      //for(auto &x : g_wsEdges) {
+      //  x.group = 1;
+      //}
+
+      processEdges(g_osEdges, g_wsEdges, px, py);
+
+      //render occluding on visual walls
+      if (devMode == 0){
+        int cGroup = 0;
+        int maxGroups = 20;
+
+        map<int, vector<edgeInfo>> oGroups;
+
+        //for some reason making oGroups and wGroups breaks ftlo ;_;
+        for(const auto& edge : g_osEdges) {
+          oGroups[edge.group].push_back(edge);
+        }
+
+        map<int, vector<edgeInfo>> wGroups;
+
+        for(const auto& edge : g_wsEdges) {
+          wGroups[edge.group].push_back(edge);
+        }
+
+
+        for(int cGroup = 0; cGroup < maxGroups; cGroup++) {
+
+          for (auto edge : oGroups[cGroup]) {
+            std::vector<SDL_Vertex> vertices;
+            SDL_Vertex A = edge.first;
+            SDL_Vertex B = edge.second;
+
+            float dx = A.position.x - px;
+            float dy = A.position.y - py;
+            float len = sqrt(dx * dx + dy * dy);
+            A.position.y -= edge.firstZ;
+            B.position.y -= edge.secondZ;
+
+            float Ax2 = A.position.x + dx / len * WIN_WIDTH;
+            float Ay2 = A.position.y + dy / len * WIN_WIDTH;
+
+            std::tuple<bool, float, float> AIntersect = std::make_tuple(false, Ax2, Ay2);
+
+            for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+              for (const auto& wall : wGroups[wGroup]) {
+                if(wGroup == cGroup) {continue;} //don't use walls with that same group
+                                                 //of occluders
+                auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+                if (intersects && iy < A.position.y) {
+                  AIntersect = std::make_tuple(true, ix, iy);
+                  break;
+                }
+              }
+            }
+
+            // Repeat for B
+            dx = B.position.x - px;
+            dy = B.position.y - py;
+            len = sqrt(dx * dx + dy * dy);
+
+            float Bx2 = B.position.x + dx / len * WIN_WIDTH;
+            float By2 = B.position.y + dy / len * WIN_WIDTH;
+
+            std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
+            for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+              for (const auto& wall : wGroups[wGroup]) {
+                if(wGroup == cGroup) {continue;}
+                auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+                if (intersects && iy < B.position.y) {
+                  BIntersect = std::make_tuple(true, ix, iy);
+                  break;
+                }
+              }
+            }
+
+            auto [AIntersects, Ax3, Ay3] = AIntersect;
+            auto [BIntersects, Bx3, By3] = BIntersect;
+
+            SDL_Vertex A2 = {{Ax3, Ay3}, {0, 0, 0, 255}, {0, 0}};
+            SDL_Vertex B2 = {{Bx3, By3}, {0, 0, 0, 255}, {0, 0}};
+
+            // Handle case where there's no intersection
+            if (!AIntersects) {
+              A2 = {{Ax2, Ay2}, {0, 0, 0, 255}, {0, 0}};
+            }
+            if (!BIntersects) {
+              B2 = {{Bx2, By2}, {0, 0, 0, 255}, {0, 0}};
+            }
+
+
+            // Create A3
+            SDL_Vertex A3;
+            if (AIntersects && Ay3 < py) {
+              A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
+            } else {
+              float p_dx = B2.position.y - A2.position.y;
+              float p_dy = A2.position.x - B2.position.x;
+              len = sqrt(p_dx * p_dx + p_dy * p_dy);
+              p_dx = p_dx / len * WIN_WIDTH;
+              p_dy = p_dy / len * WIN_WIDTH;
+
+              float side = (px - A2.position.x) * (B2.position.y - A2.position.y) - (py - A2.position.y) * (B2.position.x - A2.position.x);
+              if (side > 0) { //does this need to be flipped?
+                p_dx = -p_dx;
+                p_dy = -p_dy;
+              }
+
+              A3 = {{A2.position.x + p_dx, A2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+            }
+
+            // Create B3
+            SDL_Vertex B3;
+            if (BIntersects && By3 < py) {
+              B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
+            } else {
+              float p_dx = B2.position.y - A2.position.y;
+              float p_dy = A2.position.x - B2.position.x;
+              len = sqrt(p_dx * p_dx + p_dy * p_dy);
+              p_dx = p_dx / len * WIN_WIDTH;
+              p_dy = p_dy / len * WIN_WIDTH;
+
+              float side = (px - B2.position.x) * (A2.position.y - B2.position.y) - (py - B2.position.y) * (A2.position.x - B2.position.x);
+              if (side < 0) {
+                p_dx = -p_dx;
+                p_dy = -p_dy;
+              }
+
+              B3 = {{B2.position.x + p_dx, B2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+            }
+
+
+            vertices.push_back(A);
+            vertices.push_back(B);
+            vertices.push_back(A2);
+            vertices.push_back(A2);
+            vertices.push_back(B);
+            vertices.push_back(B2);
+
+
+            //these are temporarily commented out
+            vertices.push_back(B2);
+            vertices.push_back(B3);
+            vertices.push_back(A2);
+            vertices.push_back(A2);
+            vertices.push_back(B3);
+            vertices.push_back(A3);
+            SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+
+          }
+
+          for (auto edge : oGroups[cGroup]) {
+            if(edge.wallMesh != nullptr) {
+              SDL_Vertex v[4];
+              int index = 0;
+              for(auto x : edge.indices) {
+                v[index] = edge.wallMesh->vertex[x];
+                v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
+                v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
+                v[index].color.r = v[index].color.g;
+                index++;
+              }
+
+              vector<int> indices = {0, 1, 2, 0, 2, 3};
+
+              SDL_RenderGeometry(renderer, edge.wallMesh->texture, v, 4, indices.data(), 6);
+
+              index = 0;
+              for(auto x : edge.indices) {
+                v[index].tex_coord.x = edge.wallMesh->vertexExtraData[x].first;
+                v[index].tex_coord.y = edge.wallMesh->vertexExtraData[x].second;
+                v[index].color.r = 255;
+                v[index].color.g = 255;
+                v[index].color.b = 255;
+                index++;
+              }
+
+              SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
+            }
+          }
+        }
+
+        //SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+      }
+
+
+      ////debugging
+      //if(0){
+      //SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+      //D(g_wsEdges.size());
+      //for(auto x : g_wsEdges) {
+      //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y-8, x.second.position.x, x.second.position.y - 8);
+      //}
+      //
+      //SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+      //for(auto x : g_osEdges) {
+      //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y, x.second.position.x, x.second.position.y);
+      //}
+      //}
+
+      if(drawhitboxes) {
+        for(auto &x : g_meshCollisions) {
+          if(x->visible) {
+            SDL_Vertex v[x->numVertices];
+            for(int i = 0; i < x->numVertices; i++) {
+              v[i] = x->vertex[i];
+              v[i].position.x += x->origin.x - g_camera.x;
+              v[i].position.y += x->origin.y - g_camera.y;
+            }
+
+            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
+
+          }
+        }
+      }
+
+      // sort
+      sort_by_y(g_actors);
+      for (long long unsigned int i = 0; i < g_actors.size(); i++)
+      {
+        g_actors[i]->render(renderer, g_camera);
+      }
 
       //render black bars
-      {
+      if(!devMode && g_spotlightEnabled) {
+        //occluders
+
         SDL_Rect blackrect;
 
         blackrect = {
@@ -8807,7 +9251,23 @@ void clear_map(camera& cameraToReset) {
 
         SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
 
+        blackrect = {
+          g_camera.desiredX,
+          g_camera.desiredY,
+          g_camera.width,
+          g_camera.height
+        };
 
+        blackrect = transformRect(blackrect);
+        SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+      }
+
+      for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+      {
+        if (g_tiles[i]->software == 1)
+        {
+          g_tiles[i]->render(renderer, g_camera);
+        }
       }
     }
 
@@ -10161,6 +10621,7 @@ void adventureUI::initDialogue() {
 //script system
 //script interpreter
 //scripts
+//continueDialogue definition
 void adventureUI::continueDialogue()
 {
   g_fancybox->show = 0;
@@ -10286,6 +10747,8 @@ void adventureUI::continueDialogue()
     pushText(talker);
     response_index = 0;
     askingQuestion = true;
+    left_ui_refresh = 1; //wait a frame, ignore first input
+    right_ui_refresh = 1;
     // put responses in responses vector
     int j = 1;
     string res = scriptToUse->at(dialogue_index + j).substr(1);
@@ -10448,7 +10911,9 @@ void adventureUI::continueDialogue()
 
     combatUIManager->partyHealthBox->show = 1;
     combatUIManager->partyText->show = 1;
+
     combatUIManager->finalText = getLanguageData("BattleStartText");
+
     combatUIManager->currentText = "";
     combatUIManager->dialogProceedIndicator->y = 0.25;
 
@@ -11014,6 +11479,60 @@ void adventureUI::continueDialogue()
   }
 
 
+  //disable a trigger by the name of the script it runs
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/disabletrigger")
+  {
+    M("disabletrigger");
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    if(x.size() > 1) {
+      for(auto &t : g_triggers) {
+        if(t->binding == x[1]) {
+          M("found a trigger to disable");
+          t->active = 0;
+          t->msRefresh = 0;
+        }
+      }
+    }
+
+
+
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/settalker")
+  {
+    M("Settalker");
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    if(x.size() < 2) {
+      E("Not enough args for /settalker call.");
+    } else {
+
+      string entName = x[1];
+      entity *hopeful = 0;
+      hopeful = searchEntities(entName, talker);
+      if (hopeful != nullptr)
+      {
+        dPointToMe = hopeful;
+      }
+      else
+      {
+        E("Couldn't find entity for /settalker call.");
+      }
+    }
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+
   // write selfdata 5->[4]
   if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
   {
@@ -11283,6 +11802,37 @@ void adventureUI::continueDialogue()
     return;
   }
 
+
+  //use bed
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/fullheal")
+  {
+
+    for(auto x : g_partyCombatants) {
+      x->health = x->baseStrength;
+      x->sp = x->baseMind;
+    }
+    
+    float sx = protag->getOriginX();
+    float sy = protag->getOriginY();
+
+    D(g_map);
+    clear_map(g_camera);
+    load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_map + ".map", "a");
+
+    for(auto x : party) {
+      x->setOriginX(sx);
+      x->setOriginY(sy);
+    }
+
+    //wipe in
+    transition = 1;
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+
   // change mapdir
   if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/mapdir")
   {
@@ -11332,6 +11882,7 @@ void adventureUI::continueDialogue()
     }
     protag_is_talking = 0;
     protag_can_move = 1;
+    transition = 1;
     // clear talker so that g_forceEndDialogue will not be set to 1
     // g_talker = nullptr;
     return;
@@ -11515,7 +12066,7 @@ void adventureUI::continueDialogue()
     string timestr = x[2];
     int time = stoi(timestr);
 
-    entity* hopful = searchEntities(name);
+    entity* hopful = searchEntities(name, talker);
     if(hopful != nullptr) {
       hopful->usingTimeToLive = 1;
       hopful->timeToLiveMs = time;
@@ -12435,7 +12986,8 @@ void adventureUI::continueDialogue()
   // set reverse to 1 to play backwards
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
   {
-    //M("Animate interpreter");
+    M("Animate interpreter");
+    D(selected->name);
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 9);
     vector<string> split = splitString(s, ' ');
@@ -12454,18 +13006,18 @@ void adventureUI::continueDialogue()
       //I("Set msPerFrame to");
       //I(ent->msPerFrame);
 
-      int frameset = stoi(split[3]);
+      int frameset = stoi(split[2]);
       if(frameset != -1) {
-        ent->frameInAnimation = stoi(split[3]);
+        ent->frameInAnimation = stoi(split[2]);
         //I("Set frameInAnimation to ");
         //I(ent->frameInAnimation);
       }
 
-      ent->loopAnimation = stoi(split[4]);
+      ent->loopAnimation = stoi(split[3]);
       //I("Set loopAnimation to ");
       //I(ent->loopAnimation);
 
-      ent->reverseAnimation = stoi(split[5]);
+      ent->reverseAnimation = stoi(split[4]);
       //I("Set reverseAnimation to ");
       //I(ent->reverseAnimation);
 

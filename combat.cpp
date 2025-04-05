@@ -400,6 +400,9 @@ combatant::combatant(string ffilename, int fxp) {
 //  }
 
   file >> temp;
+  file >> article;
+
+  file >> temp;
   file >> temp; // Read the '{'
   while (true) {
     std::getline(file, temp);

@@ -101,22 +101,27 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
   string wallAddr = baseAddr + "-w.ply";
   string collisionAddr = baseAddr + "-c.ply";
   string occluAddr = baseAddr + "-o.ply";
-
-  if(devMode) {
-    D(floorAddr);
-  }
+  string decorAddr = baseAddr + "-d.ply";
 
   if(PHYSFS_exists(floorAddr.c_str())) {
     floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR);
+    M("Loaded floor " + floorAddr);
   }
   if(PHYSFS_exists(wallAddr.c_str())) {
     wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL);
+    M("Loaded wall " + wallAddr);
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
     collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION);
+    M("Loaded collision " + collisionAddr);
   }
   if(PHYSFS_exists(occluAddr.c_str())) {
     occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER);
+    M("Loaded occluder " + occluAddr);
+  }
+  if(PHYSFS_exists(decorAddr.c_str())) {
+    decorative = loadMeshFromPly(decorAddr, floortex, origin, scale, meshtype::DECORATIVE);
+    M("Loaded decoration " + decorAddr);
   }
 
 }
@@ -183,10 +188,12 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
         vertex.normal[2] /= length;
 
         float dotProduct = max(0.0f, vertex.normal[0] * lightDir[0] + vertex.normal[1] * lightDir[1] + vertex.normal[2] * lightDir[2]);
-        if(mtype == meshtype::FLOOR) {
-          dotProduct = 0.7 + 0.3*dotProduct;
+        if(mtype == meshtype::FLOOR || mtype == meshtype::DECORATIVE) {
+          dotProduct = 0.75 + 0.3*dotProduct;
+          if(dotProduct > 1) {dotProduct = 1;}
         }
         int intensity = 255 * dotProduct;
+        
         if(mtype == meshtype::V_WALL) {
           //don't change red channel
           vertex.color.g = intensity;
@@ -208,7 +215,6 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
     mesh* result = new mesh();
     result->origin = forigin;
     result->mtype = fmtype;
-
 
     if(taddress != "") {
       result->textureAddress = taddress;
@@ -316,7 +322,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
         for (const auto& f : faceIndices) {
             if (f.size() == 4) {
               faces.push_back({f[0], f[1], f[2], f[3]});
-            } else if (f.size() == 3 && fmtype == meshtype::FLOOR) {
+            } else if (f.size() == 3 && (fmtype == meshtype::FLOOR || fmtype == meshtype::DECORATIVE)) {
               face n;
               n.a = f[0];
               n.b = f[1];
@@ -347,7 +353,8 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
 
         if(
             fmtype == meshtype::COLLISION ||
-            fmtype == meshtype::FLOOR
+            fmtype == meshtype::FLOOR ||
+            fmtype == meshtype::DECORATIVE
             ) {
           const array<float, 3> lightDir = {0, 0.4472, 0.8944};
           setVertexColors(vertices, faces, lightDir, fmtype);
@@ -482,7 +489,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
             if(dist > maxDistanceFromOrigin) {
               maxDistanceFromOrigin = dist;
             }
-            if(fmtype == meshtype::FLOOR) {
+            if(fmtype == meshtype::FLOOR || fmtype == meshtype::DECORATIVE) {
               result->vertex[index].color.a = v.color.r;
               result->vertex[index].color.r = v.color.g;
             }
@@ -576,11 +583,14 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
         //needed for collisions and floors
         if(fmtype == meshtype::COLLISION ||
             fmtype == meshtype::FLOOR ||
-            fmtype == meshtype::V_WALL) {
+            fmtype == meshtype::V_WALL ||
+            fmtype == meshtype::DECORATIVE
+            ) {
           result->vertices = vertices;
         }
     } else {
         cerr << "File does not exist: " << address << endl;
+        breakpoint();
     }
 
     return result;
