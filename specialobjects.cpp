@@ -365,6 +365,17 @@ void specialObjectsInit(entity* a) {
       //use faction parameter to represent which key item it is
       a->bounceindex = rand() % 8;
 
+      //has the player already picked this item up?
+      string sfh =  "key-" + to_string(a->faction);
+      M("Use safefield " + sfh);
+      int res = checkSaveField(sfh);
+      if(res == -1) {
+        //item should be there
+      } else {
+        a->tangible = 0;
+      }
+
+
       break;
     }
     case 36:
@@ -375,6 +386,35 @@ void specialObjectsInit(entity* a) {
       SDL_Surface* eh = loadSurface(addr);
       a->eheightmap = eh;
       g_eheightmaps.push_back(a);
+
+      break;
+    }
+    case 37:
+    {
+      //present linked to savefile
+
+      //the present's faction field is unique and points to a savefield
+      //the present's base_health field stores which item it gives the player
+      //no scripts!
+
+
+      //keep the presents listed here
+      // Handled differently -> the present by the train in desert 1, where the player gets the tickets
+      // 1 -> the present by the dune in desert 1, where the player gets water
+      
+
+      string sfh =  "present-" + to_string(a->faction);
+
+      int res = checkSaveField(sfh);
+
+      if(res == -1) {
+        //present should be unopened
+        a->data[0] = 0;
+      } else {
+        a->frameInAnimation = 1;
+        a->data[0] = 1;
+      }
+
 
       break;
     }
@@ -2187,6 +2227,9 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       if(RectOverlap(protag->getMovedBounds(), a->getMovedBounds())) {
         if(a->faction >= 0) {
           keyItemInfo* k = new keyItemInfo(a->faction); //automatically pushed back
+          string sfh = "key-" + to_string(a->faction);
+          M("Use safefield " + sfh);
+          writeSaveField(sfh, 1);
           a->faction = -1;
           a->parent = protag;
           a->isOrbital = true;
@@ -2846,6 +2889,70 @@ void specialObjectsInteract(entity* a) {
       }
       break;
 
+    }
+    case 37:
+    {
+      M("Present interacted with");
+      //make a script and push it to the auim
+
+      vector<string> script;
+      if(a->data[0] == 1) {
+        //present is opened
+        script.push_back(getLanguageData("PresentEmpty"));
+        script.push_back("#");
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->talker = narrarator; //whatever lol
+        adventureUIManager->continueDialogue();
+      } else {
+        //open present
+        script.push_back(getLanguageData("PresentOpen"));
+        string itemName = "";
+        if(a->maxhp >= 0 && a->maxhp < itemsTable.size()) {
+          itemName = itemsTable[a->maxhp].name;
+        } else {
+          E("Bad itemIndex from present " + a->faction);
+          abort();
+        }
+        string inside = getLanguageData("PresentInside");
+        inside = stringMultiInject(getLanguageData("PresentInside"), {itemName});
+
+        //script.push_back("Inside is a " + itemName);
+        script.push_back(inside);
+        //check if the player has space
+        
+        if(g_combatInventory.size() < g_maxInventorySize) {
+          script.push_back(getLanguageData("PresentTake"));
+          g_combatInventory.push_back(a->maxhp);
+          script.push_back("#");
+
+          string sfh = "present-" + to_string(a->faction);
+          writeSaveField(sfh, 1);
+          a->data[0] = 1;
+          a->frameInAnimation = 1;
+
+        } else {
+          script.push_back(getLanguageData("PresentLeave"));
+          script.push_back("#");
+
+        }
+
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->talker = narrarator; //whatever lol
+        adventureUIManager->continueDialogue();
+
+      }
+
+      break;
     }
   }
 }

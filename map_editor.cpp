@@ -4633,6 +4633,7 @@ void write_map(entity *mapent)
         }
         break;
       }
+      //randomize spin of entities by name
       if(word == "randomspin") {
         line >> word;
         for(auto x : g_entities) {

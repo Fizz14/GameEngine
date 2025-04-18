@@ -588,6 +588,7 @@ void parseScriptForDialogHooks(vector<string> &sayings) {
         string innerText = x.substr(start + 1, end - start - 1);
         //wstring wres = getLanguageDataSpecial(innerText);
         string result = getLanguageData(innerText);
+        D(result);
         x.replace(start, end - start + 1, result);
         start = x.find('(', start + result.length());
       } else {
@@ -7509,7 +7510,7 @@ int loadSave() {
     b->baseSkill = skill;
     b->baseCritical = critical;
     b->baseRecovery = recovery;
-    if(b->level == 0) {
+    if(b->level == 1) {
       b->baseStrength = b->l0Strength;
       b->baseMind = b->l0Mind;
       b->baseAttack = b->l0Attack;
@@ -9877,10 +9878,11 @@ void adventureUI::showTalkingUI()
   talkingText->updateText("", -1, 34);
   responseText->show = 1;
   responseText->updateText("", -1, 34);
-  if(talker->turnToFacePlayer) {
+  if(talker != nullptr && talker->turnToFacePlayer) {
     dialogpointer->visible = 1;
     dialogpointergap->show = 1;
   }
+  
 }
 
 void adventureUI::hideTalkingUI()
@@ -10807,6 +10809,7 @@ void adventureUI::continueDialogue()
   //
   // /takekey 0
   if(scriptToUse->at(dialogue_index + 1).substr(0,8) == "/takekey") {
+    M("Try to take a key");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 
@@ -11504,9 +11507,18 @@ void adventureUI::continueDialogue()
     return;
   }
 
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/notalker")
+  {
+    M("Notalker");
+    dPointToMe = 0;
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
   if (scriptToUse->at(dialogue_index + 1).substr(0, 10) == "/settalker")
   {
-    M("Settalker");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 

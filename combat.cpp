@@ -1191,6 +1191,9 @@ int xpToLevel(int xp) {
 }
 
 int levelToXp(int level) {
+  if(level == 0) {
+    return 0;
+  }
   if(level > 100) {
     level = 100;
   }
@@ -3687,6 +3690,7 @@ void CombatLoop() {
         x->level = xpToLevel(x->xp);
         combatUIManager->oldLevel = x->level;
         x->xp += combatUIManager->xpToGrant * frng(0.95, 1.05);
+        D(combatUIManager->xpToGrant);
         combatUIManager->newLevel= xpToLevel(x->xp);
         combatUIManager->thisLevel = combatUIManager->oldLevel+1;
         //g_submode = submode::LEVELUP;
