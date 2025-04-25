@@ -11447,6 +11447,46 @@ void adventureUI::continueDialogue()
     return;
   }
 
+  // move an entity within some blocks of another entity
+  // used to make hentnung approach fomm
+  // /aproach common/hentnung common/fomm 3
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 9) == "/approach")
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    s.erase(0,9);
+    D(s);
+    vector<string> x = splitString(s, ' ');
+    
+    if(x.size() > 2) {
+      M("Lets do an approach-call");
+      D(x[1]);
+      D(x[2]);
+      D(x[3]);
+      g_approacher = searchEntities(x[1]);
+      g_approachMe = searchEntities(x[2]);
+      g_approachBlocks = stof(x[3]);
+
+      sleepingMs = 10000; //this will be cut short if things work as intended
+
+      D(g_approacher->name);
+      D(g_approachMe->name);
+      D(g_approachBlocks);
+      
+
+
+
+    } else {
+      M("Not enough params for approach-call");
+    }
+    
+
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+
 
   // select command
   //change talker (useful for writing selfdata to entities from non-dialogue scripts)

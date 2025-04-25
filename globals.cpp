@@ -632,6 +632,9 @@ bool g_fullscreen = false;
 camera g_camera(0, 0);
 entity *protag = nullptr;
 entity *mainProtag; // for letting other entities use this ones inventory; game ends when this one dies
+entity * g_approacher = 0; //used for the approach-call
+float g_approachBlocks = 0; 
+entity * g_approachMe = 0;
 entity * g_hog=0;
 entity* g_behemoth0=0;
 entity* g_behemoth1=0;

@@ -1809,6 +1809,11 @@ void ExplorationLoop() {
     }
   }
 
+  //approacher update
+  if(g_approacher != 0) {
+    g_approacher->agrod = 1;
+    g_approacher->target = g_approachMe;
+  }
 
   // ENTITY MOVEMENT (ENTITY UPDATE)
   // dont update movement while transitioning
@@ -2906,7 +2911,8 @@ void ExplorationLoop() {
           v[i].position.y += x->origin.y - g_camera.y;
         }
 
-        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
+        //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
+      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
 
       }
     }
@@ -3407,17 +3413,19 @@ void ExplorationLoop() {
     }
 
     // doors
-    for (long long unsigned int i = 0; i < g_doors.size(); i++)
-    {
-      SDL_Rect obj = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
-      SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
-      // the wall
-      SDL_Rect obj2 = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - (g_doors[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(((g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
-      //SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
-      nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
-      nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
-      nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
-      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    if(drawhitboxes) {
+      for (long long unsigned int i = 0; i < g_doors.size(); i++)
+      {
+        SDL_Rect obj = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
+        // the wall
+        SDL_Rect obj2 = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - (g_doors[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(((g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
+        //SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
+        nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
+        nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
+        nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
+        nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
     }
 
     for (long long unsigned int i = 0; i < g_dungeonDoors.size(); i++)
@@ -3430,18 +3438,20 @@ void ExplorationLoop() {
     }
 
 
-    for (long long unsigned int i = 0; i < g_triggers.size(); i++)
-    {
-      SDL_Rect obj = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
-      SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
-      // the wall
-      SDL_Rect obj2 = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(((g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
-      SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
-
-      nodeInfoText->x = obj.x + 25;
-      nodeInfoText->y = obj.y + 25;
-      nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
-      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    if(drawhitboxes) {
+      for (long long unsigned int i = 0; i < g_triggers.size(); i++)
+      {
+        SDL_Rect obj = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
+        // the wall
+        SDL_Rect obj2 = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(((g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
+  
+        nodeInfoText->x = obj.x + 25;
+        nodeInfoText->y = obj.y + 25;
+        nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
+        nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
     }
 
     // listeners

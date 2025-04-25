@@ -2213,33 +2213,35 @@ void write_map(entity *mapent)
   }
   
   //draw cameraBlockers
-  for(auto x : g_camBlockers) {
-    drect.x = x->bounds.x;
-    drect.y = x->bounds.y;
-    drect.w = x->bounds.width;
-    drect.h = x->bounds.height;
-    drect = transformRect(drect);
-    switch(x->direction) {
-      case 0:
-        {
-          SDL_RenderCopyF(renderer, cameraBlockerTextureA, NULL, &drect);
-          break;
-        }
-      case 1:
-        {
-          SDL_RenderCopyF(renderer, cameraBlockerTextureB, NULL, &drect);
-          break;
-        }
-      case 2:
-        {
-          SDL_RenderCopyF(renderer, cameraBlockerTextureC, NULL, &drect);
-          break;
-        }
-      default:
-        {
-          SDL_RenderCopyF(renderer, cameraBlockerTextureD, NULL, &drect);
-          break;
-        }
+  if(drawhitboxes) {
+    for(auto x : g_camBlockers) {
+      drect.x = x->bounds.x;
+      drect.y = x->bounds.y;
+      drect.w = x->bounds.width;
+      drect.h = x->bounds.height;
+      drect = transformRect(drect);
+      switch(x->direction) {
+        case 0:
+          {
+            SDL_RenderCopyF(renderer, cameraBlockerTextureA, NULL, &drect);
+            break;
+          }
+        case 1:
+          {
+            SDL_RenderCopyF(renderer, cameraBlockerTextureB, NULL, &drect);
+            break;
+          }
+        case 2:
+          {
+            SDL_RenderCopyF(renderer, cameraBlockerTextureC, NULL, &drect);
+            break;
+          }
+        default:
+          {
+            SDL_RenderCopyF(renderer, cameraBlockerTextureD, NULL, &drect);
+            break;
+          }
+      }
     }
   }
   
