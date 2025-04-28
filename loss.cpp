@@ -32,7 +32,7 @@ lossUI::lossUI() {
 //  questionPanel->is9patch = true;
 //  questionPanel->persistent = true;
 
-  yes = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
+  yes = new textbox(renderer, getLanguageData("Affirmative").c_str(), 2, 0, 0, 0.9);
   yes->boxX = 0.50 - 0.07;
   yes->boxY = 0.2;
   yes->boxWidth = 0.01;
@@ -40,7 +40,7 @@ lossUI::lossUI() {
   yes->dropshadow = 1;
   yes->align = 2;
 
-  no = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
+  no = new textbox(renderer, getLanguageData("Negative").c_str(), 2, 0, 0, 0.9);
   no->boxX = 0.50 + 0.07;
   no->boxY = 0.2;
   no->boxWidth = 0;
@@ -405,10 +405,8 @@ void LossLoop() {
       combatUIManager->mainText->show = 1;
       combatUIManager->mainText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       lossUIManager->yes->show = 1;
-      lossUIManager->yes->updateText("Yes", -1, 0.85, g_textcolor, g_font);
       lossUIManager->yes->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       lossUIManager->no->show = 1;
-      lossUIManager->no->updateText("No", -1, 0.85, g_textcolor, g_font);
       lossUIManager->no->render(renderer, WIN_WIDTH, WIN_HEIGHT);
       lossUIManager->handMarker->render(renderer, g_camera, elapsed);
       if(lossUIManager->option == 0) {

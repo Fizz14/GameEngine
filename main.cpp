@@ -265,7 +265,9 @@ void ExplorationLoop() {
   specialObjectsOncePerFrame(elapsed);
 
   // INPUT
-  getExplorationInput(elapsed);
+  if(!g_learningMove) { //the two getInput functions can't be used at-once.
+    getExplorationInput(elapsed);
+  }
   if(g_gamemode != gamemode::EXPLORATION) { return; }
 
 
@@ -712,6 +714,16 @@ void ExplorationLoop() {
       case amState::STATUS:
         {
           adventureUIManager->showSt();
+
+          if(adventureUIManager->stIndex >= 0 && adventureUIManager->stIndex < party.size()) {
+            adventureUIManager->displayChar->texture = party[adventureUIManager->stIndex]->texture;
+            adventureUIManager->displayChar->show = 1;
+          } else {
+            adventureUIManager->displayChar->texture = 0;
+            adventureUIManager->displayChar->show = 0;
+          }
+
+
           if(input[8] && !oldinput[8]) {
             g_amState = amState::MAJOR;
           }
@@ -770,21 +782,21 @@ void ExplorationLoop() {
           adventureUIManager->stTextbox->updateText(
               "    " + cname +"\n\n"
               +
-              "HP: " + to_string(c->health) + "/" + to_string(c->baseStrength) + "\n"
+              getLanguageData("StatusHP") + to_string(c->health) + "/" + to_string(c->baseStrength) + "\n"
               +
-              "SP: " + to_string(c->sp) + "/" + to_string(c->baseStrength) + "\n"
+              getLanguageData("StatusSP") + to_string(c->sp) + "/" + to_string(c->baseStrength) + "\n"
               +
-              "Attack: " + to_stringF((int)c->baseAttack)+ "\n"
+              getLanguageData("StatusAttack") + to_stringF((int)c->baseAttack)+ "\n"
               +
-              "Defense: " + to_stringF((int)c->baseDefense)+ "\n"
+              getLanguageData("StatusDefense") + to_stringF((int)c->baseDefense)+ "\n"
               +
-              "Soul: " + to_stringF((int)c->baseSoul)+ "\n"
+              getLanguageData("StatusSoul") + to_stringF((int)c->baseSoul)+ "\n"
               +
-              "Critical: " + to_stringF((int)c->baseCritical)+ "\n"
+              getLanguageData("StatusCritical") + to_stringF((int)c->baseCritical)+ "\n"
               +
-              "Skill: " + to_stringF((int)c->baseSkill)+ "\n"
+              getLanguageData("StatusSkill") + to_stringF((int)c->baseSkill)+ "\n"
               +
-              "Recovery: " + to_stringF((int)c->baseRecovery)+ "\n"
+              getLanguageData("StatusRecovery") + to_stringF((int)c->baseRecovery)+ "\n"
               +
               uselessStat + ": " + to_string(usv)+ "\n"
               );
@@ -808,7 +820,7 @@ void ExplorationLoop() {
 
           adventureUIManager->stTextbox2->updateText("Level " + to_string(c->level) + " (" + to_string(percentToNxt) + "% to next)\n\n"
               +
-              "Spirit-moves:\n"
+              getLanguageData("StatusSpiritMoves") + "\n"
               +
               s1 + "\n"
               +
@@ -818,11 +830,11 @@ void ExplorationLoop() {
               +
               s4 + "\n\n"
               +
-              "Last fight:\n"
+              getLanguageData("StatusLastFight") + "\n"
               + 
-              "Damage Dealt: " + to_string((int)c->dmgDealtOverFight) + "\n"
+              getLanguageData("StatusDamageDealt") + to_string((int)c->dmgDealtOverFight) + "\n"
               +
-              "Damage Taken: " + to_string((int)c->dmgTakenOverFight) + "\n"
+              getLanguageData("StatusDamageTaken") + to_string((int)c->dmgTakenOverFight) + "\n"
 
 
               );
@@ -1233,7 +1245,7 @@ void ExplorationLoop() {
 
   // update ui
   curTextWait += elapsed * text_speed_up;
-  if (curTextWait >= textWait && protag_is_talking)
+  if (curTextWait >= textWait && protag_is_talking && !g_learningMove)
   {
     adventureUIManager->updateText();
     curTextWait = 0;
@@ -1813,6 +1825,23 @@ void ExplorationLoop() {
   if(g_approacher != 0) {
     g_approacher->agrod = 1;
     g_approacher->target = g_approachMe;
+    int distance = XYWorldDistance(g_approacher->getOriginX(), g_approacher->getOriginY(), g_approachMe->getOriginX(), g_approachMe->getOriginY());
+    if(distance < g_approachBlocks * 64) {
+      g_approacher->agrod = 0;
+      g_approacher->target = nullptr;
+      g_approacher->forwardsVelocity = 0;
+      g_approacher->xvel = 0;
+      g_approacher->yvel = 0;
+      g_approacher->xaccel = 0;
+      g_approacher->yaccel = 0;
+      g_approacher->frameInAnimation = 0;
+      g_approacher->animate = 0;
+      g_approacher->extraAnimateFrames = 0;
+      g_approacher = nullptr;
+      adventureUIManager->sleepingMS = 0;
+      adventureUIManager->showTalkingUI();
+      adventureUIManager->continueDialogue();
+    }
   }
 
   // ENTITY MOVEMENT (ENTITY UPDATE)
@@ -1828,7 +1857,7 @@ void ExplorationLoop() {
         g_entities[i]->floatheight = g_itemsines[index];
       }
       door* taken = nullptr;
-      if( (protag_is_talking == 0 && g_amState == amState::CLOSED && inPauseMenu == 0)) {
+      if( (protag_is_talking == 0 && g_amState == amState::CLOSED && inPauseMenu == 0) || g_entities[i] == g_approacher) {
         taken = g_entities[i]->update(g_doors, elapsed);
         if(g_breakFromPrimarySwitch) {
           g_breakFromPrimarySwitch = 0;
@@ -1866,9 +1895,7 @@ void ExplorationLoop() {
 
         // render this frame
 
-        M("About to clear the map");
         clear_map(g_camera);
-        M("Done clearing the map");
         load_map(renderer, savemap, dest_waypoint);
         transition = 1;
 
@@ -3530,7 +3557,9 @@ void ExplorationLoop() {
     }
   }
 
-  SDL_RenderPresent(renderer);
+  if(!g_learningMove) {
+    SDL_RenderPresent(renderer);
+  }
   B("End of frame");
 }
 
@@ -4340,6 +4369,11 @@ int WinMain()
       case gamemode::EXPLORATION: 
         {
           ExplorationLoop();
+
+          if(g_learningMove) {
+            learnMoveLoop();
+          }
+
           break;
         }
       case gamemode::COMBAT:

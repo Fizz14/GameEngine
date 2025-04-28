@@ -1155,6 +1155,12 @@ enum gamemode {
 
 extern gamemode g_gamemode;
 
+extern int g_learningMove;
+
+extern int g_whoLearnsMove;
+
+extern int g_whichMoveLearned;
+
 extern turn g_turn;
 
 extern submode g_submode;

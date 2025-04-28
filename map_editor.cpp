@@ -1441,11 +1441,17 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   g_camera.y = ((g_focus->getOriginY() - XtoZ * g_focus->z) - (g_camera.height / (2 * g_camera.zoom)));
   g_camera.oldx = g_camera.x;
   g_camera.oldy = g_camera.y;
+  g_camera.repoX = -1;
+  g_camera.repoY = -1;
+  g_camera.natX = -1;
+  g_camera.natY = -1;
 
   // call map's init-script
   // seemingly crashes the game sometimes
   // don't run the init-script if we're in devmode
-  if (!devMode && fileExists("resources/maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
+  
+  //...for some reason I didnt want init-scripts to run in devmode but perhaps its okay now?
+  if ( fileExists("resources/maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt"))
   {
     string loadstr = "resources/maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt";
     vector<string> script = loadText(loadstr);

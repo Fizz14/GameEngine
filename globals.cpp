@@ -1068,6 +1068,15 @@ bool g_entityBenchmarking = 0;
 
 gamemode g_gamemode = gamemode::TITLE; //exploration, combat, gameover
 
+//for learning a move in the overworld
+//    dialogue_index++;
+//    this->continueDialogue();
+int g_learningMove = 0;
+
+int g_whoLearnsMove = 0;
+
+int g_whichMoveLearned = 0;
+
 turn g_turn = turn::PLAYER;
 
 submode g_submode = submode::TEXT;

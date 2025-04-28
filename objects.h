@@ -1153,6 +1153,8 @@ class adventureUI {
 
     ui* spPanel;
 
+    ui* displayChar = 0;
+
     void showAm();
     void hideAm();
     void showKi();
@@ -1978,6 +1980,9 @@ class ui {
     int frameheight = 0;
     int msPerFrame = 0; //set this to positive int to animate the UI element
     int msTilNextFrame = 0;
+
+    int frameCropX = -1; //used for picking a region of the texture to draw, would be better to use vertical and horizontal frames
+    int frameCropY = - 1;
 
     //for 9patch
     bool is9patch = 0;

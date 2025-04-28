@@ -3526,7 +3526,13 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     scriptedAnimation = 1;
     msPerFrame = walkAnimMsPerFrame;
     animation = 0;
-    animationconfig = 0;
+  } else if(animationconfig == 3) {
+    //set frame to walkFrames
+    loopAnimation = 0;
+    scriptedAnimation = 1;
+    msPerFrame = 0;
+    animation = 0;
+    frameInAnimation = animWalkFrames;
   }
 
   //identity
@@ -3676,12 +3682,10 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   }
 
 
-  if(animationconfig == 0) {
-    useAnimForWalking = 1;
-  }
-
   if(animationconfig == 1) {
     useAnimForWalking = 0;
+  } else {
+    useAnimForWalking = 1;
   }
 
   //load ai-data
@@ -3978,6 +3982,9 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
   this->solid = a->solid;
   this->semisolid = a->semisolid;
   this->identity = a->identity;
+  this->animationconfig = a->animationconfig;
+  this->walkAnimMsPerFrame = a->walkAnimMsPerFrame;
+  this->animWalkFrames = a->animWalkFrames;
 
   if(this->solid) {
     this->solidify();
@@ -3992,6 +3999,24 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
       b->setOriginX(this->getOriginX());
       b->setOriginY(this->getOriginY());
     }
+  }
+
+  if(animationconfig == 2) {
+    //make objects animate staticly
+    loopAnimation = 1;
+    scriptedAnimation = 1;
+    msPerFrame = walkAnimMsPerFrame;
+    animation = 0;
+    animationconfig = 0;
+  } else if(animationconfig == 3) {
+    M("Entity copy constructor -animconfig 3");
+    //set frame to walkFrames
+    loopAnimation = 0;
+    scriptedAnimation = 1;
+    msPerFrame = 0;
+    animation = 0;
+    frameInAnimation = animWalkFrames;
+    animationconfig = 0;
   }
 
 
@@ -6697,7 +6722,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
 
 
-
   //push him away from close entities
   //if we're even slightly stuck, don't bother
   if(this->dynamic && this->pushable && elapsed > 0) {
@@ -6898,6 +6922,8 @@ door* entity::update(vector<door*> doors, float elapsed) {
     specialObjectsUpdate(this, elapsed);
     if(g_breakFromPrimarySwitch) {return nullptr;} //last protag died
   }
+
+
 
   if(this->missile) {
     // missile movment
@@ -7208,7 +7234,7 @@ entity* searchEntities(string fname, entity* caller) {
 
 
   for(auto n : g_entities) {
-    if(n->name == fname && (n->tangible || n == protag && g_protagIsWithinBoardable)) {
+    if(n->name == fname) {
       return n;
     }
   }
@@ -8077,6 +8103,7 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
           SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
           SDL_SetTextureColorMod(texttexture, 255,255,255);
         }
+
         SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
       }
     }
@@ -8290,6 +8317,10 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
             }
             SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
             SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+          } else if(frameCropX != -1) {
+            SDL_Rect srcrect = {frameCropX , frameCropY,  framewidth, frameheight};
+            SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+
           } else {
             SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
           }
@@ -8324,6 +8355,10 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
             }
             SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
             SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+          } else if(frameCropX != -1) {
+            SDL_Rect srcrect = {frameCropX , frameCropY,  framewidth, frameheight};
+            SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+
           } else {
             SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
           }
@@ -8468,6 +8503,7 @@ trigger::trigger(string fbinding, int fx, int fy, int fz, int fwidth, int fheigh
   script =  loadText(loadstr);
 
   parseScriptForLabels(script);
+  parseScriptForDialogHooks(script);
 }
 
 trigger::~trigger() {
@@ -9977,6 +10013,7 @@ void adventureUI::showSt() {
   stTextbox2->show = 1;
   stTextbox3->show = 1;
   stTextbox4->show = 1;
+  displayChar->show = 1;
 }
 
 void adventureUI::hideSt() {
@@ -9985,6 +10022,7 @@ void adventureUI::hideSt() {
   stTextbox2->show = 0;
   stTextbox3->show = 0;
   stTextbox4->show = 0;
+  displayChar->show = 0;
 }
 
 adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, but due to the declaration plight is 0 by default
@@ -10319,6 +10357,16 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     stTextbox4->boxX = 0.242;
     stTextbox4->boxY = 0.12;
     stTextbox4->dropshadow = 1;
+
+    displayChar = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.35, 0.055, 0.13, 1, 1);
+    displayChar->persistent = true;
+    displayChar->show = 0;
+    displayChar->priority = 1;
+    displayChar->frameCropX = 0;
+    displayChar->frameCropY = 1024;
+    displayChar->framewidth = 256;
+    displayChar->frameheight = 256;
+    displayChar->heightFromWidthFactor = 1;
 
     hideInventoryUI();
     hideTalkingUI();
@@ -11458,22 +11506,15 @@ void adventureUI::continueDialogue()
     vector<string> x = splitString(s, ' ');
     
     if(x.size() > 2) {
-      M("Lets do an approach-call");
-      D(x[1]);
-      D(x[2]);
-      D(x[3]);
       g_approacher = searchEntities(x[1]);
       g_approachMe = searchEntities(x[2]);
       g_approachBlocks = stof(x[3]);
 
-      sleepingMs = 10000; //this will be cut short if things work as intended
+      sleepingMS = 10000; //this will be cut short if things work as intended
 
-      D(g_approacher->name);
-      D(g_approachMe->name);
-      D(g_approachBlocks);
-      
-
-
+      if(playersUI) {
+        hideTalkingUI();
+      }
 
     } else {
       M("Not enough params for approach-call");
@@ -11513,6 +11554,7 @@ void adventureUI::continueDialogue()
       else
       {
         E("Couldn't find entity for /select call.");
+        D(x[1]);
       }
     }
 
@@ -13236,6 +13278,30 @@ void adventureUI::continueDialogue()
     this->continueDialogue();
     return;
   }
+
+  // teach a partymember a spiritmove
+  // /teach [spiritmovenumber] [partymemberindex]
+  if(scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/teach") 
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    if(x.size() < 3) {
+      E("Not enough params for /teach call");
+    }
+
+    g_whoLearnsMove = stoi(x[2]);
+    //g_whichMoveLearned = stoi(x[1]);
+    combatUIManager->moveToLearn = stoi(x[1]);
+    
+    g_submode = submode::LEVELUP;
+    g_learningMove = 1;
+
+    adventureUIManager->hideTalkingUI();
+
+    return;
+  }
+
 
   // /hurt entityname damage
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/hurt")

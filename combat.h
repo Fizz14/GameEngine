@@ -417,6 +417,8 @@ void getCombatInput();
 
 void CombatLoop();
 
+void learnMoveLoop();
+
 class miniEnt {
 public:
   float x = 0;
