@@ -359,6 +359,33 @@ void specialObjectsInit(entity* a) {
 
       break;
     }
+    case 34:
+    {
+      //overworld enemy
+      //move to a random spot on a patch of "grass"
+      if(g_tallGrasses.size() > 0) {
+        int rand = rng(0, g_tallGrasses.size()-1);
+        int newX = rng(g_tallGrasses[rand]->bounds.x, g_tallGrasses[rand]->bounds.x + g_tallGrasses[rand]->bounds.width);
+        int newY = rng(g_tallGrasses[rand]->bounds.y, g_tallGrasses[rand]->bounds.y + g_tallGrasses[rand]->bounds.height);
+
+        D(rand);
+        D(g_tallGrasses[rand]->bounds.x);
+        D(g_tallGrasses[rand]->bounds.width);
+        D(newX);
+
+        a->setOriginX(newX);
+        a->setOriginY(newY);
+
+
+      }
+
+
+
+
+
+
+
+    }
     case 35:
     {
       //key item found in overworld

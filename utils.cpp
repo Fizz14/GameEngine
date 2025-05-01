@@ -395,6 +395,7 @@ string getLanguageData(string handle) {
     position = languagePackIndices[handle].first;
     length = languagePackIndices[handle].second;
   } else {
+    E("Missing Languagepackhook for " + handle);
     return "";
   }
 

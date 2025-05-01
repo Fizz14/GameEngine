@@ -141,14 +141,15 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 //      enemiesMap[s1] = p0;
 //    }
 
-//    if (word == "grass") {
-//      iss >> s0 >> p0 >> p1 >> p2 >> p3;
-//      tallGrass* a = new tallGrass();
-//      a->bounds.x = p0;
-//      a->bounds.y = p1;
-//      a->bounds.width = p2;
-//      a->bounds.height = p3;
-//    }
+    //it's a spawnzone where enemies can be repositioned
+    if (word == "grass") {
+      iss >> s0 >> p0 >> p1 >> p2 >> p3;
+      tallGrass* a = new tallGrass();
+      a->bounds.x = p0;
+      a->bounds.y = p1;
+      a->bounds.width = p2;
+      a->bounds.height = p3;
+    }
 
     if (word == "camblocker") {
       iss >> s0 >> p0 >> p1 >> p2 >> p3 >> p4;
@@ -4528,6 +4529,16 @@ void write_map(entity *mapent)
       if (word == "clear")
       {
         line >> word;
+        if(word == "grass")
+        {
+          int s = g_tallGrasses.size();
+          for(int i = 0; i <s; i++) {
+            delete g_tallGrasses[0];
+          }
+          break;
+        }
+
+      
         if (word == "map")
         {
           clear_map(g_camera);

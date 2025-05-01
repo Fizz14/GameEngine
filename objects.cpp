@@ -588,7 +588,6 @@ void parseScriptForDialogHooks(vector<string> &sayings) {
         string innerText = x.substr(start + 1, end - start - 1);
         //wstring wres = getLanguageDataSpecial(innerText);
         string result = getLanguageData(innerText);
-        D(result);
         x.replace(start, end - start + 1, result);
         start = x.find('(', start + result.length());
       } else {
@@ -4309,9 +4308,6 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
       }
 
       if(texture != NULL) {
-        if(this == protag) {
-          D(dstrect.x);
-        }
         SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
       }
       //      if(flashingMS > 0) {
@@ -7526,8 +7522,11 @@ int loadSave() {
     a->inParty = 1;
 
     combatant* b = new combatant(name, exp);
-    b->health = currentHP;
-    b->sp = currentSP;
+    b->health = floor(currentHP);
+    b->sp = floor(currentSP);
+    if(b->name == "common/fomm") {
+      D(currentSP);
+    }
     b->baseStrength = mhp;
     b->baseMind = msp;
     b->baseAttack = atk;
@@ -7536,22 +7535,27 @@ int loadSave() {
     b->baseSkill = skill;
     b->baseCritical = critical;
     b->baseRecovery = recovery;
-    if(b->level == 1) {
+    if(b->level == 0) {
+      M("Looks like this hero has level 0!");
       b->baseStrength = b->l0Strength;
+      b->health = floor(b->baseStrength);
       b->baseMind = b->l0Mind;
+      b->sp = floor(b->baseMind);
       b->baseAttack = b->l0Attack;
       b->baseDefense = b->l0Defense;
       b->baseSoul = b->l0Soul;
       b->baseSkill = b->l0Skill;
       b->baseCritical = b->l0Critical;
       b->baseRecovery = b->l0Recovery;
+    } else {
+      D(b->level);
     }
 
     if(b->health > b->baseStrength) {
-      b->health = b->baseStrength;
+      b->health = floor(b->baseStrength);
     }
     if(b->sp > b->baseMind) {
-      b->sp = b->baseMind;
+      b->sp = floor(b->baseMind);
     }
     if(spiritOne != -1) {
       b->spiritMoves.push_back(spiritOne);
@@ -10358,7 +10362,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     stTextbox4->boxY = 0.12;
     stTextbox4->dropshadow = 1;
 
-    displayChar = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.35, 0.055, 0.13, 1, 1);
+    displayChar = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.25, 0.052, 0.13, 1, 1);
     displayChar->persistent = true;
     displayChar->show = 0;
     displayChar->priority = 1;
@@ -10905,7 +10909,7 @@ void adventureUI::continueDialogue()
     a->baseCritical = a->l0Critical + (a->criticalGain * a->level);
     a->baseRecovery = a->l0Recovery + (a->recoveryGain * a->level);
 
-    a->health = a->baseStrength;
+    a->health = floor(a->baseStrength);
     a->curStrength = a->baseStrength;
     a->curMind = a->baseMind;
     a->curAttack = a->baseAttack;
@@ -11902,8 +11906,8 @@ void adventureUI::continueDialogue()
   {
 
     for(auto x : g_partyCombatants) {
-      x->health = x->baseStrength;
-      x->sp = x->baseMind;
+      x->health = floor(x->baseStrength);
+      x->sp = floor(x->baseMind);
     }
     
     float sx = protag->getOriginX();
@@ -12119,8 +12123,8 @@ void adventureUI::continueDialogue()
 
         //configure starting combatant here;
         combatant* b = new combatant(e->name, 0);
-        b->health = b->baseStrength;
-        b->sp = b->baseSoul;
+        b->health = floor(b->baseStrength);
+        b->sp = floor(b->baseSoul);
         g_partyCombatants.push_back(b);
 
         //set up the party to follow each other

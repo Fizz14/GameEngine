@@ -304,7 +304,6 @@ void ExplorationLoop() {
     // Adventure Menu
     if(input[12] && !oldinput[12]) {
       if(!inPauseMenu && !g_inSettingsMenu && !protag_is_talking) {
-        D(int(g_amState));
         if(g_amState == amState::CLOSED) {
           g_amState = amState::MAJOR;
           adventureUIManager->keyPrompting = 0;
@@ -773,7 +772,7 @@ void ExplorationLoop() {
           }
 
           if(adventureUIManager->stIndex != g_partyCombatants.size()-1) {
-            procede = "    >";
+            procede = "                 >";
           }
           string uselessStat = getLanguageData("UselessStat" + to_string(usI));
           adventureUIManager->stTextbox3->updateText(precede);
@@ -782,9 +781,9 @@ void ExplorationLoop() {
           adventureUIManager->stTextbox->updateText(
               "    " + cname +"\n\n"
               +
-              getLanguageData("StatusHP") + to_string(c->health) + "/" + to_string(c->baseStrength) + "\n"
+              getLanguageData("StatusHP") + to_string(c->health) + "/" + to_string((int)floor(c->baseStrength)) + "\n"
               +
-              getLanguageData("StatusSP") + to_string(c->sp) + "/" + to_string(c->baseStrength) + "\n"
+              getLanguageData("StatusSP") + to_string(c->sp) + "/" + to_string((int)floor(c->baseMind)) + "\n"
               +
               getLanguageData("StatusAttack") + to_stringF((int)c->baseAttack)+ "\n"
               +
@@ -860,12 +859,14 @@ void ExplorationLoop() {
 
           if(input[11] && !oldinput[11]) {
             g_amState = amState::SPIRITSELECT;
-            combatUIManager->spiritPanel->show = 1;
-            combatUIManager->spiritText->show = 1;
+            //combatUIManager->spiritPanel->show = 1;
+            //combatUIManager->spiritText->show = 1;
             combatUIManager->menuPicker->show = 1;
             combatUIManager->menuPicker->x = 10;
             combatUIManager->currentInventoryOption = 0;
 
+            combatUIManager->spiritInfoText->show = 1;
+            combatUIManager->spiritInfoPanel->show = 1;
 
           }
 
@@ -873,6 +874,13 @@ void ExplorationLoop() {
         }
       case amState::SPIRITSELECT:
         {
+          string info = getLanguageData("SI" + to_string(g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption]));
+          while(replaceString(info, "\\n", "\n")){}
+          string name = getLanguageData("S" + to_string(g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption]));
+          string final = name + "\n" + info;
+    
+          combatUIManager->spiritInfoText->updateText(final, -1, 0.43, g_textcolor, g_font);
+
           if(protag_is_talking) {
             combatUIManager->partyText->show = 0;
             combatUIManager->partyMiniText->show = 0;
@@ -885,6 +893,8 @@ void ExplorationLoop() {
             combatUIManager->spiritPanel->show = 0;
             combatUIManager->spiritText->show = 0;
             combatUIManager->menuPicker->show = 0;
+            combatUIManager->spiritInfoPanel->show = 0;
+            combatUIManager->spiritInfoText->show = 0;
           }
           if(input[0] && !oldinput[0] && !protag_is_talking) {
             combatUIManager->currentInventoryOption--;

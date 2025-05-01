@@ -179,6 +179,7 @@ int g_budget = 0;						 // how many points this map can spend on enemies;
 
 
 bool boxsenabled = 1; // affects both map editor and full game. Dont edit here
+bool g_showMeshCollision = 0;
 bool g_collisionResolverOn = 1; //also referred to as "jiggling" ents out of solid collisions
 bool g_showCRMessages = 0; //collisionResolver messages
 
@@ -1435,6 +1436,9 @@ vector<string> splitString(string s, char delimiter)
   return ret;
 }
 
+//this function will replace the first instance
+// while(replaceString(info, "e", "E"){}
+// to replace all
 bool replaceString(std::string &str, const std::string &from, const std::string &to)
 {
   size_t start_pos = str.find(from);

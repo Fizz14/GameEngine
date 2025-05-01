@@ -97,7 +97,7 @@ public:
 
   float l0Strength;
   float strengthGain;
-  int baseStrength;
+  float baseStrength;
   int curStrength;
   int health;
 
@@ -332,8 +332,13 @@ public:
 
   ui* forgetPanel = 0;
   textbox* forgetText = 0;
+  textbox* forgetInfoText = 0;
   ui* forgetPicker = 0;
   int forgetOption = 0;
+  ui* forgetInfoPanel = 0;
+
+  ui* spiritInfoPanel = 0;
+  textbox* spiritInfoText = 0;
 
   textbox* yes = 0;
   textbox* no = 0;
