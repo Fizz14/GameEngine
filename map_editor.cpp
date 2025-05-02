@@ -2208,19 +2208,20 @@ void write_map(entity *mapent)
     }
   }
 
-  //draw tallgrass
-  for(auto x :g_tallGrasses) {
-    drect.x = x->bounds.x;
-    drect.y = x->bounds.y;
-    drect.w = x->bounds.width;
-    drect.h = x->bounds.height;
-    drect = transformRect(drect);
-    SDL_RenderCopyF(renderer, grassTexture, NULL, &drect);
-
-  }
   
   //draw cameraBlockers
   if(drawhitboxes) {
+
+    //draw tallgrass
+    for(auto x :g_tallGrasses) {
+      drect.x = x->bounds.x;
+      drect.y = x->bounds.y;
+      drect.w = x->bounds.width;
+      drect.h = x->bounds.height;
+      drect = transformRect(drect);
+      SDL_RenderCopyF(renderer, grassTexture, NULL, &drect);
+    }
+
     for(auto x : g_camBlockers) {
       drect.x = x->bounds.x;
       drect.y = x->bounds.y;

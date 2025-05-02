@@ -2697,7 +2697,7 @@ void ExplorationLoop() {
   sortEdges(g_osEdges, px, py);
 
   //visual walls
-  //most of these will be drawn later so :S
+  //these will be drawn again later IF they have an occluder
   if(1) {
     for(auto &x : g_meshVWalls) {
       if(x->visible) {
@@ -2833,6 +2833,10 @@ void ExplorationLoop() {
         SDL_Vertex A3;
         if (AIntersects && Ay3 < py) {
           A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
+          //M("A intersects");
+
+
+
         } else {
           float p_dx = B2.position.y - A2.position.y;
           float p_dy = A2.position.x - B2.position.x;
@@ -2853,6 +2857,8 @@ void ExplorationLoop() {
         SDL_Vertex B3;
         if (BIntersects && By3 < py) {
           B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
+          
+         
         } else {
           float p_dx = B2.position.y - A2.position.y;
           float p_dy = A2.position.x - B2.position.x;
@@ -2870,6 +2876,50 @@ void ExplorationLoop() {
         }
 
 
+
+        //if lines are going more "outward" (from the middle of the screen out) then up the sides of walls, double check this edgecase handlement
+        if(A.position.x > B.position.x) {
+          //A2 x must also be greater than B x
+          if(A2.position.x < B2.position.x) {
+            //M("We have a problem A");
+            if(AIntersects) {
+              //M("A");
+              float slope = (B2.position.y - B.position.y) / (B2.position.x - B.position.x);
+              float dx = B2.position.x - A2.position.x;
+              float dy = slope * dx;
+              B2.position.y -= dy;
+              B2.position.x = A2.position.x;
+            } else if(BIntersects) {
+              //M("B");
+              float slope = (A2.position.y - A.position.y) / (A2.position.x - A.position.x);
+              float dx = A2.position.x - B2.position.x;
+              float dy = slope * dx;
+              A2.position.y -= dy;
+              A2.position.x = B2.position.x;
+            }
+          }
+        } else {
+          //A2 x must also be less than B x
+          if(A2.position.x > B2.position.x) {
+            //M("We have a problem B");
+            if(AIntersects) {
+              float slope = (B2.position.y - B.position.y) / (B2.position.x - B.position.x);
+              float dx = B2.position.x - A2.position.x;
+              float dy = slope * dx;
+              B2.position.y -= dy;
+
+              B2.position.x = A2.position.x;
+            } else if(BIntersects){
+              float slope = (A2.position.y - A.position.y) / (A2.position.x - A.position.x);
+              float dx = A2.position.x - B2.position.x;
+              float dy = slope * dx;
+              A2.position.y -= dy;
+              A2.position.x = B2.position.x;
+            }
+          }
+        }
+
+
         vertices.push_back(A);
         vertices.push_back(B);
         vertices.push_back(A2);
@@ -2877,6 +2927,12 @@ void ExplorationLoop() {
         vertices.push_back(B);
         vertices.push_back(B2);
 
+//        M("Points:");
+//        M(to_string(A.position.x) + " " + to_string(A.position.y));
+//        M(to_string(B.position.x) + " " + to_string(B.position.y));
+//        M(to_string(A2.position.x) + " " + to_string(A2.position.y));
+//        M(to_string(B2.position.x) + " " + to_string(B2.position.y));
+//        M("");
 
         //these are temporarily commented out
         vertices.push_back(B2);
@@ -2916,9 +2972,10 @@ void ExplorationLoop() {
           }
 
           SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
-        }
+        } 
       }
     }
+    //M("End of frame");
 
     //SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
   }
@@ -3616,9 +3673,11 @@ int WinMain()
   }
 
   if(PHYSFS_exists("resources/static/entities/common/fomm.ent")) {
-    M("Archive is present"); //this has worked before! Make sure the exe is in the same directory as the archive file
+    //M("Archive is present"); //this has worked before! Make sure the exe is in the same directory as the archive file
   } else {
-    M("Archive is NOT present");
+    E("Archive is Not present");
+    abort();
+    //M("Archive is NOT present");
   }
 
   if(devMode) {

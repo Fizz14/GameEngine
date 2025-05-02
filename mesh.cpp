@@ -56,6 +56,7 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
             return; // Exit the loop once a match is found
         }
     }
+    E("Couldn't associate occluder edge with wall");
 }
 
 vec3::vec3(int fx = 0, int fy = 0, int fz = 0) :x(fx), y(fy), z(fz) {}
@@ -105,23 +106,23 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
 
   if(PHYSFS_exists(floorAddr.c_str())) {
     floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR);
-    M("Loaded floor " + floorAddr);
+    //M("Loaded floor " + floorAddr);
   }
   if(PHYSFS_exists(wallAddr.c_str())) {
     wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL);
-    M("Loaded wall " + wallAddr);
+    //M("Loaded wall " + wallAddr);
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
     collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION);
-    M("Loaded collision " + collisionAddr);
+    //M("Loaded collision " + collisionAddr);
   }
   if(PHYSFS_exists(occluAddr.c_str())) {
     occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER);
-    M("Loaded occluder " + occluAddr);
+    //M("Loaded occluder " + occluAddr);
   }
   if(PHYSFS_exists(decorAddr.c_str())) {
     decorative = loadMeshFromPly(decorAddr, floortex, origin, scale, meshtype::DECORATIVE);
-    M("Loaded decoration " + decorAddr);
+    //M("Loaded decoration " + decorAddr);
   }
 
 }
@@ -563,7 +564,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
             ei.second = B;
             ei.secondZ = ((second.z * scale)) * XtoZ; //z is subtracted from y
  
-            checkAndSetEdgeInfo(ei, g_meshVWalls[0]);
+            checkAndSetEdgeInfo(ei, g_meshVWalls[g_meshVWalls.size()-1]);
 
             ei.type = 0;
             g_oEdges.emplace_back(ei);

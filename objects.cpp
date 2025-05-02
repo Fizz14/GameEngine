@@ -257,6 +257,7 @@ void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targ
         newV.wallMesh = edge.wallMesh;
         newV.indices = edge.indices;
 
+
         newV.type = edge.type;
 
 
@@ -7536,7 +7537,6 @@ int loadSave() {
     b->baseCritical = critical;
     b->baseRecovery = recovery;
     if(b->level == 0) {
-      M("Looks like this hero has level 0!");
       b->baseStrength = b->l0Strength;
       b->health = floor(b->baseStrength);
       b->baseMind = b->l0Mind;
