@@ -30,6 +30,7 @@
 
 using namespace std;
 
+void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py);
 
 void resetTrivialData();
 

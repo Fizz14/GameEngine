@@ -36,6 +36,27 @@ using namespace std;
 
 class usable;
 
+void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py) {
+    edges.erase(
+        std::remove_if(edges.begin(), edges.end(), [px, py](const edgeInfo& edge) {
+            // Vector from player to first vertex
+            float dx1 = edge.first.position.x - px;
+            float dy1 = edge.first.position.y - py;
+
+            // Vector from player to second vertex
+            float dx2 = edge.second.position.x - px;
+            float dy2 = edge.second.position.y - py;
+
+            // Compute cross product (2D determinant) to check facing direction
+            float crossProduct = dx1 * dy2 - dy1 * dx2;
+
+            // If cross product is negative, it's backfacing
+            return crossProduct < 0;
+        }),
+        edges.end()
+    );
+}
+
 void resetTrivialData() {
   for(auto &x : party) {
     x->xvel = 0;
@@ -8725,6 +8746,7 @@ void clear_map(camera& cameraToReset) {
 
   g_encountersFile = "";
   g_encounterChance = 0;
+  g_activeGgrid = 0;
 
 
   if(g_waterAllocated) {
@@ -8859,6 +8881,10 @@ void clear_map(camera& cameraToReset) {
 
       //remove any entries on g_wEdges which are facing away from the player
       //(kinda like backface-culling)
+      
+      //needs to be improved
+      
+      removeBackfacingEdges(g_wsEdges, protag->getOriginX(), protag->getOriginY());
       /*
          g_wsEdges.erase(
          std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
@@ -8869,6 +8895,7 @@ void clear_map(camera& cameraToReset) {
          g_wsEdges.end()
          );
          */
+      
 
       g_wsEdges.erase(
           std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {

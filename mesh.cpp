@@ -197,14 +197,104 @@ chunk* duplicateChunk(const chunk* original, vec3 newOrigin) {
 
       //this was written with the assumption that all occluders have an accompanying wall
 
-      M("should we call checkAndSetEdgeInfo?");
       if(g_meshVWalls.size() > 0 && g_meshVWalls[g_meshVWalls.size()-1]->edgeInfoSet == 0) {
-        M("Duplicate chunk checkAndSetEdgeInfo");
         checkAndSetEdgeInfo(ei, g_meshVWalls[g_meshVWalls.size()-1]);
       }
 
       ei.type = 0;
       g_oEdges.emplace_back(ei);
+    }
+  }
+
+
+  if( result->wall != nullptr) {
+    for (const auto& f : result->wall->faces) {
+      if(result->wall->vertices[f.a].color.r < 128 && result->wall->vertices[f.b].color.r < 128) {
+        vertex3d first = original->wall->vertices[f.a];
+        vertex3d second = original->wall->vertices[f.b];
+        SDL_Vertex A;
+  
+        A.position.x = ((-first.x) * result->scale);
+        A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
+        //A.position.y = ((first.y * scale)) * XtoY;
+  
+        SDL_Vertex B;
+  
+        B.position.x = ((-second.x) * result->scale);
+        B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
+        //B.position.y = ((second.y * scale)) * XtoY;
+  
+        A.position.x += newOrigin.x + 64; //adding 64 is a bandaid solution and may cause problems later
+                                          // !!!
+        A.position.y += newOrigin.y;
+        B.position.x += newOrigin.x + 64;
+        B.position.y += newOrigin.y;
+  
+        edgeInfo ei;
+        ei.first = A;
+        ei.firstZ = ((first.z * result->scale)) * XtoZ; //z is subtracted from y
+  
+  
+        ei.second = B;
+        ei.secondZ = ((second.z * result->scale)) * XtoZ; //z is subtracted from y
+  
+  
+        if(ei.first.position.x > ei.second.position.x) {
+          swap(ei.first, ei.second);
+        }
+  
+        ei.type = 1;
+        g_wEdges.emplace_back(ei);
+      }
+  
+  
+      if(result->wall->vertices[f.a].color.r < 128 && result->wall->vertices[f.c].color.r < 128) {
+        vertex3d first = result->wall->vertices[f.a];
+        vertex3d second = result->wall->vertices[f.c];
+        SDL_Vertex A;
+  
+        A.position.x = ((-first.x) * result->scale);
+        A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
+  
+        SDL_Vertex B;
+  
+        B.position.x = ((-second.x) * result->scale);
+        B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
+  
+        A.position.x += newOrigin.x + 64;
+        A.position.y += newOrigin.y;
+        B.position.x += newOrigin.x + 64;
+        B.position.y += newOrigin.y;
+  
+        edgeInfo ei;
+        ei.first = A;
+        ei.second = B;
+        g_wEdges.emplace_back(ei);
+      }
+  
+      if(result->wall->vertices[f.c].color.r < 128 && result->wall->vertices[f.b].color.r < 128) {
+        vertex3d first = result->wall->vertices[f.c];
+        vertex3d second = result->wall->vertices[f.b];
+        SDL_Vertex A;
+  
+        A.position.x = ((-first.x) * result->scale);
+        A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
+  
+        SDL_Vertex B;
+  
+        B.position.x = ((-second.x) * result->scale);
+        B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
+  
+        A.position.x += newOrigin.x + 64;
+        A.position.y += newOrigin.y;
+        B.position.x += newOrigin.x + 64;
+        B.position.y += newOrigin.y;
+  
+        edgeInfo ei;
+        ei.first = A;
+        ei.second = B;
+        g_wEdges.emplace_back(ei);
+      }
     }
   }
 
@@ -460,10 +550,12 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
     result->vertex = new SDL_Vertex[vertices.size()];
     result->vertexExtraData = vector<pair<float, float>>(vertices.size());
 
+    result->faces = faces;
     for (const auto& f : faces) {
       int fail = 0;
 
       if( fmtype == meshtype::V_WALL) {
+        result->vertices = vertices;
         if(vertices[f.a].color.r < 128 && vertices[f.b].color.r < 128) {
           vertex3d first = vertices[f.a];
           vertex3d second = vertices[f.b];

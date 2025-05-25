@@ -57,6 +57,11 @@ void sortEdges(std::vector<edgeInfo>& edges, float px, float py) {
 //                return e.first.position.y > py && e.second.position.y > py;
 //            }), edges.end());
 
+
+  // !!!
+  // at some point, this needs logic to handle edges that are backfacing relative to the player
+  // the current solution isn't good enough
+
     edges.erase(std::remove_if(edges.begin(), edges.end(),
             [py](const edgeInfo& e) {
                 return e.first.position.y > py && e.second.position.y > py && (e.wallMesh != nullptr);
@@ -2604,28 +2609,29 @@ void ExplorationLoop() {
      g_wsEdges.end()
      );
      */
+      removeBackfacingEdges(g_osEdges, protag->getOriginX() - g_camera.x, protag->getOriginY() - g_camera.y);
 
-  g_wsEdges.erase(
-      std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
-        float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ)) /
-        (edge.second.position.x - edge.first.position.x);
-        float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
-
-        if (py < y_at_px) {
-        // Edge is below the player and will be removed
-        auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
-            return segmentsInSamePlace(edge, occluder);
-            });
-
-        if (it != g_osEdges.end()) {
-        g_osEdges.erase(it); // Remove matching occluder edge
-        }
-        return true; // Remove this wall edge
-        }
-        return false;
-        }),
-      g_wsEdges.end()
-      );
+//  g_wsEdges.erase(
+//      std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
+//        float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ)) /
+//        (edge.second.position.x - edge.first.position.x);
+//        float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
+//
+//        if (py < y_at_px) {
+//        // Edge is below the player and will be removed
+//        auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
+//            return segmentsInSamePlace(edge, occluder);
+//            });
+//
+//        if (it != g_osEdges.end()) {
+//        g_osEdges.erase(it); // Remove matching occluder edge
+//        }
+//        return true; // Remove this wall edge
+//        }
+//        return false;
+//        }),
+//      g_wsEdges.end()
+//      );
 
 
 
@@ -3411,9 +3417,10 @@ void ExplorationLoop() {
 
     if(drawhitboxes) {
       for(int i = 0; i < g_chunks.size(); i++) {
-        SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-
-        SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
+        if(g_chunks[i]->standalone) {
+          SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+          SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
+        }
       }
     }
 
@@ -4217,9 +4224,19 @@ int WinMain()
     //continue here
     //...
 
+
+    // !!!
+    // now, encode the facing of the occluders into each mes
+    M("wrote to OPChunks");
+
     // Transfer chunks to g_OPChunks
     g_OPChunks.insert(g_OPChunks.end(), g_chunks.begin(), g_chunks.end());
     g_chunks.clear(); // Clear the original chunk vector
+
+    //swap(g_OPChunks[1]->wall->storedWEdges[0].first, g_OPChunks[1]->wall->storedWEdges[0].second);
+    swap(g_OPChunks[1]->occluder->edgeDataStore[0][0], g_OPChunks[1]->occluder->edgeDataStore[0][1]);
+
+
 
     // Transfer meshes to g_OPMeshes
     g_OPMeshes.insert(g_OPMeshes.end(), g_meshes.begin(), g_meshes.end());

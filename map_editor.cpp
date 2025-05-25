@@ -151,6 +151,80 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       a->bounds.height = p3;
     }
 
+    if(word == "chunkdata") {
+      line = strings[index];
+      index++;
+      iss = istringstream(line);
+      D(line);
+      
+      if(g_activeGgrid != 0) {
+      }
+     
+      int width = g_activeGgrid->width;
+      int height = g_activeGgrid->height;
+      D(width);
+      D(height);
+
+      for(int j = 0; j < height; j++) {
+        for(int i = 0; i < width; i++) {
+          int value = 0;
+          iss >> value;
+          //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55 + 40, 0};
+          vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55.424 + 49, 0};
+          // this is still wrong
+          D(g_activeGgrid->originX);
+          D(origin.x);
+          D(origin.y);
+          if(value != 0) {
+            chunk* c = duplicateChunk(g_OPChunks[value-1], origin);
+            M("Duplicating chunk " + to_string(value));
+            c->standalone = 0;
+            c->value = value;
+            g_activeGgrid->chunks.push_back(c);
+  
+            if(c->floor != 0) {
+              c->floor->texture = g_activeGgrid->floortex;
+              for(int i = 0; i < c->floor->numVertices; i++) {
+                float xpos = c->floor->vertex[i].position.x + c->origin.x;
+                float ypos = c->floor->vertex[i].position.y + c->origin.y;
+                xpos = fmod(xpos, 1024);
+                ypos = fmod(ypos, 880);
+                xpos /= 1024.0;
+                ypos /= 880.0;
+                if(fmod(c->origin.x,1024) == 960) {
+                  //this is the horizontal edge case
+                  if(abs(xpos - 0) < 0.001) {xpos = 1;}
+                }
+                if(fmod(c->origin.y,880) == 825) {
+                  //this is the vertical edge case
+                  if(abs(ypos - 0) < 0.001) {ypos = 1;}
+                }
+  
+                c->floor->vertex[i].tex_coord.x = xpos;
+                c->floor->vertex[i].tex_coord.y = ypos;
+              }
+            }
+  
+            if(c->wall != 0) {
+              c->wall->texture = g_activeGgrid->walltex;
+  
+            }
+          }
+          
+        }
+        line = strings[index];
+        index++;
+        iss = istringstream(line);
+        M("Is this the next line?");
+        D(line);
+      }
+ 
+
+
+      
+       
+    }
+
     if (word == "camblocker") {
       iss >> s0 >> p0 >> p1 >> p2 >> p3 >> p4;
       camBlocker* a = new camBlocker();

@@ -14,6 +14,8 @@
 #include <map>
 #include <set>
 
+struct edgeInfo;
+
 class vec2 {
 public:
   float x = 0;
@@ -94,6 +96,11 @@ public:
   bool visible = 1;
 
   vector<vertex3d> vertices;
+  vector<edgeInfo> storedWEdges;
+
+
+
+
 
   mesh();
   
