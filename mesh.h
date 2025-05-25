@@ -89,6 +89,7 @@ public:
   meshtype mtype = meshtype::FLOOR;
 
   bool edgeInfoSet = 0;
+  vector<array<int, 2>> edgeDataStore;
 
   bool visible = 1;
 

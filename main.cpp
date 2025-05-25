@@ -45,11 +45,22 @@ void sortEdges(std::vector<edgeInfo>& edges, float px, float py) {
     return minDistA > minDistB;
   };
 
+
   // Remove edges where both vertices' y-coordinates are greater than py
-  //    edges.erase(std::remove_if(edges.begin(), edges.end(),
-  //        [py](const edgeInfo& e) {
-  //            return e.first.position.y > py && e.second.position.y > py;
-  //        }), edges.end());
+  // This code would be ran without the conditional check
+  // back when all edges had wallmeshes
+
+  //used to look like this:
+ 
+//    edges.erase(std::remove_if(edges.begin(), edges.end(),
+//            [py](const edgeInfo& e) {
+//                return e.first.position.y > py && e.second.position.y > py;
+//            }), edges.end());
+
+    edges.erase(std::remove_if(edges.begin(), edges.end(),
+            [py](const edgeInfo& e) {
+                return e.first.position.y > py && e.second.position.y > py && (e.wallMesh != nullptr);
+            }), edges.end());
 
   // Sort the remaining edges based on their minimum distance to (px, py)
   std::sort(edges.begin(), edges.end(), edgeComparator);
@@ -395,39 +406,39 @@ void ExplorationLoop() {
 
                   //not sure what to use this menu option for
 
-//                  //help
-//                  vector<string> helpScript = {};
-//                  adventureUIManager->talker = narrarator;
-//                  adventureUIManager->dPointToMe = narrarator;
-//
-//                  //keep trying to get language data until it fails
-//                  int i = 0;
-//                  for(;;) {
-//                    string arg = "Help" + to_string(i) + "-" + g_mapdir + "/" + g_map;
-//                    string resp = getLanguageData(arg);
-//                    if(resp == "") {break;}
-//                    helpScript.push_back(resp);
-//                    i++;
-//                    if(i > 40) {
-//                      E("Stuck trying to pull dialog for help");
-//                      abort();
-//                    }
-//                  }
-//                  if(helpScript.size() == 0) {
-//                    helpScript.push_back(getLanguageData("NoHelp"));
-//                  }
-//                  helpScript.push_back("#");
-//
-//                  adventureUIManager->ownScript = helpScript;
-//                  adventureUIManager->dialogue_index = -1;
-//                  adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-//                  adventureUIManager->sleepingMS = 0;
-//                  protag_is_talking = 1;
-//                  g_forceEndDialogue = 0;
-//                  g_keyItemFlavorDisplay = 1;
-//                  adventureUIManager->continueDialogue();
-//
-//                  break;
+                  //                  //help
+                  //                  vector<string> helpScript = {};
+                  //                  adventureUIManager->talker = narrarator;
+                  //                  adventureUIManager->dPointToMe = narrarator;
+                  //
+                  //                  //keep trying to get language data until it fails
+                  //                  int i = 0;
+                  //                  for(;;) {
+                  //                    string arg = "Help" + to_string(i) + "-" + g_mapdir + "/" + g_map;
+                  //                    string resp = getLanguageData(arg);
+                  //                    if(resp == "") {break;}
+                  //                    helpScript.push_back(resp);
+                  //                    i++;
+                  //                    if(i > 40) {
+                  //                      E("Stuck trying to pull dialog for help");
+                  //                      abort();
+                  //                    }
+                  //                  }
+                  //                  if(helpScript.size() == 0) {
+                  //                    helpScript.push_back(getLanguageData("NoHelp"));
+                  //                  }
+                  //                  helpScript.push_back("#");
+                  //
+                  //                  adventureUIManager->ownScript = helpScript;
+                  //                  adventureUIManager->dialogue_index = -1;
+                  //                  adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+                  //                  adventureUIManager->sleepingMS = 0;
+                  //                  protag_is_talking = 1;
+                  //                  g_forceEndDialogue = 0;
+                  //                  g_keyItemFlavorDisplay = 1;
+                  //                  adventureUIManager->continueDialogue();
+                  //
+                  //                  break;
                   break;
                 }
               case 4:
@@ -438,36 +449,36 @@ void ExplorationLoop() {
                     adventureUIManager->dPointToMe = party[1];
                     vector<string> helpScript = {};
 
-                  //keep trying to get language data until it fails
-                  int i = 0;
-                  for(;;) {
-                    string arg = "Help" + to_string(i) + "-" + g_mapdir + "/" + g_map;
-                    string resp = getLanguageData(arg);
-                    if(resp == "") {break;}
-                    helpScript.push_back(resp);
-                    i++;
-                    if(i > 40) {
-                      E("Stuck trying to pull dialog for help");
-                      abort();
+                    //keep trying to get language data until it fails
+                    int i = 0;
+                    for(;;) {
+                      string arg = "Help" + to_string(i) + "-" + g_mapdir + "/" + g_map;
+                      string resp = getLanguageData(arg);
+                      if(resp == "") {break;}
+                      helpScript.push_back(resp);
+                      i++;
+                      if(i > 40) {
+                        E("Stuck trying to pull dialog for help");
+                        abort();
+                      }
                     }
-                  }
-                  if(helpScript.size() == 0) {
-                    helpScript.push_back(getLanguageData("NoHelp"));
-                    adventureUIManager->talker = narrarator;
-                    adventureUIManager->dPointToMe = narrarator;
-                  }
-                  helpScript.push_back("#");
+                    if(helpScript.size() == 0) {
+                      helpScript.push_back(getLanguageData("NoHelp"));
+                      adventureUIManager->talker = narrarator;
+                      adventureUIManager->dPointToMe = narrarator;
+                    }
+                    helpScript.push_back("#");
 
-                  adventureUIManager->ownScript = helpScript;
-                  adventureUIManager->dialogue_index = -1;
-                  adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-                  adventureUIManager->sleepingMS = 0;
-                  protag_is_talking = 1;
-                  g_forceEndDialogue = 0;
-                  g_keyItemFlavorDisplay = 1;
-                  adventureUIManager->continueDialogue();
+                    adventureUIManager->ownScript = helpScript;
+                    adventureUIManager->dialogue_index = -1;
+                    adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+                    adventureUIManager->sleepingMS = 0;
+                    protag_is_talking = 1;
+                    g_forceEndDialogue = 0;
+                    g_keyItemFlavorDisplay = 1;
+                    adventureUIManager->continueDialogue();
 
-                  break;
+                    break;
 
 
                   }
@@ -878,7 +889,7 @@ void ExplorationLoop() {
           while(replaceString(info, "\\n", "\n")){}
           string name = getLanguageData("S" + to_string(g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption]));
           string final = name + "\n" + info;
-    
+
           combatUIManager->spiritInfoText->updateText(final, -1, 0.43, g_textcolor, g_font);
 
           if(protag_is_talking) {
@@ -2222,7 +2233,7 @@ void ExplorationLoop() {
       if(g_triggers[i]->msCooldown > g_triggers[i]->msRefresh) {
 
         if(g_triggers[i]->msRefresh > 0 ) { //0 means don't reactivate
-          //reactivate
+                                            //reactivate
           g_triggers[i]->active = 1;
         }
       } else {
@@ -2262,7 +2273,7 @@ void ExplorationLoop() {
         {
           break;
         }
-  
+
         g_triggers[i]->active = 0;
         g_triggers[i]->msCooldown = 0;
       }
@@ -2526,7 +2537,7 @@ void ExplorationLoop() {
       }
 
       SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-      
+
       SDL_Rect a = {0,0.2, 0.2, 0.2};
       SDL_RenderCopy(renderer, x->texture, NULL, &a);
 
@@ -2701,7 +2712,7 @@ void ExplorationLoop() {
 
   //visual walls
   //these will be drawn again later IF they have an occluder
-  if(1) {
+  if(1) { //!!! change to 1 asap, this should not be zero
     for(auto &x : g_meshVWalls) {
       if(x->visible) {
         SDL_Vertex v[x->numVertices];
@@ -2710,8 +2721,8 @@ void ExplorationLoop() {
           v[i].position.x += x->origin.x - g_camera.x;
           v[i].position.y += x->origin.y - g_camera.y;
           v[i].color.r = v[i].color.g;
-//          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
-//          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
+          //          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
+          //          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
         }
 
         SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
@@ -2862,8 +2873,8 @@ void ExplorationLoop() {
         SDL_Vertex B3;
         if (BIntersects && By3 < py) {
           B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
-          
-         
+
+
         } else {
           float p_dx = B2.position.y - A2.position.y;
           float p_dy = A2.position.x - B2.position.x;
@@ -2932,12 +2943,12 @@ void ExplorationLoop() {
         vertices.push_back(B);
         vertices.push_back(B2);
 
-//        M("Points:");
-//        M(to_string(A.position.x) + " " + to_string(A.position.y));
-//        M(to_string(B.position.x) + " " + to_string(B.position.y));
-//        M(to_string(A2.position.x) + " " + to_string(A2.position.y));
-//        M(to_string(B2.position.x) + " " + to_string(B2.position.y));
-//        M("");
+        //        M("Points:");
+        //        M(to_string(A.position.x) + " " + to_string(A.position.y));
+        //        M(to_string(B.position.x) + " " + to_string(B.position.y));
+        //        M(to_string(A2.position.x) + " " + to_string(A2.position.y));
+        //        M(to_string(B2.position.x) + " " + to_string(B2.position.y));
+        //        M("");
 
         //these are temporarily commented out
         vertices.push_back(B2);
@@ -3011,7 +3022,7 @@ void ExplorationLoop() {
         }
 
         //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
-      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
 
       }
     }
@@ -3084,7 +3095,7 @@ void ExplorationLoop() {
     };
 
     blackrect = transformRect(blackrect);
-      SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+    SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
   }
 
   for (long long unsigned int i = 0; i < g_tiles.size(); i++)
@@ -3401,7 +3412,7 @@ void ExplorationLoop() {
     if(drawhitboxes) {
       for(int i = 0; i < g_chunks.size(); i++) {
         SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-  
+
         SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
       }
     }
@@ -3553,7 +3564,7 @@ void ExplorationLoop() {
         // the wall
         SDL_Rect obj2 = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(((g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
         SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
-  
+
         nodeInfoText->x = obj.x + 25;
         nodeInfoText->y = obj.y + 25;
         nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
@@ -4191,7 +4202,7 @@ int WinMain()
       E("g_meshes has some meshes in it, and this will cause problems with the code for storing the piece-meshes in memory");
       abort();
     }
-  
+
     D(g_chunks.size());
     if(g_chunks.size() != 0) {
       E("g_chunks has some chunks in it, and this will cause problems with the code for storing the piece-chunks in memory");
@@ -4209,11 +4220,11 @@ int WinMain()
     // Transfer chunks to g_OPChunks
     g_OPChunks.insert(g_OPChunks.end(), g_chunks.begin(), g_chunks.end());
     g_chunks.clear(); // Clear the original chunk vector
-    
+
     // Transfer meshes to g_OPMeshes
     g_OPMeshes.insert(g_OPMeshes.end(), g_meshes.begin(), g_meshes.end());
     g_meshes.clear(); // Clear the original mesh vector
-    
+
     // Clear individual mesh type vectors
     g_meshFloors.clear();
     g_meshVWalls.clear();

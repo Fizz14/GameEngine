@@ -53,223 +53,223 @@ void resetTrivialData() {
 
 //sort occluder and wall edges into groups
 void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups) {
-    // Helper function to calculate edge length
-    auto edgeLength = [](const SDL_Vertex& v1, const SDL_Vertex& v2) {
-        float dx = v2.position.x - v1.position.x;
-        float dy = v2.position.y - v1.position.y;
-        return std::sqrt(dx * dx + dy * dy);
-    };
+  // Helper function to calculate edge length
+  auto edgeLength = [](const SDL_Vertex& v1, const SDL_Vertex& v2) {
+    float dx = v2.position.x - v1.position.x;
+    float dy = v2.position.y - v1.position.y;
+    return std::sqrt(dx * dx + dy * dy);
+  };
 
-    auto edgeLengthInfo = [&](const edgeInfo& edge) {
-        return edgeLength(edge.first, edge.second);
-    };
+  auto edgeLengthInfo = [&](const edgeInfo& edge) {
+    return edgeLength(edge.first, edge.second);
+  };
 
-    // Helper function to check if two edges are connected
-    auto areConnected = [](const edgeInfo& e1, const edgeInfo& e2) {
-        return (e1.first.position.x == e2.first.position.x && e1.first.position.y == e2.first.position.y) ||
-               (e1.first.position.x == e2.second.position.x && e1.first.position.y == e2.second.position.y) ||
-               (e1.second.position.x == e2.first.position.x && e1.second.position.y == e2.first.position.y) ||
-               (e1.second.position.x == e2.second.position.x && e1.second.position.y == e2.second.position.y);
-    };
+  // Helper function to check if two edges are connected within a difference of 1
+  auto areConnected = [](const edgeInfo& e1, const edgeInfo& e2) {
+    return (std::abs(e1.first.position.x - e2.first.position.x) <= 1 && std::abs(e1.first.position.y - e2.first.position.y) <= 1) ||
+      (std::abs(e1.first.position.x - e2.second.position.x) <= 1 && std::abs(e1.first.position.y - e2.second.position.y) <= 1) ||
+      (std::abs(e1.second.position.x - e2.first.position.x) <= 1 && std::abs(e1.second.position.y - e2.first.position.y) <= 1) ||
+      (std::abs(e1.second.position.x - e2.second.position.x) <= 1 && std::abs(e1.second.position.y - e2.second.position.y) <= 1);
+  };
 
-    // Combine both g_osEdges and g_wsEdges into a single vector
-    std::vector<edgeInfo> allEdges = g_osEdges;
-    allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
+  // Combine both g_osEdges and g_wsEdges into a single vector
+  std::vector<edgeInfo> allEdges = g_osEdges;
+  allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
 
-    // Group assignment
-    int currentGroup = 0;
-    std::unordered_map<int, std::unordered_set<int>> adjacency;
-    std::vector<bool> visited(allEdges.size(), false);
+  // Group assignment
+  int currentGroup = 0;
+  std::unordered_map<int, std::unordered_set<int>> adjacency;
+  std::vector<bool> visited(allEdges.size(), false);
 
-    // Build adjacency list
-    for (size_t i = 0; i < allEdges.size(); ++i) {
-        for (size_t j = i + 1; j < allEdges.size(); ++j) {
-            if (areConnected(allEdges[i], allEdges[j])) {
-                adjacency[i].insert(j);
-                adjacency[j].insert(i);
-            }
-        }
+  // Build adjacency list
+  for (size_t i = 0; i < allEdges.size(); ++i) {
+    for (size_t j = i + 1; j < allEdges.size(); ++j) {
+      if (areConnected(allEdges[i], allEdges[j])) {
+        adjacency[i].insert(j);
+        adjacency[j].insert(i);
+      }
     }
+  }
 
-    // Depth-first search for group assignment
-    auto dfs = [&](int index, auto&& dfsRef) -> void {
-        visited[index] = true;
-        allEdges[index].group = currentGroup;
+  // Depth-first search for group assignment
+  auto dfs = [&](int index, auto&& dfsRef) -> void {
+    visited[index] = true;
+    allEdges[index].group = currentGroup;
 
-        for (int neighbor : adjacency[index]) {
-            if (!visited[neighbor]) {
-                dfsRef(neighbor, dfsRef);
-            }
-        }
-    };
-
-    for (size_t i = 0; i < allEdges.size(); ++i) {
-        if (!visited[i]) {
-            dfs(i, dfs);
-            ++currentGroup;
-
-            // Cap the group at maxGroups
-            if (currentGroup >= maxGroups) {
-                currentGroup = maxGroups; // Group 20 is overflow
-            }
-        }
+    for (int neighbor : adjacency[index]) {
+      if (!visited[neighbor]) {
+        dfsRef(neighbor, dfsRef);
+      }
     }
+  };
 
-    // Calculate weighted distances for sorting
-    std::unordered_map<int, float> groupWeightedDistance;
-    std::unordered_map<int, float> groupTotalLength;
+  for (size_t i = 0; i < allEdges.size(); ++i) {
+    if (!visited[i]) {
+      dfs(i, dfs);
+      ++currentGroup;
 
-    for(int i = 0; i < 20; i++) {
-      groupWeightedDistance[i] = 10000;
+      // Cap the group at maxGroups
+      if (currentGroup >= maxGroups) {
+        currentGroup = maxGroups; // Group 20 is overflow
+      }
     }
+  }
 
-    for(const auto& edge : allEdges) {
-        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
-        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
-        float distance = abs(midY - py) + abs(midX - px);
+  // Calculate weighted distances for sorting
+  std::unordered_map<int, float> groupWeightedDistance;
+  std::unordered_map<int, float> groupTotalLength;
 
-        if(groupWeightedDistance[edge.group] > distance) {
-          groupWeightedDistance[edge.group] = distance;
-        }
-//        groupWeightedDistance[edge.group] += distance * length;
-//        groupTotalLength[edge.group] += length;
+  for(int i = 0; i < 20; i++) {
+    groupWeightedDistance[i] = 10000;
+  }
+
+  for(const auto& edge : allEdges) {
+    float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
+    float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
+    float distance = abs(midY - py) + abs(midX - px);
+
+    if(groupWeightedDistance[edge.group] > distance) {
+      groupWeightedDistance[edge.group] = distance;
     }
+    //        groupWeightedDistance[edge.group] += distance * length;
+    //        groupTotalLength[edge.group] += length;
+  }
 
-//    for (const auto& edge : allEdges) {
-//        float length = edgeLengthInfo(edge);
-//        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
-//        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
-//        float distance = std::sqrt((midX - px) * (midX - px) + (midY - py) * (midY - py));
-//
-//        groupWeightedDistance[edge.group] += distance * length;
-//        groupTotalLength[edge.group] += length;
-//    }
+  //    for (const auto& edge : allEdges) {
+  //        float length = edgeLengthInfo(edge);
+  //        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
+  //        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
+  //        float distance = std::sqrt((midX - px) * (midX - px) + (midY - py) * (midY - py));
+  //
+  //        groupWeightedDistance[edge.group] += distance * length;
+  //        groupTotalLength[edge.group] += length;
+  //    }
 
-//    for (auto& [group, weightedDistance] : groupWeightedDistance) {
-//        weightedDistance /= groupTotalLength[group];
-//    }
+  //    for (auto& [group, weightedDistance] : groupWeightedDistance) {
+  //        weightedDistance /= groupTotalLength[group];
+  //    }
 
-    // Sort edges by group distance
-    auto sortEdges = [&](std::vector<edgeInfo>& edges) {
-        std::sort(edges.begin(), edges.end(), [&](const edgeInfo& a, const edgeInfo& b) {
-            return groupWeightedDistance[a.group] < groupWeightedDistance[b.group];
+  // Sort edges by group distance
+  auto sortEdges = [&](std::vector<edgeInfo>& edges) {
+    std::sort(edges.begin(), edges.end(), [&](const edgeInfo& a, const edgeInfo& b) {
+        return groupWeightedDistance[a.group] < groupWeightedDistance[b.group];
         });
-    };
+  };
 
-    // Split back into g_osEdges and g_wsEdges
-    g_osEdges.clear();
-    g_wsEdges.clear();
-    for (const auto& edge : allEdges) {
-        if (edge.type == 0) {
-            g_osEdges.push_back(edge);
-        } else if (edge.type == 1) {
-            g_wsEdges.push_back(edge);
-        }
+  // Split back into g_osEdges and g_wsEdges
+  g_osEdges.clear();
+  g_wsEdges.clear();
+  for (const auto& edge : allEdges) {
+    if (edge.type == 0) {
+      g_osEdges.push_back(edge);
+    } else if (edge.type == 1) {
+      g_wsEdges.push_back(edge);
     }
+  }
 
-    // Sort each edge type
-    sortEdges(g_osEdges);
-    sortEdges(g_wsEdges);
+  // Sort each edge type
+  sortEdges(g_osEdges);
+  sortEdges(g_wsEdges);
 }
 
 
 // for checking if lines are colliear
 int orientation(float px, float py, float qx, float qy, float rx, float ry) {
-    float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
-    //5 might be too big
-    if (abs(val) < 10) return 0;  // collinear
-    D(abs(val));
-    return (val > 0) ? 1 : 2; // clock or counterclockwise
+  float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+  //5 might be too big
+  if (abs(val) < 10) return 0;  // collinear
+  D(abs(val));
+  return (val > 0) ? 1 : 2; // clock or counterclockwise
 }
 
 std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) {
-    // Helper function to determine the orientation of ordered triplet (px, py), (qx, qy), (rx, ry)
-    auto orientation = [](float px, float py, float qx, float qy, float rx, float ry) -> int {
-        float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
-        if (val == 0) return 0; // Collinear
-        return (val > 0) ? 1 : 2; // 1 -> Clockwise, 2 -> Counterclockwise
-    };
+  // Helper function to determine the orientation of ordered triplet (px, py), (qx, qy), (rx, ry)
+  auto orientation = [](float px, float py, float qx, float qy, float rx, float ry) -> int {
+    float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+    if (val == 0) return 0; // Collinear
+    return (val > 0) ? 1 : 2; // 1 -> Clockwise, 2 -> Counterclockwise
+  };
 
-    int o1 = orientation(startX, startY, endX, endY, x1, y1);
-    int o2 = orientation(startX, startY, endX, endY, x2, y2);
-    int o3 = orientation(x1, y1, x2, y2, startX, startY);
-    int o4 = orientation(x1, y1, x2, y2, endX, endY);
+  int o1 = orientation(startX, startY, endX, endY, x1, y1);
+  int o2 = orientation(startX, startY, endX, endY, x2, y2);
+  int o3 = orientation(x1, y1, x2, y2, startX, startY);
+  int o4 = orientation(x1, y1, x2, y2, endX, endY);
 
-    if (o1 != o2 && o3 != o4) {
-        // The segments intersect, compute the intersection point
-        float A1 = endY - startY;
-        float B1 = startX - endX;
-        float C1 = A1 * startX + B1 * startY;
+  if (o1 != o2 && o3 != o4) {
+    // The segments intersect, compute the intersection point
+    float A1 = endY - startY;
+    float B1 = startX - endX;
+    float C1 = A1 * startX + B1 * startY;
 
-        float A2 = y2 - y1;
-        float B2 = x1 - x2;
-        float C2 = A2 * x1 + B2 * y1;
+    float A2 = y2 - y1;
+    float B2 = x1 - x2;
+    float C2 = A2 * x1 + B2 * y1;
 
-        float det = A1 * B2 - A2 * B1;
-        if (det != 0) {
-            float intersectX = (B2 * C1 - B1 * C2) / det;
-            float intersectY = (A1 * C2 - A2 * C1) / det;
-            return {true, intersectX, intersectY};
-        }
+    float det = A1 * B2 - A2 * B1;
+    if (det != 0) {
+      float intersectX = (B2 * C1 - B1 * C2) / det;
+      float intersectY = (A1 * C2 - A2 * C1) / det;
+      return {true, intersectX, intersectY};
     }
+  }
 
-    return {false, 0, 0};
+  return {false, 0, 0};
 }
 
 bool isSegmentIntersecting(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) {
-    // Helper function to determine the orientation of ordered triplet (px, py), (qx, qy), (rx, ry)
-    auto orientation = [](float px, float py, float qx, float qy, float rx, float ry) -> int {
-        float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
-        return (val > 0) ? 1 : 2; // 1 -> Clockwise, 2 -> Counterclockwise
-    };
+  // Helper function to determine the orientation of ordered triplet (px, py), (qx, qy), (rx, ry)
+  auto orientation = [](float px, float py, float qx, float qy, float rx, float ry) -> int {
+    float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+    return (val > 0) ? 1 : 2; // 1 -> Clockwise, 2 -> Counterclockwise
+  };
 
-    int o1 = orientation(startX, startY, endX, endY, x1, y1);
-    int o2 = orientation(startX, startY, endX, endY, x2, y2);
-    int o3 = orientation(x1, y1, x2, y2, startX, startY);
-    int o4 = orientation(x1, y1, x2, y2, endX, endY);
+  int o1 = orientation(startX, startY, endX, endY, x1, y1);
+  int o2 = orientation(startX, startY, endX, endY, x2, y2);
+  int o3 = orientation(x1, y1, x2, y2, startX, startY);
+  int o4 = orientation(x1, y1, x2, y2, endX, endY);
 
-    // General case: if the orientations are different, the segments intersect
-    return (o1 != o2 && o3 != o4);
+  // General case: if the orientations are different, the segments intersect
+  return (o1 != o2 && o3 != o4);
 }
 
 void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targetEdges) {
-    auto isPointVisible = [](const SDL_Vertex& v) {
-        return (0 < v.position.x && v.position.x  < WIN_WIDTH) && (0 < v.position.y  && v.position.y  < WIN_HEIGHT);
-    };
+  auto isPointVisible = [](const SDL_Vertex& v) {
+    return (0 < v.position.x && v.position.x  < WIN_WIDTH) && (0 < v.position.y  && v.position.y  < WIN_HEIGHT);
+  };
 
-    for (const auto& edge : sourceEdges) {
-        extern camera g_camera;
+  for (const auto& edge : sourceEdges) {
+    extern camera g_camera;
 
-        SDL_Vertex v1 = edge.first;
-        v1.position.x -= g_camera.x;
-        v1.position.y -= g_camera.y;
+    SDL_Vertex v1 = edge.first;
+    v1.position.x -= g_camera.x;
+    v1.position.y -= g_camera.y;
 
-        SDL_Vertex v2 = edge.second;
-        v2.position.x -= g_camera.x;
-        v2.position.y -= g_camera.y;
+    SDL_Vertex v2 = edge.second;
+    v2.position.x -= g_camera.x;
+    v2.position.y -= g_camera.y;
 
-        edgeInfo newV;
-        newV.first = v1;
-        newV.firstZ = edge.firstZ;
-        newV.second = v2;
-        newV.secondZ = edge.secondZ;
+    edgeInfo newV;
+    newV.first = v1;
+    newV.firstZ = edge.firstZ;
+    newV.second = v2;
+    newV.secondZ = edge.secondZ;
 
-        newV.wallMesh = edge.wallMesh;
-        newV.indices = edge.indices;
-
-
-        newV.type = edge.type;
+    newV.wallMesh = edge.wallMesh;
+    newV.indices = edge.indices;
 
 
-        // Check if either vertex is visible
-        if (isPointVisible(v1) || isPointVisible(v2) || 
-            isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, WIN_WIDTH, 0) ||       // Top boundary
-            isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, 0, WIN_HEIGHT) ||     // Left boundary
-            isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , WIN_WIDTH, 0, WIN_WIDTH, WIN_HEIGHT) || // Right boundary
-            isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, WIN_HEIGHT, WIN_WIDTH, WIN_HEIGHT)) {  // Bottom boundary
-          targetEdges.push_back(newV);
-        }
+    newV.type = edge.type;
+
+
+    // Check if either vertex is visible
+    if (isPointVisible(v1) || isPointVisible(v2) || 
+        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, WIN_WIDTH, 0) ||       // Top boundary
+        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, 0, WIN_HEIGHT) ||     // Left boundary
+        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , WIN_WIDTH, 0, WIN_WIDTH, WIN_HEIGHT) || // Right boundary
+        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, WIN_HEIGHT, WIN_WIDTH, WIN_HEIGHT)) {  // Bottom boundary
+      targetEdges.push_back(newV);
     }
+  }
 }
 
 // Function to check if an occluder is between the start and end points with debug lines
@@ -292,176 +292,176 @@ bool isOccluderBetween(float startX, float startY, float endX, float endY) {
 
 
 struct CollisionInfo {
-    bool isColliding;
-    std::array<float, 3> normal;
+  bool isColliding;
+  std::array<float, 3> normal;
 };
 
 // Function to calculate normal of a face
 std::array<float, 3> calculateNormal(vertex3d vA, vertex3d vB, vertex3d vC) {
-    std::array<float, 3> normal;
-    float x1 = vB.x - vA.x;
-    float y1 = vB.y - vA.y;
-    float z1 = vB.z - vA.z;
-    float x2 = vC.x - vA.x;
-    float y2 = vC.y - vA.y;
-    float z2 = vC.z - vA.z;
-    normal[0] = y1 * z2 - z1 * y2;
-    normal[1] = z1 * x2 - x1 * z2;
-    normal[2] = x1 * y2 - y1 * x2;
+  std::array<float, 3> normal;
+  float x1 = vB.x - vA.x;
+  float y1 = vB.y - vA.y;
+  float z1 = vB.z - vA.z;
+  float x2 = vC.x - vA.x;
+  float y2 = vC.y - vA.y;
+  float z2 = vC.z - vA.z;
+  normal[0] = y1 * z2 - z1 * y2;
+  normal[1] = z1 * x2 - x1 * z2;
+  normal[2] = x1 * y2 - y1 * x2;
 
-    // Normalize the normal vector
-    float length = sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
-    if (length != 0) {
-        normal[0] /= length;
-        normal[1] /= length;
-        normal[2] /= length;
-    }
-    return normal;
+  // Normalize the normal vector
+  float length = sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+  if (length != 0) {
+    normal[0] /= length;
+    normal[1] /= length;
+    normal[2] /= length;
+  }
+  return normal;
 }
 // Function to calculate the distance from a point to the face along the normal direction
 float calculateDistanceToFace(const std::array<float, 3>& normal, float d, float x, float y, float z) {
-    return normal[0] * x + normal[1] * y + normal[2] * z + d;
+  return normal[0] * x + normal[1] * y + normal[2] * z + d;
 }
 
 // Function to calculate barycentric coordinates
 std::array<float, 3> getBarycentricCoords(vertex3d p, vertex3d a, vertex3d b, vertex3d c) {
-    std::array<float, 3> bary;
-    float denom = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
-    bary[0] = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / denom;
-    bary[1] = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / denom;
-    bary[2] = 1 - bary[0] - bary[1];
-    return bary;
+  std::array<float, 3> bary;
+  float denom = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
+  bary[0] = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / denom;
+  bary[1] = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / denom;
+  bary[2] = 1 - bary[0] - bary[1];
+  return bary;
 }
 
 // Function to check if the entity is inside a wall
 CollisionInfo isEntityInsideWall(entity* entity, float xvel = 0.0f, float yvel = 0.0f) {
-    // Entity's bounding box center and velocities
-    float entityX = entity->getOriginX() + xvel*((double)elapsed/256);
-    float entityY = entity->getOriginY() + yvel*((double)elapsed/256);
-    float entityZ = entity->bounds.height / 2.0f;
+  // Entity's bounding box center and velocities
+  float entityX = entity->getOriginX() + xvel*((double)elapsed/256);
+  float entityY = entity->getOriginY() + yvel*((double)elapsed/256);
+  float entityZ = entity->bounds.height / 2.0f;
 
-    for (const auto& mesh : g_meshCollisions) {
-      if(Distance(mesh->origin.x, mesh->origin.y, entityX, entityY) < mesh->sleepRadius +(entity->bounds.width + entity->bounds.height)) {
-        // Adjust coordinates for the mesh origin
-        float adjustedEntityX = entityX - mesh->origin.x;
-        float adjustedEntityY = entityY - mesh->origin.y;
+  for (const auto& mesh : g_meshCollisions) {
+    if(Distance(mesh->origin.x, mesh->origin.y, entityX, entityY) < mesh->sleepRadius +(entity->bounds.width + entity->bounds.height)) {
+      // Adjust coordinates for the mesh origin
+      float adjustedEntityX = entityX - mesh->origin.x;
+      float adjustedEntityY = entityY - mesh->origin.y;
 
-        for (const auto& face : mesh->faces) {
-            // Get vertices of the face
-            vertex3d vA = mesh->vertices[face.a];
-            vertex3d vB = mesh->vertices[face.b];
-            vertex3d vC = mesh->vertices[face.c];
+      for (const auto& face : mesh->faces) {
+        // Get vertices of the face
+        vertex3d vA = mesh->vertices[face.a];
+        vertex3d vB = mesh->vertices[face.b];
+        vertex3d vC = mesh->vertices[face.c];
 
-            // Calculate face normal
-            auto normal = calculateNormal(vA, vB, vC);
+        // Calculate face normal
+        auto normal = calculateNormal(vA, vB, vC);
 
-            // Calculate plane equation
-            float d = -(normal[0] * vA.x + normal[1] * vA.y + normal[2] * vA.z);
+        // Calculate plane equation
+        float d = -(normal[0] * vA.x + normal[1] * vA.y + normal[2] * vA.z);
 
-            // Calculate the distance to the face along the normal direction
-            float distance = calculateDistanceToFace(normal, d, adjustedEntityX, adjustedEntityY, entityZ);
+        // Calculate the distance to the face along the normal direction
+        float distance = calculateDistanceToFace(normal, d, adjustedEntityX, adjustedEntityY, entityZ);
 
-	    if (std::abs(distance) < entity->bounds.height / 2.0f) {
-                // Project the entity's center onto the face plane
-                float projectionX = adjustedEntityX - distance * normal[0];
-                float projectionY = adjustedEntityY - distance * normal[1];
+        if (std::abs(distance) < entity->bounds.height / 2.0f) {
+          // Project the entity's center onto the face plane
+          float projectionX = adjustedEntityX - distance * normal[0];
+          float projectionY = adjustedEntityY - distance * normal[1];
 
-                // 2D bounding box check within the face's projected area
-                if (projectionX >= std::min({ vA.x, vB.x, vC.x }) && projectionX <= std::max({ vA.x, vB.x, vC.x }) &&
-                    projectionY >= std::min({ vA.y, vB.y, vC.y }) && projectionY <= std::max({ vA.y, vB.y, vC.y })) {
-                    return { true, normal };
-                }
-            }
-        }
-
-        //also check verts since that might prevent common problems
-        for(vertex3d& v : mesh->vertices) {
-          float da = abs(adjustedEntityX - v.x);
-          float db = abs(adjustedEntityY - v.y);
-          if(da < entity->bounds.height/2 && db < entity->bounds.height/2) {
-
-            //can we avoid the collision if we negate the xvel?
-            return {true, {0,0,0}};
+          // 2D bounding box check within the face's projected area
+          if (projectionX >= std::min({ vA.x, vB.x, vC.x }) && projectionX <= std::max({ vA.x, vB.x, vC.x }) &&
+              projectionY >= std::min({ vA.y, vB.y, vC.y }) && projectionY <= std::max({ vA.y, vB.y, vC.y })) {
+            return { true, normal };
           }
         }
       }
-    }
 
-    return { false, { 0.0f, 0.0f, 0.0f } };
+      //also check verts since that might prevent common problems
+      for(vertex3d& v : mesh->vertices) {
+        float da = abs(adjustedEntityX - v.x);
+        float db = abs(adjustedEntityY - v.y);
+        if(da < entity->bounds.height/2 && db < entity->bounds.height/2) {
+
+          //can we avoid the collision if we negate the xvel?
+          return {true, {0,0,0}};
+        }
+      }
+    }
+  }
+
+  return { false, { 0.0f, 0.0f, 0.0f } };
 }
 
 // Function to adjust the player's velocity to slide along the wall
 void adjustVelocityForWallCollision(entity* entity, float& xvel, float& yvel) {
-    const float buffer = 16; // Small buffer zone to prevent catching
+  const float buffer = 16; // Small buffer zone to prevent catching
 
-    // Check for initial collisions with the current velocities
-    auto collision = isEntityInsideWall(entity, xvel, yvel);
+  // Check for initial collisions with the current velocities
+  auto collision = isEntityInsideWall(entity, xvel, yvel);
 
-    if (collision.isColliding) {
-      if(collision.normal[0] == 0 && collision.normal[1] == 0) {
-        //she bumped into a vertex
-        collision = isEntityInsideWall(entity, xvel, 0);
-        if(!collision.isColliding) {
-          //it's safe to use xvel and yvel of 0
-          yvel = 0;
-          return;
-
-        } else {
-          collision = isEntityInsideWall(entity, 0, yvel);
-          if(!collision.isColliding) {
-            xvel = 0;
-            return;
-          }
-        }
-
-        // :/
-        xvel = 0;
+  if (collision.isColliding) {
+    if(collision.normal[0] == 0 && collision.normal[1] == 0) {
+      //she bumped into a vertex
+      collision = isEntityInsideWall(entity, xvel, 0);
+      if(!collision.isColliding) {
+        //it's safe to use xvel and yvel of 0
         yvel = 0;
+        return;
 
       } else {
-        // Calculate the dot product of the velocity and the normal
-        
-
-        //a 45 deg wall in blender will become a 38 degree wall in the world
-        //this will turn the normal back to that of a 45 deg wall
-        collision.normal[1] *= XtoY;
-        float length = sqrt(collision.normal[0] * collision.normal[0] + collision.normal[1] * collision.normal[1] + collision.normal[2] * collision.normal[2]);
-        if (length != 0) {
-            collision.normal[0] /= length;
-            collision.normal[1] /= length;
-            collision.normal[2] /= length;
-        }
-
-        float dotProduct = xvel * collision.normal[0] + yvel * collision.normal[1];
-
-        // Subtract the component of the velocity that is parallel to the normal
-        float adjustedXvel = xvel - dotProduct * collision.normal[0];
-        float adjustedYvel = yvel - dotProduct * collision.normal[1];
-
-        // Check for new collisions with the adjusted velocities
-        auto newCollision = isEntityInsideWall(entity, adjustedXvel, adjustedYvel);
-
-        if (newCollision.isColliding) {
-            array<float, 3> newNormal = newCollision.normal;
-            newNormal[1] *= XtoY;
-            float mainAxis = newNormal[0] - newNormal[1];
-            newNormal[0] *= mainAxis;
-
-            xvel += buffer * newCollision.normal[0];
-            yvel += buffer * newCollision.normal[1];
-
-            // If still colliding, set velocities to zero
-            auto finalCollision = isEntityInsideWall(entity, xvel, yvel);
-            if (finalCollision.isColliding) {
-                xvel = 0;
-                yvel = 0;
-            }
-        } else {
-            xvel = adjustedXvel;
-            yvel = adjustedYvel;
+        collision = isEntityInsideWall(entity, 0, yvel);
+        if(!collision.isColliding) {
+          xvel = 0;
+          return;
         }
       }
+
+      // :/
+      xvel = 0;
+      yvel = 0;
+
+    } else {
+      // Calculate the dot product of the velocity and the normal
+
+
+      //a 45 deg wall in blender will become a 38 degree wall in the world
+      //this will turn the normal back to that of a 45 deg wall
+      collision.normal[1] *= XtoY;
+      float length = sqrt(collision.normal[0] * collision.normal[0] + collision.normal[1] * collision.normal[1] + collision.normal[2] * collision.normal[2]);
+      if (length != 0) {
+        collision.normal[0] /= length;
+        collision.normal[1] /= length;
+        collision.normal[2] /= length;
+      }
+
+      float dotProduct = xvel * collision.normal[0] + yvel * collision.normal[1];
+
+      // Subtract the component of the velocity that is parallel to the normal
+      float adjustedXvel = xvel - dotProduct * collision.normal[0];
+      float adjustedYvel = yvel - dotProduct * collision.normal[1];
+
+      // Check for new collisions with the adjusted velocities
+      auto newCollision = isEntityInsideWall(entity, adjustedXvel, adjustedYvel);
+
+      if (newCollision.isColliding) {
+        array<float, 3> newNormal = newCollision.normal;
+        newNormal[1] *= XtoY;
+        float mainAxis = newNormal[0] - newNormal[1];
+        newNormal[0] *= mainAxis;
+
+        xvel += buffer * newCollision.normal[0];
+        yvel += buffer * newCollision.normal[1];
+
+        // If still colliding, set velocities to zero
+        auto finalCollision = isEntityInsideWall(entity, xvel, yvel);
+        if (finalCollision.isColliding) {
+          xvel = 0;
+          yvel = 0;
+        }
+      } else {
+        xvel = adjustedXvel;
+        yvel = adjustedYvel;
+      }
     }
+  }
 }
 
 navNode* getNodeByPos(vector<navNode*> array, int x, int y) {
@@ -1463,7 +1463,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
 
   SDL_FreeSurface(image);
   g_tiles.push_back(this);
- 
+
 }
 
 tile::~tile() {
@@ -3579,8 +3579,8 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   }
 
   //load voice
-//  string voiceSTR = "resources/static/sounds/voice-normal.wav";
-//  voice = loadWav(voiceSTR.c_str());
+  //  string voiceSTR = "resources/static/sounds/voice-normal.wav";
+  //  voice = loadWav(voiceSTR.c_str());
 
   //load dialogue file
 
@@ -5129,52 +5129,52 @@ door* entity::update(vector<door*> doors, float elapsed) {
     }
 
     if(layer < g_layers) {
-        for(auto r : g_ramps[this->layer]) {
-            rect a = rect(r->x, r->y, 64, 55);
-            rect movedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
-            
-            if(RectOverlap(movedBounds, a)) {
-                bool aboveRamp = false;
-    
-                switch(r->type) {
-                    case 0: // North-facing ramp
-                        aboveRamp = z > r->layer * 64 + 20;
-                        if (!aboveRamp && (movedBounds.x + movedBounds.width <= r->x + 10 || movedBounds.x >= r->x + 54)) {
-                            xcollide = true;
-                        } else if (!aboveRamp && movedBounds.y <= r->y + 10) {
-                            ycollide = true;
-                        }
-                        break;
-    
-                    case 1: // East-facing ramp
-                        aboveRamp = z > r->layer * 64 + 20;
-                        if (!aboveRamp && (movedBounds.y + movedBounds.height <= r->y + 10 || movedBounds.y >= r->y + 45)) {
-                            ycollide = true;
-                        } else if (!aboveRamp && movedBounds.x + movedBounds.width >= r->x + 54) {
-                            xcollide = true;
-                        }
-                        break;
-    
-                    case 2: // South-facing ramp
-                        aboveRamp = z > r->layer * 64 + 20;
-                        if (!aboveRamp && (movedBounds.x + movedBounds.width <= r->x + 10 || movedBounds.x >= r->x + 54)) {
-                            xcollide = true;
-                        } else if (!aboveRamp && movedBounds.y + movedBounds.height >= r->y + 45) {
-                            ycollide = true;
-                        }
-                        break;
-    
-                    case 3: // West-facing ramp
-                        aboveRamp = z > r->layer * 64 + 20;
-                        if (!aboveRamp && (movedBounds.y + movedBounds.height <= r->y + 10 || movedBounds.y >= r->y + 45)) {
-                            ycollide = true;
-                        } else if (!aboveRamp && movedBounds.x <= r->x + 10) {
-                            xcollide = true;
-                        }
-                        break;
-                }
-            }
+      for(auto r : g_ramps[this->layer]) {
+        rect a = rect(r->x, r->y, 64, 55);
+        rect movedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
+
+        if(RectOverlap(movedBounds, a)) {
+          bool aboveRamp = false;
+
+          switch(r->type) {
+            case 0: // North-facing ramp
+              aboveRamp = z > r->layer * 64 + 20;
+              if (!aboveRamp && (movedBounds.x + movedBounds.width <= r->x + 10 || movedBounds.x >= r->x + 54)) {
+                xcollide = true;
+              } else if (!aboveRamp && movedBounds.y <= r->y + 10) {
+                ycollide = true;
+              }
+              break;
+
+            case 1: // East-facing ramp
+              aboveRamp = z > r->layer * 64 + 20;
+              if (!aboveRamp && (movedBounds.y + movedBounds.height <= r->y + 10 || movedBounds.y >= r->y + 45)) {
+                ycollide = true;
+              } else if (!aboveRamp && movedBounds.x + movedBounds.width >= r->x + 54) {
+                xcollide = true;
+              }
+              break;
+
+            case 2: // South-facing ramp
+              aboveRamp = z > r->layer * 64 + 20;
+              if (!aboveRamp && (movedBounds.x + movedBounds.width <= r->x + 10 || movedBounds.x >= r->x + 54)) {
+                xcollide = true;
+              } else if (!aboveRamp && movedBounds.y + movedBounds.height >= r->y + 45) {
+                ycollide = true;
+              }
+              break;
+
+            case 3: // West-facing ramp
+              aboveRamp = z > r->layer * 64 + 20;
+              if (!aboveRamp && (movedBounds.y + movedBounds.height <= r->y + 10 || movedBounds.y >= r->y + 45)) {
+                ycollide = true;
+              } else if (!aboveRamp && movedBounds.x <= r->x + 10) {
+                xcollide = true;
+              }
+              break;
+          }
         }
+      }
     }
 
 
@@ -5946,31 +5946,31 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
   //use entities with heightmaps (identity 35)
   for (auto& e : g_eheightmaps) {
-      rect movedbounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
-      rect ehb = e->getMovedBounds();
-      if (RectOverlap(movedbounds, ehb)) {
-          float protagTopLeftX = ((getOriginX() - (float)ehb.x) /(float)ehb.width) * (float)e->eheightmap->w;
-          float protagTopLeftY = ((getOriginY() - (float)ehb.y) /(float)ehb.height) * (float)e->eheightmap->h;
+    rect movedbounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
+    rect ehb = e->getMovedBounds();
+    if (RectOverlap(movedbounds, ehb)) {
+      float protagTopLeftX = ((getOriginX() - (float)ehb.x) /(float)ehb.width) * (float)e->eheightmap->w;
+      float protagTopLeftY = ((getOriginY() - (float)ehb.y) /(float)ehb.height) * (float)e->eheightmap->h;
 
-          SDL_Color rgb = {0,0,0};
-          Uint32 data;
+      SDL_Color rgb = {0,0,0};
+      Uint32 data;
 
-          int topLeft = -1;
-          if(protagTopLeftX >= 0 && protagTopLeftX < e->eheightmap->w && protagTopLeftY >= 0 && protagTopLeftY < e->eheightmap->h) {
-            data = getpixel(e->eheightmap, protagTopLeftX, protagTopLeftY);
-            SDL_GetRGB(data, e->eheightmap->format, &rgb.r, &rgb.g, &rgb.b);
-            topLeft = rgb.r;
-          }
-
-          if(topLeft >= 0) {
-          
-            floor = topLeft;
-            if(abs(z - (floor + 1)) < 2) {
-              z = floor + 1;
-            }
-            this->shadow->z = floor+1;
-          }
+      int topLeft = -1;
+      if(protagTopLeftX >= 0 && protagTopLeftX < e->eheightmap->w && protagTopLeftY >= 0 && protagTopLeftY < e->eheightmap->h) {
+        data = getpixel(e->eheightmap, protagTopLeftX, protagTopLeftY);
+        SDL_GetRGB(data, e->eheightmap->format, &rgb.r, &rgb.g, &rgb.b);
+        topLeft = rgb.r;
       }
+
+      if(topLeft >= 0) {
+
+        floor = topLeft;
+        if(abs(z - (floor + 1)) < 2) {
+          z = floor + 1;
+        }
+        this->shadow->z = floor+1;
+      }
+    }
   }
 
   //for meshes
@@ -6015,7 +6015,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
             break;
 
           } else { //use A C *D* now, since it's a quad
-            // Get vertices of the face
+                   // Get vertices of the face
             vertex3d vA = m->vertices[f.a];
             vertex3d vB = m->vertices[f.c];
             vertex3d vC = m->vertices[f.d];
@@ -6178,7 +6178,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
       //play landing sound
       //playSound(-1, g_land, 0);
-      
+
       if( abs(zvel) > 120) {
         playSound(-1, g_staticSounds[3], 0);
       }
@@ -6272,7 +6272,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
   }
 
   //check for everyone, even if they are invincible
-  
+
   if(g_entityBenchmarking) {
     g_eu_timer -= SDL_GetTicks();
     g_eu_f -= g_eu_timer;
@@ -6914,7 +6914,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
   }
   */
 
-  float dist = XYWorldDistanceSquared(this->getOriginX(), this->getOriginY(), protag->getOriginX(), protag->getOriginY());
+    float dist = XYWorldDistanceSquared(this->getOriginX(), this->getOriginY(), protag->getOriginX(), protag->getOriginY());
   if(dist < g_entitySleepDistance || this->isAI) {
     specialObjectsUpdate(this, elapsed);
     if(g_breakFromPrimarySwitch) {return nullptr;} //last protag died
@@ -7586,7 +7586,7 @@ int loadSave() {
     }
 
   }
-  
+
   for(auto x : g_partyCombatants) {
     x->statuses.clear();
     x->curStrength = x->baseStrength;
@@ -7658,7 +7658,7 @@ int loadSave() {
     keyItemInfo* k = new keyItemInfo(stoi(line));
   }
 
-  
+
 
 
   file.close();
@@ -7673,10 +7673,10 @@ int writeSave() {
   const char* plik = address.c_str();
   file.open(plik);
 
-//  //if the loaded name is "Blank", change it to "Fomm"
-//  if(readSaveStringField("playername") == "Blank") {
-//    writeSaveFieldString("playername", "Fomm");
-//  }
+  //  //if the loaded name is "Blank", change it to "Fomm"
+  //  if(readSaveStringField("playername") == "Blank") {
+  //    writeSaveFieldString("playername", "Fomm");
+  //  }
 
   auto it = g_save.begin();
 
@@ -7981,15 +7981,15 @@ textbox::textbox(SDL_Renderer* renderer, const char* fcontent, float size, float
     font = g_ttf_fontLarge;
   }
   //int shareFont = 0;
-//  for(auto x : g_textboxes) { 
-//    if(x->fontsize == this->fontsize) {
-//      font = x->font;
-//      shareFont = 1;
-//    }
-//  }
-//  if(!shareFont) {
-//    font = loadFont(g_font, size);
-//  }
+  //  for(auto x : g_textboxes) { 
+  //    if(x->fontsize == this->fontsize) {
+  //      font = x->font;
+  //      shareFont = 1;
+  //    }
+  //  }
+  //  if(!shareFont) {
+  //    font = loadFont(g_font, size);
+  //  }
 
   textsurface = TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
@@ -8054,7 +8054,7 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
 
     if(align == 1) {
       //right
-      
+
       //thisrect.w is not meant to be multiplied by winwidth
       //if you change this, it will break textboxes that align themselves at the end of their boxX/Y/Width/Height region
       SDL_FRect dstrect = {(boxX) * winwidth - thisrect.w, boxY * winheight, (float)width,  (float)thisrect.h};
@@ -8791,7 +8791,7 @@ void clear_map(camera& cameraToReset) {
       }
 
       //meshes
-      
+
       M("Lets draw the meshfloors");
       for(auto &x : g_meshFloors) {
         M("Draw this meshfloor");
@@ -8829,18 +8829,18 @@ void clear_map(camera& cameraToReset) {
             v[i].position.y += x->origin.y - g_camera.y;
             v[i].color.a = x->vertex[i].color.a;
           }
-    
+
           SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-    
+
           //render shade
           for(int i = 0; i < x->numVertices; i++) {
             v[i].tex_coord.x = x->vertexExtraData[i].first;
             v[i].tex_coord.y = x->vertexExtraData[i].second;
             v[i].color.a = 255; //alpha is done in the texture for this
           }
-    
+
           SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-    
+
         }
       }
 
@@ -9443,7 +9443,7 @@ void clear_map(camera& cameraToReset) {
 
   {
     g_meshes.clear();
-  
+
     size = g_meshFloors.size();
     for(int i = 0; i < size; i++) {
       delete g_meshFloors[0];
@@ -9475,7 +9475,7 @@ void clear_map(camera& cameraToReset) {
     for(int i = 0; i < size; i++) {
       delete g_chunks[0];
     }
-    
+
     size = g_ggrids.size();
     for(int i = 0; i < size; i++) {
       delete g_ggrids[0];
@@ -9927,7 +9927,7 @@ void adventureUI::showTalkingUI()
     dialogpointer->visible = 1;
     dialogpointergap->show = 1;
   }
-  
+
 }
 
 void adventureUI::hideTalkingUI()
@@ -10283,7 +10283,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     kiAdvance->dropshadow = 1;
     kiAdvance->x = 0.15 - 0.015;
     kiAdvance->y = 0.52 - 0.03;
-    
+
     const float ystart = 0.13;
     const float x = 0.065;
     const float yinc = 0.06;
@@ -10317,7 +10317,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     dialogpointergap = new ui(renderer, "resources/engine/dialogpointergap.qoi", 0.26, 0.655, 0.1, 0.05, 1);
     dialogpointergap->persistent = true;
     dialogpointergap->show = 1;
-    
+
     //remove dialogpointer from g_actors and g_ribbons
     g_actors.erase(remove(g_actors.begin(), g_actors.end(), dialogpointer), g_actors.end());
     g_ribbons.erase(remove(g_ribbons.begin(), g_ribbons.end(), dialogpointer), g_ribbons.end());
@@ -10834,7 +10834,7 @@ void adventureUI::continueDialogue()
   // #
   //
   if(scriptToUse->at(dialogue_index + 1).substr(0,10) == "/keyprompt") {
-   
+
     dialogue_index++;
     g_fancybox->show = 1;
     g_fancybox->clear();
@@ -11513,7 +11513,7 @@ void adventureUI::continueDialogue()
     s.erase(0,9);
     D(s);
     vector<string> x = splitString(s, ' ');
-    
+
     if(x.size() > 2) {
       g_approacher = searchEntities(x[1]);
       g_approachMe = searchEntities(x[2]);
@@ -11528,7 +11528,7 @@ void adventureUI::continueDialogue()
     } else {
       M("Not enough params for approach-call");
     }
-    
+
 
 
     dialogue_index++;
@@ -11914,7 +11914,7 @@ void adventureUI::continueDialogue()
       x->health = floor(x->baseStrength);
       x->sp = floor(x->baseMind);
     }
-    
+
     float sx = protag->getOriginX();
     float sy = protag->getOriginY();
 
@@ -13302,7 +13302,7 @@ void adventureUI::continueDialogue()
     g_whoLearnsMove = stoi(x[2]);
     //g_whichMoveLearned = stoi(x[1]);
     combatUIManager->moveToLearn = stoi(x[1]);
-    
+
     g_submode = submode::LEVELUP;
     g_learningMove = 1;
 
@@ -13456,14 +13456,14 @@ void adventureUI::continueDialogue()
   }
 
   //display fancytext
-//  if (scriptToUse->at(dialogue_index + 1).substr(0, 1) == "`")
-//  {
-//    dialogue_index++;
-//    g_fancybox->show = 1;
-//    g_fancybox->clear();
-//    pushFancyText(talker);
-//    return;
-//  }
+  //  if (scriptToUse->at(dialogue_index + 1).substr(0, 1) == "`")
+  //  {
+  //    dialogue_index++;
+  //    g_fancybox->show = 1;
+  //    g_fancybox->clear();
+  //    pushFancyText(talker);
+  //    return;
+  //  }
 
   //give the player a new usable, which will later be written to their save file
   // /unlockusable cicada

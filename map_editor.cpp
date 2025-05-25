@@ -3506,15 +3506,13 @@ void write_map(entity *mapent)
   
           //chunk* c = new chunk(path, "", "", origin, 1, 0);
           chunk* c = duplicateChunk(g_OPChunks[n-1], origin);
-          c->origin = origin;
+          //c->origin = origin;
           c->standalone = 0;
 
           c->value = n;
           g_activeGgrid->chunks.push_back(c);
           if(c->floor != 0) {
-            M("setting floor tex");
             c->floor->texture = g_activeGgrid->floortex;
-            //c->floor->texture = protag->texture;
             for(int i = 0; i < c->floor->numVertices; i++) {
               float xpos = c->floor->vertex[i].position.x + c->origin.x;
               float ypos = c->floor->vertex[i].position.y + c->origin.y;
@@ -3534,6 +3532,11 @@ void write_map(entity *mapent)
               c->floor->vertex[i].tex_coord.x = xpos;
               c->floor->vertex[i].tex_coord.y = ypos;
             }
+          }
+
+          if(c->wall != 0) {
+            c->wall->texture = g_activeGgrid->walltex;
+
           }
 
 
