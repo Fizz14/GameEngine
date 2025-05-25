@@ -20,8 +20,7 @@ class vec2 {
 public:
   float x = 0;
   float y = 0;
-  float z = 0;
-  vec3(int fx, int fy, int fz);
+  vec2(float fx, float fy);
 };
 
 class vec3 {
@@ -29,7 +28,7 @@ public:
   float x = 0;
   float y = 0;
   float z = 0;
-  vec3(int fx, int fy, int fz);
+  vec3(float fx, float fy, float fz);
 };
 
 //a 3d vertex

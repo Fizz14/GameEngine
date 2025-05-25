@@ -239,7 +239,7 @@ bool g_useBackgrounds = 1; // a user setting, if the user wishes to see black sc
 int g_brightness = 100; // brightness of map
 // x length times x_z_ratio is proper screen length in z
 float XtoZ = 0.496; // 4/2.31, arctan (4/ 3.21) = 60 deg
-float XtoY = 0.866;
+float XtoY = 0.866; //sin 60 deg
 float YtoX = 1/XtoY;
 float g_ratio = 1.618;
 bool transition = 0;

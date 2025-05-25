@@ -3417,9 +3417,14 @@ void ExplorationLoop() {
 
     if(drawhitboxes) {
       for(int i = 0; i < g_chunks.size(); i++) {
-        if(g_chunks[i]->standalone) {
+        if(g_chunks[i]->standalone || 1) {
           SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
           SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
+          D(obj.y);
+          if(g_ggrids.size() > 0) {
+            D(g_ggrids[0]->originY);
+            D(g_ggrids[0]->originY * 64);
+          }
         }
       }
     }
@@ -4224,16 +4229,12 @@ int WinMain()
     //continue here
     //...
 
-
-    // !!!
-    // now, encode the facing of the occluders into each mes
-    M("wrote to OPChunks");
-
     // Transfer chunks to g_OPChunks
     g_OPChunks.insert(g_OPChunks.end(), g_chunks.begin(), g_chunks.end());
     g_chunks.clear(); // Clear the original chunk vector
 
-    //swap(g_OPChunks[1]->wall->storedWEdges[0].first, g_OPChunks[1]->wall->storedWEdges[0].second);
+    // swap edgeDataStore as needed for backfacing
+    // backface culling 
     swap(g_OPChunks[1]->occluder->edgeDataStore[0][0], g_OPChunks[1]->occluder->edgeDataStore[0][1]);
 
 

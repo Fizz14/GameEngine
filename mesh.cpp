@@ -60,7 +60,7 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
   E("Couldn't associate occluder edge with wall");
 }
 
-vec3::vec3(int fx = 0, int fy = 0, int fz = 0) :x(fx), y(fy), z(fz) {}
+vec3::vec3(float fx = 0, float fy = 0, float fz = 0) :x(fx), y(fy), z(fz) {}
 
 mesh::mesh(){
 

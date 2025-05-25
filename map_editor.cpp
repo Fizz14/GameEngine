@@ -170,14 +170,20 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
           int value = 0;
           iss >> value;
           //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55 + 40, 0};
-          vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55.424 + 49, 0};
+          //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55.424 + 0, 0};
+          float jval = j * 55.4256258422;
+          vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, 0};
+//          if(i==0 && j ==0) {
+//            M("I and J are both zero!");
+//            D(origin.y);
+//          }
           // this is still wrong
-          D(g_activeGgrid->originX);
-          D(origin.x);
-          D(origin.y);
+//          D(g_activeGgrid->originX);
+//          D(origin.x);
+//          D(origin.y);
           if(value != 0) {
             chunk* c = duplicateChunk(g_OPChunks[value-1], origin);
-            M("Duplicating chunk " + to_string(value));
+            D(c->origin.y)
             c->standalone = 0;
             c->value = value;
             g_activeGgrid->chunks.push_back(c);
@@ -215,8 +221,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         line = strings[index];
         index++;
         iss = istringstream(line);
-        M("Is this the next line?");
-        D(line);
       }
  
 
@@ -1924,8 +1928,8 @@ bool mapeditor_save_map(string word)
     for(auto y : x->chunks) {
       float posx = y->origin.x;
       float posy = y->origin.y;
-      posx /= 64;
-      posy /= 64;
+      posx;
+      posy;
 //      D(posx);
 //      D(posy);
       if(lowestPx < 0 || posx < lowestPx) {
@@ -1943,8 +1947,8 @@ bool mapeditor_save_map(string word)
     }
     x->originX = lowestPx;
     x->originY = lowestPy;
-    x->width = highestPx - lowestPx + 1;
-    x->height = highestPy - lowestPy + 2;
+    x->width = (highestPx/64) - (lowestPx/64) + 1;
+    x->height = (highestPy/64) - (lowestPy/64) + 2;
 
     x->chunkdata.clear();
     x->chunkdata.resize(x->width);
@@ -1957,8 +1961,8 @@ bool mapeditor_save_map(string word)
       int posx = y->origin.x / 64;
       int posy = y->origin.y / 64;
 
-      int valX = posx - x->originX;
-      int valY = posy - x->originY;
+      int valX = round(posx - x->originX/64);
+      int valY = round(posy - x->originY/64);
 //      D(valX);
 //      D(valY);
       x->chunkdata[valX][valY] = (unsigned char)y->value;
@@ -2201,6 +2205,7 @@ void write_map(entity *mapent)
   marker->y = py;
   marker->width = grid;
   marker->height = round(grid * XtoY);
+  D(marker->y); //trying to debug ggrid loading
   // some debug drawing
   SDL_FRect drect;
   if (drawhitboxes)
