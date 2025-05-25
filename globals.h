@@ -30,8 +30,6 @@
 #undef M_PI
 #define M_PI 3.14159265358979323846
 
-extern SDL_Color g_textcolor;
-
 using namespace std;
 
 class coord;
@@ -145,6 +143,8 @@ class keyItemInfo;
 class mesh;
 
 class chunk;
+
+class ggrid;
 
 class camera
 {
@@ -314,6 +314,8 @@ extern vector<mesh*> g_meshes;
 
 extern vector<chunk*> g_chunks;
 
+extern vector<ggrid*> g_ggrids;
+
 struct edgeInfo {
   SDL_Vertex first;
   float firstZ;
@@ -343,6 +345,10 @@ extern vector<edgeInfo> g_oEdges;
 
 extern vector<edgeInfo> g_wsEdges;
 extern vector<edgeInfo> g_osEdges;
+
+//Mesh pieces are always kept in memory
+extern vector<mesh*> g_OPMeshes;
+extern vector<chunk*> g_OPChunks;
 
 extern SDL_Texture* g_occluderTarget;
 extern float g_occluderResolutionRatio;
@@ -1056,6 +1062,7 @@ extern tile *poiIcon;
 extern tile *doorIcon;
 extern tile *ddoorIcon;
 extern tile *triggerIcon;
+extern tile *ggridIcon;
 extern SDL_Texture* grassTexture;
 extern SDL_Texture* cameraBlockerTextureA;
 extern SDL_Texture* cameraBlockerTextureB;
@@ -1144,6 +1151,8 @@ extern float g_entlineDistance;
 extern int g_holddelete;
 
 extern chunk* moveThisChunk;
+
+extern ggrid* g_activeGgrid;
 
 enum gamemode {
   EXPLORATION,

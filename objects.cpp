@@ -9475,6 +9475,11 @@ void clear_map(camera& cameraToReset) {
     for(int i = 0; i < size; i++) {
       delete g_chunks[0];
     }
+    
+    size = g_ggrids.size();
+    for(int i = 0; i < size; i++) {
+      delete g_ggrids[0];
+    }
 
   }
 

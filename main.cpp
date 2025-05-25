@@ -2526,6 +2526,9 @@ void ExplorationLoop() {
       }
 
       SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+      
+      SDL_Rect a = {0,0.2, 0.2, 0.2};
+      SDL_RenderCopy(renderer, x->texture, NULL, &a);
 
       //render shade
       for(int i = 0; i < x->numVertices; i++) {
@@ -2707,6 +2710,8 @@ void ExplorationLoop() {
           v[i].position.x += x->origin.x - g_camera.x;
           v[i].position.y += x->origin.y - g_camera.y;
           v[i].color.r = v[i].color.g;
+//          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
+//          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
         }
 
         SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
@@ -3533,6 +3538,14 @@ void ExplorationLoop() {
 
 
     if(drawhitboxes) {
+      for (long long unsigned int i = 0; i < g_ggrids.size(); i++) {
+
+        SDL_Rect obj = {(int)((g_ggrids[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_ggrids[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
+
+        SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &obj);
+
+      }
+
       for (long long unsigned int i = 0; i < g_triggers.size(); i++)
       {
         SDL_Rect obj = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
@@ -4170,6 +4183,46 @@ int WinMain()
   g_gradient_h = loadTexture(renderer, "resources/engine/fade-h.qoi");
   g_gradient_i = loadTexture(renderer, "resources/engine/fade-i.qoi");
   g_gradient_j = loadTexture(renderer, "resources/engine/fade-j.qoi");
+
+  //populate oPieceMeshes and oPieceChunks here
+  {
+    D(g_meshes.size());
+    if(g_meshes.size() != 0) {
+      E("g_meshes has some meshes in it, and this will cause problems with the code for storing the piece-meshes in memory");
+      abort();
+    }
+  
+    D(g_chunks.size());
+    if(g_chunks.size() != 0) {
+      E("g_chunks has some chunks in it, and this will cause problems with the code for storing the piece-chunks in memory");
+      abort();
+    }
+
+    vec3 origin = {0,0,0};
+    chunk* c = new chunk("ggrid/1", "", "", origin, 1, 0);
+    c = new chunk("ggrid/2", "", "", origin, 1, 0);
+    c = new chunk("ggrid/3", "", "", origin, 1, 0);
+
+    //continue here
+    //...
+
+    // Transfer chunks to g_OPChunks
+    g_OPChunks.insert(g_OPChunks.end(), g_chunks.begin(), g_chunks.end());
+    g_chunks.clear(); // Clear the original chunk vector
+    
+    // Transfer meshes to g_OPMeshes
+    g_OPMeshes.insert(g_OPMeshes.end(), g_meshes.begin(), g_meshes.end());
+    g_meshes.clear(); // Clear the original mesh vector
+    
+    // Clear individual mesh type vectors
+    g_meshFloors.clear();
+    g_meshVWalls.clear();
+    g_meshCollisions.clear();
+    g_meshOccluders.clear();
+    g_meshDecorative.clear();
+  }
+
+
 
   blackbarTexture = loadTexture(renderer, "resources/engine/black-diffuse.qoi");
   //blackbarTexture  = loadTexture(renderer, "resources/engine/grass-select.qoi");

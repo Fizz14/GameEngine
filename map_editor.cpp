@@ -446,7 +446,37 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     }
     if(word == "chunk") {
       iss >> s0 >> s1 >> s2 >> s3 >> p0 >> p1 >> p2 >> p3;
-      chunk* c = new chunk(s1, s2, s3, {p0, p1, p2}, p3);
+      chunk* c = new chunk(s1, s2, s3, {p0, p1, p2}, p3, 1);
+    }
+    if(word == "ggrid") {
+      iss >> s0
+          >> p0
+          >> p1
+          >> s0
+          >> s1
+          >> p2
+          >> p3
+          >> p4
+          >> p5
+          >> p6;
+      ggrid* g = new ggrid();
+
+      g->x = p0;
+      g->y = p1;
+
+      g->floortexSTR = s0;
+      g->walltexSTR = s1;
+
+      g->floortex = loadTexture(renderer, "resources/static/diffuse/" + g->floortexSTR + ".qoi");
+      g->walltex = loadTexture(renderer, "resources/static/diffuse/" + g->walltexSTR + ".qoi");
+
+      g->originX = p2;
+      g->originY = p3;
+
+      g->width = p4;
+      g->height = p5;
+      g_activeGgrid = g;
+
     }
     if (word == "tile")
     {
@@ -1674,15 +1704,6 @@ bool mapeditor_save_map(string word)
     }
   }
 
-//  if (limitflag)
-//  {
-//    ofile << "limits";
-//    for (auto x : limits)
-//    {
-//      ofile << " " << x;
-//    }
-//    ofile << endl;
-//  }
   if (g_backgroundLoaded && backgroundstr != "")
   {
     ofile << "bg " << backgroundstr << endl;
@@ -1703,13 +1724,13 @@ bool mapeditor_save_map(string word)
       ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture << " " << n->capped << " " << n->shaded << " " << n->style << endl;
     }
   }
-  for (int i = 0; i < g_layers; i++)
-  {
-    for (auto n : g_ramps[i])
-    {
-      ofile << "ramp " << n->x << " " << n->y << " " << i << " " << n->type << " " << n->walltexture << " " << n->captexture << endl;
-    }
-  }
+//  for (int i = 0; i < g_layers; i++)
+//  {
+//    for (auto n : g_ramps[i])
+//    {
+//      ofile << "ramp " << n->x << " " << n->y << " " << i << " " << n->type << " " << n->walltexture << " " << n->captexture << endl;
+//    }
+//  }
   for (long long unsigned int i = 0; i < g_tiles.size(); i++)
   {
     // dont save map graphics
@@ -1735,60 +1756,9 @@ bool mapeditor_save_map(string word)
 
     ofile << "heightmap " << g_heightmaps[i]->binding << " " << g_heightmaps[i]->name << " " << g_heightmaps[i]->magnitude << endl;
   }
-//  for (int j = 0; j < g_layers; j++)
-//  {
-//    for (long long unsigned int i = 0; i < g_boxs[j].size(); i++)
-//    {
-//      string shadestring = "";
-//      if (g_boxs[j][i]->shadeTop)
-//      {
-//        shadestring += "1";
-//      }
-//      else
-//      {
-//        shadestring += "0";
-//      }
-//      if (g_boxs[j][i]->shadeBot == 1)
-//      {
-//        shadestring += "1";
-//      }
-//      else
-//      {
-//        if (g_boxs[j][i]->shadeBot == 2)
-//        {
-//          shadestring += "2";
-//        }
-//        else
-//        {
-//          shadestring += "0";
-//        }
-//      }
-//      if (g_boxs[j][i]->shadeLeft)
-//      {
-//        shadestring += "1";
-//      }
-//      else
-//      {
-//        shadestring += "0";
-//      }
-//      if (g_boxs[j][i]->shadeRight)
-//      {
-//        shadestring += "1";
-//      }
-//      else
-//      {
-//        shadestring += "0";
-//      }
-//      ofile << "box " << to_string(g_boxs[j][i]->bounds.x) << " " << to_string(g_boxs[j][i]->bounds.y) << " " << to_string(g_boxs[j][i]->bounds.width) << " " << to_string(g_boxs[j][i]->bounds.height) << " " << j << " " << g_boxs[j][i]->walltexture << " " << g_boxs[j][i]->captexture << " " << g_boxs[j][i]->capped << " " << g_boxs[j][i]->shineTop << " " << g_boxs[j][i]->shineBot << " " << shadestring << endl;
-//    }
-//  }
 
-  for (auto i : g_impliedSlopes) {
-    ofile << "islope " << to_string(i->bounds.x) << " " << to_string(i->bounds.y) << " " << to_string(i->bounds.width) << " " << to_string(i->bounds.height) << " " << to_string(i->layer) << " " << to_string(i->shadeLeft) << " " << to_string(i->shadeRight) << " " << to_string(i->shadedAtAll) << endl;
-  }
-
-//  for (auto i : g_impliedSlopeTris) {
-//    ofile << "islopet " << i->x1 << " " << i->y1 << " " << i->x2 << " " << i->y2 << " " << i->layer << " " << i->style << endl;
+//  for (auto i : g_impliedSlopes) {
+//    ofile << "islope " << to_string(i->bounds.x) << " " << to_string(i->bounds.y) << " " << to_string(i->bounds.width) << " " << to_string(i->bounds.height) << " " << to_string(i->layer) << " " << to_string(i->shadeLeft) << " " << to_string(i->shadeRight) << " " << to_string(i->shadedAtAll) << endl;
 //  }
 
   
@@ -1864,7 +1834,87 @@ bool mapeditor_save_map(string word)
   }
 
   for(auto x : g_chunks) {
-    ofile << "chunk " << x->path << " " << x->floortex << " " << x->walltex << " " << x->origin.x << " " << x->origin.y << " " << x->origin.z << " " << x->scale << endl;
+    if(x->standalone) {
+      ofile << "chunk " << x->path << " " << x->floortex << " " << x->walltex << " " << x->origin.x << " " << x->origin.y << " " << x->origin.z << " " << x->scale << endl;
+    }
+  }
+
+  //set chunkdata of each ggrid
+  for(auto x : g_ggrids) {
+    //go through each chunk on the grid and record it in the ggrid's chunkdata
+    float lowestPx = -1;
+    float lowestPy = -1;
+    float highestPx = -1;
+    float highestPy = -1;
+
+    for(auto y : x->chunks) {
+      float posx = y->origin.x;
+      float posy = y->origin.y;
+      posx /= 64;
+      posy /= 64;
+//      D(posx);
+//      D(posy);
+      if(lowestPx < 0 || posx < lowestPx) {
+        lowestPx = posx;
+      }
+      if(lowestPy < 0 || posy < lowestPy) {
+        lowestPy = posy;
+      }
+      if(highestPx < 0 || posx > highestPx) {
+        highestPx = posx;
+      }
+      if(highestPy < 0 || posy > highestPy) {
+        highestPy = posy;
+      }
+    }
+    x->originX = lowestPx;
+    x->originY = lowestPy;
+    x->width = highestPx - lowestPx + 1;
+    x->height = highestPy - lowestPy + 2;
+
+    x->chunkdata.clear();
+    x->chunkdata.resize(x->width);
+    
+    for (int i = 0; i < x->width; i++) {
+      x->chunkdata[i].resize(x->height);
+    }
+
+    for(auto y : x->chunks) {
+      int posx = y->origin.x / 64;
+      int posy = y->origin.y / 64;
+
+      int valX = posx - x->originX;
+      int valY = posy - x->originY;
+//      D(valX);
+//      D(valY);
+      x->chunkdata[valX][valY] = (unsigned char)y->value;
+    }
+  }
+
+
+  for(auto x : g_ggrids) {
+    ofile << "ggrid " << x->x << " "
+                      << x->y << " "
+                      << x->floortexSTR << " "
+                      << x->walltexSTR << " "
+                      << x->originX << " "
+                      << x->originY << " "
+                      << x->width << " "
+                      << x->height << endl;
+    
+    ofile << "chunkdata {" << endl;
+    D(x->width);
+    D(x->height);
+    for(int j = 0; j < x->height; j++) {
+      for(int i = 0; i < x->width; i++) {
+        M("Whats the chunkdata");
+        D((int)x->chunkdata[i][j]);
+        ofile << (int)x->chunkdata[i][j] << " ";
+      }
+      ofile << endl;
+    }
+    ofile << "}" << endl;
+    M("Done writing chunkdata");
   }
 
   for (long long unsigned int i = 0; i < g_listeners.size(); i++)
@@ -1947,6 +1997,7 @@ void init_map_writing(SDL_Renderer *renderer)
   doorIcon = new tile(renderer, "resources/engine/door.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   ddoorIcon = new tile(renderer, "resources/engine/ddoor.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   triggerIcon = new tile(renderer, "resources/engine/trigger.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+  ggridIcon = new tile(renderer, "resources/engine/ggrid.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
 
   selection->software = 1;
   marker->software = 1;
@@ -1964,6 +2015,7 @@ void init_map_writing(SDL_Renderer *renderer)
   doorIcon->software = 1;
   ddoorIcon->software = 1;
   triggerIcon->software = 1;
+  ggridIcon->software = 1;
 
   grassTexture = loadTexture(renderer, "resources/engine/grass-select.qoi");
 
@@ -2047,7 +2099,7 @@ void write_map(entity *mapent)
       py -= round(grid * XtoY);
   }
 
-  if(moveThisChunk != nullptr) {
+  if(moveThisChunk != nullptr && moveThisChunk->standalone == 1) {
     moveThisChunk->origin.x = marker->x + marker->width/2;
     moveThisChunk->origin.y = marker->y + marker->height/2;
 
@@ -3438,15 +3490,78 @@ void write_map(entity *mapent)
     //instruction
     while (line >> word)
     {
+      if(word == "g") {
+        // g command
+        //
+        //write to cell of active ggrid
+        //e.g. g 12 to write the twelfth mesh to the position where the cursor is
+        unsigned int n;
+        line >> n;
+
+        //use the active ggrid's originX originY to set the
+        string path = "ggrid/" + to_string(n);
+
+        if(g_activeGgrid && (int) n < 255 ) {
+          vec3 origin = {marker->x, marker->y, 0};
+  
+          //chunk* c = new chunk(path, "", "", origin, 1, 0);
+          chunk* c = duplicateChunk(g_OPChunks[n-1], origin);
+          c->origin = origin;
+          c->standalone = 0;
+
+          c->value = n;
+          g_activeGgrid->chunks.push_back(c);
+          if(c->floor != 0) {
+            M("setting floor tex");
+            c->floor->texture = g_activeGgrid->floortex;
+            //c->floor->texture = protag->texture;
+            for(int i = 0; i < c->floor->numVertices; i++) {
+              float xpos = c->floor->vertex[i].position.x + c->origin.x;
+              float ypos = c->floor->vertex[i].position.y + c->origin.y;
+              xpos = fmod(xpos, 1024);
+              ypos = fmod(ypos, 880);
+              xpos /= 1024.0;
+              ypos /= 880.0;
+              if(fmod(c->origin.x,1024) == 960) {
+                //this is the horizontal edge case
+                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+              }
+              if(fmod(c->origin.y,880) == 825) {
+                //this is the vertical edge case
+                if(abs(ypos - 0) < 0.001) {ypos = 1;}
+              }
+
+              c->floor->vertex[i].tex_coord.x = xpos;
+              c->floor->vertex[i].tex_coord.y = ypos;
+            }
+          }
+
+
+
+
+        } else {
+          M("No active Ggrid for g command");
+        }
+
+        break;
+      }
+      if(word == "ggrid" || word == "geometrygrid") {
+        //make ggrid command
+        ggrid* g = new ggrid();
+        g->floortexSTR = "mapeditor/floor";
+        g->walltexSTR = "mapeditor/wall";
+        g->floortex = loadTexture(renderer, "resources/static/diffuse/mapeditor/floor.qoi");
+        g->walltex = loadTexture(renderer, "resources/static/diffuse/mapeditor/wall.qoi");
+        g->x = marker->x + marker->width/2;
+        g->y = marker->y + marker->height/2;
+        g_activeGgrid = g;
+
+        break;
+      }
+
       if(word == "chunk" || word == "c") {
         line >> word;
-        string floor;
-        string wall;
-        float scale;
-        line >> floor;
-        line >> wall;
-        line >> scale;
-        chunk* c = new chunk(word, floor, wall, {marker->x + marker->width/2, marker->y + marker->height/2, marker->z}, scale);
+        chunk* c = new chunk(word, "mapeditor/floor", "mapeditor/wall", {marker->x + marker->width/2, marker->y + marker->height/2, marker->z}, 1, 1);
         break;
       }
       if(word == "scalechunk" || word == "scale") {
@@ -3455,8 +3570,6 @@ void write_map(entity *mapent)
 
         for(auto c : g_chunks) {
           rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
-          D(blah.x);
-          D(marker->getMovedBounds().x);
           if (RectOverlap(blah, marker->getMovedBounds())) {
             string path = c->path;
             string floor = c->floortex;
@@ -3476,7 +3589,7 @@ void write_map(entity *mapent)
               delete c->occluder;
             }
             delete c;
-            chunk* c = new chunk(path, floor, wall, origin, scale);
+            chunk* c = new chunk(path, floor, wall, origin, scale, 1);
             break;
           }
         }

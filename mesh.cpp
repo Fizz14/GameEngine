@@ -6,6 +6,7 @@
 
 
 void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
+    m->edgeInfoSet = 1;
     struct VertexComparator {
         bool operator()(const SDL_Vertex& lhs, const SDL_Vertex& rhs) const {
             return std::tie(lhs.position.x, lhs.position.y) < std::tie(rhs.position.x, rhs.position.y);
@@ -61,7 +62,8 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
 
 vec3::vec3(int fx = 0, int fy = 0, int fz = 0) :x(fx), y(fy), z(fz) {}
 
-mesh::mesh() {
+mesh::mesh(){
+
 }
 
 mesh::~mesh() {
@@ -85,7 +87,7 @@ mesh::~mesh() {
 
 }
 
-chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale) {
+chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone) {
   g_chunks.push_back(this);
 
   //look for models to load from fpath
@@ -95,6 +97,8 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
   walltex = fwalltex;
   origin = forigin;
   scale = fscale;
+  standalone = fstandalone;
+  D(standalone);
 
   string baseAddr = "resources/static/meshes/" + fpath;
 
@@ -105,30 +109,58 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
   string decorAddr = baseAddr + "-d.ply";
 
   if(PHYSFS_exists(floorAddr.c_str())) {
-    floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR);
-    //M("Loaded floor " + floorAddr);
+    floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR, standalone);
+    M("Loaded floor " + floorAddr);
   }
   if(PHYSFS_exists(wallAddr.c_str())) {
-    wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL);
-    //M("Loaded wall " + wallAddr);
+    wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL, standalone);
+    M("Loaded wall " + wallAddr);
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
-    collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION);
-    //M("Loaded collision " + collisionAddr);
+    collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION, standalone);
+    M("Loaded collision " + collisionAddr);
   }
   if(PHYSFS_exists(occluAddr.c_str())) {
-    occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER);
-    //M("Loaded occluder " + occluAddr);
+    occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER, standalone);
+    M("Loaded occluder " + occluAddr);
   }
   if(PHYSFS_exists(decorAddr.c_str())) {
-    decorative = loadMeshFromPly(decorAddr, floortex, origin, scale, meshtype::DECORATIVE);
-    //M("Loaded decoration " + decorAddr);
+    decorative = loadMeshFromPly(decorAddr, floortex, origin, scale, meshtype::DECORATIVE, standalone);
+    M("Loaded decoration " + decorAddr);
   }
+
+}
+
+chunk::chunk() {
 
 }
 
 chunk::~chunk() {
   g_chunks.erase(remove(g_chunks.begin(), g_chunks.end(), this), g_chunks.end());
+}
+
+chunk* duplicateChunk(const chunk* original, vec3 newOrigin) {
+    if (!original) return nullptr; // Handle null input safely
+
+    //chunk* result = new chunk(original->path, original->floortex, original->walltex, newOrigin, original->scale, original->standalone);
+    chunk* result = new chunk();
+    result->floortex = "";
+    result->walltex = "";
+    result->scale = 1;
+    result->origin = newOrigin;
+
+    //result->value = original->value;
+
+    // Duplicate mesh pointers using `duplicateMesh`
+    result->floor = original->floor ? duplicateMesh(original->floor, newOrigin) : nullptr;
+    result->wall = original->wall ? duplicateMesh(original->wall, newOrigin) : nullptr;
+    result->collision = original->collision ? duplicateMesh(original->collision, newOrigin) : nullptr;
+    result->occluder = original->occluder ? duplicateMesh(original->occluder, newOrigin) : nullptr;
+    result->decorative = original->decorative ? duplicateMesh(original->decorative) : nullptr;
+
+    g_chunks.push_back(result); // Store in global chunk list
+
+    return result;
 }
 
 // Function to calculate the normal of a face
@@ -209,7 +241,7 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
 }
 
 
-mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype) {
+mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone) {
     string address = faddress;
     vector<vertex3d> vertices;
     vector<face> faces;
@@ -217,7 +249,9 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
     result->origin = forigin;
     result->mtype = fmtype;
 
-    if(taddress != "") {
+
+    //if a mesh is standalone, it needs a texture
+    if(taddress != "" && standalone) {
       result->textureAddress = taddress;
       for(auto x : g_meshes) {
         if(x->textureAddress == result->textureAddress) {
@@ -495,10 +529,23 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
               result->vertex[index].color.r = v.color.g;
             }
 
+
             ++index;
         }
 
         result->numVertices = vertices.size();
+
+        //now check to make sure that the alpha is not all 0
+        if(devMode) {
+          bool good = 0;
+          for(int i = 0; i < result->numVertices; i++) {
+            if(result->vertex[i].color.a != 0) { good = 1; break;}
+  
+          }
+          if(!good) {
+            E("Mesh is completely transparent. (Make sure you paint it. The red channel will be used for opacity in this case)");
+          }
+        }
         
         result->indices = new int[faces.size() * 6];
         result->numIndices = 0;
@@ -564,7 +611,11 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
             ei.second = B;
             ei.secondZ = ((second.z * scale)) * XtoZ; //z is subtracted from y
  
-            checkAndSetEdgeInfo(ei, g_meshVWalls[g_meshVWalls.size()-1]);
+            //this was written with the assumption that all occluders have an accompanying wall
+           
+            if(g_meshVWalls.size() > 0 && g_meshVWalls[g_meshVWalls.size()-1]->edgeInfoSet == 0) {
+              checkAndSetEdgeInfo(ei, g_meshVWalls[g_meshVWalls.size()-1]);
+            }
 
             ei.type = 0;
             g_oEdges.emplace_back(ei);
@@ -593,6 +644,75 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
         cerr << "File does not exist: " << address << endl;
         breakpoint();
     }
+    return result;
+}
+
+mesh* duplicateMesh(const mesh* original, vec3 origin) {
+    if (!original) return nullptr; // Handle null input safely
+
+    mesh* result = new mesh();
+
+    // Copy primitive and STL container members
+    result->origin = original->origin;
+    result->textureAddress = original->textureAddress;
+    result->assetSharer = original->assetSharer;
+    result->numVertices = original->numVertices;
+    result->numIndices = original->numIndices;
+    result->sleepRadius = original->sleepRadius;
+    result->mtype = original->mtype;
+    result->edgeInfoSet = original->edgeInfoSet;
+    result->visible = original->visible;
+
+    result->vertexExtraData = original->vertexExtraData;
+    result->faces = original->faces;
+    result->oGeo = original->oGeo;
+    result->vertices = original->vertices;
+
+    // Deep copy dynamically allocated data
+    if (original->vertex) {
+        result->vertex = new SDL_Vertex[original->numVertices];
+        memcpy(result->vertex, original->vertex, sizeof(SDL_Vertex) * original->numVertices);
+    } else {
+        result->vertex = nullptr;
+    }
+
+    if (original->indices) {
+        result->indices = new int[original->numIndices];
+        memcpy(result->indices, original->indices, sizeof(int) * original->numIndices);
+    } else {
+        result->indices = nullptr;
+    }
+
+    // Push result into the correct global arrays
+    switch (result->mtype) {
+        case meshtype::FLOOR:
+            g_meshFloors.push_back(result);
+            break;
+        case meshtype::COLLISION:
+            g_meshCollisions.push_back(result);
+            break;
+        case meshtype::OCCLUDER:
+            g_meshOccluders.push_back(result);
+            break;
+        case meshtype::V_WALL:
+            g_meshVWalls.push_back(result);
+            break;
+        case meshtype::DECORATIVE:
+            g_meshDecorative.push_back(result);
+            break;
+    }
+
+    g_meshes.push_back(result);
 
     return result;
+}
+
+ggrid::ggrid() {
+  g_ggrids.push_back(this);
+}
+
+ggrid::~ggrid() {
+  SDL_DestroyTexture(walltex);
+  SDL_DestroyTexture(floortex);
+  g_ggrids.erase(remove(g_ggrids.begin(), g_ggrids.end(), this), g_ggrids.end());
 }

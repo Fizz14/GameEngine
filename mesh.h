@@ -88,12 +88,14 @@ public:
 
   meshtype mtype = meshtype::FLOOR;
 
+  bool edgeInfoSet = 0;
+
   bool visible = 1;
 
   vector<vertex3d> vertices;
 
   mesh();
-
+  
   ~mesh();
 };
 
@@ -104,13 +106,18 @@ public:
 //
 //specifications for each type: (just in case I forget how to model them)
 //
-//floor - quads/tris with two uv channels
-//wall - quads with two uv channels
+//floor - quads/tris with two uv channels. Needs vertex colors with red for opacity (full red to be visible)
+//wall - quads with two uv channels, same requirement for vertex colors as floor
+//decorative - same as floor
 //collision - completely vertical walls, inside corners should often be 90*
-//occluder - edges in 3d space, no faces, no colors, no channels
+//occluder - edges in 3d space, no faces, no color channels, no uv data
 //
 class chunk {
  public:
+
+   bool standalone = 1; //0 if this belongs to a ggrid
+   int value = 0; //if not standalone this is used for the ggrid
+
   mesh* floor = 0;
   mesh* wall = 0;
   mesh* collision = 0;
@@ -124,11 +131,49 @@ class chunk {
   vec3 origin = {0,0,0};
   float scale;
 
-  chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale);
+  chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone);
+
+  chunk(const chunk &a);
+  chunk();
 
   ~chunk();
 };
 
-mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype);
+chunk* duplicateChunk(const chunk* original, vec3 newOrigin);
+
+mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone);
+
+mesh* duplicateMesh(const mesh* original, vec3 origin);
+
+// a Geometrygrid, which contains an Array of Data for generating Chunks for interiors
+//
+// basic Support includes the Ability to create and delete a Ggrid, select a Ggrid by index,
+// and set the Cell of a Ggrid to a certain chunk.
+//
+class ggrid {
+  public:
+    int x = 0;
+    int y = 0;
+
+
+    string walltexSTR = "";
+    string floortexSTR = "";
+    SDL_Texture* walltex = 0;
+    SDL_Texture* floortex = 0;
+
+    //bounds of the grid
+    int originX = 0; //in coords
+    int originY = 0;
+    int width = 0; //in blocks
+    int height = 0;
+
+    vector<vector<unsigned char>> chunkdata;
+
+    vector<chunk*> chunks;
+
+    ggrid();
+
+    ~ggrid();
+};
 
 #endif

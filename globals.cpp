@@ -154,11 +154,17 @@ vector<mesh*> g_meshes;
 
 vector<chunk*> g_chunks;
 
+vector<ggrid*> g_ggrids;
+
 vector<edgeInfo> g_wEdges;
 vector<edgeInfo> g_oEdges;
 
 vector<edgeInfo> g_wsEdges;
 vector<edgeInfo> g_osEdges;
+
+//Mesh pieces are always kept in memory
+vector<mesh*> g_OPMeshes;
+vector<chunk*> g_OPChunks;
 
 SDL_Texture* g_occluderTarget;
 float g_occluderResolutionRatio = 1;
@@ -965,6 +971,7 @@ tile *poiIcon;
 tile *doorIcon;
 tile *ddoorIcon;
 tile *triggerIcon;
+tile *ggridIcon;
 SDL_Texture* grassTexture;
 SDL_Texture* cameraBlockerTextureA;
 SDL_Texture* cameraBlockerTextureB;
@@ -1061,6 +1068,8 @@ float g_entlineDistance = 64;
 int g_holddelete = 0;
 
 chunk* moveThisChunk = 0;
+
+ggrid* g_activeGgrid = 0;
 
 int g_globalAccumulator = 0;
 int g_tempAccumulator = 0;
