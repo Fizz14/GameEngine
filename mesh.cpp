@@ -156,7 +156,7 @@ chunk* duplicateChunk(const chunk* original, vec3 newOrigin) {
     result->wall = original->wall ? duplicateMesh(original->wall, newOrigin) : nullptr;
     result->collision = original->collision ? duplicateMesh(original->collision, newOrigin) : nullptr;
     result->occluder = original->occluder ? duplicateMesh(original->occluder, newOrigin) : nullptr;
-    result->decorative = original->decorative ? duplicateMesh(original->decorative) : nullptr;
+    result->decorative = original->decorative ? duplicateMesh(original->decorative, newOrigin) : nullptr;
 
     g_chunks.push_back(result); // Store in global chunk list
 
@@ -653,7 +653,7 @@ mesh* duplicateMesh(const mesh* original, vec3 origin) {
     mesh* result = new mesh();
 
     // Copy primitive and STL container members
-    result->origin = original->origin;
+    result->origin = origin;
     result->textureAddress = original->textureAddress;
     result->assetSharer = original->assetSharer;
     result->numVertices = original->numVertices;
