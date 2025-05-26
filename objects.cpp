@@ -15,6 +15,11 @@
 #include <limits>
 #include <stdlib.h>
 #include <unordered_set>
+#include <unordered_map>
+#include <cmath>
+#include <algorithm>
+#include <numeric>
+
 
 #include <filesystem> //checking if a usable dir exists
 
@@ -115,7 +120,6 @@ auto areConnectedAndFacingSimilarDirection = [](const edgeInfo& e1, const edgeIn
 };
 
 
-// Main function to process edges
 void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups) {
     std::vector<edgeInfo> allEdges = g_osEdges;
     allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
@@ -124,7 +128,7 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
     std::unordered_map<int, std::unordered_set<int>> adjacency;
     std::vector<bool> visited(allEdges.size(), false);
 
-    // Build adjacency list considering connectivity and downward-facing angle similarity
+    // Build adjacency list
     for (size_t i = 0; i < allEdges.size(); ++i) {
         for (size_t j = i + 1; j < allEdges.size(); ++j) {
             if (areConnectedAndFacingSimilarDirection(allEdges[i], allEdges[j])) {
@@ -150,16 +154,23 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
         if (!visited[i]) {
             dfs(i, dfs);
             ++currentGroup;
-
             if (currentGroup >= maxGroups) {
-                currentGroup = maxGroups; // Cap group assignment
+                currentGroup = maxGroups;
             }
         }
     }
 
+    // Compute weighted distances
     std::unordered_map<int, float> groupWeightedDistance;
-    for (int i = 0; i < 20; i++) {
+    std::unordered_map<int, float> groupAvgPosX;
+    std::unordered_map<int, float> groupAvgPosY;
+    std::unordered_map<int, float> groupAvgPosCount;
+
+    for (int i = 0; i < maxGroups; i++) {
         groupWeightedDistance[i] = 10000;
+        groupAvgPosX[i] = 0;
+        groupAvgPosY[i] = 0;
+        groupAvgPosCount[i] = 0;
     }
 
     for (const auto& edge : allEdges) {
@@ -167,18 +178,57 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
         float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
         float distance = std::abs(midY - py) + std::abs(midX - px);
 
-        if (groupWeightedDistance[edge.group] < distance) {
+        groupAvgPosX[edge.group] += midX;
+        groupAvgPosY[edge.group] += midY;
+        groupAvgPosCount[edge.group]++;
+
+        if (groupWeightedDistance[edge.group] > distance) {
             groupWeightedDistance[edge.group] = distance;
         }
     }
 
-    // Sort edges by group distance
-    auto sortEdges = [&](std::vector<edgeInfo>& edges) {
-        std::sort(edges.begin(), edges.end(), [&](const edgeInfo& a, const edgeInfo& b) {
-            return groupWeightedDistance[a.group] < groupWeightedDistance[b.group];
-        });
-    };
+    // **NEW STEP: Reassign groups based on sorted weighted distances**
+    std::vector<int> sortedGroups(maxGroups);
+    std::iota(sortedGroups.begin(), sortedGroups.end(), 0); // Initialize indices
 
+    std::sort(sortedGroups.begin(), sortedGroups.end(), [&](int a, int b) {
+        return groupWeightedDistance[a] > groupWeightedDistance[b];
+    });
+
+    std::unordered_map<int, int> groupRemap;
+    for (size_t i = 0; i < sortedGroups.size(); ++i) {
+        groupRemap[sortedGroups[i]] = static_cast<int>(i); // Reassign group IDs in order
+    }
+
+    for (auto& edge : allEdges) {
+        edge.group = groupRemap[edge.group];
+    }
+
+    // **Render Debugging Info**
+    SDL_Rect a = {px, py, 60, 20};
+    SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall, "PXPY", g_goldcolor);
+    SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
+    SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
+    SDL_FreeSurface(renderMe);
+    SDL_DestroyTexture(renderMeTex);
+
+    for (int i = 0; i < maxGroups; i++) {
+        if (groupWeightedDistance[i] != 10000) {
+            groupAvgPosX[i] /= groupAvgPosCount[i];
+            groupAvgPosY[i] /= groupAvgPosCount[i];
+
+            SDL_Rect a = {static_cast<int>(groupAvgPosX[i]), static_cast<int>(groupAvgPosY[i]), 60, 20};
+            SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall,
+                                                         (std::to_string(i) + " - " + std::to_string(groupWeightedDistance[i])).c_str(),
+                                                         g_goldcolor);
+            SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
+            SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
+            SDL_FreeSurface(renderMe);
+            SDL_DestroyTexture(renderMeTex);
+        }
+    }
+
+    // Split back into g_osEdges and g_wsEdges
     g_osEdges.clear();
     g_wsEdges.clear();
     for (const auto& edge : allEdges) {
@@ -188,11 +238,7 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
             g_wsEdges.push_back(edge);
         }
     }
-
-    sortEdges(g_osEdges);
-    sortEdges(g_wsEdges);
 }
-
 
 
 // for checking if lines are colliear
@@ -4250,11 +4296,11 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 
     if(this != protag) {
       //optimize this with g_osEdges
-      if(isOccluderBetween(protag->getOriginX() -g_camera.x, protag->getOriginY() - g_camera.y - protag->z * XtoZ, getOriginX() - g_camera.x, getOriginY() - g_camera.y - z * XtoZ)) {
-        opacity -= 20;
+      if(isOccluderBetween(protag->getOriginX() -g_camera.x, protag->getOriginY() - g_camera.y /*- protag->z * XtoZ*/, getOriginX() - g_camera.x, getOriginY() - g_camera.y/* - z * XtoZ*/)) {
+        opacity -= 40;
         if(opacity < 0) {opacity = 0;}
       } else {
-        opacity += 20;
+        opacity += 40;
         if(opacity > 255) {opacity = 255;}
       }
       shadow->alphamod = opacity;
@@ -8821,9 +8867,7 @@ void clear_map(camera& cameraToReset) {
 
       //meshes
 
-      M("Lets draw the meshfloors");
       for(auto &x : g_meshFloors) {
-        M("Draw this meshfloor");
         if(x->visible) {
           SDL_Vertex v[x->numVertices];
           for(int i = 0; i < x->numVertices; i++) {
@@ -9056,7 +9100,7 @@ void clear_map(camera& cameraToReset) {
       //  x.group = 1;
       //}
 
-      processEdges(g_osEdges, g_wsEdges, px, py);
+      processEdges(g_osEdges, g_wsEdges, WIN_WIDTH/2, WIN_HEIGHT/2);
 
       //render occluding on visual walls
       if (devMode == 0){
