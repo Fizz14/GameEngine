@@ -72,126 +72,127 @@ void resetTrivialData() {
 
 }
 
-//sort occluder and wall edges into groups
-void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups) {
-  // Helper function to calculate edge length
-  auto edgeLength = [](const SDL_Vertex& v1, const SDL_Vertex& v2) {
+// Helper function to calculate edge length
+auto edgeLength = [](const SDL_Vertex& v1, const SDL_Vertex& v2) {
     float dx = v2.position.x - v1.position.x;
     float dy = v2.position.y - v1.position.y;
     return std::sqrt(dx * dx + dy * dy);
-  };
+};
 
-  auto edgeLengthInfo = [&](const edgeInfo& edge) {
+// Helper function to get edge length info
+auto edgeLengthInfo = [](const edgeInfo& edge) {
     return edgeLength(edge.first, edge.second);
-  };
+};
 
-  // Helper function to check if two edges are connected within a difference of 1
-  auto areConnected = [](const edgeInfo& e1, const edgeInfo& e2) {
+
+// Helper function to check if two edges are connected within a difference of 1 pixel
+auto areConnected = [](const edgeInfo& e1, const edgeInfo& e2) {
     return (std::abs(e1.first.position.x - e2.first.position.x) <= 1 && std::abs(e1.first.position.y - e2.first.position.y) <= 1) ||
-      (std::abs(e1.first.position.x - e2.second.position.x) <= 1 && std::abs(e1.first.position.y - e2.second.position.y) <= 1) ||
-      (std::abs(e1.second.position.x - e2.first.position.x) <= 1 && std::abs(e1.second.position.y - e2.first.position.y) <= 1) ||
-      (std::abs(e1.second.position.x - e2.second.position.x) <= 1 && std::abs(e1.second.position.y - e2.second.position.y) <= 1);
-  };
+           (std::abs(e1.first.position.x - e2.second.position.x) <= 1 && std::abs(e1.first.position.y - e2.second.position.y) <= 1) ||
+           (std::abs(e1.second.position.x - e2.first.position.x) <= 1 && std::abs(e1.second.position.y - e2.first.position.y) <= 1) ||
+           (std::abs(e1.second.position.x - e2.second.position.x) <= 1 && std::abs(e1.second.position.y - e2.second.position.y) <= 1);
+};
 
-  // Combine both g_osEdges and g_wsEdges into a single vector
-  std::vector<edgeInfo> allEdges = g_osEdges;
-  allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
+// Helper function to calculate the angle of an edge
+auto edgeAngle = [](const edgeInfo& edge) {
+    float dx = edge.second.position.x - edge.first.position.x;
+    float dy = edge.second.position.y - edge.first.position.y;
+    return std::atan2(dy, dx);
+};
 
-  // Group assignment
-  int currentGroup = 0;
-  std::unordered_map<int, std::unordered_set<int>> adjacency;
-  std::vector<bool> visited(allEdges.size(), false);
+auto areConnectedAndFacingSimilarDirection = [](const edgeInfo& e1, const edgeInfo& e2) {
+    constexpr float downwardAngle = M_PI; // Reference downward angle
+    constexpr float tolerance = M_PI / 180.0;   // 1-degree tolerance
 
-  // Build adjacency list
-  for (size_t i = 0; i < allEdges.size(); ++i) {
-    for (size_t j = i + 1; j < allEdges.size(); ++j) {
-      if (areConnected(allEdges[i], allEdges[j])) {
-        adjacency[i].insert(j);
-        adjacency[j].insert(i);
-      }
+    float angle1 = std::atan2(e1.second.position.y - e1.first.position.y, e1.second.position.x - e1.first.position.x);
+    float angle2 = std::atan2(e2.second.position.y - e2.first.position.y, e2.second.position.x - e2.first.position.x);
+
+    //D(std::abs(angle1 - downwardAngle));
+    bool bothFacingDownward = (std::abs(angle1 - downwardAngle) <= tolerance) && (std::abs(angle2 - downwardAngle) <= tolerance);
+    bool bothFacingNotDownward = !(std::abs(angle1 - downwardAngle) <= tolerance) && !(std::abs(angle2 - downwardAngle) <= tolerance);
+
+    return (bothFacingDownward || bothFacingNotDownward) && areConnected(e1, e2);
+};
+
+
+// Main function to process edges
+void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups) {
+    std::vector<edgeInfo> allEdges = g_osEdges;
+    allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
+
+    int currentGroup = 0;
+    std::unordered_map<int, std::unordered_set<int>> adjacency;
+    std::vector<bool> visited(allEdges.size(), false);
+
+    // Build adjacency list considering connectivity and downward-facing angle similarity
+    for (size_t i = 0; i < allEdges.size(); ++i) {
+        for (size_t j = i + 1; j < allEdges.size(); ++j) {
+            if (areConnectedAndFacingSimilarDirection(allEdges[i], allEdges[j])) {
+                adjacency[i].insert(j);
+                adjacency[j].insert(i);
+            }
+        }
     }
-  }
 
-  // Depth-first search for group assignment
-  auto dfs = [&](int index, auto&& dfsRef) -> void {
-    visited[index] = true;
-    allEdges[index].group = currentGroup;
+    // Depth-first search for group assignment
+    auto dfs = [&](int index, auto&& dfsRef) -> void {
+        visited[index] = true;
+        allEdges[index].group = currentGroup;
 
-    for (int neighbor : adjacency[index]) {
-      if (!visited[neighbor]) {
-        dfsRef(neighbor, dfsRef);
-      }
+        for (int neighbor : adjacency[index]) {
+            if (!visited[neighbor]) {
+                dfsRef(neighbor, dfsRef);
+            }
+        }
+    };
+
+    for (size_t i = 0; i < allEdges.size(); ++i) {
+        if (!visited[i]) {
+            dfs(i, dfs);
+            ++currentGroup;
+
+            if (currentGroup >= maxGroups) {
+                currentGroup = maxGroups; // Cap group assignment
+            }
+        }
     }
-  };
 
-  for (size_t i = 0; i < allEdges.size(); ++i) {
-    if (!visited[i]) {
-      dfs(i, dfs);
-      ++currentGroup;
-
-      // Cap the group at maxGroups
-      if (currentGroup >= maxGroups) {
-        currentGroup = maxGroups; // Group 20 is overflow
-      }
+    std::unordered_map<int, float> groupWeightedDistance;
+    for (int i = 0; i < 20; i++) {
+        groupWeightedDistance[i] = 10000;
     }
-  }
 
-  // Calculate weighted distances for sorting
-  std::unordered_map<int, float> groupWeightedDistance;
-  std::unordered_map<int, float> groupTotalLength;
+    for (const auto& edge : allEdges) {
+        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
+        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
+        float distance = std::abs(midY - py) + std::abs(midX - px);
 
-  for(int i = 0; i < 20; i++) {
-    groupWeightedDistance[i] = 10000;
-  }
-
-  for(const auto& edge : allEdges) {
-    float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
-    float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
-    float distance = abs(midY - py) + abs(midX - px);
-
-    if(groupWeightedDistance[edge.group] > distance) {
-      groupWeightedDistance[edge.group] = distance;
+        if (groupWeightedDistance[edge.group] < distance) {
+            groupWeightedDistance[edge.group] = distance;
+        }
     }
-    //        groupWeightedDistance[edge.group] += distance * length;
-    //        groupTotalLength[edge.group] += length;
-  }
 
-  //    for (const auto& edge : allEdges) {
-  //        float length = edgeLengthInfo(edge);
-  //        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
-  //        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
-  //        float distance = std::sqrt((midX - px) * (midX - px) + (midY - py) * (midY - py));
-  //
-  //        groupWeightedDistance[edge.group] += distance * length;
-  //        groupTotalLength[edge.group] += length;
-  //    }
-
-  //    for (auto& [group, weightedDistance] : groupWeightedDistance) {
-  //        weightedDistance /= groupTotalLength[group];
-  //    }
-
-  // Sort edges by group distance
-  auto sortEdges = [&](std::vector<edgeInfo>& edges) {
-    std::sort(edges.begin(), edges.end(), [&](const edgeInfo& a, const edgeInfo& b) {
-        return groupWeightedDistance[a.group] < groupWeightedDistance[b.group];
+    // Sort edges by group distance
+    auto sortEdges = [&](std::vector<edgeInfo>& edges) {
+        std::sort(edges.begin(), edges.end(), [&](const edgeInfo& a, const edgeInfo& b) {
+            return groupWeightedDistance[a.group] < groupWeightedDistance[b.group];
         });
-  };
+    };
 
-  // Split back into g_osEdges and g_wsEdges
-  g_osEdges.clear();
-  g_wsEdges.clear();
-  for (const auto& edge : allEdges) {
-    if (edge.type == 0) {
-      g_osEdges.push_back(edge);
-    } else if (edge.type == 1) {
-      g_wsEdges.push_back(edge);
+    g_osEdges.clear();
+    g_wsEdges.clear();
+    for (const auto& edge : allEdges) {
+        if (edge.type == 0) {
+            g_osEdges.push_back(edge);
+        } else if (edge.type == 1) {
+            g_wsEdges.push_back(edge);
+        }
     }
-  }
 
-  // Sort each edge type
-  sortEdges(g_osEdges);
-  sortEdges(g_wsEdges);
+    sortEdges(g_osEdges);
+    sortEdges(g_wsEdges);
 }
+
 
 
 // for checking if lines are colliear
