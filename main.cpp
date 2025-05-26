@@ -3416,7 +3416,7 @@ void ExplorationLoop() {
 
     if(drawhitboxes) {
       for(int i = 0; i < g_chunks.size(); i++) {
-        if(g_chunks[i]->standalone || 1) {
+        if(g_chunks[i]->standalone) {
           SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
           SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
         }
@@ -4488,7 +4488,7 @@ int WinMain()
           }
           if (event.button.button == SDL_BUTTON_MIDDLE)
           {
-            devinput[10] = 1;
+            //devinput[10] = 1;
           }
           if (event.button.button == SDL_BUTTON_RIGHT)
           {
@@ -6401,10 +6401,10 @@ void getExplorationInput(float &elapsed)
   {
     devinput[35] = 1;
   }
-  if (keystate[SDL_SCANCODE_L] && devMode)
-  {
-    devinput[36] = 1;
-  }
+//  if (keystate[SDL_SCANCODE_L] && devMode)
+//  {
+//    devinput[36] = 1;
+//  }
 
   if(keystate[SDL_SCANCODE_S] && devMode) {
     devinput[38] = 1;

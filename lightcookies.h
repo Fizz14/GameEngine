@@ -12,7 +12,7 @@
 
 using namespace std;
 
-//SDL_Texture *addTextures(SDL_Renderer *renderer, array<array<int, g_fogheight>, g_fogwidth> fogcookies, SDL_Texture *&illuminateMe, SDL_Texture *&lightspot, int widthOfIlluminateMe, int heightOfIlluminateMe, int paddingx, int paddingy, int layer);
+//SDL_Texture *addTextures(SDL_Renderer *renderer, array<array<int, g_fogheight>, g_fogwidth> fogcookies, SDL_Texture *&illuminateMe, SDL_Texture *&lightspot, int widthOfIlluminateMe, int heightOfIlluminateMe, int paddingx, int paddingy, int layer); 
 
 SDL_Texture *IlluminateTexture(SDL_Renderer *renderer, SDL_Texture *&mask, SDL_Texture *&diffuse, SDL_Texture *&result);
 

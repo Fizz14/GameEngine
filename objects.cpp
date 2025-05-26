@@ -5457,84 +5457,84 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
     //test for triangular implied slopes
     if(g_useSimpleImpliedGeometry == 0) {
-      for(auto n : g_impliedSlopeTris) {
-        rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-
-        float heightFactor = 0;
-
-        if(n->layer * 64 >= this->z) {
-          heightFactor = 1;
-        } else if (this->z - 63 > n->layer * 64) {
-          heightFactor = 0;
-        } else {
-          heightFactor = 1 - ((this->z - n->layer * 64) /63);
-        }
-
-        //behaves as a triangle if heightFactor is nearly 1
-        if(heightFactor > 0.95) {
-
-          if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
-            //if we move the player one pixel up will we still overlap?
-            if(n->type == 3 || n->type == 2)  {
-              xpush = jerk;
-            }
-
-            if(n->type == 0 || n->type == 1) {
-              xpush = -jerk; ;
-            }
-
-
-            //ycollide = true;
-            yvel = 0;
-
-          }
-
-          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
-          if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
-            //if we move the player one pixel up will we still overlap?
-            if(n->type == 1 || n->type == 2) {
-              ypush = jerk;
-            }
-
-            if(n->type == 0 || n->type == 3){
-              ypush = -jerk;
-            }
-
-            //xcollide = true;
-            xvel = 0;
-
-          }
-
-          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-          if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
-            //                xcollide = true;
-            //                ycollide = true;
-            xvel = 0;
-            yvel = 0;
-            //continue;
-
-
-          }
-        }
-
-        //find modified bounds for player collision based on height
-        //I guess, simulate this by moving movedbounds up based on heighFactor
-        movedbounds.y -= (1-heightFactor) * 64;
-
-        //push the player away 
-        if(heightFactor > 0 && ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
-
-          if(n->type == 1) {
-            this->y-=2;
-            this->x+=2;
-          } else {
-            this->y-=2;
-            this->x-=2;
-          }
-
-          zvel = max(zvel, -1.0f);
-        }
-      } 
+//      for(auto n : g_impliedSlopeTris) {
+//        rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+//
+//        float heightFactor = 0;
+//
+//        if(n->layer * 64 >= this->z) {
+//          heightFactor = 1;
+//        } else if (this->z - 63 > n->layer * 64) {
+//          heightFactor = 0;
+//        } else {
+//          heightFactor = 1 - ((this->z - n->layer * 64) /63);
+//        }
+//
+//        //behaves as a triangle if heightFactor is nearly 1
+//        if(heightFactor > 0.95) {
+//
+//          if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+//            //if we move the player one pixel up will we still overlap?
+//            if(n->type == 3 || n->type == 2)  {
+//              xpush = jerk;
+//            }
+//
+//            if(n->type == 0 || n->type == 1) {
+//              xpush = -jerk; ;
+//            }
+//
+//
+//            //ycollide = true;
+//            yvel = 0;
+//
+//          }
+//
+//          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+//          if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+//            //if we move the player one pixel up will we still overlap?
+//            if(n->type == 1 || n->type == 2) {
+//              ypush = jerk;
+//            }
+//
+//            if(n->type == 0 || n->type == 3){
+//              ypush = -jerk;
+//            }
+//
+//            //xcollide = true;
+//            xvel = 0;
+//
+//          }
+//
+//          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+//          if(ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+//            //                xcollide = true;
+//            //                ycollide = true;
+//            xvel = 0;
+//            yvel = 0;
+//            //continue;
+//
+//
+//          }
+//        }
+//
+//        //find modified bounds for player collision based on height
+//        //I guess, simulate this by moving movedbounds up based on heighFactor
+//        movedbounds.y -= (1-heightFactor) * 64;
+//
+//        //push the player away 
+//        if(heightFactor > 0 && ITriRectOverlap(n, movedbounds.x, movedbounds.y, movedbounds.width, movedbounds.height)) {
+//
+//          if(n->type == 1) {
+//            this->y-=2;
+//            this->x+=2;
+//          } else {
+//            this->y-=2;
+//            this->x-=2;
+//          }
+//
+//          zvel = max(zvel, -1.0f);
+//        }
+//      } 
     } else {
       //treat t implied slopes just like tris
       for(auto n : g_impliedSlopeTris){
@@ -10072,6 +10072,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
   this->light = plight;
   if(!light) {
     talkingBox = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
+    M("Devinput 35 is triggered");
     talkingBox->patchwidth = 213;
     talkingBox->patchscale = 0.4;
     talkingBox->is9patch = true;

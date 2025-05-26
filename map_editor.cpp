@@ -1922,7 +1922,7 @@ bool mapeditor_save_map(string word)
           g_entities[i]->animation = rand() % g_entities[i]->yframes;
         }
 
-        ofile << "entity " << g_entities[i]->name << " " << to_string(g_entities[i]->x) << " " << to_string(g_entities[i]->y) << " " << to_string(g_entities[i]->z) << " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
+        ofile << "entity " << g_entities[i]->name << " " << to_string((int)g_entities[i]->x) << " " << to_string((int)g_entities[i]->y) << " " << to_string((int)g_entities[i]->z) << " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
       }
     }
   }
@@ -2616,8 +2616,49 @@ void write_map(entity *mapent)
   }
   
   if(devinput[35] && !olddevinput[35]) { //.:
-    int minimize = 0; //pixels to shrink this triangle
-    impliedSlopeTri* n = new impliedSlopeTri(marker->x, marker->y + marker->height + minimize, marker->x + marker->width, marker->y + minimize, wallstart, 0);
+    rect markerrect = {marker->x, marker->y, marker->width, marker->height };
+    vector<impliedSlopeTri*> deleteUs;
+    for(auto x : g_impliedSlopeTris) {
+      if(ITriRectOverlap(x, marker->x + 6, marker->y + 6, marker->width -12, marker->height -12)) {
+        deleteUs.push_back(x);
+
+      }
+    }
+
+    if(deleteUs.size() != 0) {
+      int type = deleteUs[0]->type;
+      for(auto n : deleteUs) {
+        delete n;
+      }
+
+      //make a new triangle based on the type of the one we just deleted
+      switch(type) {
+        case 0: {
+          impliedSlopeTri* n = new impliedSlopeTri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, wallstart, 0);
+
+          break;
+        }
+        case 1: {
+          impliedSlopeTri* n = new impliedSlopeTri(marker->x + marker->width , marker->y, marker->x, marker->y + marker->height, wallstart, 0);
+
+          break;
+        }
+        case 2: {
+          impliedSlopeTri* n = new impliedSlopeTri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, wallstart, 0);
+
+          break;
+        }
+        case 3: {
+          impliedSlopeTri* n = new impliedSlopeTri(marker->x, marker->y + marker->height + 0, marker->x + marker->width, marker->y + 0, wallstart, 0);
+
+          break;
+        }
+      }
+
+    } else {
+      impliedSlopeTri* n = new impliedSlopeTri(marker->x, marker->y + marker->height + 0, marker->x + marker->width, marker->y + 0, wallstart, 0);
+    }
+
     
   }
 
@@ -3152,184 +3193,184 @@ void write_map(entity *mapent)
     }
   }
 
-  if (devinput[10] && !olddevinput[10])
-  {
-    if (g_holdingCTRL)
-    {
-      // pop this triangle out
-      // check for triangles at mouse
-      vector<tri *> deleteMe;
-      // rect markerrect = {marker->x, marker->y, marker->width, marker->height };
-      for (int i = wallstart / 64; i < wallheight / 64; i++)
-      {
-        for (auto n : g_triangles[i])
-        {
-          if (TriRectOverlap(n, marker->x + 6, marker->y + 6, marker->width - 12, marker->height - 12))
-          {
-            deleteMe.push_back(n);
-          }
-        }
-      }
-      if (deleteMe.size() != 0)
-      {
-        int type = deleteMe[0]->type;
-        int style = deleteMe[0]->style;
-        for (auto n : deleteMe)
-        {
-          for (auto child : n->children)
-          {
-            delete child;
-          }
-          delete n;
-        }
-        // make a new triangle with a different type and current wallheight
-        if (style == 0)
-        {
-          switch (type)
-          {
-            case 0:
-              devinput[26] = 1;
-              break;
-            case 1:
-              devinput[29] = 1;
-              break;
-            case 2:
-              devinput[28] = 1;
-              break;
-            case 3:
-              devinput[27] = 1;
-              break;
-          }
-        }
-        if (style == 1)
-        {
-          switch (type)
-          {
-            case 0:
-              devinput[30] = 1;
-              break;
-            case 1:
-              devinput[33] = 1;
-              break;
-            case 2:
-              devinput[32] = 1;
-              break;
-            case 3:
-              devinput[31] = 1;
-              break;
-          }
-        }
-        if (style == 2)
-        {
-          switch (type)
-          {
-            case 0:
-              devinput[12] = 1;
-              break;
-            case 1:
-              devinput[15] = 1;
-              break;
-            case 2:
-              devinput[14] = 1;
-              break;
-            case 3:
-              devinput[13] = 1;
-              break;
-          }
-        }
-      }
-    }
-    else
-    {
-      // check for triangles at mouse
-      vector<tri *> deleteMe;
-      // rect markerrect = {marker->x, marker->y, marker->width, marker->height };
-      for (int i = wallstart / 64; i < wallheight / 64; i++)
-      {
-        for (auto n : g_triangles[i])
-        {
-          if (TriRectOverlap(n, marker->x + 6, marker->y + 6, marker->width - 12, marker->height - 12))
-          {
-            deleteMe.push_back(n);
-          }
-        }
-      }
-      if (deleteMe.size() != 0)
-      {
-        int type = deleteMe[0]->type;
-        int style = deleteMe[0]->style;
-        for (auto n : deleteMe)
-        {
-          for (auto child : n->children)
-          {
-            delete child;
-          }
-          delete n;
-        }
-        // make a new triangle with a different type and current wallheight
-
-        if (style == 0)
-        {
-          switch (type)
-          {
-            case 0:
-              devinput[15] = 1;
-              break;
-            case 1:
-              devinput[14] = 1;
-              break;
-            case 2:
-              devinput[13] = 1;
-              break;
-            case 3:
-              devinput[12] = 1;
-              break;
-          }
-        }
-        if (style == 1)
-        {
-          switch (type)
-          {
-            case 0:
-              devinput[29] = 1;
-              break;
-            case 1:
-              devinput[28] = 1;
-              break;
-            case 2:
-              devinput[27] = 1;
-              break;
-            case 3:
-              devinput[26] = 1;
-              break;
-          }
-        }
-        if (style == 2)
-        {
-          switch (type)
-          {
-            case 0:
-              devinput[33] = 1;
-              break;
-            case 1:
-              devinput[32] = 1;
-              break;
-            case 2:
-              devinput[31] = 1;
-              break;
-            case 3:
-              devinput[30] = 1;
-              break;
-          }
-        }
-      }
-      else
-      {
-        // we looked and didnt find anything, lets make one
-        devinput[12] = 1;
-      }
-    }
-  }
+//  if (devinput[10] && !olddevinput[10])
+//  {
+//    if (g_holdingCTRL)
+//    {
+//      // pop this triangle out
+//      // check for triangles at mouse
+//      vector<tri *> deleteMe;
+//      // rect markerrect = {marker->x, marker->y, marker->width, marker->height };
+//      for (int i = wallstart / 64; i < wallheight / 64; i++)
+//      {
+//        for (auto n : g_triangles[i])
+//        {
+//          if (TriRectOverlap(n, marker->x + 6, marker->y + 6, marker->width - 12, marker->height - 12))
+//          {
+//            deleteMe.push_back(n);
+//          }
+//        }
+//      }
+//      if (deleteMe.size() != 0)
+//      {
+//        int type = deleteMe[0]->type;
+//        int style = deleteMe[0]->style;
+//        for (auto n : deleteMe)
+//        {
+//          for (auto child : n->children)
+//          {
+//            delete child;
+//          }
+//          delete n;
+//        }
+//        // make a new triangle with a different type and current wallheight
+//        if (style == 0)
+//        {
+//          switch (type)
+//          {
+//            case 0:
+//              devinput[26] = 1;
+//              break;
+//            case 1:
+//              devinput[29] = 1;
+//              break;
+//            case 2:
+//              devinput[28] = 1;
+//              break;
+//            case 3:
+//              devinput[27] = 1;
+//              break;
+//          }
+//        }
+//        if (style == 1)
+//        {
+//          switch (type)
+//          {
+//            case 0:
+//              devinput[30] = 1;
+//              break;
+//            case 1:
+//              devinput[33] = 1;
+//              break;
+//            case 2:
+//              devinput[32] = 1;
+//              break;
+//            case 3:
+//              devinput[31] = 1;
+//              break;
+//          }
+//        }
+//        if (style == 2)
+//        {
+//          switch (type)
+//          {
+//            case 0:
+//              devinput[12] = 1;
+//              break;
+//            case 1:
+//              devinput[15] = 1;
+//              break;
+//            case 2:
+//              devinput[14] = 1;
+//              break;
+//            case 3:
+//              devinput[13] = 1;
+//              break;
+//          }
+//        }
+//      }
+//    }
+//    else
+//    {
+//      // check for triangles at mouse
+//      vector<tri *> deleteMe;
+//      // rect markerrect = {marker->x, marker->y, marker->width, marker->height };
+//      for (int i = wallstart / 64; i < wallheight / 64; i++)
+//      {
+//        for (auto n : g_triangles[i])
+//        {
+//          if (TriRectOverlap(n, marker->x + 6, marker->y + 6, marker->width - 12, marker->height - 12))
+//          {
+//            deleteMe.push_back(n);
+//          }
+//        }
+//      }
+//      if (deleteMe.size() != 0)
+//      {
+//        int type = deleteMe[0]->type;
+//        int style = deleteMe[0]->style;
+//        for (auto n : deleteMe)
+//        {
+//          for (auto child : n->children)
+//          {
+//            delete child;
+//          }
+//          delete n;
+//        }
+//        // make a new triangle with a different type and current wallheight
+//
+//        if (style == 0)
+//        {
+//          switch (type)
+//          {
+//            case 0:
+//              devinput[15] = 1;
+//              break;
+//            case 1:
+//              devinput[14] = 1;
+//              break;
+//            case 2:
+//              devinput[13] = 1;
+//              break;
+//            case 3:
+//              devinput[12] = 1;
+//              break;
+//          }
+//        }
+//        if (style == 1)
+//        {
+//          switch (type)
+//          {
+//            case 0:
+//              devinput[29] = 1;
+//              break;
+//            case 1:
+//              devinput[28] = 1;
+//              break;
+//            case 2:
+//              devinput[27] = 1;
+//              break;
+//            case 3:
+//              devinput[26] = 1;
+//              break;
+//          }
+//        }
+//        if (style == 2)
+//        {
+//          switch (type)
+//          {
+//            case 0:
+//              devinput[33] = 1;
+//              break;
+//            case 1:
+//              devinput[32] = 1;
+//              break;
+//            case 2:
+//              devinput[31] = 1;
+//              break;
+//            case 3:
+//              devinput[30] = 1;
+//              break;
+//          }
+//        }
+//      }
+//      else
+//      {
+//        // we looked and didnt find anything, lets make one
+//        devinput[12] = 1;
+//      }
+//    }
+//  }
 
   //if holding ctrl, move protag around (for moving entities that normally don't move)
   if(keystate[bindings[0]] && g_holdingCTRL) {
