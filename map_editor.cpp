@@ -171,7 +171,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
           iss >> value;
           //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55 + 40, 0};
           //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55.424 + 0, 0};
-          float jval = j * 55.4256258422;
+          float jval = j * 55.425; //55.4256258422
+          jval = round(jval);
           vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, 0};
 //          if(i==0 && j ==0) {
 //            M("I and J are both zero!");
@@ -183,7 +184,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 //          D(origin.y);
           if(value != 0) {
             chunk* c = duplicateChunk(g_OPChunks[value-1], origin);
-            D(c->origin.y)
             c->standalone = 0;
             c->value = value;
             g_activeGgrid->chunks.push_back(c);
@@ -213,6 +213,25 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   
             if(c->wall != 0) {
               c->wall->texture = g_activeGgrid->walltex;
+              //set texcoords of wall
+              //bottom verts have 0 red
+              for(int i = 0; i < c->wall->numVertices; i++) {
+                float xpos = c->wall->vertex[i].position.x + c->origin.x;
+                xpos = fmod(xpos, 1024);
+                xpos /= 1024.0;
+                if(fmod(c->origin.x,1024) == 960) {
+                  //this is the horizontal edge case
+                  if(abs(xpos - 0) < 0.001) {xpos = 1;}
+                }
+  
+                c->wall->vertex[i].tex_coord.x = xpos;
+                if(c->wall->vertex[i].color.r > 128) {
+                  c->wall->vertex[i].tex_coord.y = 0;
+                } else {
+                  c->wall->vertex[i].tex_coord.y = 1;
+  
+                }
+              }
   
             }
           }
@@ -2205,7 +2224,6 @@ void write_map(entity *mapent)
   marker->y = py;
   marker->width = grid;
   marker->height = round(grid * XtoY);
-  D(marker->y); //trying to debug ggrid loading
   // some debug drawing
   SDL_FRect drect;
   if (drawhitboxes)
@@ -3585,7 +3603,6 @@ void write_map(entity *mapent)
   
           //chunk* c = new chunk(path, "", "", origin, 1, 0);
           chunk* c = duplicateChunk(g_OPChunks[n-1], origin);
-          //c->origin = origin;
           c->standalone = 0;
 
           c->value = n;
@@ -3615,6 +3632,25 @@ void write_map(entity *mapent)
 
           if(c->wall != 0) {
             c->wall->texture = g_activeGgrid->walltex;
+            //set texcoords of wall
+            //bottom verts have 0 red
+            for(int i = 0; i < c->wall->numVertices; i++) {
+              float xpos = c->wall->vertex[i].position.x + c->origin.x;
+              xpos = fmod(xpos, 1024);
+              xpos /= 1024.0;
+              if(fmod(c->origin.x,1024) == 960) {
+                //this is the horizontal edge case
+                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+              }
+
+              c->wall->vertex[i].tex_coord.x = xpos;
+              if(c->wall->vertex[i].color.r > 128) {
+                c->wall->vertex[i].tex_coord.y = 0;
+              } else {
+                c->wall->vertex[i].tex_coord.y = 1;
+
+              }
+            }
 
           }
 

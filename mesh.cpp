@@ -6,7 +6,6 @@
 
 
 void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
-  m->edgeInfoSet = 1;
   struct VertexComparator {
     bool operator()(const SDL_Vertex& lhs, const SDL_Vertex& rhs) const {
       return std::tie(lhs.position.x, lhs.position.y) < std::tie(rhs.position.x, rhs.position.y);
@@ -43,6 +42,24 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
     vd.position.x += m->origin.x;
     vd.position.y += m->origin.y;
 
+    va.position.x = round(va.position.x);
+    va.position.y = round(va.position.y);
+
+    vb.position.x = round(vb.position.x);
+    vb.position.y = round(vb.position.y);
+
+    vc.position.x = round(vc.position.x);
+    vc.position.y = round(vc.position.y);
+
+    vd.position.x = round(vd.position.x);
+    vd.position.y = round(vd.position.y);
+
+    ei.first.position.x = round(ei.first.position.x);
+    ei.first.position.y = round(ei.first.position.y);
+
+    ei.second.position.x = round(ei.second.position.x);
+    ei.second.position.y = round(ei.second.position.y);
+
     std::set<SDL_Vertex, VertexComparator> vertexSet;
     addVertexToSet(vertexSet, va);
     addVertexToSet(vertexSet, vb);
@@ -50,8 +67,27 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
     addVertexToSet(vertexSet, vd);
     addVertexToSet(vertexSet, ei.first);
     addVertexToSet(vertexSet, ei.second);
+    D(va.position.x);
+    D(va.position.y);
+    M("");
+    D(vb.position.x);
+    D(vb.position.y);
+    M("");
+    D(vc.position.x);
+    D(vc.position.y);
+    M("");
+    D(vd.position.x);
+    D(vd.position.y);
+    M("");
+    D(ei.first.position.x);
+    D(ei.first.position.y);
+    M("");
+    D(ei.second.position.x);
+    D(ei.second.position.y);
+    M("");
 
     if (vertexSet.size() <= 4) {
+      m->edgeInfoSet = 1;
       ei.wallMesh = m;
       ei.indices = {f.a, f.b, f.c, f.d};
       return; // Exit the loop once a match is found
@@ -60,6 +96,10 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
   E("Couldn't associate occluder edge with wall");
 }
 
+//this was changed from float to double to prevent tiny 1px gaps in occlusion from ggrids
+//there are faster solutions (slight padding, additional occluder to bridge the gap
+//if you're looking for a way to optimize
+//maybe it doesn't matter?
 vec3::vec3(float fx = 0, float fy = 0, float fz = 0) :x(fx), y(fy), z(fz) {}
 
 mesh::mesh(){

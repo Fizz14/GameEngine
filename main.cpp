@@ -3420,11 +3420,6 @@ void ExplorationLoop() {
         if(g_chunks[i]->standalone || 1) {
           SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
           SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
-          D(obj.y);
-          if(g_ggrids.size() > 0) {
-            D(g_ggrids[0]->originY);
-            D(g_ggrids[0]->originY * 64);
-          }
         }
       }
     }
@@ -4222,9 +4217,74 @@ int WinMain()
     }
 
     vec3 origin = {0,0,0};
+
     chunk* c = new chunk("ggrid/1", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
     c = new chunk("ggrid/2", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
     c = new chunk("ggrid/3", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/4", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/5", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/6", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/7", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/8", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/9", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/10", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/11", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
 
     //continue here
     //...
@@ -4235,7 +4295,18 @@ int WinMain()
 
     // swap edgeDataStore as needed for backfacing
     // backface culling 
-    swap(g_OPChunks[1]->occluder->edgeDataStore[0][0], g_OPChunks[1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[2-1]->occluder->edgeDataStore[0][0], g_OPChunks[2-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[5-1]->occluder->edgeDataStore[0][0], g_OPChunks[5-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[6-1]->occluder->edgeDataStore[0][0], g_OPChunks[6-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[7-1]->occluder->edgeDataStore[0][0], g_OPChunks[7-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[8-1]->occluder->edgeDataStore[0][0], g_OPChunks[8-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[8-1]->occluder->edgeDataStore[1][0], g_OPChunks[8-1]->occluder->edgeDataStore[1][1]);
+    swap(g_OPChunks[9-1]->occluder->edgeDataStore[0][0], g_OPChunks[9-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[9-1]->occluder->edgeDataStore[1][0], g_OPChunks[9-1]->occluder->edgeDataStore[1][1]);
+    swap(g_OPChunks[10-1]->occluder->edgeDataStore[0][0], g_OPChunks[10-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[10-1]->occluder->edgeDataStore[1][0], g_OPChunks[10-1]->occluder->edgeDataStore[1][1]);
+    swap(g_OPChunks[11-1]->occluder->edgeDataStore[0][0], g_OPChunks[11-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[11-1]->occluder->edgeDataStore[1][0], g_OPChunks[11-1]->occluder->edgeDataStore[1][1]);
 
 
 
