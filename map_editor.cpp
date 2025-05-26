@@ -155,15 +155,15 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       line = strings[index];
       index++;
       iss = istringstream(line);
-      D(line);
+      //D(line);
       
       if(g_activeGgrid != 0) {
       }
      
       int width = g_activeGgrid->width;
       int height = g_activeGgrid->height;
-      D(width);
-      D(height);
+//      D(width);
+//      D(height);
 
       for(int j = 0; j < height; j++) {
         for(int i = 0; i < width; i++) {
@@ -171,7 +171,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
           iss >> value;
           //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55 + 40, 0};
           //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55.424 + 0, 0};
-          float jval = j * 55.425; //55.4256258422
+          float jval = j * 55;
           jval = round(jval);
           vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, 0};
 //          if(i==0 && j ==0) {
@@ -367,18 +367,18 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 //      box *c = new box(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8, s3.c_str());
 //      (void)c;
 //    }
-    if (word == "islope")
+    if (word == "boxcollision")
     {
-      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7 >> p8;
-      impliedSlope *i = new impliedSlope(p1, p2, p3, p4, p5, p6, p7, p8);
+      iss >> s0 >> p1 >> p2 >> p3 >> p4;
+      impliedSlope *i = new impliedSlope(p1, p2, p3, p4, 0, 0, 0, 0);
       (void)i;
     }
-//    if (word == "islopet")
-//    {
-//      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6;
-//      impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, p5, p6);
-//      (void)i;
-//    }
+    if (word == "tricollision")
+    {
+      iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p6;
+      impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, 0, p6);
+      (void)i;
+    }
     if (word == "entity")
     {
       // M("loading entity" << endl;
@@ -578,10 +578,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     if (word == "tile")
     {
       // M("loading tile" << endl;
-      iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7 >> p8 >> p9;
+      iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p6 >> p7 >> p8 >> p9;
       const char *plik1 = s1.c_str();
       const char *plik2 = s2.c_str();
-      tile *t = new tile(renderer, plik1, plik2, p1, p2, p3, p4, p5, p6, p7, p8, p9);
+      tile *t = new tile(renderer, plik1, plik2, p1, p2, p3, p4, 0, p6, p7, p8, p9);
       (void)t;
     }
     if (word == "triangle")
@@ -1821,13 +1821,6 @@ bool mapeditor_save_map(string word)
       ofile << "triangle " << n->x1 << " " << n->y1 << " " << n->x2 << " " << n->y2 << " " << i << " " << n->walltexture << " " << n->captexture << " " << n->capped << " " << n->shaded << " " << n->style << endl;
     }
   }
-//  for (int i = 0; i < g_layers; i++)
-//  {
-//    for (auto n : g_ramps[i])
-//    {
-//      ofile << "ramp " << n->x << " " << n->y << " " << i << " " << n->type << " " << n->walltexture << " " << n->captexture << endl;
-//    }
-//  }
   for (long long unsigned int i = 0; i < g_tiles.size(); i++)
   {
     // dont save map graphics
@@ -1846,7 +1839,7 @@ bool mapeditor_save_map(string word)
       continue;
     }
 
-    ofile << "tile " << g_tiles[i]->fileaddress << " " << g_tiles[i]->mask_fileaddress << " " << to_string(g_tiles[i]->x) << " " << to_string(g_tiles[i]->y) << " " << to_string(g_tiles[i]->width) << " " << to_string(g_tiles[i]->height) << " " << g_tiles[i]->z << " " << g_tiles[i]->wraptexture << " " << g_tiles[i]->wall << " " << g_tiles[i]->dxoffset << " " << g_tiles[i]->dyoffset << endl;
+    ofile << "tile " << g_tiles[i]->fileaddress << " " << g_tiles[i]->mask_fileaddress << " " << to_string((int)g_tiles[i]->x) << " " << to_string((int)g_tiles[i]->y) << " " << to_string((int)g_tiles[i]->width) << " " << to_string((int)g_tiles[i]->height) << " " << g_tiles[i]->wraptexture << " " << g_tiles[i]->wall << " " << g_tiles[i]->dxoffset << " " << g_tiles[i]->dyoffset << endl;
   }
   for (long long unsigned int i = 0; i < g_heightmaps.size(); i++)
   {
@@ -1854,9 +1847,13 @@ bool mapeditor_save_map(string word)
     ofile << "heightmap " << g_heightmaps[i]->binding << " " << g_heightmaps[i]->name << " " << g_heightmaps[i]->magnitude << endl;
   }
 
-//  for (auto i : g_impliedSlopes) {
-//    ofile << "islope " << to_string(i->bounds.x) << " " << to_string(i->bounds.y) << " " << to_string(i->bounds.width) << " " << to_string(i->bounds.height) << " " << to_string(i->layer) << " " << to_string(i->shadeLeft) << " " << to_string(i->shadeRight) << " " << to_string(i->shadedAtAll) << endl;
-//  }
+  for (auto i : g_impliedSlopes) {
+    ofile << "boxcollision " << to_string((int)i->bounds.x) << " " << to_string((int)i->bounds.y) << " " << to_string((int)i->bounds.width) << " " << to_string((int)i->bounds.height) << endl;
+  }
+
+  for (auto i : g_impliedSlopeTris) {
+    ofile << "tricollision " << to_string((int)i->x1) << " " << to_string((int)i->y1) << " " << to_string((int)i->x2) << " " << to_string((int)i->y2) << " " << " " << to_string((int)i->style) << endl;
+  }
 
   
   for (long long unsigned int i = 0; i < g_doors.size(); i++)
@@ -1967,7 +1964,7 @@ bool mapeditor_save_map(string word)
     x->originX = lowestPx;
     x->originY = lowestPy;
     x->width = (highestPx/64) - (lowestPx/64) + 1;
-    x->height = (highestPy/64) - (lowestPy/64) + 2;
+    x->height = (highestPy/55) - (lowestPy/55) + 1;
 
     x->chunkdata.clear();
     x->chunkdata.resize(x->width);
@@ -1978,10 +1975,10 @@ bool mapeditor_save_map(string word)
 
     for(auto y : x->chunks) {
       int posx = y->origin.x / 64;
-      int posy = y->origin.y / 64;
+      int posy = y->origin.y / 55;
 
       int valX = round(posx - x->originX/64);
-      int valY = round(posy - x->originY/64);
+      int valY = round(posy - x->originY/55);
 //      D(valX);
 //      D(valY);
       x->chunkdata[valX][valY] = (unsigned char)y->value;
@@ -2000,18 +1997,22 @@ bool mapeditor_save_map(string word)
                       << x->height << endl;
     
     ofile << "chunkdata {" << endl;
-    D(x->width);
-    D(x->height);
+//    D(x->width);
+//    D(x->height);
     for(int j = 0; j < x->height; j++) {
       for(int i = 0; i < x->width; i++) {
-        M("Whats the chunkdata");
-        D((int)x->chunkdata[i][j]);
-        ofile << (int)x->chunkdata[i][j] << " ";
+//        M("Whats the chunkdata");
+//        D((int)x->chunkdata[i][j]);
+        int number = (int)x->chunkdata[i][j];
+        std::stringstream ss;
+        ss << std::setw(2) << std::setfill('0') << number;
+        string formatted = ss.str();
+        ofile << formatted << " ";
       }
       ofile << endl;
     }
     ofile << "}" << endl;
-    M("Done writing chunkdata");
+    //M("Done writing chunkdata");
   }
 
   for (long long unsigned int i = 0; i < g_listeners.size(); i++)

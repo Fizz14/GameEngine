@@ -930,6 +930,12 @@ void tri::render(SDL_Renderer* renderer) {
   SDL_RenderDrawLine(renderer,  tx2, ty2, tx2, ty1);
 }
 
+//sortingfunction for optimizing fog and triangular walls
+//sort based on x and y
+int trisort(tri* one, tri* two) {
+  return one->x < two->x || (one->x==two->x && one->y < two->y);
+}
+
 impliedSlopeTri::impliedSlopeTri(int fx1, int fy1, int fx2, int fy2, int flayer, int fstyle) {
   //M("tri()");
   x1=fx1; y1=fy1;
@@ -972,12 +978,6 @@ void impliedSlopeTri::render(SDL_Renderer* renderer) {
   SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty2);
   SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty1);
   SDL_RenderDrawLine(renderer,  tx2, ty2, tx2, ty1);
-}
-
-//sortingfunction for optimizing fog and triangular walls
-//sort based on x and y
-int trisort(tri* one, tri* two) {
-  return one->x < two->x || (one->x==two->x && one->y < two->y);
 }
 
 ramp::ramp(int fx, int fy, int flayer, int ftype, string fwallt, string fcapt) {
@@ -1304,8 +1304,14 @@ impliedSlope::impliedSlope(int x1, int y1, int x2, int y2, int flayer, int fslef
   g_impliedSlopes.push_back(this);
 }
 
+
 impliedSlope::~impliedSlope() {
   g_impliedSlopes.erase(remove(g_impliedSlopes.begin(), g_impliedSlopes.end(), this), g_impliedSlopes.end());
+}
+
+void impliedSlope::render(SDL_Renderer* renderer) {
+  SDL_Rect a = {bounds.x, bounds.y, bounds.width, bounds.height};
+  SDL_RenderDrawRect(renderer, &a);
 }
 
 

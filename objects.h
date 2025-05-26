@@ -335,6 +335,8 @@ public:
   impliedSlope(int x1, int y1, int x2, int y2, int flayer, int fsleft, int fsright, int fShadedAtAll); 
 
   ~impliedSlope(); 
+
+  void render(SDL_Renderer* renderer);
 };
 
 

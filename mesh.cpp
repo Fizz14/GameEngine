@@ -67,24 +67,24 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
     addVertexToSet(vertexSet, vd);
     addVertexToSet(vertexSet, ei.first);
     addVertexToSet(vertexSet, ei.second);
-    D(va.position.x);
-    D(va.position.y);
-    M("");
-    D(vb.position.x);
-    D(vb.position.y);
-    M("");
-    D(vc.position.x);
-    D(vc.position.y);
-    M("");
-    D(vd.position.x);
-    D(vd.position.y);
-    M("");
-    D(ei.first.position.x);
-    D(ei.first.position.y);
-    M("");
-    D(ei.second.position.x);
-    D(ei.second.position.y);
-    M("");
+//    D(va.position.x);
+//    D(va.position.y);
+//    M("");
+//    D(vb.position.x);
+//    D(vb.position.y);
+//    M("");
+//    D(vc.position.x);
+//    D(vc.position.y);
+//    M("");
+//    D(vd.position.x);
+//    D(vd.position.y);
+//    M("");
+//    D(ei.first.position.x);
+//    D(ei.first.position.y);
+//    M("");
+//    D(ei.second.position.x);
+//    D(ei.second.position.y);
+//    M("");
 
     if (vertexSet.size() <= 4) {
       m->edgeInfoSet = 1;
@@ -93,7 +93,7 @@ void checkAndSetEdgeInfo(edgeInfo& ei, mesh* m) {
       return; // Exit the loop once a match is found
     }
   }
-  E("Couldn't associate occluder edge with wall");
+  W("Couldn't associate occluder edge with wall");
 }
 
 //this was changed from float to double to prevent tiny 1px gaps in occlusion from ggrids
@@ -138,7 +138,7 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
   origin = forigin;
   scale = fscale;
   standalone = fstandalone;
-  D(standalone);
+  //D(standalone);
 
   string baseAddr = "resources/static/meshes/" + fpath;
 
@@ -150,23 +150,23 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
 
   if(PHYSFS_exists(floorAddr.c_str())) {
     floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR, standalone);
-    M("Loaded floor " + floorAddr);
+    //M("Loaded floor " + floorAddr);
   }
   if(PHYSFS_exists(wallAddr.c_str())) {
     wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL, standalone);
-    M("Loaded wall " + wallAddr);
+    //M("Loaded wall " + wallAddr);
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
     collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION, standalone);
-    M("Loaded collision " + collisionAddr);
+    //M("Loaded collision " + collisionAddr);
   }
   if(PHYSFS_exists(occluAddr.c_str())) {
     occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER, standalone);
-    M("Loaded occluder " + occluAddr);
+    //M("Loaded occluder " + occluAddr);
   }
   if(PHYSFS_exists(decorAddr.c_str())) {
     decorative = loadMeshFromPly(decorAddr, floortex, origin, scale, meshtype::DECORATIVE, standalone);
-    M("Loaded decoration " + decorAddr);
+    //M("Loaded decoration " + decorAddr);
   }
 
 }

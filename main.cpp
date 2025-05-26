@@ -2596,7 +2596,6 @@ void ExplorationLoop() {
   float py = protag->getOriginY() - g_camera.y;
   //float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
 
-
   //remove any entries on g_wEdges which are facing away from the player
   //(kinda like backface-culling)
   /*
@@ -4272,18 +4271,6 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/10", "", "", origin, 1, 0);
-    for(int i = 0; i <c->floor->numVertices; i++) {
-      c->floor->vertex[i].color.r = 255;
-      c->floor->vertex[i].color.g = 255;
-      c->floor->vertex[i].color.b = 255;
-    }
-    c = new chunk("ggrid/11", "", "", origin, 1, 0);
-    for(int i = 0; i <c->floor->numVertices; i++) {
-      c->floor->vertex[i].color.r = 255;
-      c->floor->vertex[i].color.g = 255;
-      c->floor->vertex[i].color.b = 255;
-    }
 
 
     //continue here
@@ -4298,15 +4285,13 @@ int WinMain()
     swap(g_OPChunks[2-1]->occluder->edgeDataStore[0][0], g_OPChunks[2-1]->occluder->edgeDataStore[0][1]);
     swap(g_OPChunks[5-1]->occluder->edgeDataStore[0][0], g_OPChunks[5-1]->occluder->edgeDataStore[0][1]);
     swap(g_OPChunks[6-1]->occluder->edgeDataStore[0][0], g_OPChunks[6-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[6-1]->occluder->edgeDataStore[1][0], g_OPChunks[6-1]->occluder->edgeDataStore[1][1]);
     swap(g_OPChunks[7-1]->occluder->edgeDataStore[0][0], g_OPChunks[7-1]->occluder->edgeDataStore[0][1]);
+    swap(g_OPChunks[7-1]->occluder->edgeDataStore[1][0], g_OPChunks[7-1]->occluder->edgeDataStore[1][1]);
     swap(g_OPChunks[8-1]->occluder->edgeDataStore[0][0], g_OPChunks[8-1]->occluder->edgeDataStore[0][1]);
     swap(g_OPChunks[8-1]->occluder->edgeDataStore[1][0], g_OPChunks[8-1]->occluder->edgeDataStore[1][1]);
     swap(g_OPChunks[9-1]->occluder->edgeDataStore[0][0], g_OPChunks[9-1]->occluder->edgeDataStore[0][1]);
     swap(g_OPChunks[9-1]->occluder->edgeDataStore[1][0], g_OPChunks[9-1]->occluder->edgeDataStore[1][1]);
-    swap(g_OPChunks[10-1]->occluder->edgeDataStore[0][0], g_OPChunks[10-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[10-1]->occluder->edgeDataStore[1][0], g_OPChunks[10-1]->occluder->edgeDataStore[1][1]);
-    swap(g_OPChunks[11-1]->occluder->edgeDataStore[0][0], g_OPChunks[11-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[11-1]->occluder->edgeDataStore[1][0], g_OPChunks[11-1]->occluder->edgeDataStore[1][1]);
 
 
 

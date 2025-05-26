@@ -54,10 +54,6 @@ class mapCollision;
 
 class box;
 
-class impliedSlope;
-
-class impliedSlopeTri;
-
 class tri;
 
 class ramp;
@@ -109,6 +105,10 @@ class effectIndex;
 class particle;
 
 class emitter;
+
+class impliedSlope;
+
+class impliedSlopeTri;
 
 class collisionZone;
 
@@ -224,9 +224,9 @@ extern vector<dungeonDoor*> g_dungeonDoors;
 
 extern vector<vector<box *>> g_boxs;
 
-extern vector<impliedSlope *> g_impliedSlopes; //slopes which are implied to be behind walls, preventing entities from "hiding" behind them, as in zelda
-                                        
-extern vector<impliedSlopeTri *> g_impliedSlopeTris; //same as g_impliedSlopes, but for triangular slopes
+extern vector<impliedSlope*> g_impliedSlopes;
+
+extern vector<impliedSlopeTri*> g_impliedSlopeTris;
 
 extern vector<textbox *> g_textboxes;
 
@@ -391,6 +391,10 @@ struct cmpCoord
 #define E(a)                                \
 {                                         \
   std::cout << "ERROR: " << (a) << endl; \
+}
+#define W(a)                                \
+{                                         \
+  std::cout << "Warning: " << (a) << endl; \
 }
 
 extern int g_globalAccumulator;

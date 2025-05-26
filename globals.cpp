@@ -64,7 +64,7 @@ vector<dungeonDoor*> g_dungeonDoors;
 
 vector<vector<box *>> g_boxs;
 
-vector<impliedSlope *> g_impliedSlopes; //slopes which are implied to be behind walls, preventing entities from "hiding" behind them, as in zelda
+vector<impliedSlope *> g_impliedSlopes; //originally used to hide the space behind walls with the old brush system, now just used for invisible box collisions
                                         
 vector<impliedSlopeTri *> g_impliedSlopeTris; //same as g_impliedSlopes, but for triangular slopes
 
