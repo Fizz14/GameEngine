@@ -32,6 +32,8 @@ using namespace std;
 
 void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py);
 
+void removeBackfacingWEdges(std::vector<edgeInfo>& edges, float px, float py);
+
 void resetTrivialData();
 
 void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups = 20);
@@ -1572,7 +1574,7 @@ class entity:public actor {
     bool agrod = 0; //are they fighting a target?
     float hearingRadius = 0;
     bool missile = 0; //should we directly pursue an entity like a missle?
-    bool phasedMovement = 0; //do walls stop this ent?
+    bool moveThroughWalls = 0; //do walls stop this ent?
     bool fragileMovement = 0; //do walls destroy this ent?
     bool stunned = 0;
     bool marked = 0;
@@ -2312,6 +2314,7 @@ struct dungeonFloorInfo {
 class tallGrass {
 public:
   rect bounds;
+  bool enabled = 1;
   tallGrass();
   ~tallGrass();
 };

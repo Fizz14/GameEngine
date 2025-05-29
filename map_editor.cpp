@@ -184,6 +184,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 //          D(origin.y);
           if(value != 0) {
             chunk* c = duplicateChunk(g_OPChunks[value-1], origin);
+            c->owner = g_activeGgrid;
             c->standalone = 0;
             c->value = value;
             g_activeGgrid->chunks.push_back(c);
@@ -208,6 +209,28 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   
                 c->floor->vertex[i].tex_coord.x = xpos;
                 c->floor->vertex[i].tex_coord.y = ypos;
+              }
+            }
+            if(c->decorative != 0) {
+              c->decorative->texture = g_activeGgrid->floortex;
+              for(int i = 0; i < c->decorative->numVertices; i++) {
+                float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+                float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+                xpos = fmod(xpos, 1024);
+                ypos = fmod(ypos, 880);
+                xpos /= 1024.0;
+                ypos /= 880.0;
+                if(fmod(c->origin.x,1024) == 960) {
+                  //this is the horizontal edge case
+                  if(abs(xpos - 0) < 0.001) {xpos = 1;}
+                }
+                if(fmod(c->origin.y,880) == 825) {
+                  //this is the vertical edge case
+                  if(abs(ypos - 0) < 0.001) {ypos = 1;}
+                }
+  
+                c->decorative->vertex[i].tex_coord.x = xpos;
+                c->decorative->vertex[i].tex_coord.y = ypos;
               }
             }
   
@@ -2872,8 +2895,14 @@ void write_map(entity *mapent)
         for(auto &c : g_chunks) {
           rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
           if (RectOverlap(blah, marker->getMovedBounds())) {
-            deleteChunks.push_back(c);
-            break;
+            if(c->standalone) {
+              deleteChunks.push_back(c);
+              break;
+            } else {
+              deleteChunks.push_back(c);
+              break;
+
+            }
           }
         }
 
@@ -3645,6 +3674,7 @@ void write_map(entity *mapent)
   
           //chunk* c = new chunk(path, "", "", origin, 1, 0);
           chunk* c = duplicateChunk(g_OPChunks[n-1], origin);
+          c->owner = g_activeGgrid;
           c->standalone = 0;
 
           c->value = n;
@@ -3669,6 +3699,28 @@ void write_map(entity *mapent)
 
               c->floor->vertex[i].tex_coord.x = xpos;
               c->floor->vertex[i].tex_coord.y = ypos;
+            }
+          }
+          if(c->decorative != 0) {
+            c->decorative->texture = g_activeGgrid->floortex;
+            for(int i = 0; i < c->decorative->numVertices; i++) {
+              float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+              float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+              xpos = fmod(xpos, 1024);
+              ypos = fmod(ypos, 880);
+              xpos /= 1024.0;
+              ypos /= 880.0;
+              if(fmod(c->origin.x,1024) == 960) {
+                //this is the horizontal edge case
+                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+              }
+              if(fmod(c->origin.y,880) == 825) {
+                //this is the vertical edge case
+                if(abs(ypos - 0) < 0.001) {ypos = 1;}
+              }
+  
+              c->decorative->vertex[i].tex_coord.x = xpos;
+              c->decorative->vertex[i].tex_coord.y = ypos;
             }
           }
 
@@ -4767,17 +4819,17 @@ void write_map(entity *mapent)
           break;
         }
       }
-      if(word == "test" || word == "play" || word == "dtest")
-      {
+      //if(word == "test" || word == "play" || word == "dtest")
+      //{
         //set the map as next and do a dungeonflash
-        if (line >> word)
-        {
-          g_dungeon.at(g_dungeonIndex+1).map = word + ".map";
-          g_dungeonDoorActivated = 1;
-        }
+//        if (line >> word)
+//        {
+//          g_dungeon.at(g_dungeonIndex+1).map = word + ".map";
+//          g_dungeonDoorActivated = 1;
+//        }
 
-      }
-      if(word == "gload") //load a map in game-mode
+      //}
+      if(word == "gload" || word == "play") //load a map in game-mode
                          //this probably breaks lots of stuff
       {
         if (line >> word)

@@ -364,19 +364,34 @@ void specialObjectsInit(entity* a) {
       //overworld enemy
       //move to a random spot on a patch of "grass"
       if(g_tallGrasses.size() > 0) {
-        int rand = rng(0, g_tallGrasses.size()-1);
-        int newX = rng(g_tallGrasses[rand]->bounds.x, g_tallGrasses[rand]->bounds.x + g_tallGrasses[rand]->bounds.width);
-        int newY = rng(g_tallGrasses[rand]->bounds.y, g_tallGrasses[rand]->bounds.y + g_tallGrasses[rand]->bounds.height);
 
-        D(rand);
-        D(g_tallGrasses[rand]->bounds.x);
-        D(g_tallGrasses[rand]->bounds.width);
-        D(newX);
+        vector<tallGrass*> ag;
 
-        a->setOriginX(newX);
-        a->setOriginY(newY);
+        for(int i = 0; i < g_tallGrasses.size(); i++) {
+          if(g_tallGrasses[i]->enabled) {
+            ag.push_back(g_tallGrasses[i]);
+          }
+        }
 
+        if(ag.size() > 0) {
+          int rand = rng(0, ag.size()-1);
+          int newX = rng(ag[rand]->bounds.x, ag[rand]->bounds.x + ag[rand]->bounds.width);
+          int newY = rng(ag[rand]->bounds.y, ag[rand]->bounds.y + ag[rand]->bounds.height);
+          a->setOriginX(newX);
+          a->setOriginY(newY);
+          ag[rand]->enabled = 0;
 
+//          //delete if too close to another enemy
+//          for(auto other : g_entities) {
+//            if(other != a) {
+//              if(other->identity == 34) {
+//                if(XYWorldDistance(a->getOriginX(), a->getOriginY(), other->getOriginX(), other->getOriginY()) < 64* 12) {
+//                  a->tangible = 0;
+//                }
+//              }
+//            }
+//          }
+        }
       }
 
 
@@ -442,6 +457,24 @@ void specialObjectsInit(entity* a) {
         a->data[0] = 1;
       }
 
+
+      break;
+    }
+    case 38:
+    {
+      //decorative tumbleweed
+      a->msPerFrame = 100;
+      a->loopAnimation = 1;
+      a->scriptedAnimation = 1;
+      a->useAnimForWalking = 0;
+      a->animation = 0;
+      //a->moveThroughWalls = 1;
+      D(devMode);
+      if(devMode == 0) {
+        a->xagil = -25;
+      }
+      a->timeToLiveMs = 10000;
+      a->usingTimeToLive = 1;
 
       break;
     }
@@ -2267,6 +2300,11 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           a->timeToLiveMs = 2500;
         }
       }
+      break;
+    }
+    case 38:
+    {
+      a->x += a->xagil * elapsed / 256;
       break;
     }
 

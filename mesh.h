@@ -89,6 +89,8 @@ public:
 
   meshtype mtype = meshtype::FLOOR;
 
+  bool drawDiffuse = 1;
+
   bool edgeInfoSet = 0;
   vector<array<int, 2>> edgeDataStore;
 
@@ -119,11 +121,16 @@ public:
 //collision - completely vertical walls, inside corners should often be 90*
 //occluder - edges in 3d space, no faces, no color channels, no uv data
 //
+
+class ggrid;
+
 class chunk {
  public:
 
-   bool standalone = 1; //0 if this belongs to a ggrid
-   int value = 0; //if not standalone this is used for the ggrid
+
+  bool standalone = 1; //0 if this belongs to a ggrid
+  int value = 0; //if not standalone this is used for the ggrid
+  ggrid* owner = nullptr;
 
   mesh* floor = 0;
   mesh* wall = 0;

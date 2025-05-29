@@ -151,8 +151,8 @@ class camera
   public:
     float oldx = 0;
     float oldy = 0;
-    float x = 200;
-    float y = 200;
+    int x = 200;
+    int y = 200;
     int desiredX = 0;
     int desiredY = 0;
     int repoX = -1;
@@ -164,8 +164,8 @@ class camera
     int natMag = 5;
     int natAccu = 0;
     int free = 0;
-    float width = 640;
-    float height = 480;
+    int width = 640;
+    int height = 480;
     float lag = 0;
     const float DEFAULTLAGACCEL = 0.01;
     float lagaccel = 0.01; // how much faster the camera gets while lagging
@@ -991,9 +991,9 @@ extern float g_spinJumpHelpMs;
 extern float g_currentSpinJumpHelpMs;
 extern bool g_protag_jumped_this_frame;
 
-extern entity* g_spurl_entity;
+//extern entity* g_spurl_entity;
 
-extern entity* g_chain_entity;
+//extern entity* g_chain_entity;
 extern float g_chain_time;
 
 
@@ -1157,6 +1157,8 @@ extern int g_holddelete;
 extern chunk* moveThisChunk;
 
 extern ggrid* g_activeGgrid;
+
+extern const bool g_useOccluding;
 
 enum gamemode {
   EXPLORATION,

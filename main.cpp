@@ -62,10 +62,32 @@ void sortEdges(std::vector<edgeInfo>& edges, float px, float py) {
   // at some point, this needs logic to handle edges that are backfacing relative to the player
   // the current solution isn't good enough
 
-    edges.erase(std::remove_if(edges.begin(), edges.end(),
-            [py](const edgeInfo& e) {
-                return e.first.position.y > py && e.second.position.y > py && (e.wallMesh != nullptr);
-            }), edges.end());
+//    edges.erase(std::remove_if(edges.begin(), edges.end(),
+//            [py](const edgeInfo& e) {
+//                return e.first.position.y > py && e.second.position.y > py && (e.wallMesh != nullptr);
+//            }), edges.end());
+
+  //is this even doing anything at all?
+  //this might be very important idk
+  //try turning it on later as needed
+//edges.erase(std::remove_if(edges.begin(), edges.end(),
+//    [px, py](const edgeInfo& e) {
+//        // Compute edge direction
+//        float dx = (e.second.position.x - e.first.position.x);
+//        float dy = (e.second.position.y - e.first.position.y);
+//
+//        // Compute vector from player to the edge start
+//        float toPlayerX = e.first.position.x - px;
+//        float toPlayerY = e.first.position.y - py;
+//
+//        // Cross product to determine backfacing
+//        float crossProduct = (dx * toPlayerY) - (dy * toPlayerX);
+//
+//        // Remove edge if it's backfacing
+//        if((crossProduct < 0) && (e.wallMesh != nullptr)) { M("Remove this edge");}
+//        return (crossProduct < 0) && (e.wallMesh != nullptr);
+//    }), edges.end());
+//
 
   // Sort the remaining edges based on their minimum distance to (px, py)
   std::sort(edges.begin(), edges.end(), edgeComparator);
@@ -2056,19 +2078,19 @@ void ExplorationLoop() {
     }
 
     //for familiars which were just linked, display the flashing chain
-    if(g_familiars.size() > 0) {
-      if(g_chain_time > 0) {
-        entity* x = g_familiars.back();
-        g_chain_entity->setOriginX(x->getOriginX());
-        g_chain_entity->setOriginY(x->getOriginY());
-        g_chain_entity->visible = 1;
-        g_chain_time -= elapsed;
-      } else {
-        g_chain_entity->visible = 0;
-      }
-    } else {
-      g_chain_entity->visible = 0;
-    }
+//    if(g_familiars.size() > 0) {
+//      if(g_chain_time > 0) {
+//        entity* x = g_familiars.back();
+//        g_chain_entity->setOriginX(x->getOriginX());
+//        g_chain_entity->setOriginY(x->getOriginY());
+//        g_chain_entity->visible = 1;
+//        g_chain_time -= elapsed;
+//      } else {
+//        g_chain_entity->visible = 0;
+//      }
+//    } else {
+//      g_chain_entity->visible = 0;
+//    }
 
     if(g_ex_familiars.size() > 0 && g_exFamiliarTimer > 0) {
       g_exFamiliarTimer -= elapsed;
@@ -2149,9 +2171,9 @@ void ExplorationLoop() {
   }
   B("familiars");
 
-  g_spurl_entity->setOriginX(protag->getOriginX());
-  g_spurl_entity->setOriginY(protag->getOriginY());
-  g_spurl_entity->z = protag->z;
+//  g_spurl_entity->setOriginX(protag->getOriginX());
+//  g_spurl_entity->setOriginY(protag->getOriginY());
+//  g_spurl_entity->z = protag->z;
 
   //did the protag collect a pellet?
   float protag_x = protag->getOriginX();
@@ -2541,15 +2563,20 @@ void ExplorationLoop() {
         v[i].color.a = x->vertex[i].color.a;
       }
 
-      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+      if(x->drawDiffuse == 1) {
+        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+//        SDL_Rect a = {0,0.2, 0.2, 0.2};
+//        SDL_RenderCopy(renderer, x->texture, NULL, &a);
+      }
 
-      SDL_Rect a = {0,0.2, 0.2, 0.2};
-      SDL_RenderCopy(renderer, x->texture, NULL, &a);
 
       //render shade
       for(int i = 0; i < x->numVertices; i++) {
         v[i].tex_coord.x = x->vertexExtraData[i].first;
         v[i].tex_coord.y = x->vertexExtraData[i].second;
+        v[i].color.r = 255;
+        v[i].color.g = 255;
+        v[i].color.b = 255;
         v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
       }
 
@@ -2571,7 +2598,9 @@ void ExplorationLoop() {
         v[i].color.a = x->vertex[i].color.a;
       }
 
-      SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+      if(x->drawDiffuse == 1) {
+        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+      }
 
       //render shade
       for(int i = 0; i < x->numVertices; i++) {
@@ -2587,28 +2616,19 @@ void ExplorationLoop() {
 
   g_wsEdges.clear();
   g_osEdges.clear();
-  {
+  float px, py;
+  if(devMode == 0 && g_useOccluding){
     updateEdges(g_wEdges, g_wsEdges);
     updateEdges(g_oEdges, g_osEdges);
-  }
+    px = protag->getOriginX() - g_camera.x;
+    py = protag->getOriginY() - g_camera.y;
+    //float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
+  
+    //remove any entries on g_wEdges which are facing away from the player
+    //(kinda like backface-culling)
+    removeBackfacingEdges(g_osEdges, protag->getOriginX() - g_camera.x, protag->getOriginY() - g_camera.y);
+    removeBackfacingWEdges(g_wsEdges, protag->getOriginX() - g_camera.x, protag->getOriginY() - g_camera.y);
 
-  float px = protag->getOriginX() - g_camera.x;
-  float py = protag->getOriginY() - g_camera.y;
-  //float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
-
-  //remove any entries on g_wEdges which are facing away from the player
-  //(kinda like backface-culling)
-  /*
-     g_wsEdges.erase(
-     std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
-     float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ) ) / (edge.second.position.x - edge.first.position.x);
-     float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
-     return py < y_at_px;
-     }), 
-     g_wsEdges.end()
-     );
-     */
-      removeBackfacingEdges(g_osEdges, protag->getOriginX() - g_camera.x, protag->getOriginY() - g_camera.y);
 
 //  g_wsEdges.erase(
 //      std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
@@ -2634,8 +2654,7 @@ void ExplorationLoop() {
 
 
 
-  //use g_wsEdges and g_osEdges to render floor occlusion
-  if(devMode == 0){
+    //use g_wsEdges and g_osEdges to render floor occlusion
     std::vector<SDL_Vertex> vertices;
     const float EXTEND_DISTANCE = 2 * WIN_WIDTH;
 
@@ -2709,11 +2728,11 @@ void ExplorationLoop() {
     }
 
     SDL_RenderGeometry(renderer, blackbarTexture, vertices.data(), vertices.size(), nullptr, 0);
-  }
 
-  //sort g_wsEdges and g_osEdges
-  sortEdges(g_wsEdges, px, py);
-  sortEdges(g_osEdges, px, py);
+    //sort g_wsEdges and g_osEdges
+    sortEdges(g_wsEdges, px, py);
+    sortEdges(g_osEdges, px, py);
+  }
 
   //visual walls
   //these will be drawn again later IF they have an occluder
@@ -2764,10 +2783,12 @@ void ExplorationLoop() {
   //  x.group = 1;
   //}
 
-  processEdges(g_osEdges, g_wsEdges, px, py);
+  if(devMode == 0 && g_useOccluding) {
+    processEdges(g_osEdges, g_wsEdges, px, py);
+  }
 
   //render occluding on visual walls
-  if (devMode == 0){
+  if (devMode == 0 && g_useOccluding){
     int cGroup = 0;
     int maxGroups = 20;
 
@@ -3958,12 +3979,12 @@ int WinMain()
   g_ui_voice = loadWav("resources/static/sounds/voice-normal.wav");
 
 
-  g_spurl_entity = new entity(renderer, "common/spurl");
-  g_spurl_entity->msPerFrame = 75;
-  g_spurl_entity->visible = 0;
-
-  g_chain_entity = new entity(renderer, "common/chain");
-  g_chain_entity->msPerFrame = 75;
+//  g_spurl_entity = new entity(renderer, "common/spurl");
+//  g_spurl_entity->msPerFrame = 75;
+//  g_spurl_entity->visible = 0;
+//
+//  g_chain_entity = new entity(renderer, "common/chain");
+//  g_chain_entity->msPerFrame = 75;
 
   if(devMode) {
     g_dijkstraDebugRed = new ui(renderer, "resources/engine/walkerRed.qoi", 0,0,32,32, 3);
@@ -4218,54 +4239,201 @@ int WinMain()
     vec3 origin = {0,0,0};
 
     chunk* c = new chunk("ggrid/1", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/2", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/3", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/4", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/5", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/6", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/7", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/8", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/9", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/10", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/11", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/12", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/13", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/14", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/15", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/16", "", "", origin, 1, 0);
+    //c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/17", "", "", origin, 1, 0);
+    //c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/18", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/19", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/20", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/21", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/22", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    c = new chunk("ggrid/23", "", "", origin, 1, 0);
+    c->floor->drawDiffuse = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    c = new chunk("ggrid/24", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c->decorative->drawDiffuse = 0; //was 0
+    c = new chunk("ggrid/25", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c->decorative->drawDiffuse = 0; //was 0
+    c = new chunk("ggrid/26", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/27", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/28", "", "", origin, 1, 0);
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/29", "", "", origin, 1, 0);
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -4282,16 +4450,19 @@ int WinMain()
 
     // swap edgeDataStore as needed for backfacing
     // backface culling 
-    swap(g_OPChunks[2-1]->occluder->edgeDataStore[0][0], g_OPChunks[2-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[5-1]->occluder->edgeDataStore[0][0], g_OPChunks[5-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[6-1]->occluder->edgeDataStore[0][0], g_OPChunks[6-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[6-1]->occluder->edgeDataStore[1][0], g_OPChunks[6-1]->occluder->edgeDataStore[1][1]);
-    swap(g_OPChunks[7-1]->occluder->edgeDataStore[0][0], g_OPChunks[7-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[7-1]->occluder->edgeDataStore[1][0], g_OPChunks[7-1]->occluder->edgeDataStore[1][1]);
-    swap(g_OPChunks[8-1]->occluder->edgeDataStore[0][0], g_OPChunks[8-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[8-1]->occluder->edgeDataStore[1][0], g_OPChunks[8-1]->occluder->edgeDataStore[1][1]);
-    swap(g_OPChunks[9-1]->occluder->edgeDataStore[0][0], g_OPChunks[9-1]->occluder->edgeDataStore[0][1]);
-    swap(g_OPChunks[9-1]->occluder->edgeDataStore[1][0], g_OPChunks[9-1]->occluder->edgeDataStore[1][1]);
+    if(g_useOccluding) {
+      swap(g_OPChunks[2-1]->occluder->edgeDataStore[0][0], g_OPChunks[2-1]->occluder->edgeDataStore[0][1]);
+      swap(g_OPChunks[5-1]->occluder->edgeDataStore[0][0], g_OPChunks[5-1]->occluder->edgeDataStore[0][1]);
+      swap(g_OPChunks[6-1]->occluder->edgeDataStore[0][0], g_OPChunks[6-1]->occluder->edgeDataStore[0][1]);
+      swap(g_OPChunks[6-1]->occluder->edgeDataStore[1][0], g_OPChunks[6-1]->occluder->edgeDataStore[1][1]);
+      swap(g_OPChunks[7-1]->occluder->edgeDataStore[0][0], g_OPChunks[7-1]->occluder->edgeDataStore[0][1]);
+      swap(g_OPChunks[7-1]->occluder->edgeDataStore[1][0], g_OPChunks[7-1]->occluder->edgeDataStore[1][1]);
+      swap(g_OPChunks[8-1]->occluder->edgeDataStore[0][0], g_OPChunks[8-1]->occluder->edgeDataStore[0][1]);
+      swap(g_OPChunks[8-1]->occluder->edgeDataStore[1][0], g_OPChunks[8-1]->occluder->edgeDataStore[1][1]);
+      swap(g_OPChunks[9-1]->occluder->edgeDataStore[0][0], g_OPChunks[9-1]->occluder->edgeDataStore[0][1]);
+      swap(g_OPChunks[9-1]->occluder->edgeDataStore[1][0], g_OPChunks[9-1]->occluder->edgeDataStore[1][1]);
+      swap(g_OPChunks[14-1]->occluder->edgeDataStore[0][0], g_OPChunks[14-1]->occluder->edgeDataStore[0][1]);
+    }
 
 
 

@@ -125,6 +125,7 @@ mesh::~mesh() {
     SDL_DestroyTexture(texture);
   }
 
+
 }
 
 chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone) {
@@ -158,9 +159,9 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
     collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION, standalone);
-    //M("Loaded collision " + collisionAddr);
+    M("Loaded collision " + collisionAddr);
   }
-  if(PHYSFS_exists(occluAddr.c_str())) {
+  if(g_useOccluding && PHYSFS_exists(occluAddr.c_str())) {
     occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER, standalone);
     //M("Loaded occluder " + occluAddr);
   }
@@ -177,6 +178,9 @@ chunk::chunk() {
 
 chunk::~chunk() {
   g_chunks.erase(remove(g_chunks.begin(), g_chunks.end(), this), g_chunks.end());
+  if(owner != 0) {
+    owner->chunks.erase(remove(owner->chunks.begin(), owner->chunks.end(), this), owner->chunks.end());
+  }
 }
 
 chunk* duplicateChunk(const chunk* original, vec3 newOrigin) {
@@ -839,11 +843,13 @@ mesh* duplicateMesh(const mesh* original, vec3 origin) {
   // Copy primitive and STL container members
   result->origin = origin;
   result->textureAddress = original->textureAddress;
-  result->assetSharer = original->assetSharer;
+  //result->assetSharer = original->assetSharer;
+  result->assetSharer = 1;
   result->numVertices = original->numVertices;
   result->numIndices = original->numIndices;
   result->sleepRadius = original->sleepRadius;
   result->mtype = original->mtype;
+  result->drawDiffuse = original->drawDiffuse;
   //result->edgeInfoSet = original->edgeInfoSet;
   result->visible = original->visible;
   result->edgeDataStore = original->edgeDataStore;

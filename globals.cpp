@@ -650,7 +650,7 @@ entity* g_behemoth3=0;
 vector<entity*> g_behemoths;
 
 // zoom is planned to be 1.0 for a resolution of 1920 pixels across
-float g_defaultZoom = 0.85;
+float g_defaultZoom = 0.8;
 float g_zoom_mod = 1;		// for devmode
 bool g_update_zoom = 0; // update the zoom this frame
 
@@ -890,9 +890,9 @@ float g_spinJumpHelpMs = 0; //if you spin a frame after jumping you will jump an
 float g_currentSpinJumpHelpMs = g_spinJumpHelpMs;
 bool g_protag_jumped_this_frame = 0;
 
-entity* g_spurl_entity = 0;
+//entity* g_spurl_entity = 0;
 
-entity* g_chain_entity = 0;
+//entity* g_chain_entity = 0;
 float g_chain_time = 0;
 
 bool storedJump = 0;
@@ -1070,6 +1070,8 @@ int g_holddelete = 0;
 chunk* moveThisChunk = 0;
 
 ggrid* g_activeGgrid = 0;
+
+const bool g_useOccluding = 0;
 
 int g_globalAccumulator = 0;
 int g_tempAccumulator = 0;

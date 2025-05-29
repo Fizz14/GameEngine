@@ -62,6 +62,42 @@ void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py) {
     );
 }
 
+void removeBackfacingWEdges(std::vector<edgeInfo>& edges, float px, float py) {
+    edges.erase(
+        std::remove_if(edges.begin(), edges.end(), [px, py](const edgeInfo& edge) {
+            float dx1 = edge.first.position.x - px;
+            float dy1 = edge.first.position.y - py;
+
+            float dx2 = edge.second.position.x - px;
+            float dy2 = edge.second.position.y - py;
+
+
+            // blender's coord system
+            // 
+            // ^
+            // |
+            // y
+            //  x - >
+            //
+            //  my coord system
+            //
+            //
+            //  x - >
+            // y
+            // |
+            // v
+
+            //the y values here are reversed because blender's coord system has the yvals flipped
+            //if this is failing for your mesh try flipping the normals instead of changing it here for everyone
+            float crossProduct = dx1 * dy1 - dy2 * dx2;
+
+            // If cross product is negative, it's backfacing
+            return crossProduct < 0;
+        }),
+        edges.end()
+    );
+}
+
 void resetTrivialData() {
   for(auto &x : party) {
     x->xvel = 0;
@@ -92,6 +128,16 @@ auto edgeLengthInfo = [](const edgeInfo& edge) {
 
 // Helper function to check if two edges are connected within a difference of 1 pixel
 auto areConnected = [](const edgeInfo& e1, const edgeInfo& e2) {
+  string fs = to_string(e1.first.position.x) + ", " + to_string(e1.first.position.y);
+  string ss = to_string(e1.second.position.x) + ", " + to_string(e1.second.position.y);
+  string ts = to_string(e2.first.position.x) + ", " + to_string(e2.first.position.y);
+  string os = to_string(e2.second.position.x) + ", " + to_string(e2.second.position.y);
+//  M("-");
+//  M(fs);
+//  M(ss);
+//  M(ts);
+//  M(os);
+//  M("-");
     return (std::abs(e1.first.position.x - e2.first.position.x) <= 1 && std::abs(e1.first.position.y - e2.first.position.y) <= 1) ||
            (std::abs(e1.first.position.x - e2.second.position.x) <= 1 && std::abs(e1.first.position.y - e2.second.position.y) <= 1) ||
            (std::abs(e1.second.position.x - e2.first.position.x) <= 1 && std::abs(e1.second.position.y - e2.first.position.y) <= 1) ||
@@ -115,6 +161,7 @@ auto areConnectedAndFacingSimilarDirection = [](const edgeInfo& e1, const edgeIn
     //D(std::abs(angle1 - downwardAngle));
     bool bothFacingDownward = (std::abs(angle1 - downwardAngle) <= tolerance) && (std::abs(angle2 - downwardAngle) <= tolerance);
     bool bothFacingNotDownward = !(std::abs(angle1 - downwardAngle) <= tolerance) && !(std::abs(angle2 - downwardAngle) <= tolerance);
+    //D(areConnected(e1, e2));
 
     return (bothFacingDownward || bothFacingNotDownward) && areConnected(e1, e2);
 };
@@ -205,26 +252,26 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
     }
 
     // **Render Debugging Info**
-    SDL_Rect a = {px, py, 60, 20};
-    SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall, "PXPY", g_goldcolor);
-    SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
-    SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
-    SDL_FreeSurface(renderMe);
-    SDL_DestroyTexture(renderMeTex);
+//    SDL_Rect a = {px, py, 60, 20};
+//    SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall, "PXPY", g_goldcolor);
+//    SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
+//    SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
+//    SDL_FreeSurface(renderMe);
+//    SDL_DestroyTexture(renderMeTex);
 
     for (int i = 0; i < maxGroups; i++) {
         if (groupWeightedDistance[i] != 10000) {
             groupAvgPosX[i] /= groupAvgPosCount[i];
             groupAvgPosY[i] /= groupAvgPosCount[i];
 
-            SDL_Rect a = {static_cast<int>(groupAvgPosX[i]), static_cast<int>(groupAvgPosY[i]), 60, 20};
-            SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall,
-                                                         (std::to_string(i) + " - " + std::to_string(groupWeightedDistance[i])).c_str(),
-                                                         g_goldcolor);
-            SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
-            SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
-            SDL_FreeSurface(renderMe);
-            SDL_DestroyTexture(renderMeTex);
+//            SDL_Rect a = {static_cast<int>(groupAvgPosX[i]), static_cast<int>(groupAvgPosY[i]), 60, 20};
+//            SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall,
+//                                                         (std::to_string(i) + " - " + std::to_string(groupWeightedDistance[i])).c_str(),
+//                                                         g_goldcolor);
+//            SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
+//            SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
+//            SDL_FreeSurface(renderMe);
+//            SDL_DestroyTexture(renderMeTex);
         }
     }
 
@@ -3602,11 +3649,18 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     animation = 0;
   } else if(animationconfig == 3) {
     //set frame to walkFrames
+    //not for animating, this is for entities
+    //to share a texture and each use different parts of it
+    //used for mirror in desert shack and robot happy/sad ents
+    //you could also just use angular frames
     loopAnimation = 0;
     scriptedAnimation = 1;
     msPerFrame = 0;
     animation = 0;
     frameInAnimation = animWalkFrames;
+  } else if(animationconfig == 4) {
+    //this one was made for the tumbleweed
+    //animated missile
   }
 
   //identity
@@ -4016,6 +4070,7 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
   this->yframes = a->yframes;
   this->framespots = a->framespots;
   this->dynamic = a->dynamic;
+  this->useAnimForWalking = a->useAnimForWalking;
   this->canFight = a->canFight;
   this->usesContactScript = a->usesContactScript;
   this->contactScriptWaitMS = a->contactScriptWaitMS;
@@ -4083,7 +4138,7 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
     animation = 0;
     animationconfig = 0;
   } else if(animationconfig == 3) {
-    M("Entity copy constructor -animconfig 3");
+    //M("Entity copy constructor -animconfig 3");
     //set frame to walkFrames
     loopAnimation = 0;
     scriptedAnimation = 1;
@@ -4713,6 +4768,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
           } else {
             frameInAnimation = 0;
             msPerFrame = 0;
+            if(name == "desert/tumbleweed") {
+              M("D");
+            }
             //!!! slightly ambiguous. open to review later
             scriptedAnimation = 0;
           }
@@ -4729,6 +4787,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
           } else {
             frameInAnimation = xframes - 1;
             msPerFrame = 0;
+            if(name == "desert/tumbleweed") {
+              M("C");
+            }
             scriptedAnimation = 0;
           }
         }
@@ -4776,16 +4837,24 @@ door* entity::update(vector<door*> doors, float elapsed) {
     extraAnimateFrames --;
     animate = 1;
     if(useAnimForWalking) {
-      if( (!scriptedAnimation) && grounded) {
+      if( (!scriptedAnimation|| animationconfig == 4) && grounded ) {
         msPerFrame = walkAnimMsPerFrame;
       } else {
         msPerFrame = 0;
+        if(name == "desert/tumbleweed") {
+          D(scriptedAnimation);
+          D(msPerFrame);
+          M("B");
+        }
       }
     }
   } else {
     animate = 0;
     if(useAnimForWalking && !scriptedAnimation && this->useAnimForWalking) {
       msPerFrame = 0;
+      if(name == "desert/tumbleweed") {
+        M("A");
+      }
       frameInAnimation = 0;
     }
   }
@@ -8877,7 +8946,9 @@ void clear_map(camera& cameraToReset) {
             v[i].color.a = x->vertex[i].color.a;
           }
 
-          SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+          if(x->drawDiffuse == 1) {
+            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+          }
 
           //render shade
           for(int i = 0; i < x->numVertices; i++) {
@@ -8903,7 +8974,9 @@ void clear_map(camera& cameraToReset) {
             v[i].color.a = x->vertex[i].color.a;
           }
 
-          SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+          if(x->drawDiffuse == 1) {
+            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+          }
 
           //render shade
           for(int i = 0; i < x->numVertices; i++) {
@@ -12028,6 +12101,8 @@ void adventureUI::continueDialogue()
     this->continueDialogue();
     return;
   }
+
+  M("Should we change map?");
 
   // change map
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/map ")
