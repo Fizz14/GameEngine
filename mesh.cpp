@@ -159,7 +159,7 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
     collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION, standalone);
-    M("Loaded collision " + collisionAddr);
+    //M("Loaded collision " + collisionAddr);
   }
   if(g_useOccluding && PHYSFS_exists(occluAddr.c_str())) {
     occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER, standalone);
@@ -729,7 +729,9 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
 
       }
       if(!good) {
-        E("Mesh is completely transparent. (Make sure you paint it. The red channel will be used for opacity in this case)");
+        //this is triggering sometimes??
+        E("Mesh is completely transparent. (Make sure you paint it. The red channel will be used for opacity in this case) \nTHIS MESSAGE ONLY PRINTS IN DEVMODE.");
+        D(faddress);
       }
     }
 
@@ -830,7 +832,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
     }
   } else {
     cerr << "File does not exist: " << address << endl;
-    breakpoint();
+    //breakpoint();
   }
   return result;
 }

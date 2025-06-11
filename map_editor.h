@@ -16,6 +16,7 @@
 
 using namespace std;
 
+void playNextMusic();
 
 // for sorting ui on mapload
 int compare_ui(ui *a, ui *b);

@@ -639,6 +639,7 @@ bool g_fullscreen = false;
 camera g_camera(0, 0);
 entity *protag = nullptr;
 entity *mainProtag; // for letting other entities use this ones inventory; game ends when this one dies
+entity *debugMe = nullptr;
 entity * g_approacher = 0; //used for the approach-call
 float g_approachBlocks = 0; 
 entity * g_approachMe = 0;
@@ -746,6 +747,12 @@ vector<std::pair<Mix_Chunk*,string>> g_preloadedSounds;
 Mix_Chunk *g_ui_voice;
 musicNode *g_closestMusicNode;
 musicNode *newClosest;
+
+Mix_Music* g_loadedMusic = 0;
+float g_loadedMusicVolume = 0;
+string g_loadedMusicStr = "";
+bool g_mapHasMusic = 0;
+Mix_Music* g_deleteMusic = 0;
 
 int g_musicSilenceMs = 0; //this is set by scripts to fade music out for x ms
 int g_currentMusicSilenceMs = 0;
@@ -1107,7 +1114,7 @@ int curLevelIndex = 0;
 
 vector<int> g_combatInventory;
 
-entity* g_combatWorldEnt; //the ent that walked into the player to start combat
+//entity* g_combatWorldEnt; //the ent that walked into the player to start combat
 
 int g_maxInventorySize = 14;
 
@@ -1121,6 +1128,18 @@ int g_lastGrassY = 0;
 float g_encounterChance = 0;
 vector<string> loadedBackgrounds={};
 int g_combatEntryType = 0;
+
+// this Code is for the Feature for on-screen Overworld-enemies to approach
+// when another Overworld-enemy has reached Fomm.
+int g_catchUpMode = 0;
+int g_catchUpModeMs = 0; // start a Timer and stop CatchUpMode if the enemies
+                         // don't reach the player in time- just consider them to be
+                         // in the fight
+vector<entity*> g_combatWorldEnts; //keep a vector of all the entities who were on-screen and are in the battle
+                                    //to make intangible later
+vector<entity*> g_worldEnemies; //keep all combat ents (identity 34)
+
+
 lossSub g_lossSub = lossSub::INWIPE;
 
 lossUI* lossUIManager = 0;

@@ -3486,6 +3486,22 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   file >> comment;
   file >> this->faction;
 
+  //I was having problems with enemies
+  //having some -1252353369 faction
+  //I think I fixed it 10 June 2025
+//  if(name == "desert/en-a") {
+//    M("Watch this one's faction please");
+//    debugMe = this;
+//    if(this->faction == -1) {
+//      D(name);
+//      M("Has faction -1!");
+//    } else {
+//      D(name);
+//      M("Has faction " + to_string(faction));
+//    }
+//    breakpoint();
+//  }
+
   if(faction != -1 && faction != 0) {
     canFight = 1;
   } else {
@@ -4280,7 +4296,6 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
   //if its a wallcap, tile the image just like a maptile
 
   rect obj;
-
 
   if(shrinking) {
     if(growFromFloor) {
@@ -7560,6 +7575,7 @@ void levelSequence::addLevels(string filename) {
   }
 }
 
+//load_save()
 int loadSave() {
   g_save.clear();
   g_saveStrings.clear();
@@ -7668,9 +7684,7 @@ int loadSave() {
     combatant* b = new combatant(name, exp);
     b->health = floor(currentHP);
     b->sp = floor(currentSP);
-    if(b->name == "common/fomm") {
-      D(currentSP);
-    }
+
     b->baseStrength = mhp;
     b->baseMind = msp;
     b->baseAttack = atk;
@@ -7691,7 +7705,7 @@ int loadSave() {
       b->baseCritical = b->l0Critical;
       b->baseRecovery = b->l0Recovery;
     } else {
-      D(b->level);
+      //D(b->level);
     }
 
     if(b->health > b->baseStrength) {
@@ -8843,6 +8857,7 @@ void escapeUI::uiSelecting() {
 //clear map
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
+  g_worldEnemies.clear();
   resetTrivialData();
   g_eheightmaps.clear();
   g_poweredDoors.clear();
@@ -8879,7 +8894,7 @@ void clear_map(camera& cameraToReset) {
 
   adventureUIManager->crosshair->show = 0;
   if(!g_levelFlashing){
-    Mix_FadeOutMusic(1000);
+    //Mix_FadeOutMusic(1000);
 
     //SDL_GL_SetSwapInterval(0);
     bool cont = false;
@@ -9901,8 +9916,6 @@ void clear_map(camera& cameraToReset) {
       delete g_setsOfInterest[i][0];
     }
   }
-
-
   newClosest = 0;
 }
 
@@ -11018,7 +11031,7 @@ void adventureUI::continueDialogue()
   //
   // /takekey 0
   if(scriptToUse->at(dialogue_index + 1).substr(0,8) == "/takekey") {
-    M("Try to take a key");
+    //M("Try to take a key");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 
@@ -11116,6 +11129,7 @@ void adventureUI::continueDialogue()
   if (scriptToUse->at(dialogue_index + 1).substr(0,7) == "/combat")
   {
     g_gamemode = gamemode::COMBAT;
+    combatUIManager->turnCounter = 0;
     g_submode = submode::BEFORE;
     writeSave();
     transitionDelta = transitionImageHeight;
@@ -11728,14 +11742,14 @@ void adventureUI::continueDialogue()
   //disable a trigger by the name of the script it runs
   if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/disabletrigger")
   {
-    M("disabletrigger");
+    //M("disabletrigger");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 
     if(x.size() > 1) {
       for(auto &t : g_triggers) {
         if(t->binding == x[1]) {
-          M("found a trigger to disable");
+          //M("found a trigger to disable");
           t->active = 0;
           t->msRefresh = 0;
         }
@@ -12102,12 +12116,10 @@ void adventureUI::continueDialogue()
     return;
   }
 
-  M("Should we change map?");
-
   // change map
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/map ")
   {
-    M("changing map");
+    //M("changing map");
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 5);
     string name = s.substr(0, s.find(' '));
@@ -12863,44 +12875,46 @@ void adventureUI::continueDialogue()
   // !!!
   if (scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/script")
   {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 8);
-    D(s);
+    //this would need some changes
 
-    ifstream stream;
-    string loadstr;
-
-    loadstr = "resources/maps/" + g_map + "/" + s + ".txt";
-    const char *plik = loadstr.c_str();
-
-    stream.open(plik);
-
-    if (!stream.is_open())
-    {
-      stream.open("scripts/" + s + ".txt");
-    }
-    string line;
-
-    getline(stream, line);
-
-    vector<string> nscript;
-    while (getline(stream, line))
-    {
-      nscript.push_back(line);
-    }
-
-    parseScriptForLabels(nscript);
-
-    adventureUIManager->blip = g_ui_voice;
-    adventureUIManager->ownScript = nscript;
-    adventureUIManager->talker = protag;
-    protag->sayings = nscript;
-    adventureUIManager->dialogue_index = -1;
-    adventureUIManager->continueDialogue();
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
+//    string s = scriptToUse->at(dialogue_index + 1);
+//    s.erase(0, 8);
+//    D(s);
+//
+//    ifstream stream;
+//    string loadstr;
+//
+//    loadstr = "resources/maps/" + g_map + "/" + s + ".txt";
+//    const char *plik = loadstr.c_str();
+//
+//    stream.open(plik);
+//
+//    if (!stream.is_open())
+//    {
+//      stream.open("scripts/" + s + ".txt");
+//    }
+//    string line;
+//
+//    getline(stream, line);
+//
+//    vector<string> nscript;
+//    while (getline(stream, line))
+//    {
+//      nscript.push_back(line);
+//    }
+//
+//    parseScriptForLabels(nscript);
+//
+//    adventureUIManager->blip = g_ui_voice;
+//    adventureUIManager->ownScript = nscript;
+//    adventureUIManager->talker = protag;
+//    protag->sayings = nscript;
+//    adventureUIManager->dialogue_index = -1;
+//    adventureUIManager->continueDialogue();
+//
+//    dialogue_index++;
+//    this->continueDialogue();
+//    return;
   }
 
   // load savefile
@@ -12972,7 +12986,7 @@ void adventureUI::continueDialogue()
    */
   if (regex_match(scriptToUse->at(dialogue_index + 1), regex("\\{([a-zA-Z0-9_]){1,}\\}")))
   {
-    M("Tried to check a save field");
+    //M("Tried to check a save field");
     //
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 1);
@@ -13202,10 +13216,10 @@ void adventureUI::continueDialogue()
     entity *modifyMe = 0;
     auto x = splitString(s, ' ');
 
-    D("check params");
-    for(auto i : x) {
-      D(i);
-    }
+    //D("check params");
+//    for(auto i : x) {
+//      D(i);
+//    }
 
 
     if(x.size() >= 5) {
@@ -13243,8 +13257,8 @@ void adventureUI::continueDialogue()
   // set reverse to 1 to play backwards
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
   {
-    M("Animate interpreter");
-    D(selected->name);
+//    M("Animate interpreter");
+//    D(selected->name);
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 9);
     vector<string> split = splitString(s, ' ');
@@ -13319,8 +13333,44 @@ void adventureUI::continueDialogue()
     string s = scriptToUse->at(dialogue_index + 1);
     auto x = splitString(s, ' ');
     if(x.size() > 0) {
-      D(x[1]);
+      //D(x[1]);
       playSoundByName(x[1]);
+    }
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/music")
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    auto x = splitString(s, ' ');
+    string musicStr = x[1];
+    float musicVol = stof(x[2]);
+    if(g_loadedMusicStr != musicStr) {
+      //must change music
+      Mix_FadeOutMusic(1000);
+      g_loadedMusicVolume = musicVol;
+      g_loadedMusicStr = musicStr;
+      if(g_loadedMusic != 0) {
+        g_deleteMusic = g_loadedMusic;
+        
+      } else {
+        g_deleteMusic = 0;
+      }
+      g_loadedMusic = loadMusic("resources/static/music/" + musicStr + ".ogg");
+
+      // Keep in mind, there's a bit of a complicated way
+      // music is allocated twice, then deleted once
+      // it's deleted after it fades out
+      
+      //M("      ALLOCATED MUSIC");
+      if(Mix_PlayingMusic()) {
+        Mix_HookMusicFinished(playNextMusic);
+      } else {
+        playNextMusic();
+      }
     }
 
     dialogue_index++;
@@ -13348,7 +13398,7 @@ void adventureUI::continueDialogue()
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> split = splitString(s, ' ');
     string loadstring = "resources/static/sounds/" + split[1] + ".wav";
-    D(loadstring);
+    //D(loadstring);
 
     float volume = stof(split[2]);
 

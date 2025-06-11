@@ -255,6 +255,785 @@ void ExplorationLoop() {
   g_jumpGaranteedAccelMs -= elapsed;
   g_boardingCooldownMs -= elapsed;
   g_protagBonusSpeedMS -= elapsed;
+  g_catchUpModeMs -= elapsed;
+
+  if(g_catchUpMode) {
+    bool advance = 1;
+    for(auto x : g_combatWorldEnts) {
+      //D(x->level);
+      if(x->level != 0) {
+//        M("Can't advance!");
+//        D(g_combatWorldEnts.size());
+        advance = 0;
+        //break;
+      }
+    }
+    if(advance) {
+      if(g_catchUpModeMs > 500) {
+        g_catchUpModeMs = 500;
+      }
+    }
+    if(g_catchUpModeMs <= 0) {
+      {
+        g_catchUpMode = 0;
+        //init fight
+        
+        //g_combatWorldEnt = a;
+        string bgstr;
+        if(g_combatWorldEnts.size() == 0) {
+          E("g_combatWorldEnts.size() is 0");
+          abort();
+        }
+        if(loadedBackgrounds.size() > g_combatWorldEnts[0]->faction) {
+          bgstr = loadedBackgrounds[g_combatWorldEnts[0]->faction];
+        } else {
+          if(loadedBackgrounds.size() == 0) {E("No loaded combat backgrounds for map " + g_mapdir + "/" + g_map); abort();}
+          bgstr = loadedBackgrounds[0];
+        }
+
+        string loadme = "resources/static/backgrounds/json/" + bgstr + ".json";
+        combatUIManager->loadedBackground = bground(renderer, loadme.c_str());
+        
+        if(combatUIManager->sb1 != 0) {
+          SDL_FreeSurface(combatUIManager->sb1);
+        }
+        
+        loadme = "resources/static/backgrounds/textures/" + to_string(combatUIManager->loadedBackground.texture) + ".qoi";
+        combatUIManager->sb1 = IMG_Load(loadme.c_str());
+
+        if(combatUIManager->scene !=0) {
+          SDL_DestroyTexture(combatUIManager->scene);
+        }
+        loadme = "resources/static/backgrounds/scenes/" + combatUIManager->loadedBackground.scene + ".qoi";
+        combatUIManager->scene = loadTexture(renderer, loadme);
+
+        
+        cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
+
+        {
+          g_gamemode = gamemode::COMBAT;
+          combatUIManager->turnCounter = 0;
+          g_submode = submode::BEFORE;
+          writeSave();
+          transitionDelta = transitionImageHeight;
+          g_combatEntryType = 1;
+        
+          combatUIManager->partyHealthBox->show = 1;
+          combatUIManager->partyText->show = 1;
+
+
+          
+          if(g_enemyCombatants.size() == 1) {
+            string message = getLanguageData("BattleStartNaturalTextOne");
+            string name = g_enemyCombatants[0]->name;
+            string article = getLanguageData("Article" + to_string(g_enemyCombatants[0]->article)
+                );
+
+            if(article.size() > 0) {
+              std::transform(article.begin(), article.begin()+1, article.begin(), ::toupper);
+            }
+
+
+            message = stringMultiInject(message, {article, name});
+            combatUIManager->finalText = message;
+            
+          } else if(g_enemyCombatants.size() == 2) {
+            string message = getLanguageData("BattleStartNaturalTextTwo");
+            string name = g_enemyCombatants[0]->name;
+            string article = getLanguageData("Article" + to_string(g_enemyCombatants[0]->article)
+                );
+
+            if(article.size() > 0) {
+              std::transform(article.begin(), article.begin()+1, article.begin(), ::toupper);
+            }
+
+            string name2 = g_enemyCombatants[1]->name;
+            string article2 = getLanguageData("Article"+to_string(g_enemyCombatants[0]->article));
+
+            if(name == name2) {
+              article2 = getLanguageData("Article4");
+              message = getLanguageData("BattleStartNaturalTextTwin");
+              message = stringMultiInject(message, {name});
+            } else {
+              message = stringMultiInject(message, {article, name, article2, name2});
+            }
+
+            combatUIManager->finalText = message;
+
+          } else if(g_enemyCombatants.size() >2) {
+            string message = getLanguageData("BattleStartNaturalTextThree");
+            string name = g_enemyCombatants[0]->name;
+            string article = getLanguageData("Article" + to_string(g_enemyCombatants[0]->article)
+                );
+
+            if(article.size() > 0) {
+              std::transform(article.begin(), article.begin()+1, article.begin(), ::toupper);
+            }
+
+            string possessive = getLanguageData("PossessivePronoun" + to_string(g_enemyCombatants[0]->gender));
+
+               
+            message = stringMultiInject(message, {article, name, possessive});
+
+            combatUIManager->finalText = message;
+
+          } else {
+            combatUIManager->finalText = getLanguageData("BattleStartText");
+          }
+
+
+
+          combatUIManager->currentText = "";
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+        
+          {
+            //SDL_GL_SetSwapInterval(0);
+            bool cont = false;
+            float ticks = 0;
+            float lastticks = 0;
+            float transitionElapsed = 5;
+            float mframes = 60;
+            float transitionMinFrametime = 5;
+            transitionMinFrametime = 1/mframes * 1000;
+          
+          
+            SDL_Surface* transitionSurface = loadSurface("resources/engine/transition.qoi");
+          
+            int imageWidth = transitionSurface->w;
+            int imageHeight = transitionSurface->h;
+          
+            SDL_Texture* transitionTexture = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, transitionSurface->w, transitionSurface->h );
+            SDL_SetTextureBlendMode(transitionTexture, SDL_BLENDMODE_BLEND);
+          
+          
+            void* pixelReference;
+            int pitch;
+          
+            float offset = imageHeight;
+          
+            SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
+            SDL_SetRenderTarget(renderer, frame);
+        
+            // tiles
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->z == 0)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->z == 1)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->z == 2)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+
+            //meshes
+            for(auto &x : g_meshFloors) {
+              if(x->visible) {
+                SDL_Vertex v[x->numVertices];
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i] = x->vertex[i];
+                  v[i].position.x += x->origin.x - g_camera.x;
+                  v[i].position.y += x->origin.y - g_camera.y;
+                  v[i].color.a = x->vertex[i].color.a;
+                }
+
+                SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+                //render shade
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i].tex_coord.x = x->vertexExtraData[i].first;
+                  v[i].tex_coord.y = x->vertexExtraData[i].second;
+                  v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
+                }
+
+                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+
+              }
+            }
+
+
+            //decorative meshes
+            for(auto &x : g_meshDecorative) {
+              //D("There is an decorative mesh");
+              if(x->visible) {
+                SDL_Vertex v[x->numVertices];
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i] = x->vertex[i];
+                  v[i].position.x += x->origin.x - g_camera.x;
+                  v[i].position.y += x->origin.y - g_camera.y;
+                  v[i].color.a = x->vertex[i].color.a;
+                }
+
+                SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+                //render shade
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i].tex_coord.x = x->vertexExtraData[i].first;
+                  v[i].tex_coord.y = x->vertexExtraData[i].second;
+                  v[i].color.a = 255; //alpha is done in the texture for this
+                }
+
+                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+
+              }
+            }
+
+            g_wsEdges.clear();
+            g_osEdges.clear();
+            {
+              updateEdges(g_wEdges, g_wsEdges);
+              updateEdges(g_oEdges, g_osEdges);
+            }
+
+            float px = protag->getOriginX() - g_camera.x;
+            float py = protag->getOriginY() - g_camera.y;
+            //float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
+
+
+            //remove any entries on g_wEdges which are facing away from the player
+            //(kinda like backface-culling)
+            /*
+               g_wsEdges.erase(
+               std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
+               float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ) ) / (edge.second.position.x - edge.first.position.x);
+               float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
+               return py < y_at_px;
+               }), 
+               g_wsEdges.end()
+               );
+               */
+
+            g_wsEdges.erase(
+                std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
+                  float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ)) /
+                  (edge.second.position.x - edge.first.position.x);
+                  float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
+
+                  if (py < y_at_px) {
+                  // Edge is below the player and will be removed
+                  auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
+                      return segmentsInSamePlace(edge, occluder,1);
+                      });
+
+                  if (it != g_osEdges.end()) {
+                  g_osEdges.erase(it); // Remove matching occluder edge
+                  }
+                  return true; // Remove this wall edge
+                  }
+                  return false;
+                  }),
+                g_wsEdges.end()
+                );
+
+
+
+            //use g_wsEdges and g_osEdges to render floor occlusion
+            if(devMode == 0){
+              std::vector<SDL_Vertex> vertices;
+              const float EXTEND_DISTANCE = 2 * WIN_WIDTH;
+
+              for (auto edge : g_osEdges) {
+                float dx = edge.first.position.x - px;
+                float dy = edge.first.position.y - py;
+                float len = pow(dx*dx + dy*dy, 0.5);
+                if(len > 0) {
+                  float nx = dx/len * WIN_WIDTH;
+                  float ny = dy/len * WIN_WIDTH;
+                  nx += px;
+                  ny += py;
+
+                  dx = edge.second.position.x - px;
+                  dy = edge.second.position.y - py;
+                  len = pow(dx*dx + dy*dy, 0.5);
+                  if(len > 0) {
+                    float nx2 = dx/len * WIN_WIDTH;
+                    float ny2 = dy/len * WIN_WIDTH;
+                    nx2 += px;
+                    ny2 += py;
+
+                    SDL_Vertex newA = {{nx, ny}, {255,255,255,255}, {0,0}};
+                    SDL_Vertex newB = {{nx2, ny2}, {255,255,255,255}, {0,0}};
+
+                    newA.position.y -= edge.firstZ;
+                    newB.position.y -= edge.secondZ;
+                    edge.first.position.y -= edge.firstZ;
+                    edge.second.position.y -= edge.secondZ;
+
+
+                    //push quad back to draw
+                    vertices.push_back(edge.first);
+                    vertices.push_back(edge.second);
+                    vertices.push_back(newA);
+
+                    vertices.push_back(newB);
+                    vertices.push_back(edge.second);
+                    vertices.push_back(newA);
+
+
+                    // Calculate the perpendicular direction
+                    float pdx = ny2 - ny;
+                    float pdy = nx - nx2;
+                    len = pow(pdx*pdx + pdy*pdy, 0.5);
+                    pdx = pdx / len * WIN_WIDTH;
+                    pdy = pdy / len * WIN_WIDTH;
+
+                    // Check which side of the line px, py is on and flip if needed
+                    float side = (px - nx) * (ny2 - ny) - (py - ny) * (nx2 - nx);
+                    if (side > 0) {
+                      pdx = -pdx;
+                      pdy = -pdy;
+                    }
+
+                    SDL_Vertex newC = {{nx + pdx, ny + pdy}, {255,255,255,255}, {0,0}};
+                    SDL_Vertex newD = {{nx2 + pdx, ny2 + pdy}, {255,255,255,255}, {0,0}};
+
+                    newC.position.y -= edge.firstZ;
+                    newD.position.y -= edge.secondZ;
+
+                    vertices.push_back(newA);
+                    vertices.push_back(newB);
+                    vertices.push_back(newC);
+
+                    vertices.push_back(newD);
+                    vertices.push_back(newB);
+                    vertices.push_back(newC);
+                  }
+                }
+              }
+
+              SDL_RenderGeometry(renderer, blackbarTexture, vertices.data(), vertices.size(), nullptr, 0);
+            }
+
+            //sort g_wsEdges and g_osEdges
+            sortEdges(g_wsEdges, px, py);
+            sortEdges(g_osEdges, px, py);
+
+            //visual walls
+            //most of these will be drawn later so :S
+            if(1) {
+              for(auto &x : g_meshVWalls) {
+                if(x->visible) {
+                  SDL_Vertex v[x->numVertices];
+                  for(int i = 0; i < x->numVertices; i++) {
+                    v[i] = x->vertex[i];
+                    v[i].position.x += x->origin.x - g_camera.x;
+                    v[i].position.y += x->origin.y - g_camera.y;
+                    v[i].color.r = v[i].color.g;
+                  }
+
+                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+                  //render shade
+                  for(int i = 0; i < x->numVertices; i++) {
+                    v[i].tex_coord.x = x->vertexExtraData[i].first;
+                    v[i].tex_coord.y = x->vertexExtraData[i].second;
+                  }
+
+                  SDL_RenderGeometry(renderer, g_wallShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+                }
+              }
+            }
+
+            /*
+               g_osEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
+               That segment represents an occluder, which casts a shadow. g_wsEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
+               That segment represents an wall, which catches a shadow. Let's walk through drawing a shadow. 
+               Say we have a pair from g_osEdges, and we call that pair Opair. Let's call the two vertices of Opair A and B. 
+               We will find point A2 from point A and point B2 from B. 
+               We'll do this by using std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) to find an intersection on the segment from A to a point WIN_WIDTH away in the direction of the vector from (px,py) to point A. 
+               Do the same to find B2. These are intersections with any element of g_wsEdges There might not be an intersection, and in that case, put A2 and B2 at the end of the raycast, WIN_WIDTH away from A and B, respectively. 
+               If both lines intersect a wall segment, prepare to draw the quad A B A2 B2 (B2 or A2 maybe be at the end of the raycast, offscreen in that case). 
+               If A's raycast intersected a wall, AND A2's y coordinate is lower than py we need to find the point A3 which is at y=0 and A2's x. 
+               That's also true for B's raycast and a point B3. If we found A3 and B3, draw a quad A2 B2 A3 B3. If not, draw the traingle A2 B2 A3 or A2 B2 B3. Good?
+               */
+
+            //for(auto&x : g_osEdges) {
+            //  x.group = 1;
+            //}
+            //
+            //for(auto &x : g_wsEdges) {
+            //  x.group = 1;
+            //}
+
+            processEdges(g_osEdges, g_wsEdges, px, py);
+
+            //render occluding on visual walls
+            if (devMode == 0){
+              int cGroup = 0;
+              int maxGroups = 20;
+
+              map<int, vector<edgeInfo>> oGroups;
+
+              //for some reason making oGroups and wGroups breaks ftlo ;_;
+              for(const auto& edge : g_osEdges) {
+                oGroups[edge.group].push_back(edge);
+              }
+
+              map<int, vector<edgeInfo>> wGroups;
+
+              for(const auto& edge : g_wsEdges) {
+                wGroups[edge.group].push_back(edge);
+              }
+
+
+              for(int cGroup = 0; cGroup < maxGroups; cGroup++) {
+
+                for (auto edge : oGroups[cGroup]) {
+                  std::vector<SDL_Vertex> vertices;
+                  SDL_Vertex A = edge.first;
+                  SDL_Vertex B = edge.second;
+
+                  float dx = A.position.x - px;
+                  float dy = A.position.y - py;
+                  float len = sqrt(dx * dx + dy * dy);
+                  A.position.y -= edge.firstZ;
+                  B.position.y -= edge.secondZ;
+
+                  float Ax2 = A.position.x + dx / len * WIN_WIDTH;
+                  float Ay2 = A.position.y + dy / len * WIN_WIDTH;
+
+                  std::tuple<bool, float, float> AIntersect = std::make_tuple(false, Ax2, Ay2);
+
+                  for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+                    for (const auto& wall : wGroups[wGroup]) {
+                      if(wGroup == cGroup) {continue;} //don't use walls with that same group
+                                                       //of occluders
+                      auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+                      if (intersects && iy < A.position.y) {
+                        AIntersect = std::make_tuple(true, ix, iy);
+                        break;
+                      }
+                    }
+                  }
+
+                  // Repeat for B
+                  dx = B.position.x - px;
+                  dy = B.position.y - py;
+                  len = sqrt(dx * dx + dy * dy);
+
+                  float Bx2 = B.position.x + dx / len * WIN_WIDTH;
+                  float By2 = B.position.y + dy / len * WIN_WIDTH;
+
+                  std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
+                  for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
+                    for (const auto& wall : wGroups[wGroup]) {
+                      if(wGroup == cGroup) {continue;}
+                      auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
+                      if (intersects && iy < B.position.y) {
+                        BIntersect = std::make_tuple(true, ix, iy);
+                        break;
+                      }
+                    }
+                  }
+
+                  auto [AIntersects, Ax3, Ay3] = AIntersect;
+                  auto [BIntersects, Bx3, By3] = BIntersect;
+
+                  SDL_Vertex A2 = {{Ax3, Ay3}, {0, 0, 0, 255}, {0, 0}};
+                  SDL_Vertex B2 = {{Bx3, By3}, {0, 0, 0, 255}, {0, 0}};
+
+                  // Handle case where there's no intersection
+                  if (!AIntersects) {
+                    A2 = {{Ax2, Ay2}, {0, 0, 0, 255}, {0, 0}};
+                  }
+                  if (!BIntersects) {
+                    B2 = {{Bx2, By2}, {0, 0, 0, 255}, {0, 0}};
+                  }
+
+
+                  // Create A3
+                  SDL_Vertex A3;
+                  if (AIntersects && Ay3 < py) {
+                    A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
+                  } else {
+                    float p_dx = B2.position.y - A2.position.y;
+                    float p_dy = A2.position.x - B2.position.x;
+                    len = sqrt(p_dx * p_dx + p_dy * p_dy);
+                    p_dx = p_dx / len * WIN_WIDTH;
+                    p_dy = p_dy / len * WIN_WIDTH;
+
+                    float side = (px - A2.position.x) * (B2.position.y - A2.position.y) - (py - A2.position.y) * (B2.position.x - A2.position.x);
+                    if (side > 0) { //does this need to be flipped?
+                      p_dx = -p_dx;
+                      p_dy = -p_dy;
+                    }
+
+                    A3 = {{A2.position.x + p_dx, A2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+                  }
+
+                  // Create B3
+                  SDL_Vertex B3;
+                  if (BIntersects && By3 < py) {
+                    B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
+                  } else {
+                    float p_dx = B2.position.y - A2.position.y;
+                    float p_dy = A2.position.x - B2.position.x;
+                    len = sqrt(p_dx * p_dx + p_dy * p_dy);
+                    p_dx = p_dx / len * WIN_WIDTH;
+                    p_dy = p_dy / len * WIN_WIDTH;
+
+                    float side = (px - B2.position.x) * (A2.position.y - B2.position.y) - (py - B2.position.y) * (A2.position.x - B2.position.x);
+                    if (side < 0) {
+                      p_dx = -p_dx;
+                      p_dy = -p_dy;
+                    }
+
+                    B3 = {{B2.position.x + p_dx, B2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
+                  }
+
+
+                  vertices.push_back(A);
+                  vertices.push_back(B);
+                  vertices.push_back(A2);
+                  vertices.push_back(A2);
+                  vertices.push_back(B);
+                  vertices.push_back(B2);
+
+
+                  //these are temporarily commented out
+                  vertices.push_back(B2);
+                  vertices.push_back(B3);
+                  vertices.push_back(A2);
+                  vertices.push_back(A2);
+                  vertices.push_back(B3);
+                  vertices.push_back(A3);
+                  SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+
+                }
+
+                for (auto edge : oGroups[cGroup]) {
+                  if(edge.wallMesh != nullptr) {
+                    SDL_Vertex v[4];
+                    int index = 0;
+                    for(auto x : edge.indices) {
+                      v[index] = edge.wallMesh->vertex[x];
+                      v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
+                      v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
+                      v[index].color.r = v[index].color.g;
+                      index++;
+                    }
+
+                    vector<int> indices = {0, 1, 2, 0, 2, 3};
+
+                    SDL_RenderGeometry(renderer, edge.wallMesh->texture, v, 4, indices.data(), 6);
+
+                    index = 0;
+                    for(auto x : edge.indices) {
+                      v[index].tex_coord.x = edge.wallMesh->vertexExtraData[x].first;
+                      v[index].tex_coord.y = edge.wallMesh->vertexExtraData[x].second;
+                      v[index].color.r = 255;
+                      v[index].color.g = 255;
+                      v[index].color.b = 255;
+                      index++;
+                    }
+
+                    SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
+                  }
+                }
+              }
+
+              //SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+            }
+
+
+            ////debugging
+            //if(0){
+            //SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+            //D(g_wsEdges.size());
+            //for(auto x : g_wsEdges) {
+            //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y-8, x.second.position.x, x.second.position.y - 8);
+            //}
+            //
+            //SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+            //for(auto x : g_osEdges) {
+            //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y, x.second.position.x, x.second.position.y);
+            //}
+            //}
+
+            if(drawhitboxes) {
+              for(auto &x : g_meshCollisions) {
+                if(x->visible) {
+                  SDL_Vertex v[x->numVertices];
+                  for(int i = 0; i < x->numVertices; i++) {
+                    v[i] = x->vertex[i];
+                    v[i].position.x += x->origin.x - g_camera.x;
+                    v[i].position.y += x->origin.y - g_camera.y;
+                  }
+
+                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
+
+                }
+              }
+            }
+
+            // sort
+            sort_by_y(g_actors);
+            for (long long unsigned int i = 0; i < g_actors.size(); i++)
+            {
+              g_actors[i]->render(renderer, g_camera);
+            }
+
+            //render black bars
+            if(!devMode && g_spotlightEnabled) {
+              //occluders
+
+              SDL_Rect blackrect;
+
+              blackrect = {
+                g_camera.desiredX - g_camera.width,
+                g_camera.desiredY - g_camera.height,
+                g_camera.width,
+                g_camera.height*3
+              };
+
+
+              blackrect = transformRect(blackrect);
+
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+              blackrect = {
+                g_camera.desiredX + g_camera.width,
+                g_camera.desiredY - g_camera.height,
+                g_camera.width,
+                g_camera.height*3
+              };
+
+
+              blackrect = transformRect(blackrect);
+
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+              blackrect = {
+                g_camera.desiredX,
+                g_camera.desiredY - g_camera.height,
+                g_camera.width,
+                g_camera.height
+              };
+
+              blackrect = transformRect(blackrect);
+
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+              blackrect = {
+                g_camera.desiredX,
+                g_camera.desiredY + g_camera.height,
+                g_camera.width,
+                g_camera.height
+              };
+
+              blackrect = transformRect(blackrect);
+
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+              blackrect = {
+                g_camera.desiredX,
+                g_camera.desiredY,
+                g_camera.width,
+                g_camera.height
+              };
+
+              blackrect = transformRect(blackrect);
+              SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+            }
+
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->software == 1)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+
+            //shade
+            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+
+            //drawUI();
+          
+            SDL_SetRenderTarget(renderer, NULL);
+            while (!cont) {
+          
+              //onframe things
+              SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
+          
+              memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
+              Uint32 format = SDL_PIXELFORMAT_ARGB8888;
+              SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+              Uint32* pixels = (Uint32*)pixelReference;
+              Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+          
+              offset += g_transitionSpeed + 0.02 * offset;
+          
+              for(int x = 0;  x < imageWidth; x++) {
+                for(int y = 0; y < imageHeight; y++) {
+          
+          
+                  int dest = (y * imageWidth) + x;
+                  //int src =  (y * imageWidth) + x;
+          
+                  if(pow(pow(imageWidth/2 - x,2) + pow(imageHeight + y,2),0.5) < offset) {
+                    pixels[dest] = transparent;
+                  } else {
+                    pixels[dest] = 0;
+                  }
+          
+                }
+              }
+          
+          
+          
+          
+          
+              ticks = SDL_GetTicks();
+              transitionElapsed = ticks - lastticks;
+              
+
+              //lock framerate
+              if(transitionElapsed < transitionMinFrametime) {
+                SDL_Delay(transitionMinFrametime - transitionElapsed);
+                ticks = SDL_GetTicks();
+                transitionElapsed = ticks - lastticks;
+              }
+              lastticks = ticks;
+          
+              SDL_RenderClear(renderer);
+              //render last frame
+              SDL_RenderCopy(renderer, frame, NULL, NULL);
+              SDL_UnlockTexture(transitionTexture);
+              SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+              SDL_RenderPresent(renderer);
+          
+              if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
+                cont = 1;
+              }
+            }
+            SDL_FreeSurface(transitionSurface);
+            SDL_DestroyTexture(transitionTexture);
+            SDL_DestroyTexture(frame);
+            transition = 1;
+            titleUIManager->hideAll();
+            SDL_GL_SetSwapInterval(1);
+          }
+        
+        }
+
+      }
+
+    }
+  }
+
   if(g_protagBonusSpeedMS < 0) {protag->bonusSpeed = 0;}
   if(g_usingMsToStunned == 1) {
     g_protagMsToStunned -= elapsed;
@@ -303,7 +1082,7 @@ void ExplorationLoop() {
   specialObjectsOncePerFrame(elapsed);
 
   // INPUT
-  if(!g_learningMove) { //the two getInput functions can't be used at-once.
+  if(!g_learningMove && !g_catchUpMode) { //the two getInput functions can't be used at-once.
     getExplorationInput(elapsed);
   }
   if(g_gamemode != gamemode::EXPLORATION) { return; }
@@ -553,7 +1332,7 @@ void ExplorationLoop() {
                   adventureUIManager->keyPrompting = 2;
                   g_amState = amState::CLOSED;
                   adventureUIManager->hideKi();
-                  breakpoint();
+                  //breakpoint();
                   adventureUIManager->continueDialogue();
                   break;
 
@@ -573,6 +1352,10 @@ void ExplorationLoop() {
                 adventureUIManager->sleepingMS = 0;
                 g_forceEndDialogue = 0;
                 g_keyItemFlavorDisplay = 1;
+                if(party.size() > 1 && party[1]->name == "common/neheten") {
+                  adventureUIManager->talker = party[1];
+                  adventureUIManager->dPointToMe = party[1];
+                }
                 adventureUIManager->continueDialogue();
                 oldinput[11] = 1;
               }
@@ -2376,108 +3159,22 @@ void ExplorationLoop() {
       g_closestMusicNode = nullptr;
     } else { 
       // update music
-      if (musicUpdateTimer > 500)
       {
-        musicUpdateTimer = 0;
-
-        // check musicalentities
-        entity *listenToMe = nullptr;
-        for (auto x : g_musicalEntities)
-        {
-          if (XYWorldDistance(x->getOriginX(), x->getOriginY(), g_focus->getOriginX(), g_focus->getOriginY()) < x->musicRadius && x->agrod && x->target == protag)
-          {
-            // we should be playing his music
-            // incorporate priority later
-            listenToMe = x;
-          }
-        }
-        if (listenToMe != nullptr)
-        {
-          g_closestMusicNode = nullptr;
-          if (g_currentMusicPlayingEntity != listenToMe)
-          {
-            Mix_FadeOutMusic(200);
-            // Mix_PlayMusic(listenToMe->theme, 0);
-            Mix_VolumeMusic(g_music_volume * 128);
-            entFadeFlag = 1;
-            fadeFlag = 0;
-            musicFadeTimer = 0;
-            g_currentMusicPlayingEntity = listenToMe;
-          }
-        }
-        else
-        {
-          bool hadEntPlayingMusic = 0;
-          if (g_currentMusicPlayingEntity != nullptr)
-          {
-            // stop ent music
-            // Mix_FadeOutMusic(1000);
-            hadEntPlayingMusic = 1;
-            g_currentMusicPlayingEntity = nullptr;
-          }
-          if (g_musicNodes.size() > 0 && !g_mute)
-          {
-            newClosest = protag->Get_Closest_Node(g_musicNodes);
-            if (g_closestMusicNode == nullptr)
-            {
-              if (!hadEntPlayingMusic)
-              {
-                Mix_PlayMusic(newClosest->blip, -1);
-                Mix_VolumeMusic(g_music_volume * 128);
-                g_closestMusicNode = newClosest;
-              }
-              else
-              {
-                g_closestMusicNode = newClosest;
-                // change music
-                Mix_FadeOutMusic(1000);
-                musicFadeTimer = 0;
-                fadeFlag = 1;
-                entFadeFlag = 0;
-              }
-            }
-            else
-            {
-
-              // Segfaults, todo is initialize these musicNodes to have something
-              if (newClosest->name != g_closestMusicNode->name)
-              {
-                // D(newClosest->name);
-                // if(newClosest->name == "silence") {
-                // Mix_FadeOutMusic(1000);
-                //}
-                g_closestMusicNode = newClosest;
-                // change music
-                Mix_FadeOutMusic(1000);
-                musicFadeTimer = 0;
-                fadeFlag = 1;
-                entFadeFlag = 0;
-              }
-            }
-          }
-        }
-        // check for any cues
-        for (auto x : g_cueSounds)
-        {
-          if (x->played == 0 && Distance(x->x, x->y, protag->x + protag->width / 2, protag->y) < x->radius)
-          {
-            x->played = 1;
-            playSound(-1, x->blip, 0);
-          }
-        }
+        //ripped out, replace with a proximity musicnode system
+        //i'm not taking out musicnodes at the moment
       }
-      if (fadeFlag && musicFadeTimer > 1000 && newClosest != 0)
-      {
-        fadeFlag = 0;
-        Mix_HaltMusic();
-        Mix_FadeInMusic(newClosest->blip, -1, 1000);
-      }
-      if (entFadeFlag && musicFadeTimer > 200)
-      {
-        entFadeFlag = 0;
-        Mix_HaltMusic();
-        Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
-      }
+//      if (fadeFlag && musicFadeTimer > 1000 && newClosest != 0)
+//      {
+//        fadeFlag = 0;
+//        Mix_HaltMusic();
+//        Mix_FadeInMusic(newClosest->blip, -1, 1000);
+//      }
+//      if (entFadeFlag && musicFadeTimer > 200)
+//      {
+//        entFadeFlag = 0;
+//        Mix_HaltMusic();
+//        Mix_FadeInMusic(g_currentMusicPlayingEntity->theme, -1, 200);
+//      }
     }
   }
   B("Music update");
@@ -5524,7 +6221,7 @@ void getExplorationInput(float &elapsed)
                         }
                         string content = to_string((int)round(g_music_volume * 100)) + "%";
                         g_settingsUI->valueTextboxes[9]->updateText(content, -1, 1);
-                        Mix_VolumeMusic(g_music_volume * 128);
+                        Mix_VolumeMusic(g_loadedMusicVolume * g_music_volume * 128);
                         break;
                       }
               case 10: {
@@ -6557,7 +7254,7 @@ void getExplorationInput(float &elapsed)
 
   if (keystate[SDL_SCANCODE_PERIOD] && devMode)
   {
-    // make navnode box
+    // toggle navnode at cursor
     devinput[21] = 1;
   }
 

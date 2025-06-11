@@ -18,6 +18,8 @@ using namespace std;
 
 void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint32>& palette);
 
+void runCombatScript(vector<string> combatScript, int turn, string& targeting, vector<int>& patterns, float& damage);
+
 enum type {
   NONE,
   ANIMAL,
@@ -164,7 +166,10 @@ public:
   turnSerialization serial;
 
   vector<int> inventory;
-  vector<vector<int>> attackPatterns;
+
+  vector<string> combatScript;
+
+  //vector<vector<int>> attackPatterns;
 
   int itemToUse = -1;
 
@@ -376,6 +381,8 @@ public:
   int accuB = 0;
   int accuC = 0;
   vector<int> curPatterns;
+  int turnCounter = 0;
+  float specificMultiplier = 0; //for damage from combatscripts
 
   vector<bool> dodgingThisTurn = {0, 0, 0, 0};
   bool shrink = 0;

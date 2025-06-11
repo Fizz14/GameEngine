@@ -24,6 +24,36 @@ void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint3
   SDL_FreeSurface(surface);
 }
 
+void runCombatScript(vector<string> combatScript, int turn, string& targeting, vector<int>& patterns, float& damage) {
+  int line = 0;
+
+  while(line < combatScript.size()) {
+
+    if(combatScript[line].substr(0,11) == "/addpattern") {
+      //M("/addpattern");
+      vector<string> x = splitString(combatScript[line], ' ');
+      patterns.push_back(stoi(x[1]));
+    }
+    
+    if(combatScript[line].substr(0,10) == "/targeting") {
+      //M("/targeting");
+      vector<string> x = splitString(combatScript[line], ' ');
+      targeting = x[1];
+    }
+
+    if(combatScript[line].substr(0,7) == "/damage") {
+      //M("/damage");
+      vector<string> x = splitString(combatScript[line], ' ');
+      damage = stoi(x[1]);
+    }
+    
+
+    line++;
+  }
+
+  return;
+}
+
 string getPossessivePronoun(combatant* c) {
   string pronoun = "";
   switch(c->gender) {
@@ -402,19 +432,23 @@ combatant::combatant(string ffilename, int fxp) {
   file >> temp;
   file >> article;
 
-  file >> temp;
-  file >> temp; // Read the '{'
-  while (true) {
-    std::getline(file, temp);
-    temp.erase(std::remove(temp.begin(), temp.end(), '\r'), temp.end()); // Remove carriage return if present
-    if(temp.empty()) {continue;}
-    if (temp == "}") break;
-    vector<string> x = splitString(temp, ' ');
-    attackPatterns.push_back({});
-    for(auto y : x) {
-      attackPatterns[attackPatterns.size()-1].push_back(stoi(y));
-    }
-  }
+  // now use combatscripts
+  // to determine stuff like what attack to use, who the attack hits, what patterns are used, how much dmg,
+  
+
+//  file >> temp;
+//  file >> temp; // Read the '{'
+//  while (true) {
+//    std::getline(file, temp);
+//    temp.erase(std::remove(temp.begin(), temp.end(), '\r'), temp.end()); // Remove carriage return if present
+//    if(temp.empty()) {continue;}
+//    if (temp == "}") break;
+//    vector<string> x = splitString(temp, ' ');
+//    attackPatterns.push_back({});
+//    for(auto y : x) {
+//      attackPatterns[attackPatterns.size()-1].push_back(stoi(y));
+//    }
+//  }
 
   file >> temp;
   file >> temp; //read the '{'
@@ -427,6 +461,20 @@ combatant::combatant(string ffilename, int fxp) {
     pair<int, int> a; a.first = stoi(x[0]);
     a.second = stoi(x[1]);
     spiritTree.push_back(a);
+  }
+
+
+  // load combatscript
+
+  loadstr = "resources/static/combatscripts/" + ffilename + ".txt";
+  if(PHYSFS_exists(loadstr.c_str())) {
+    //M("Loading the combatscript for " + ffilename);
+    this->combatScript = loadText(loadstr);
+    parseScriptForLabels(combatScript);
+
+//    for(auto x : combatScript) {
+//      D(x);
+//    }
   }
 
 
@@ -444,6 +492,7 @@ combatant::combatant(string ffilename, int fxp) {
   serial.target = -1;
   serial.action = turnAction::ATTACK;
   serial.actionIndex = -1;
+
 }
 
 combatant::~combatant() {
@@ -2232,6 +2281,8 @@ void drawCombatants() {
 
   count = g_partyCombatants.size();
   combatUIManager->partyHealthBox->show = 1;
+  combatUIManager->partyMiniText->show = 1;
+  combatUIManager->partyText->show = 1;
   gap = 0.1;
 
   for (int i = 0; i < count; ++i) {
@@ -2335,7 +2386,9 @@ void drawCombatants() {
 
   }
   combatUIManager->partyHealthBox->show = 0;
-  combatUIManager->partyMiniText->x = 10;
+  combatUIManager->partyMiniText->show = 0;
+  combatUIManager->partyText->show = 0;
+  //combatUIManager->partyMiniText->x = 10;
 
 
 }
@@ -2429,7 +2482,7 @@ void CombatLoop() {
     case submode::OUTWIPE:
       {
         resetTrivialData();
-        M("OUTWIPE");
+        //M("OUTWIPE");
 
         for(auto x : g_partyCombatants) {
           writeSaveField(x->filename + "-dealt", x->dmgDealtOverFight);
@@ -2542,18 +2595,15 @@ void CombatLoop() {
           SDL_GL_SetSwapInterval(1);
         }
 
-        if(g_combatWorldEnt != nullptr) {
-          for(auto x : g_combatWorldEnt->children) {
-            //x->tangible = 0;
-            x->opacity_delta = -3;
-            x->semisolid = 0;
-          }
-          //g_combatWorldEnt->tangible = 0;
-          g_combatWorldEnt->opacity_delta = -3;
-          g_combatWorldEnt->semisolid = 0;
+        for(auto x : g_combatWorldEnts) {
+          x->opacity_delta = -3;
+          x->semisolid = 0;
+          x->agrod = 0;
         }
-
+        g_combatWorldEnts.clear();
         g_gamemode = gamemode::EXPLORATION;
+        protag_can_move = 1;
+        protag->dynamic = 1;
         transition = 1;
         transitionDelta = transitionImageHeight;
         combatUIManager->hideAll();
@@ -3195,7 +3245,11 @@ void CombatLoop() {
 
           combatUIManager->currentText = "";
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+          M("set dodgingthisturn");
           combatUIManager->dodgingThisTurn[combatUIManager->executePIndex] = 1;
+          for(auto x :combatUIManager->dodgingThisTurn) {
+            D(x);
+          }
           g_submode = submode::TEXT_P;
         } else if(c->serial.action == turnAction::FLEE) {
           int levelDifference = 0;
@@ -3406,7 +3460,64 @@ void CombatLoop() {
 
           if(validCombatants.size() <=0) { abort();}
 
-          int dodgingIndex = rng(0, validCombatants.size() - 1);
+          //int dodgingIndex = rng(0, validCombatants.size() - 1);
+          //execute script to determine:
+          // who to attack (/target -> dodging index)
+          // what patterns to use (/addpattern -> combatUIManager->curPatterns)
+          // base dmg per level (/damage ->
+          //
+
+          int dodgingIndex = 0;
+          string targeting = "";
+          vector<int> patterns = {};
+          runCombatScript(c->combatScript, combatUIManager->turnCounter, targeting, patterns, combatUIManager->specificMultiplier);
+
+
+          //use targeting to set dodgingIndex
+          if(targeting == "lowest") {
+            int least = 1000000;
+            for(int i = 0; i < validCombatants.size(); i++) {
+              if(validCombatants[i]->health < least) {
+                dodgingIndex = i;
+                least = validCombatants[i]->health;
+              }
+            }
+          } else if(targeting == "highest") {
+            int highest = -1;
+            for(int i = 0; i < validCombatants.size(); i++) {
+              if(validCombatants[i]->health > highest) {
+                dodgingIndex = i;
+                highest = validCombatants[i]->health;
+              }
+            }
+            
+          } else if(targeting == "random") {
+            dodgingIndex = rng(0, validCombatants.size() - 1);
+          } else if(targeting == "absolute0") {
+            //Fomm
+            dodgingIndex = 0;
+          } else if(targeting == "absolute1") {
+            //Neheten
+            dodgingIndex = 1;
+          } else if(targeting == "absolute2") {
+            //Blish
+            dodgingIndex = 2;
+          } else if(targeting == "absolute3") {
+            //Dafua
+            dodgingIndex = 3;
+          }
+
+          combatUIManager->curPatterns.clear();
+          for(auto x : patterns) {
+            combatUIManager->curPatterns.push_back(x);
+          }
+
+
+
+
+
+
+
 
           //check for taunt
           bool breakflag = 0;
@@ -3432,7 +3543,7 @@ void CombatLoop() {
             adjustedDIndex++;
           }
           combatUIManager->partyDodgingCombatant = e;
-          int damage = c->curAttack - e->curDefense;
+          int damage = (c->curAttack* combatUIManager->specificMultiplier) - e->curDefense;
           damage *= frng(0.70,1.30);
           if(damage < 0) {damage = 0;}
           combatUIManager->damageFromEachHit = damage;
@@ -3451,9 +3562,16 @@ void CombatLoop() {
           string message = getLanguageData("CombatEnemyAttack");
           message = stringMultiInject(message, {c->name, e->name, to_string(damage)});
 
+          D(adjustedDIndex);
+          for(auto x :combatUIManager->dodgingThisTurn) {
+            D(x);
+          }
+
           if(combatUIManager->dodgingThisTurn[adjustedDIndex] == 1) {
+            M("Should shrink");
             combatUIManager->shrink = 1;
           } else {
+            M("Shouldn't shrink");
             combatUIManager->shrink = 0;
           }
 
@@ -3519,11 +3637,12 @@ void CombatLoop() {
             combatUIManager->dodgerX = 512;
             combatUIManager->dodgerY = 512;
             combatant* e = g_enemyCombatants[combatUIManager->executeEIndex];
-            if(e->attackPatterns.size() <0) {
-              E("Add attack patterns for " + e->name);
-              abort();
-            }
-            combatUIManager->curPatterns = e->attackPatterns[rng(0, e->attackPatterns.size()-1)];
+
+//            if(e->attackPatterns.size() <0) {
+//              E("Add attack patterns for " + e->name);
+//              abort();
+//            }
+            //combatUIManager->curPatterns = e->attackPatterns[rng(0, e->attackPatterns.size()-1)];
 
 //            M("Spawning bullets for");
 //
@@ -3574,6 +3693,7 @@ void CombatLoop() {
               curCombatantIndex ++; //used for choosing which protag picks action in submode::MAIN
             }
             combatUIManager->currentOption = 0;
+            combatUIManager->turnCounter++;
             g_submode = submode::MAIN;
             breakout = 1;
             break;
@@ -3710,7 +3830,7 @@ void CombatLoop() {
         }
 
         combatUIManager->calculateXP();
-        D(combatUIManager->xpToGrant);
+        //D(combatUIManager->xpToGrant);
         //combatUIManager->xpToGrant = 1000;
         curCombatantIndex = 0;
 
@@ -4885,9 +5005,9 @@ void CombatLoop() {
           curCombatantIndex++;
           if(curCombatantIndex == g_partyCombatants.size()) {
             curCombatantIndex = 0;
-            for(int i = 0; i < 4; i ++) {
-              combatUIManager->dodgingThisTurn[i] = 0;
-            }
+//            for(int i = 0; i < 4; i ++) {
+//              combatUIManager->dodgingThisTurn[i] = 0;
+//            }
             while(g_partyCombatants[curCombatantIndex]->health <= 0 && curCombatantIndex+1 < g_partyCombatants.size()) {
               curCombatantIndex ++;
             }

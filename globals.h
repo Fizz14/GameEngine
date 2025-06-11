@@ -151,8 +151,8 @@ class camera
   public:
     float oldx = 0;
     float oldy = 0;
-    int x = 200;
-    int y = 200;
+    float x = 200;
+    float y = 200;
     int desiredX = 0;
     int desiredY = 0;
     int repoX = -1;
@@ -756,6 +756,7 @@ extern bool g_fullscreen;
 extern camera g_camera;
 extern entity *protag;
 extern entity *mainProtag;
+extern entity *debugMe;
 extern entity* g_approacher;
 extern float g_approachBlocks;
 extern entity* g_approachMe;
@@ -858,6 +859,12 @@ extern Mix_Chunk *g_bonk;
 extern Mix_Chunk *g_deathsound;
 extern musicNode *g_closestMusicNode;
 extern musicNode *newClosest;
+
+extern Mix_Music* g_loadedMusic;
+extern float g_loadedMusicVolume;
+extern string g_loadedMusicStr;
+extern bool g_mapHasMusic;
+extern Mix_Music* g_deleteMusic;
 
 extern int g_musicSilenceMs;
 extern int g_currentMusicSilenceMs;
@@ -1194,7 +1201,7 @@ extern int curLevelIndex;
 
 extern vector<int> g_combatInventory;
 
-extern entity* g_combatWorldEnt;
+//extern entity* g_combatWorldEnt;
 
 extern int g_maxInventorySize;
 
@@ -1213,6 +1220,15 @@ extern float g_encounterChance;
 extern vector<string> loadedBackgrounds;
 
 extern int g_combatEntryType;
+
+
+extern int g_catchUpMode;
+extern int g_catchUpModeMs; // start a Timer and stop CatchUpMode if the enemies
+                         // don't reach the player in time- just consider them to be
+                         // in the fight
+extern vector<entity*> g_combatWorldEnts; //keep a vector of all the entities who were on-screen 
+
+extern vector<entity*> g_worldEnemies;
 
 enum class lossSub {
   INWIPE,
