@@ -1968,7 +1968,7 @@ void write_map(entity *mapent)
           break;
         }
         case 3: {
-          impliedSlopeTri* n = new impliedSlopeTri(marker->x, marker->y + marker->height + 0, marker->x + marker->width, marker->y + 0, wallstart, 0);
+          //impliedSlopeTri* n = new impliedSlopeTri(marker->x, marker->y + marker->height + 0, marker->x + marker->width, marker->y + 0, wallstart, 0);
 
           break;
         }

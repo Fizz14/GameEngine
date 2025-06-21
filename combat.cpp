@@ -4,6 +4,7 @@
 #include "utils.h"
 #include <unordered_map>
 #include <vector>
+#include <regex>
 
 void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint32>& palette) {
   // Load the image into a surface
@@ -24,7 +25,7 @@ void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint3
   SDL_FreeSurface(surface);
 }
 
-void runCombatScript(vector<string> combatScript, int turn, string& targeting, vector<int>& patterns, float& damage) {
+void runCombatScript(vector<string> combatScript, int turn, combatant* c, string& targeting, vector<int>& patterns, float& damage) {
   int line = 0;
 
   while(line < combatScript.size()) {
@@ -46,6 +47,119 @@ void runCombatScript(vector<string> combatScript, int turn, string& targeting, v
       vector<string> x = splitString(combatScript[line], ' ');
       damage = stoi(x[1]);
     }
+
+    if(combatScript[line].at(0) == ':')
+    {
+      //unconditional jump
+      //
+      // :label
+      // #
+      // <label>
+      //
+      // ... will jump to that label
+      //
+      string s = combatScript[line];
+      s.erase(0,1);
+      string DIstr = "0";
+      DIstr = s.substr(0, s.find(' '));
+      s.erase(0, s.find(' ') + 1);
+      int DI = 0;
+      DI = stoi(DIstr);
+      line = DI - 3;
+    }
+    if(combatScript[line][0] == '#') {
+      return;
+    }
+
+    if(combatScript[line].substr(0,7) == "/print ") {
+      // print from script
+      string s = combatScript[line];
+      vector<string> x = splitString(s, ' ');
+      if(x.size() >= 2) {
+        string printMe = "Print from Script: " + s.substr(7);
+        M(printMe);
+      }
+    }
+
+    if (regex_match(combatScript[line], regex("[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]")))
+    {
+      // write selfdata 5->[4]
+      string s = combatScript[line];
+      int value = stoi(s.substr(0, s.find('-')));
+      s.erase(0, s.find('-') +1);
+      string blockstr = s.substr(s.find('['));
+      blockstr.pop_back();
+      blockstr.erase(0, 1);
+      int block = stoi(blockstr);
+      c->data[block] = value;
+    }
+
+    if (regex_match(combatScript[line], regex("\\[[[:digit:]]+\\]")))
+    {
+      M("reading selfdata to jump");
+      // read selfdata
+      //
+      // Make sure to use values in the order low to high
+      //
+      // [5]
+      // *0:waszero
+      // *1:wasone
+      // #
+      // <waszero>
+      // /print it was zero
+      // #
+      // <wasone>
+      // /print it was one
+      // #
+      //
+      int j = 1;
+      // parse which block of memory we are interested in
+      string s = combatScript[line];
+      s.erase(0, 1);
+      string blockstr = s.substr(0, s.find(']'));
+      int block = stoi(blockstr);
+      D(block);
+      string res = combatScript[line + j];
+      D(res);
+
+      while (res.find('*') != std::string::npos)
+      {
+  
+        // parse option
+        //  *15 29 -> if data is 15, go to line 29
+        string s = combatScript[line + j];
+        D(s);
+        s.erase(0, 1);
+        int condition = stoi(s.substr(0, s.find(':')));
+        s.erase(0, s.find(':') + 1);
+        int jump = stoi(s);
+        if (c->data[block] <= condition)
+        {
+          line = jump-3;
+          D(line);
+        }
+        j++;
+        res = combatScript[line + j];
+      }
+
+
+    }
+
+    if(combatScript[line].substr(0,10) == "/idletext ") {
+      // idletext if the enemy does not attack
+      // only is printed if there are no attackpatterns
+      // from the script
+      // you just get one line
+      M("Try to set idletext here");
+      string s = combatScript[line];
+      vector<string> x = splitString(s, ' ');
+      if(x.size() >= 2) {
+        D(x[1]);
+        combatUIManager->idleText = "Idle text is set now";
+      }
+
+    }
+
     
 
     line++;
@@ -3245,11 +3359,10 @@ void CombatLoop() {
 
           combatUIManager->currentText = "";
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-          M("set dodgingthisturn");
           combatUIManager->dodgingThisTurn[combatUIManager->executePIndex] = 1;
-          for(auto x :combatUIManager->dodgingThisTurn) {
-            D(x);
-          }
+//          for(auto x :combatUIManager->dodgingThisTurn) {
+//            D(x);
+//          }
           g_submode = submode::TEXT_P;
         } else if(c->serial.action == turnAction::FLEE) {
           int levelDifference = 0;
@@ -3470,7 +3583,7 @@ void CombatLoop() {
           int dodgingIndex = 0;
           string targeting = "";
           vector<int> patterns = {};
-          runCombatScript(c->combatScript, combatUIManager->turnCounter, targeting, patterns, combatUIManager->specificMultiplier);
+          runCombatScript(c->combatScript, combatUIManager->turnCounter, c, targeting, patterns, combatUIManager->specificMultiplier);
 
 
           //use targeting to set dodgingIndex
@@ -3562,16 +3675,16 @@ void CombatLoop() {
           string message = getLanguageData("CombatEnemyAttack");
           message = stringMultiInject(message, {c->name, e->name, to_string(damage)});
 
-          D(adjustedDIndex);
-          for(auto x :combatUIManager->dodgingThisTurn) {
-            D(x);
-          }
+//          D(adjustedDIndex);
+//          for(auto x :combatUIManager->dodgingThisTurn) {
+//            D(x);
+//          }
 
           if(combatUIManager->dodgingThisTurn[adjustedDIndex] == 1) {
-            M("Should shrink");
+            //M("Should shrink");
             combatUIManager->shrink = 1;
           } else {
-            M("Shouldn't shrink");
+            //M("Shouldn't shrink");
             combatUIManager->shrink = 0;
           }
 
@@ -3630,32 +3743,47 @@ void CombatLoop() {
             combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
             combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
           } else {
-            g_submode = submode::DODGING;
-            combatUIManager->accuA = 1000000;
-            combatUIManager->accuB = 1000000;
-            combatUIManager->accuC = 1000000;
-            combatUIManager->dodgerX = 512;
-            combatUIManager->dodgerY = 512;
-            combatant* e = g_enemyCombatants[combatUIManager->executeEIndex];
 
-//            if(e->attackPatterns.size() <0) {
-//              E("Add attack patterns for " + e->name);
-//              abort();
-//            }
-            //combatUIManager->curPatterns = e->attackPatterns[rng(0, e->attackPatterns.size()-1)];
+            //if we have no attack patterns, don't bother going into the dodging state
+            if(combatUIManager->curPatterns.size() == 0) {
+              combatUIManager->finalText = combatUIManager->idleText;
+              combatUIManager->currentText = "";
+              combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+              combatUIManager->dialogProceedIndicator->y = 0.25;
+              g_submode = submode::TEXT_IDLE;
+              break;
 
-//            M("Spawning bullets for");
-//
-//            for(auto x : combatUIManager->curPatterns) {
-//              cout << x << " ";
-//            }
-//            cout << endl;
 
-            for(int i = 0; i < g_miniEnts.size(); i++) {
-              delete g_miniEnts[i];
-              i--;
+
+            } else {
+ 
+              g_submode = submode::DODGING;
+              combatUIManager->accuA = 1000000;
+              combatUIManager->accuB = 1000000;
+              combatUIManager->accuC = 1000000;
+              combatUIManager->dodgerX = 512;
+              combatUIManager->dodgerY = 512;
+              combatant* e = g_enemyCombatants[combatUIManager->executeEIndex];
+  
+  //            if(e->attackPatterns.size() <0) {
+  //              E("Add attack patterns for " + e->name);
+  //              abort();
+  //            }
+              //combatUIManager->curPatterns = e->attackPatterns[rng(0, e->attackPatterns.size()-1)];
+  
+  //            M("Spawning bullets for");
+  //
+  //            for(auto x : combatUIManager->curPatterns) {
+  //              cout << x << " ";
+  //            }
+  //            cout << endl;
+  
+              for(int i = 0; i < g_miniEnts.size(); i++) {
+                delete g_miniEnts[i];
+                i--;
+              }
+              g_miniBullets.clear();
             }
-            g_miniBullets.clear();
           }
         }
 
@@ -4995,6 +5123,84 @@ void CombatLoop() {
           }
 
         }
+        break;
+      }
+    case submode::TEXT_IDLE:
+      {
+        combatUIManager->mainPanel->show = 1;
+        combatUIManager->mainText->show = 1;
+        combatUIManager->optionsPanel->show = 0;
+
+        if(input[8]) {
+          text_speed_up = 50;
+        } else {
+          text_speed_up = 1;
+        }
+
+
+        curTextWait += elapsed * text_speed_up;
+
+        if(combatUIManager->finalText == combatUIManager->currentText) {
+          combatUIManager->dialogProceedIndicator->show = 1;
+        } else {
+          combatUIManager->dialogProceedIndicator->show = 0;
+        }
+
+        if (curTextWait >= textWait)
+        {
+
+          if(combatUIManager->finalText != combatUIManager->currentText) {
+            if(input[8]) {
+              combatUIManager->currentText = combatUIManager->finalText;
+            } else {
+              combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
+              playSound(6, g_ui_voice, 0);
+            }
+            combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+
+          }
+
+          curTextWait = 0;
+        }
+
+        if(combatUIManager->finalText == combatUIManager->currentText) {
+          if(input[11] && !oldinput[11]) {
+            //advance dialog
+            if(combatUIManager->queuedStrings.size() > 0) {
+              combatUIManager->dialogProceedIndicator->y = 0.25;
+              combatUIManager->currentText = "";
+              combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+              combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+            } else {
+              combatUIManager->mainPanel->show = 0;
+              combatUIManager->mainText->show = 0;
+              combatUIManager->dialogProceedIndicator->show = 0;
+              combatUIManager->optionsPanel->show = 1;
+              //curStatusIndex++;
+
+              combatUIManager->executeEIndex++;
+              g_submode = submode::EXECUTE_E;
+            }
+          }
+        }
+
+        //animate dialogproceedarrow
+        {
+          combatUIManager->c_dpiDesendMs += elapsed;
+          if(combatUIManager->c_dpiDesendMs > combatUIManager->dpiDesendMs) {
+            combatUIManager->c_dpiDesendMs = 0;
+            combatUIManager->c_dpiAsending = !combatUIManager->c_dpiAsending;
+
+          }
+
+          if(combatUIManager->c_dpiAsending) {
+            combatUIManager->dialogProceedIndicator->y += combatUIManager->dpiAsendSpeed;
+          } else {
+            combatUIManager->dialogProceedIndicator->y -= combatUIManager->dpiAsendSpeed;
+
+          }
+        }
+
         break;
       }
     case submode::STATUS_P:

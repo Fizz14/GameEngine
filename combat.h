@@ -18,7 +18,9 @@ using namespace std;
 
 void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint32>& palette);
 
-void runCombatScript(vector<string> combatScript, int turn, string& targeting, vector<int>& patterns, float& damage);
+class combatant;
+
+void runCombatScript(vector<string> combatScript, int turn, combatant* c, string& targeting, vector<int>& patterns, float& damage);
 
 enum type {
   NONE,
@@ -165,6 +167,9 @@ public:
 
   turnSerialization serial;
 
+  //self-data
+  int data[25] = {0};
+
   vector<int> inventory;
 
   vector<string> combatScript;
@@ -288,7 +293,7 @@ enum class submode {
   STATUS_E,
   TEXT_STATUS_E,
   MEMBERDEADTEXT_P, //member dead from self damage
-    
+  TEXT_IDLE //prints the text when an enemy doesn't attack
 };
 
 
@@ -408,6 +413,8 @@ public:
   int xpToGrant;
 
   int moveToLearn = 0;
+
+  string idleText = "";
 
   void calculateXP();
 

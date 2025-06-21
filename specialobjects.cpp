@@ -481,12 +481,12 @@ void specialObjectsInit(entity* a) {
       a->scriptedAnimation = 1;
       a->useAnimForWalking = 0;
       a->animation = 0;
-      //a->moveThroughWalls = 1;
+      a->moveThroughWalls = 1;
       //D(devMode);
       if(devMode == 0) {
         a->xagil = -25;
       }
-      a->timeToLiveMs = 10000;
+      a->timeToLiveMs = 25000;
       a->usingTimeToLive = 1;
 
       break;

@@ -158,6 +158,11 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
     //M("Loaded wall " + wallAddr);
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
+    /*
+     * Collisions are made of vertical walls each having 4 verts
+     *
+     */
+     
     collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION, standalone);
     //M("Loaded collision " + collisionAddr);
   }
@@ -426,6 +431,7 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
 
 
 mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone) {
+  breakpoint();
   string address = faddress;
   vector<vertex3d> vertices;
   vector<face> faces;

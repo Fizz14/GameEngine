@@ -5807,7 +5807,7 @@ int interact(float elapsed, entity *protag)
         adventureUIManager->blip = g_ui_voice;
         //adventureUIManager->sayings = &g_entities[i]->sayings;
         adventureUIManager->talker = g_entities[i];
-        if(g_entities[i]->turnToFacePlayer) {
+        if(g_entities[i]->useDialogPointer) {
           adventureUIManager->dPointToMe = g_entities[i];
         }
 

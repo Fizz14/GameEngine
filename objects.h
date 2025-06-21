@@ -1427,6 +1427,7 @@ class entity:public actor {
     float originalHeight = 0; 
     bool shrinking = 0; //used to animate entities shrinking away
     bool turnToFacePlayer = true; //face player when talking
+    int originalDirection = 0; //turn back
     bool useAnimForWalking = 0;
     int animWalkFrames = 0; //how long is his walk animation?
     SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
@@ -1729,7 +1730,8 @@ class entity:public actor {
     //used for atomically lighting large entities, e.g stalkers
     bool large = 0;
 
-    bool boxy = 0;
+    //bool boxy = 0;
+    bool useDialogPointer = 0;
 
     //worlditem
     bool isWorlditem = 0;

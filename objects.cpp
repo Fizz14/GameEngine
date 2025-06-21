@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <numeric>
 
-
 #include <filesystem> //checking if a usable dir exists
 
 #include "globals.h"
@@ -3466,7 +3465,8 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   file >> large;
 
   file >> comment;
-  file >> boxy;
+  //file >> boxy;
+  file >> useDialogPointer;
 
   if(large) {
     g_large_entities.push_back(this);
@@ -10977,7 +10977,7 @@ void adventureUI::continueDialogue()
     int j = 1;
     string res = scriptToUse->at(dialogue_index + j).substr(1);
     responses.clear();
-    while (res.find(':') != std::string::npos)
+    while (res.find('*') != std::string::npos)
     {
       responses.push_back(res.substr(0, res.find(':')));
       j++;
@@ -11011,7 +11011,7 @@ void adventureUI::continueDialogue()
     adventureUIManager->kiIndex = 0;
     oldinput[11] = 1;
     oldinput[8] = 1;
-    while (res.find(':') != std::string::npos)
+    while (res.find('*') != std::string::npos)
     {
       pair<int, int> keyPromptEntry;
       int pos = res.find(':');
@@ -11026,6 +11026,76 @@ void adventureUI::continueDialogue()
     keyPrompting = true;
     return;
   }
+
+  //multi key CHECK
+  //
+  // conditional jump based on if the player has all the keys they need, no prompt
+  //
+  // /checkkeys 5 6 7
+  // *1:haskeys
+  // Doesn't have the keys!
+  // #
+  // <haskeys>
+  // Has the keys!
+  // #
+  //
+  if(scriptToUse->at(dialogue_index + 1).substr(0,10) == "/checkkeys") {
+    string s = scriptToUse->at(dialogue_index+1);
+    vector<string> x = splitString(s, ' ');
+    vector<int> keysToCheckFor = {};
+    if(x.size() > 1) {
+      for(int i = 1; i < x.size(); i++) {
+        keysToCheckFor.push_back(stoi(x[i]));
+      }
+
+      int value = 1;
+      for(auto x : keysToCheckFor) {
+        int good = 0;
+        for(auto y : g_keyItems) {
+          if(x == y->index) {
+            good = 1;
+
+          }
+        }
+        if(good == 0) {
+          value = 0;
+          break;
+        }
+      }
+      D(value);
+
+
+      int  j = 1;
+      string res = scriptToUse->at(dialogue_index + 1 + j);
+      int yesDest = 0;
+      int noDest = 0;
+      while (res.find('*') != std::string::npos)
+      {
+        string s = scriptToUse->at(dialogue_index + 1 + j);
+        s.erase(0,1);
+        int condition = stoi(s.substr(0, s.find(':')));
+        s.erase(0, s.find(':') + 1);
+        int jump = stoi(s);
+        D(condition);
+        if(value == condition) {
+          M("Take the jump");
+          dialogue_index = jump - 3;
+          this->continueDialogue();
+          return;
+        }
+        j++;
+        res = scriptToUse->at(dialogue_index + 1 + j);
+      }
+
+
+    }
+
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+  
 
   //take key item
   //
@@ -11357,70 +11427,70 @@ void adventureUI::continueDialogue()
   }
 
   // menu question
-  if (scriptToUse->at(dialogue_index + 1).at(0) == ')')
-  {
-    g_saveOverwriteResponse = 1;
-    // make a question
-    dialogue_index++;
-    pushText(talker);
-    askingQuestion = true;
-    // put responses in responses vector
-    int j = 1;
-    string res = scriptToUse->at(dialogue_index + j).substr(1);
-    responses.clear();
-    while (res.find(':') != std::string::npos)
-    {
-      responses.push_back(res.substr(0, res.find(':')));
-      j++;
-      res = scriptToUse->at(dialogue_index + j).substr(1);
-    }
-
-    return;
-  }
+//  if (scriptToUse->at(dialogue_index + 1).at(0) == ')')
+//  {
+//    g_saveOverwriteResponse = 1;
+//    // make a question
+//    dialogue_index++;
+//    pushText(talker);
+//    askingQuestion = true;
+//    // put responses in responses vector
+//    int j = 1;
+//    string res = scriptToUse->at(dialogue_index + j).substr(1);
+//    responses.clear();
+//    while (res.find('*') != std::string::npos)
+//    {
+//      responses.push_back(res.substr(0, res.find(':')));
+//      j++;
+//      res = scriptToUse->at(dialogue_index + j).substr(1);
+//    }
+//
+//    return;
+//  }
 
   // menu erase prompt
-  if (scriptToUse->at(dialogue_index + 1).at(0) == '(')
-  {
-    g_saveOverwriteResponse = 2;
-    // make a question
-    dialogue_index++;
-    pushText(talker);
-    askingQuestion = true;
-    // put responses in responses vector
-    int j = 1;
-    string res = scriptToUse->at(dialogue_index + j).substr(1);
-    responses.clear();
-    while (res.find(':') != std::string::npos)
-    {
-      responses.push_back(res.substr(0, res.find(':')));
-      j++;
-      res = scriptToUse->at(dialogue_index + j).substr(1);
-    }
-
-    return;
-  }
+//  if (scriptToUse->at(dialogue_index + 1).at(0) == '(')
+//  {
+//    g_saveOverwriteResponse = 2;
+//    // make a question
+//    dialogue_index++;
+//    pushText(talker);
+//    askingQuestion = true;
+//    // put responses in responses vector
+//    int j = 1;
+//    string res = scriptToUse->at(dialogue_index + j).substr(1);
+//    responses.clear();
+//    while (res.find('*') != std::string::npos)
+//    {
+//      responses.push_back(res.substr(0, res.find(':')));
+//      j++;
+//      res = scriptToUse->at(dialogue_index + j).substr(1);
+//    }
+//
+//    return;
+//  }
 
   // menu erase confirm prompt
-  if (scriptToUse->at(dialogue_index + 1).at(0) == '-')
-  {
-    g_saveOverwriteResponse = 3;
-    // make a question
-    dialogue_index++;
-    pushText(talker);
-    askingQuestion = true;
-    // put responses in responses vector
-    int j = 1;
-    string res = scriptToUse->at(dialogue_index + j).substr(1);
-    responses.clear();
-    while (res.find(':') != std::string::npos)
-    {
-      responses.push_back(res.substr(0, res.find(':')));
-      j++;
-      res = scriptToUse->at(dialogue_index + j).substr(1);
-    }
-
-    return;
-  }
+//  if (scriptToUse->at(dialogue_index + 1).at(0) == '-')
+//  {
+//    g_saveOverwriteResponse = 3;
+//    // make a question
+//    dialogue_index++;
+//    pushText(talker);
+//    askingQuestion = true;
+//    // put responses in responses vector
+//    int j = 1;
+//    string res = scriptToUse->at(dialogue_index + j).substr(1);
+//    responses.clear();
+//    while (res.find('*') != std::string::npos)
+//    {
+//      responses.push_back(res.substr(0, res.find(':')));
+//      j++;
+//      res = scriptToUse->at(dialogue_index + j).substr(1);
+//    }
+//
+//    return;
+//  }
 
   // give item
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/give")
@@ -11454,66 +11524,66 @@ void adventureUI::continueDialogue()
   // <success>
   // `Okay, I will let you enter the circus
   // #
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/familiarcheck")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-
-    vector<string> names;
-
-    int fail = 0;
-    for(int i = 1; i < x.size()-1; i++) {
-      int good = 0;
-      for(auto y : g_familiars) {
-        if(y->name == x[i]) { good = 1;}
-      }
-      if(!good) { fail = 1; break;}
-    }
-
-    if(fail) {
-      dialogue_index++;
-      this->continueDialogue();
-      return;
-    } else {
-      //do the jump
-      string jumpst = x[x.size()-1];
-      jumpst.erase(jumpst.begin());
-      int jump = stoi(jumpst);
-      dialogue_index = jump - 3;
-      this->continueDialogue();
-      return;
-
-    }
-  }
+//  if (scriptToUse->at(dialogue_index + 1).substr(0, 14) == "/familiarcheck")
+//  {
+//    string s = scriptToUse->at(dialogue_index + 1);
+//    vector<string> x = splitString(s, ' ');
+//
+//    vector<string> names;
+//
+//    int fail = 0;
+//    for(int i = 1; i < x.size()-1; i++) {
+//      int good = 0;
+//      for(auto y : g_familiars) {
+//        if(y->name == x[i]) { good = 1;}
+//      }
+//      if(!good) { fail = 1; break;}
+//    }
+//
+//    if(fail) {
+//      dialogue_index++;
+//      this->continueDialogue();
+//      return;
+//    } else {
+//      //do the jump
+//      string jumpst = x[x.size()-1];
+//      jumpst.erase(jumpst.begin());
+//      int jump = stoi(jumpst);
+//      dialogue_index = jump - 3;
+//      this->continueDialogue();
+//      return;
+//
+//    }
+//  }
 
   // suck the selected familiars towards a given entity
   // removes them from the player's familiars
   // /familiarsuck common/chest circus/ticket-a circus/ticket-b circus/ticket-c 
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/familiarsuck")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    vector<string> x = splitString(s, ' ');
-
-    vector<string> names;
-
-    for(int i = 2; i < x.size(); i++) {
-      for(auto y : g_familiars) {
-        if(y->name == x[i]) { 
-          g_ex_familiars.push_back(y);
-          g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), y), g_familiars.end());
-        }
-      }
-    }
-
-    g_exFamiliarParent = searchEntities(x[1]);
-    g_exFamiliarTimer = 10000;
-
-
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
+//  if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/familiarsuck")
+//  {
+//    string s = scriptToUse->at(dialogue_index + 1);
+//    vector<string> x = splitString(s, ' ');
+//
+//    vector<string> names;
+//
+//    for(int i = 2; i < x.size(); i++) {
+//      for(auto y : g_familiars) {
+//        if(y->name == x[i]) { 
+//          g_ex_familiars.push_back(y);
+//          g_familiars.erase(remove(g_familiars.begin(), g_familiars.end(), y), g_familiars.end());
+//        }
+//      }
+//    }
+//
+//    g_exFamiliarParent = searchEntities(x[1]);
+//    g_exFamiliarTimer = 10000;
+//
+//
+//
+//    dialogue_index++;
+//    this->continueDialogue();
+//    return;
+//  }
 
 
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/grossup") {
