@@ -902,12 +902,14 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
     if (script.size() > 0)
     {
+      D(script.size());
       adventureUIManager->continueDialogue();
     }
   }
   else
   {
     //initscript not found
+    M("Initscript not found at resources/maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
   }
 
   g_maxPelletsInLevel = g_pellets.size();
@@ -4673,24 +4675,24 @@ void write_map(entity *mapent)
 
       //console anim testing
       // anim direction msPerFrame frameInAnimation LoopAnimation reverse
-      if(word == "anim" || word == "animate") 
-      {
-        string entName = "";
-        int direction, MsPerFrame, FrameInAnimation, LoopAnimation, reverse;
-        line >> entName >> direction >> MsPerFrame >> FrameInAnimation >> LoopAnimation >> reverse;
-        entity* hopeful = searchEntities(entName);
-        if(hopeful != nullptr) {
-          hopeful->animation = direction;
-          hopeful->msPerFrame = MsPerFrame;
-          hopeful->frameInAnimation = FrameInAnimation;
-          hopeful->loopAnimation = LoopAnimation;
-          hopeful->reverseAnimation = reverse;
-          hopeful->scriptedAnimation = 1;
-        }
-
-
-        break;
-      }
+//      if(word == "anim" || word == "animate") 
+//      {
+//        string entName = "";
+//        int direction, MsPerFrame, FrameInAnimation, LoopAnimation, reverse;
+//        line >> entName >> direction >> MsPerFrame >> FrameInAnimation >> LoopAnimation >> reverse;
+//        entity* hopeful = searchEntities(entName);
+//        D(hopeful);
+//        if(hopeful != nullptr) {
+//          hopeful->animation = direction;
+//          hopeful->msPerFrame = MsPerFrame;
+//          hopeful->frameInAnimation = FrameInAnimation;
+//          hopeful->loopAnimation = LoopAnimation;
+//          hopeful->reverseAnimation = reverse;
+//          hopeful->scriptedAnimation = 1;
+//        }
+//
+//        break;
+//      }
 
       if(word == "msperframe")
       {

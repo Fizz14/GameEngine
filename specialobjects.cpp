@@ -1552,8 +1552,11 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   
           //all onscreen enemies will participate in the fight
           
+          g_camera.width = WIN_WIDTH;
+          g_camera.height = WIN_HEIGHT;
           rect cam(0, 0, g_camera.width, g_camera.height);
           D(g_worldEnemies.size());
+
           for(auto x : g_worldEnemies) {
             rect obj;
             obj = rect(
@@ -1570,6 +1573,17 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   //            );
 
           if(RectOverlap(cam, obj)) {
+//            M("Found a combat world ent");
+//            D(obj.x);
+//            D(obj.y);
+//            D(obj.width);
+//            D(obj.height);
+//            M("-");
+//            D(cam.x);
+//            D(cam.y);
+//            D(cam.width);
+//            D(cam.height);
+
             g_combatWorldEnts.push_back(x);
             x->level = 2;
             x->agrod = 1;

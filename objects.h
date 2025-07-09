@@ -76,6 +76,8 @@ float angleDiff(float a, float b);
 
 void parseScriptForLabels(vector<string> &sayings);
 
+void parseScriptForDialogHooks(vector<string> &sayings);
+
 class heightmap {
   public:
     SDL_Surface* image = 0;

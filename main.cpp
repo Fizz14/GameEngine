@@ -381,6 +381,22 @@ void ExplorationLoop() {
             combatUIManager->finalText = getLanguageData("BattleStartText");
           }
 
+          //give the enemies letters to distinguish them
+          std::unordered_map<string, int> nameCount;
+          for(auto x : g_enemyCombatants) {
+            nameCount[x->name]++;
+          }
+          std::unordered_map<string, int> nameIndex;
+
+          vector<string> repeatedNames = {};
+          for(auto x : g_enemyCombatants) {
+            if(nameCount[x->name] > 1) {
+              char suffix = 'A' + nameIndex[x->name]++;
+              x->name = x->name + "-" + suffix;
+            }
+          }
+
+
 
 
           combatUIManager->currentText = "";
@@ -1823,8 +1839,10 @@ void ExplorationLoop() {
         adventureUIManager->dialogpointer->visible = 0;
         adventureUIManager->dialogpointergap->show = 0;
       } else {
-        adventureUIManager->dialogpointer->visible = 1;
-        adventureUIManager->dialogpointergap->show = 1;
+        if(!g_learningMove) {
+          adventureUIManager->dialogpointer->visible = 1;
+          adventureUIManager->dialogpointergap->show = 1;
+        }
       }
 
       {

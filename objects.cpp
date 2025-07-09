@@ -10079,7 +10079,7 @@ void debugUI() {
 
 void adventureUI::showTalkingUI()
 {
-  // M("showTalkingUI()");
+  M("showTalkingUI()");
   talkingBox->show = 1;
   //dialogProceedIndicator->show = 1;
   // talkingBoxTexture->show = 1;
@@ -10975,13 +10975,13 @@ void adventureUI::continueDialogue()
     right_ui_refresh = 1;
     // put responses in responses vector
     int j = 1;
-    string res = scriptToUse->at(dialogue_index + j).substr(1);
+    string res = scriptToUse->at(dialogue_index + j);
     responses.clear();
     while (res.find('*') != std::string::npos)
     {
-      responses.push_back(res.substr(0, res.find(':')));
+      responses.push_back(res.substr(1, res.find(':')-1));
       j++;
-      res = scriptToUse->at(dialogue_index + j).substr(1);
+      res = scriptToUse->at(dialogue_index + j);
     }
     return;
   }
@@ -13327,8 +13327,8 @@ void adventureUI::continueDialogue()
   // set reverse to 1 to play backwards
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
   {
-//    M("Animate interpreter");
-//    D(selected->name);
+    M("Animate interpreter");
+    D(selected->name);
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 9);
     vector<string> split = splitString(s, ' ');
@@ -13336,6 +13336,7 @@ void adventureUI::continueDialogue()
     entity *ent = selected;
     if (ent != 0)
     {
+      M("Setting anim data for ent");
       int animationset = stoi(split[0]);
       if (animationset != -1)
       {
@@ -13566,6 +13567,8 @@ void adventureUI::continueDialogue()
   // /teach [spiritmovenumber] [partymemberindex]
   if(scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/teach") 
   {
+    adventureUIManager->dialogpointer->visible = 0;
+    dialogpointergap->show = 0;
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 

@@ -150,14 +150,9 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
       // only is printed if there are no attackpatterns
       // from the script
       // you just get one line
-      M("Try to set idletext here");
       string s = combatScript[line];
-      vector<string> x = splitString(s, ' ');
-      if(x.size() >= 2) {
-        D(x[1]);
-        combatUIManager->idleText = "Idle text is set now";
-      }
-
+      string idleText = s.substr(9);
+      combatUIManager->idleText = c->name + idleText;
     }
 
     
@@ -585,10 +580,11 @@ combatant::combatant(string ffilename, int fxp) {
     //M("Loading the combatscript for " + ffilename);
     this->combatScript = loadText(loadstr);
     parseScriptForLabels(combatScript);
+    parseScriptForDialogHooks(combatScript);
 
-//    for(auto x : combatScript) {
-//      D(x);
-//    }
+    for(auto x : combatScript) {
+      D(x);
+    }
   }
 
 
@@ -3533,6 +3529,7 @@ void CombatLoop() {
       }
     case submode::EXECUTE_E:
       {
+        M("EXECUTE_E");
         //it's possible that the protags died during or right after their turn
         //it can crash in this switch case if you aren't careful handling
         //status damage or self damage
@@ -3692,7 +3689,21 @@ void CombatLoop() {
           combatUIManager->currentText = "";
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
           combatUIManager->dialogProceedIndicator->y = 0.25;
-          g_submode = submode::TEXT_E;
+
+          if(combatUIManager->curPatterns.size() == 0) {
+            combatUIManager->finalText = combatUIManager->idleText;
+            combatUIManager->currentText = "";
+            combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+            combatUIManager->dialogProceedIndicator->y = 0.25;
+            g_submode = submode::TEXT_IDLE;
+            break;
+
+
+
+          } else {
+            g_submode = submode::TEXT_E;
+          }
+
 
         }
 
@@ -3744,46 +3755,33 @@ void CombatLoop() {
             combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
           } else {
 
-            //if we have no attack patterns, don't bother going into the dodging state
-            if(combatUIManager->curPatterns.size() == 0) {
-              combatUIManager->finalText = combatUIManager->idleText;
-              combatUIManager->currentText = "";
-              combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-              combatUIManager->dialogProceedIndicator->y = 0.25;
-              g_submode = submode::TEXT_IDLE;
-              break;
-
-
-
-            } else {
- 
-              g_submode = submode::DODGING;
-              combatUIManager->accuA = 1000000;
-              combatUIManager->accuB = 1000000;
-              combatUIManager->accuC = 1000000;
-              combatUIManager->dodgerX = 512;
-              combatUIManager->dodgerY = 512;
-              combatant* e = g_enemyCombatants[combatUIManager->executeEIndex];
+            g_submode = submode::DODGING;
+            combatUIManager->accuA = 1000000;
+            combatUIManager->accuB = 1000000;
+            combatUIManager->accuC = 1000000;
+            combatUIManager->dodgerX = 512;
+            combatUIManager->dodgerY = 512;
+            combatant* e = g_enemyCombatants[combatUIManager->executeEIndex];
   
-  //            if(e->attackPatterns.size() <0) {
-  //              E("Add attack patterns for " + e->name);
-  //              abort();
-  //            }
-              //combatUIManager->curPatterns = e->attackPatterns[rng(0, e->attackPatterns.size()-1)];
+  //          if(e->attackPatterns.size() <0) {
+  //            E("Add attack patterns for " + e->name);
+  //            abort();
+  //          }
+            //combatUIManager->curPatterns = e->attackPatterns[rng(0, e->attackPatterns.size()-1)];
   
-  //            M("Spawning bullets for");
+  //          M("Spawning bullets for");
   //
-  //            for(auto x : combatUIManager->curPatterns) {
-  //              cout << x << " ";
-  //            }
-  //            cout << endl;
+  //          for(auto x : combatUIManager->curPatterns) {
+  //            cout << x << " ";
+  //          }
+  //          cout << endl;
   
-              for(int i = 0; i < g_miniEnts.size(); i++) {
-                delete g_miniEnts[i];
-                i--;
-              }
-              g_miniBullets.clear();
+            for(int i = 0; i < g_miniEnts.size(); i++) {
+              delete g_miniEnts[i];
+              i--;
             }
+            g_miniBullets.clear();
+            
           }
         }
 
@@ -3809,6 +3807,9 @@ void CombatLoop() {
     case submode::STATUS_E:
       {
         int breakout = 0;
+        //got a crash here after idle text state
+        D(curCombatantIndex);
+        D(g_enemyCombatants.size());
         while(curStatusIndex >= (int)g_enemyCombatants[curCombatantIndex]->statuses.size()) {
           curStatusIndex = 0;
           curCombatantIndex++;
@@ -5118,8 +5119,13 @@ void CombatLoop() {
             }
 
 
-            combatUIManager->executeEIndex++;
-            g_submode = submode::EXECUTE_E;
+            if(combatUIManager->executeEIndex + 1 ==  g_enemyCombatants.size()) {
+
+
+            } else {
+              combatUIManager->executeEIndex++;
+              g_submode = submode::EXECUTE_E;
+            }
           }
 
         }
@@ -5172,14 +5178,31 @@ void CombatLoop() {
               combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
               combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
             } else {
-              combatUIManager->mainPanel->show = 0;
-              combatUIManager->mainText->show = 0;
-              combatUIManager->dialogProceedIndicator->show = 0;
+//              combatUIManager->mainPanel->show = 0;
+//              combatUIManager->mainText->show = 0;
+//              combatUIManager->dialogProceedIndicator->show = 0;
               combatUIManager->optionsPanel->show = 1;
               //curStatusIndex++;
 
-              combatUIManager->executeEIndex++;
-              g_submode = submode::EXECUTE_E;
+//              combatUIManager->executeEIndex++;
+//              M("IDLETEXT TO EXECUTE_E");
+//              g_submode = submode::EXECUTE_E;
+
+              if(combatUIManager->executeEIndex + 1 ==  g_enemyCombatants.size()) {
+              combatUIManager->mainPanel->show = 0;
+              combatUIManager->mainText->show = 0;
+              combatUIManager->dialogProceedIndicator->show = 0;
+              curCombatantIndex = 0;
+              combatUIManager->executeEIndex = 0;
+              g_submode = submode::STATUS_E;
+              curStatusIndex = 0;
+
+  
+  
+              } else {
+                combatUIManager->executeEIndex++;
+                g_submode = submode::EXECUTE_E;
+              }
             }
           }
         }
