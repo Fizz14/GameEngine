@@ -431,7 +431,6 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
 
 
 mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone) {
-  breakpoint();
   string address = faddress;
   vector<vertex3d> vertices;
   vector<face> faces;
@@ -540,7 +539,13 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
     // Get face data
     vector<vector<size_t>> faceIndices;
     if(fmtype != meshtype::OCCLUDER) { //occluders have edges and no faces
-      faceIndices = plyIn.getFaceIndices<size_t>();
+      try {
+        faceIndices = plyIn.getFaceIndices<size_t>();
+      } catch (...) {
+        E("Looks like we couldn't find any faces for your mesh (" + faddress + "). Remember that Floors can have quads or tris, walls and collisions must have quads, and occluders can have edges.");
+             
+        abort();
+      }
     }
 
     // Convert to face objects
@@ -556,6 +561,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
         faces.push_back(n);
       } else {
         E("");
+        //important note
         E("Floors can have quads or tris, walls and collisions must have quads, and occluders can have edges.");
         D(f.size());
         D(faces.size());

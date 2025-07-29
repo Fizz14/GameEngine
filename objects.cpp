@@ -11040,6 +11040,7 @@ void adventureUI::continueDialogue()
   // #
   //
   if(scriptToUse->at(dialogue_index + 1).substr(0,10) == "/checkkeys") {
+    M("Checkkeys");
     string s = scriptToUse->at(dialogue_index+1);
     vector<string> x = splitString(s, ' ');
     vector<int> keysToCheckFor = {};
@@ -11050,14 +11051,19 @@ void adventureUI::continueDialogue()
 
       int value = 1;
       for(auto x : keysToCheckFor) {
+        D(x);
         int good = 0;
         for(auto y : g_keyItems) {
+          D(y->index);
+          D(x);
           if(x == y->index) {
             good = 1;
+            M("found key " + x);
 
           }
         }
         if(good == 0) {
+          M("couldn't find key " + x);
           value = 0;
           break;
         }
@@ -13048,6 +13054,7 @@ void adventureUI::continueDialogue()
   }
 
   // check savefield
+  // read savefield
   /*
    * {hideout_onion_a}
    * *1:despawna
@@ -13089,6 +13096,9 @@ void adventureUI::continueDialogue()
   }
 
   // write to savefield
+  //
+  //  1->{ksheoga_defeated}
+  //
   if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}")))
   {
     M("tried to write to savedata");

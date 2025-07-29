@@ -146,6 +146,7 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
     }
 
     if(combatScript[line].substr(0,10) == "/idletext ") {
+      M("Idletext is being interpreted");
       // idletext if the enemy does not attack
       // only is printed if there are no attackpatterns
       // from the script
@@ -153,8 +154,9 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
       string s = combatScript[line];
       string idleText = s.substr(9);
       combatUIManager->idleText = c->name + idleText;
+      D(idleText);
+      D(combatUIManager->idleText);
     }
-
     
 
     line++;

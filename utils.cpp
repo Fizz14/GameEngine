@@ -35,8 +35,10 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
 
   } else {
     E("FNF: " + fileaddress);
+    M("yes joseph it's here");
     breakpoint();
     if(!devMode) {
+      M("Aborting");
       abort();
     }
     return nullptr;
