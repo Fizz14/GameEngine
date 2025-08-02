@@ -11264,6 +11264,83 @@ void adventureUI::continueDialogue()
         }
       }
 
+
+      //meshes
+      for(auto &x : g_meshFloors) {
+        if(x->visible) {
+          SDL_Vertex v[x->numVertices];
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i] = x->vertex[i];
+            v[i].position.x += x->origin.x - g_camera.x;
+            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].color.a = x->vertex[i].color.a;
+          }
+
+          SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+          //render shade
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
+            v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
+          }
+
+          SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+        }
+      }
+
+
+      //decorative meshes
+      for(auto &x : g_meshDecorative) {
+        //D("There is an decorative mesh");
+        if(x->visible) {
+          SDL_Vertex v[x->numVertices];
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i] = x->vertex[i];
+            v[i].position.x += x->origin.x - g_camera.x;
+            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].color.a = x->vertex[i].color.a;
+          }
+
+          SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+          //render shade
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
+            v[i].color.a = 255; //alpha is done in the texture for this
+          }
+
+          SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+
+        }
+      }
+
+      if(1) {
+        for(auto &x : g_meshVWalls) {
+          if(x->visible) {
+            SDL_Vertex v[x->numVertices];
+            for(int i = 0; i < x->numVertices; i++) {
+              v[i] = x->vertex[i];
+              v[i].position.x += x->origin.x - g_camera.x;
+              v[i].position.y += x->origin.y - g_camera.y;
+              v[i].color.r = v[i].color.g;
+            }
+
+            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+
+            //render shade
+            for(int i = 0; i < x->numVertices; i++) {
+              v[i].tex_coord.x = x->vertexExtraData[i].first;
+              v[i].tex_coord.y = x->vertexExtraData[i].second;
+            }
+
+            SDL_RenderGeometry(renderer, g_wallShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+          }
+        }
+      }
+
+
       // sort
       sort_by_y(g_actors);
       for (long long unsigned int i = 0; i < g_actors.size(); i++)
@@ -11280,56 +11357,66 @@ void adventureUI::continueDialogue()
       }
 
       //render black bars
-      {
+      if(!devMode && g_spotlightEnabled) {
+        //occluders
+    
         SDL_Rect blackrect;
-
+    
         blackrect = {
           g_camera.desiredX - g_camera.width,
           g_camera.desiredY - g_camera.height,
           g_camera.width,
           g_camera.height*3
         };
-
-
+    
+    
         blackrect = transformRect(blackrect);
-
+    
         SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
+    
         blackrect = {
           g_camera.desiredX + g_camera.width,
           g_camera.desiredY - g_camera.height,
           g_camera.width,
           g_camera.height*3
         };
-
-
+    
+    
         blackrect = transformRect(blackrect);
-
+    
         SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
+    
         blackrect = {
           g_camera.desiredX,
           g_camera.desiredY - g_camera.height,
           g_camera.width,
           g_camera.height
         };
-
+    
         blackrect = transformRect(blackrect);
-
+    
         SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
+    
         blackrect = {
           g_camera.desiredX,
           g_camera.desiredY + g_camera.height,
           g_camera.width,
           g_camera.height
         };
-
+    
         blackrect = transformRect(blackrect);
-
+    
         SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-
+    
+        blackrect = {
+          g_camera.desiredX,
+          g_camera.desiredY,
+          g_camera.width,
+          g_camera.height
+        };
+    
+        blackrect = transformRect(blackrect);
+        SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
       }
 
       SDL_RenderCopy(renderer, g_shade, NULL, NULL);

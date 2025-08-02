@@ -750,7 +750,7 @@ musicNode *newClosest;
 
 Mix_Music* g_loadedMusic = 0;
 float g_loadedMusicVolume = 0;
-string g_loadedMusicStr = "";
+string g_loadedMusicStr = "3";
 bool g_mapHasMusic = 0;
 Mix_Music* g_deleteMusic = 0;
 

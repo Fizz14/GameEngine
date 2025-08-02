@@ -947,8 +947,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     //E("Write \"nomusic\" in the mapfile for a map without music (it will load ~1s faster");
     Mix_FadeOutMusic(1000);
     //Mix_FreeMusic(g_loadedMusic);
-    g_loadedMusicStr = "";
-    g_loadedMusicVolume = 0.5;
+    g_loadedMusicStr = "3";
+    g_loadedMusicVolume = 0;
 
   }
 
@@ -2163,6 +2163,11 @@ void write_map(entity *mapent)
         //dev delete
         //right click delete
         //delete lists
+
+
+        //use the wallheight (scrollwheel) to
+        //control what you delete
+
         bool deleteflag = 1;
 
         for (auto n : g_entities)
@@ -2203,16 +2208,18 @@ void write_map(entity *mapent)
         vector<chunk*> deleteChunks;
         rect markerrect = {(int)marker->x, (int)marker->y, (int)marker->width, (int)marker->height};
 
-        for(auto &c : g_chunks) {
-          rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
-          if (RectOverlap(blah, marker->getMovedBounds())) {
-            if(c->standalone) {
-              deleteChunks.push_back(c);
-              break;
-            } else {
-              deleteChunks.push_back(c);
-              break;
-
+        if(wallheight > 128) {
+          for(auto &c : g_chunks) {
+            rect blah = {c->origin.x - 20, c->origin.y - 20, 40, 40};
+            if (RectOverlap(blah, marker->getMovedBounds())) {
+              if(c->standalone) {
+                deleteChunks.push_back(c);
+                break;
+              } else {
+                deleteChunks.push_back(c);
+                break;
+  
+              }
             }
           }
         }

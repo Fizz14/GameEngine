@@ -2519,6 +2519,9 @@ void CombatLoop() {
   }
 
   drawCombatants();
+
+  SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+
   switch (g_submode) {
     case submode::BEFORE:
       {
@@ -2636,6 +2639,8 @@ void CombatLoop() {
           }
           drawCombatants();
 
+          SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
 
@@ -2692,6 +2697,8 @@ void CombatLoop() {
             }
 
             drawCombatants();
+
+            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
             SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
@@ -2778,6 +2785,8 @@ void CombatLoop() {
           }
           drawCombatants();
 
+          SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
 
@@ -2834,6 +2843,8 @@ void CombatLoop() {
             }
 
             drawCombatants();
+
+            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
             SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
