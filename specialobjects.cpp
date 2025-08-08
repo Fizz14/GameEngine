@@ -1503,6 +1503,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     }
     case 34:
     {
+
       //overworld enemy, which inits an encounter from the map's enc file
       //use the "faction" field to choose which one
       
@@ -1512,7 +1513,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         //chase player- "level" is just used for state
         
       } else {
-        if(seesPlayer && !g_protagIsWithinBoardable && protag->tangible && dist < 435 && a->opacity_delta >= 0 && a->level == 1) {
+        if(seesPlayer && !g_protagIsWithinBoardable && protag->tangible && dist < 435 && a->opacity_delta >= 0 && a->level == 1 && devMode == 0) {
           float angleToTarget = atan2(protag->getOriginX() - a->getOriginX(), protag->getOriginY() - a->getOriginY()) - M_PI/2;
           a->targetSteeringAngle = wrapAngle(angleToTarget);
           a->forwardsVelocity = a->xagil;
@@ -1531,7 +1532,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         a->useAnimForWalking = 0;
       }
 
-      if(RectOverlap(protag->getMovedBounds(), a->getMovedBounds()) && a->opacity_delta >= 0) {
+      if(RectOverlap(protag->getMovedBounds(), a->getMovedBounds()) && a->opacity_delta >= 0 && devMode == 0) {
 
         if(g_catchUpMode == 0) {
           //go into CatchUpMode
@@ -1551,6 +1552,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   
   
           //all onscreen enemies will participate in the fight
+          //CHANGE- all CLOSE enemies will participate in the fight
           
           g_camera.width = WIN_WIDTH;
           g_camera.height = WIN_HEIGHT;
@@ -1572,7 +1574,8 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   //            x->height
   //            );
 
-          if(RectOverlap(cam, obj)) {
+          //if(RectOverlap(cam, obj)) {
+          if(XYWorldDistance(x->x, x->y, protag->x, protag->y) < 64 * 5) {
 //            M("Found a combat world ent");
 //            D(obj.x);
 //            D(obj.y);
@@ -1585,6 +1588,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 //            D(cam.height);
 
             g_combatWorldEnts.push_back(x);
+            M("pushed back on combatworldents");
             x->level = 2;
             x->agrod = 1;
             x->target = protag;
@@ -1619,6 +1623,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           //somehow no enemy was onscreen?
           //make sure the enemy that touched the player gets added so the program doesn't crash
           M("Bizare edge case where an encounter was triggered but no enemy was onscreen");
+          M("Make sure you have an orange enemy spawn zone defined (\"grass\")");
           //I guess it could happen if the camera isn't by the player
           if(a->faction < 0) { E("Check faction value of entity with name " + a->name); abort();}
           for(auto x : loadedEncounters[a->faction]) {

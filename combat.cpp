@@ -94,6 +94,20 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
       c->data[block] = value;
     }
 
+    //write random number to selfdata
+    // 0-1000->[4]
+    if(regex_match (combatScript[line], regex("[[:digit:]]+\\-+[[:digit:]]+\\-\\>\\[[[:digit:]]+\\]"))) {
+      string s = combatScript[line];
+      int firstvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
+      int secondvalue = stoi( s.substr(0, s.find('-')) ); s.erase(0, s.find('-') + 1);
+  
+      string blockstr = s.substr(s.find('[')); 
+      blockstr.pop_back(); blockstr.erase(0, 1);
+      int block = stoi (blockstr);
+  
+      c->data[block] = rand() % (secondvalue - firstvalue + 1) + firstvalue;
+    }
+
     if (regex_match(combatScript[line], regex("\\[[[:digit:]]+\\]")))
     {
       M("reading selfdata to jump");
@@ -1415,7 +1429,7 @@ void useItem(int item, int target, combatant* user) {
       {
         //Glasses
         //raise damage of next spirit attack by 300%
-
+        
         break;
       }
   }

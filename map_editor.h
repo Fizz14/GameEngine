@@ -42,5 +42,4 @@ void write_map(entity *mapent);
 
 void close_map_writing();
 
-
 #endif

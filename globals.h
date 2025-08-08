@@ -1165,6 +1165,8 @@ extern chunk* moveThisChunk;
 
 extern ggrid* g_activeGgrid;
 
+extern unsigned int g_lastGgridBlockPlaced;
+
 extern const bool g_useOccluding;
 
 enum gamemode {

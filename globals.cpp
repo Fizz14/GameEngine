@@ -162,7 +162,7 @@ vector<edgeInfo> g_oEdges;
 vector<edgeInfo> g_wsEdges;
 vector<edgeInfo> g_osEdges;
 
-//Mesh pieces are always kept in memory
+//grid Mesh pieces are always kept in memory
 vector<mesh*> g_OPMeshes;
 vector<chunk*> g_OPChunks;
 
@@ -1077,6 +1077,8 @@ int g_holddelete = 0;
 chunk* moveThisChunk = 0;
 
 ggrid* g_activeGgrid = 0;
+
+unsigned int g_lastGgridBlockPlaced = 3;
 
 const bool g_useOccluding = 0;
 

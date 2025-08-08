@@ -3445,6 +3445,12 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     ignoreSolids = 1;
   }
 
+  if(solidifyHim == 3) {
+    //don't react to solid objects or even collisions
+    moveThroughWalls = 1;
+    ignoreSolids = 1;
+  }
+
   file >> comment;
   file >> semisolid;
   if(!g_loadingATM) {
@@ -5082,7 +5088,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
     {-2,2}
   };
   int jiggleOptionIndex = 0;
-  if(boxsenabled && g_collisionResolverOn) {
+  if(boxsenabled && g_collisionResolverOn && !this->moveThroughWalls) {
     for(;;) {
       //does jiggleOptions[jiggleOptionIndex] work for us?
       int experimentalXOffset = jiggleOptions[jiggleOptionIndex].first;
@@ -5270,7 +5276,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
   }
 
   //turn off boxs if using the map-editor
-  if(boxsenabled) {
+  if(boxsenabled && !this->moveThroughWalls) {
     //..check door
     if(this == protag) {
       for (int i = 0; i < (int)doors.size(); i++) {
@@ -7073,7 +7079,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
   */
 
     float dist = XYWorldDistanceSquared(this->getOriginX(), this->getOriginY(), protag->getOriginX(), protag->getOriginY());
-  if(dist < g_entitySleepDistance || this->isAI) {
+  if( (dist < g_entitySleepDistance || this->isAI ) && !g_catchUpMode ) {
     specialObjectsUpdate(this, elapsed);
     if(g_breakFromPrimarySwitch) {return nullptr;} //last protag died
   }

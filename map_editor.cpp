@@ -2984,10 +2984,12 @@ void write_map(entity *mapent)
         unsigned int n;
         line >> n;
 
+
         //use the active ggrid's originX originY to set the
         string path = "ggrid/" + to_string(n);
 
         if(g_activeGgrid && (int) n < 255 ) {
+          g_lastGgridBlockPlaced = n;
           vec3 origin = {marker->x, marker->y, 0};
   
           //chunk* c = new chunk(path, "", "", origin, 1, 0);
@@ -5934,6 +5936,97 @@ void write_map(entity *mapent)
       makingbox = 1;
       selection->texture = loadTexture(renderer, "resources/engine/entline.qoi");
     }
+  }
+
+  if(devinput[42] && !olddevinput[42]) {
+    //hotkey for repeat last g command
+    
+    if(g_activeGgrid) {
+      vec3 origin = {marker->x, marker->y, 0};
+  
+      //chunk* c = new chunk(path, "", "", origin, 1, 0);
+      chunk* c = duplicateChunk(g_OPChunks[g_lastGgridBlockPlaced-1], origin);
+      c->owner = g_activeGgrid;
+      c->standalone = 0;
+
+      c->value = g_lastGgridBlockPlaced;
+      g_activeGgrid->chunks.push_back(c);
+      if(c->floor != 0) {
+        c->floor->texture = g_activeGgrid->floortex;
+        for(int i = 0; i < c->floor->numVertices; i++) {
+          float xpos = c->floor->vertex[i].position.x + c->origin.x;
+          float ypos = c->floor->vertex[i].position.y + c->origin.y;
+          xpos = fmod(xpos, 1024);
+          ypos = fmod(ypos, 880);
+          xpos /= 1024.0;
+          ypos /= 880.0;
+          if(fmod(c->origin.x,1024) == 960) {
+            //this is the horizontal edge case
+            if(abs(xpos - 0) < 0.001) {xpos = 1;}
+          }
+          if(fmod(c->origin.y,880) == 825) {
+            //this is the vertical edge case
+            if(abs(ypos - 0) < 0.001) {ypos = 1;}
+          }
+
+          c->floor->vertex[i].tex_coord.x = xpos;
+          c->floor->vertex[i].tex_coord.y = ypos;
+        }
+      }
+      if(c->decorative != 0) {
+        c->decorative->texture = g_activeGgrid->floortex;
+        for(int i = 0; i < c->decorative->numVertices; i++) {
+          float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+          float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+          xpos = fmod(xpos, 1024);
+          ypos = fmod(ypos, 880);
+          xpos /= 1024.0;
+          ypos /= 880.0;
+          if(fmod(c->origin.x,1024) == 960) {
+            //this is the horizontal edge case
+            if(abs(xpos - 0) < 0.001) {xpos = 1;}
+          }
+          if(fmod(c->origin.y,880) == 825) {
+            //this is the vertical edge case
+            if(abs(ypos - 0) < 0.001) {ypos = 1;}
+          }
+  
+          c->decorative->vertex[i].tex_coord.x = xpos;
+          c->decorative->vertex[i].tex_coord.y = ypos;
+        }
+      }
+
+      if(c->wall != 0) {
+        c->wall->texture = g_activeGgrid->walltex;
+        //set texcoords of wall
+        //bottom verts have 0 red
+        for(int i = 0; i < c->wall->numVertices; i++) {
+          float xpos = c->wall->vertex[i].position.x + c->origin.x;
+          xpos = fmod(xpos, 1024);
+          xpos /= 1024.0;
+          if(fmod(c->origin.x,1024) == 960) {
+            //this is the horizontal edge case
+            if(abs(xpos - 0) < 0.001) {xpos = 1;}
+          }
+
+          c->wall->vertex[i].tex_coord.x = xpos;
+          if(c->wall->vertex[i].color.r > 128) {
+            c->wall->vertex[i].tex_coord.y = 0;
+          } else {
+            c->wall->vertex[i].tex_coord.y = 1;
+
+          }
+        }
+
+      }
+
+
+
+
+    } else {
+      M("No active Ggrid for g command");
+    }
+
   }
 
   // change wall, cap, and floor textures

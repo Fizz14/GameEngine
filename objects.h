@@ -1577,7 +1577,7 @@ class entity:public actor {
     bool agrod = 0; //are they fighting a target?
     float hearingRadius = 0;
     bool missile = 0; //should we directly pursue an entity like a missle?
-    bool moveThroughWalls = 0; //do walls stop this ent?
+    bool moveThroughWalls = 0; //do walls stop this ent? (snake, passthroughwalls)
     bool fragileMovement = 0; //do walls destroy this ent?
     bool stunned = 0;
     bool marked = 0;
