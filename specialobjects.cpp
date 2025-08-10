@@ -173,6 +173,10 @@ void specialObjectsInit(entity* a) {
       a->spawnlist[3]->msPerFrame = 70;
       a->spawnlist[3]->loopAnimation = 1;
       a->spawnlist[3]->scriptedAnimation = 1;
+
+      for(int i = 0; i < 4) {
+        a->spawnlist[i]->animWalkFrames = 1; //for setting damage to 5
+      }
       break;
     }
     case 16:
@@ -235,6 +239,10 @@ void specialObjectsInit(entity* a) {
       a->spawnlist[5]->msPerFrame = 70;
       a->spawnlist[5]->loopAnimation = 1;
       a->spawnlist[5]->scriptedAnimation = 1;
+
+      for(int i = 0; i <6; i++) {
+        a->spawnlist[i]->animWalkFrames = 1;
+      }
       break;
     }
     case 18:
@@ -614,7 +622,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           rect changeMe = a->getMovedBounds();
           changeMe.zeight = 32;
           if(RectOverlap3d(changeMe, protag->getMovedBounds())) {
-            hurtProtag(1);
+            hurtProtag(2);
           }
         }
     
@@ -685,7 +693,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       //cannonball
       if(RectOverlap3d(a->getMovedBounds(), protag->getMovedBounds())) {
         a->timeToLiveMs = -1;
-        hurtProtag(1);
+        hurtProtag(2);
       }
     } 
     case 5: 
@@ -696,7 +704,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()) && a->cooldownA > a->maxCooldownB)
       {
         a->cooldownA = 0;
-        hurtProtag(1);
+        hurtProtag(2);
     
       }
 
@@ -715,7 +723,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()) && a->cooldownA > a->maxCooldownA)
       {
         a->cooldownA = 0;
-        hurtProtag(1);
+        hurtProtag(4);
       }
 
       navNode* hdest = (navNode*)g_setsOfInterest.at(a->poiIndex)[a->flagA];
@@ -772,7 +780,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         }
     
         if(CylinderOverlap(a->parent->getMovedBounds(), protag->getMovedBounds()) && a->cooldownB <= 0) {
-          hurtProtag(1);
+          hurtProtag(2);
           a->cooldownB = 1300;
         }
     
@@ -796,7 +804,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         if(a->cooldownA < 0) {
           a->cooldownA = 3000;
           a->cooldownB = 100;
-          hurtProtag(1);
+          hurtProtag(2);
           ribbon* zap = ((ribbon*)a->actorlist[0]);
       
           zap->x1 = protag->getOriginX();
@@ -1094,7 +1102,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds()))
       {
         //a->cooldownA = 0;
-        hurtProtag(1);
+        hurtProtag(2);
     
       }
       break;
@@ -1179,7 +1187,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         rect changeMe = a->getMovedBounds();
         changeMe.zeight = 32;
         if(RectOverlap3d(changeMe, protag->getMovedBounds())) {
-          hurtProtag(1);
+          hurtProtag(2);
           a->flagB = 1;
         }
       }
@@ -1233,7 +1241,12 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     {
       //fireball
       if(CylinderOverlap(a->getMovedBounds(), protag->getMovedBounds())) {
-        hurtProtag(2);
+        if(a->animWalkFrames == 1) {
+          //blue fire
+          hurtProtag(5);
+        } else {
+          hurtProtag(2);
+        }
       }
 
       break;
@@ -1482,6 +1495,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       float angleToUse = a->steeringAngle;
 
       for(auto x : a->spawnlist) {
+        x->animWalkFrames = 1; //for setting damage to 5
         angleToUse += M_PI / 2;
         angleToUse = wrapAngle(angleToUse);
         float offset = dist;
@@ -1537,7 +1551,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         if(g_catchUpMode == 0) {
           //go into CatchUpMode
           g_catchUpMode = 1;
-          g_catchUpModeMs = 2000;
+          g_catchUpModeMs = 8000;
           a->level = 0; //stop chasing player
           a->semisolid = 0; 
           //stop player from starting dialog or something
@@ -1552,7 +1566,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   
   
           //all onscreen enemies will participate in the fight
-          //CHANGE- all CLOSE enemies will participate in the fight
           
           g_camera.width = WIN_WIDTH;
           g_camera.height = WIN_HEIGHT;
@@ -1574,8 +1587,12 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   //            x->height
   //            );
 
-          //if(RectOverlap(cam, obj)) {
-          if(XYWorldDistance(x->x, x->y, protag->x, protag->y) < 64 * 5) {
+          if(RectOverlap(cam, obj) 
+//              && 
+//              LineTrace(x->getOriginX(), x->getOriginY(), protag->getOriginX(), protag->getOriginY(), false, 1, 0, 5, true, true)
+
+              ) {
+          //if(XYWorldDistance(x->x, x->y, protag->x, protag->y) < 64 * 6.5) {
 //            M("Found a combat world ent");
 //            D(obj.x);
 //            D(obj.y);
@@ -3202,7 +3219,7 @@ void specialObjectsOncePerFrame(float elapsed)
       }
     } else {
       cannonToggleTwo = !cannonToggleTwo;
-      cannonCooldownM = 1000;
+      cannonCooldownM = 1300;
       cannonToggleEvent = 0;
     }
     cannonCooldown += cannonCooldownM;

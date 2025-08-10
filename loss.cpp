@@ -310,7 +310,7 @@ void LossLoop() {
       lossUIManager->timer += elapsed;
       if(lossUIManager->timer >= 1500) {
         g_lossSub = lossSub::TEXT;
-        combatUIManager->finalText = "Continue?";
+        combatUIManager->finalText = getLanguageData("Continue");
         combatUIManager->currentText = "";
         combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
       }
@@ -477,10 +477,10 @@ void LossLoop() {
           combatUIManager->mainText->show = 1;
           combatUIManager->mainText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
           lossUIManager->yes->show = 1;
-          lossUIManager->yes->updateText("Yes", -1, 0.85, g_textcolor, g_font);
+          lossUIManager->yes->updateText(getLanguageData("Affirmative"), -1, 0.85, g_textcolor, g_font);
           lossUIManager->yes->render(renderer, WIN_WIDTH, WIN_HEIGHT);
           lossUIManager->no->show = 1;
-          lossUIManager->no->updateText("No", -1, 0.85, g_textcolor, g_font);
+          lossUIManager->no->updateText(getLanguageData("Negative"), -1, 0.85, g_textcolor, g_font);
           lossUIManager->no->render(renderer, WIN_WIDTH, WIN_HEIGHT);
           lossUIManager->handMarker->render(renderer, g_camera, elapsed);
       
@@ -558,9 +558,7 @@ void LossLoop() {
           adventureUIManager->hideTalkingUI();
 
           SDL_GL_SetSwapInterval(1);
-          g_levelFlashing = 1;
           clear_map(g_camera);
-          g_levelFlashing = 0;
           if (canSwitchOffDevMode)
           {
             init_map_writing(renderer);
@@ -568,6 +566,8 @@ void LossLoop() {
 
           load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
           g_fancybox->words.clear();
+          transition = 1;
+          transitionDelta = transitionImageHeight;
 
         } else {
           //No

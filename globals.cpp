@@ -644,6 +644,7 @@ entity * g_approacher = 0; //used for the approach-call
 float g_approachBlocks = 0; 
 entity * g_approachMe = 0;
 entity * g_hog=0;
+entity* g_takekeyaniment = 0;
 entity* g_behemoth0=0;
 entity* g_behemoth1=0;
 entity* g_behemoth2=0;
@@ -1093,6 +1094,8 @@ gamemode g_gamemode = gamemode::TITLE; //exploration, combat, gameover
 //    dialogue_index++;
 //    this->continueDialogue();
 int g_learningMove = 0;
+
+int g_gainingXPInExplorationMode = 0;
 
 int g_whoLearnsMove = 0;
 

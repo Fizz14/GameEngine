@@ -1942,6 +1942,8 @@ class textbox {
     float boxScale = 40;
     bool blinking = 0;
     bool layer0 = 0;
+    bool layer1 = 0;
+    bool layer2 = 0;
     
     textbox(SDL_Renderer* renderer, const char* fcontent, float size, float fx, float fy, float fwidth); 
 
@@ -2002,7 +2004,8 @@ class ui {
     bool persistent = 0;
     int priority = 0; //for ordering, where the textbox has priority 0 and 1 would put it above
     bool layer0 = 0; //lowest possible layer of ui, render before layer0 text
-    bool renderOverText = 0; //highest possible layer of ui, render after all text
+    bool renderOverText = 0;
+    bool renderOverText1 = 0; //highest possible layer of ui, render after all text
                              //what a shitty system lol
 
     int worldspace = 0;

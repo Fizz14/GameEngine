@@ -690,7 +690,8 @@ enum class amState {
   SPIRITSELECT,
   STARGETING,
   ITEM,
-  ITARGETING
+  ITARGETING,
+  USEORDISCARD
 };
 
 extern amState g_amState;
@@ -761,6 +762,7 @@ extern entity* g_approacher;
 extern float g_approachBlocks;
 extern entity* g_approachMe;
 extern entity * g_hog;
+extern entity* g_takekeyaniment;
 extern entity* g_behemoth0;
 extern entity* g_behemoth1;
 extern entity* g_behemoth2;
@@ -1180,6 +1182,8 @@ enum gamemode {
 extern gamemode g_gamemode;
 
 extern int g_learningMove;
+
+extern int g_gainingXPInExplorationMode;
 
 extern int g_whoLearnsMove;
 

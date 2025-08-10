@@ -10863,7 +10863,7 @@ void adventureUI::continueDialogue()
     resetTrivialData();
     talker = narrarator;
     adventureUIManager->hideTalkingUI();
-    M("Ret A");
+    //M("Ret A");
     return;
   }
 
@@ -10873,7 +10873,7 @@ void adventureUI::continueDialogue()
     if( playersUI) {
       protag_is_talking = !mobilize;
     }
-    M("Ret B");
+    //M("Ret B");
     return;
   }
   else
@@ -10917,6 +10917,8 @@ void adventureUI::continueDialogue()
     //given item is in value of response_index
     //-1 for nothing (canceled prompt or had no item)
     for(auto x : keyPromptMap) {
+      D(response_index);
+      D(x.first);
       if(x.first == response_index) {
         dialogue_index = x.second - 3;
       }
@@ -10963,7 +10965,7 @@ void adventureUI::continueDialogue()
       g_keyItemFlavorDisplay = 0;
       oldinput[11] = 1;
     }
-    M("Ret C");
+    //M("Ret C");
     return;
   }
 
@@ -11011,22 +11013,24 @@ void adventureUI::continueDialogue()
     g_fancybox->clear();
     pushFancyText(talker);
     int j = 1;
-    string res = scriptToUse->at(dialogue_index + j).substr(1);
+    string res = scriptToUse->at(dialogue_index + j);
     keyPromptMap.clear();
     g_amState = amState::KEYITEM;
     adventureUIManager->kiIndex = 0;
     oldinput[11] = 1;
     oldinput[8] = 1;
+    M("Time to build the Keypromptmap");
+    D(res);
     while (res.find('*') != std::string::npos)
     {
       pair<int, int> keyPromptEntry;
       int pos = res.find(':');
-      keyPromptEntry.first = stoi(res.substr(0, pos));
+      keyPromptEntry.first = stoi(res.substr(1, pos));
       string jumpstr = res.substr(pos+1, res.size() - pos - 1);
       keyPromptEntry.second = stoi(jumpstr);
       keyPromptMap.push_back(keyPromptEntry);
       j++;
-      res = scriptToUse->at(dialogue_index + j).substr(1);
+      res = scriptToUse->at(dialogue_index + j);
     }
 
     keyPrompting = true;
@@ -11046,7 +11050,7 @@ void adventureUI::continueDialogue()
   // #
   //
   if(scriptToUse->at(dialogue_index + 1).substr(0,10) == "/checkkeys") {
-    M("Checkkeys");
+    //M("Checkkeys");
     string s = scriptToUse->at(dialogue_index+1);
     vector<string> x = splitString(s, ' ');
     vector<int> keysToCheckFor = {};
@@ -11057,24 +11061,24 @@ void adventureUI::continueDialogue()
 
       int value = 1;
       for(auto x : keysToCheckFor) {
-        D(x);
+        //D(x);
         int good = 0;
         for(auto y : g_keyItems) {
-          D(y->index);
-          D(x);
+//          D(y->index);
+//          D(x);
           if(x == y->index) {
             good = 1;
-            M("found key " + x);
+            //M("found key " + x);
 
           }
         }
         if(good == 0) {
-          M("couldn't find key " + x);
+          //M("couldn't find key " + x);
           value = 0;
           break;
         }
       }
-      D(value);
+      //D(value);
 
 
       int  j = 1;
@@ -11088,9 +11092,9 @@ void adventureUI::continueDialogue()
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
         int jump = stoi(s);
-        D(condition);
+        //D(condition);
         if(value == condition) {
-          M("Take the jump");
+          //M("Take the jump");
           dialogue_index = jump - 3;
           this->continueDialogue();
           return;
@@ -11112,7 +11116,7 @@ void adventureUI::continueDialogue()
   //take key item
   //
   // /takekey 0
-  if(scriptToUse->at(dialogue_index + 1).substr(0,8) == "/takekey") {
+  if(scriptToUse->at(dialogue_index + 1).substr(0,9) == "/takekey ") {
     //M("Try to take a key");
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
@@ -11125,6 +11129,48 @@ void adventureUI::continueDialogue()
       }
     }
 
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+  //key drop animation
+  //
+  // /takekeyanim 0
+  //
+  // when you take a key, to illustrate that it has been used up/given away, 
+  // use this command
+  //
+  // it will drop the key item by number onto the selected entity
+  if(scriptToUse->at(dialogue_index + 1).substr(0,12) == "/takekeyanim") {
+    M("Keydrop anim");
+    if(selected != nullptr) {
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+  
+      if(g_takekeyaniment->texture != 0) {
+        SDL_DestroyTexture(g_takekeyaniment->texture);
+      }
+      g_takekeyaniment->tangible = 1;
+      g_takekeyaniment->fadeOpacity = 255;
+      g_takekeyaniment->opacity = 255;
+      g_takekeyaniment->opacity_delta = 0;
+      g_takekeyaniment->texture = loadTexture(renderer, "resources/static/key-items/" + x[1] + ".qoi");
+      D(x[1]);
+      
+      g_takekeyaniment->setOriginX(selected->getOriginX());
+      g_takekeyaniment->setOriginY(selected->getOriginY());
+//      g_takekeyaniment->timeToLiveMs = 40;
+//      g_takekeyaniment->usingTimeToLive = 1;
+      g_takekeyaniment->z = 64*3;
+      //g_takekeyaniment->z = 0;
+      
+  
+      //sleep until the animation is done
+      sleepingMS = 1000;
+      sleepflag = 1;
+      adventureUIManager->dialogpointer->visible = 0;
+    }
     dialogue_index++;
     this->continueDialogue();
     return;
@@ -11591,29 +11637,29 @@ void adventureUI::continueDialogue()
 //    return;
 //  }
 
-  // give item
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/give")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 6);
-    vector<string> x = splitString(s, ' ');
+//  // give item
+//  if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/give ")
+//  {
+//    string s = scriptToUse->at(dialogue_index + 1);
+//    s.erase(0, 6);
+//    vector<string> x = splitString(s, ' ');
+//
+//    dialogue_index++;
+//    this->continueDialogue();
+//    return;
+//  }
 
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
-
-  if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/take")
-  {
-    string s = scriptToUse->at(dialogue_index + 1);
-    s.erase(0, 6);
-    vector<string> x = splitString(s, ' ');
-
-
-    dialogue_index++;
-    this->continueDialogue();
-    return;
-  }
+//  if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/take")
+//  {
+//    string s = scriptToUse->at(dialogue_index + 1);
+//    s.erase(0, 6);
+//    vector<string> x = splitString(s, ' ');
+//
+//
+//    dialogue_index++;
+//    this->continueDialogue();
+//    return;
+//  }
 
   // check if collectible familiars contains these entities
   // /familiarcheck circus/ticket-a circus/ticket-b circus/ticket-c :success
@@ -12346,6 +12392,21 @@ void adventureUI::continueDialogue()
     e->shadow->x = e->x + e->shadow->xoffset;
     e->shadow->y = e->y + e->shadow->yoffset;
 
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+
+  // do a smoke effect at selected entity
+  //
+  // /smokeeffect
+  //
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 12) == "/smokeeffect")
+  {
+    if(selected != nullptr) {
+      smokeEffect->happen(selected->getOriginX(), selected->getOriginY(), selected->z, 0);
+    }
     dialogue_index++;
     this->continueDialogue();
     return;
@@ -13194,7 +13255,7 @@ void adventureUI::continueDialogue()
   //
   if (regex_match(scriptToUse->at(dialogue_index + 1), regex("[[:digit:]]+\\-\\>\\{([a-zA-Z0-9_]){1,}\\}")))
   {
-    M("tried to write to savedata");
+    //M("tried to write to savedata");
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(s.length() - 1, 1);
 
@@ -13685,6 +13746,34 @@ void adventureUI::continueDialogue()
 
     g_submode = submode::LEVELUP;
     g_learningMove = 1;
+    g_gainingXPInExplorationMode = 0;
+
+    adventureUIManager->hideTalkingUI();
+
+    return;
+  }
+
+  // give all partymembers xp
+  //
+  //  /givexp 500
+  // 
+  D(scriptToUse->at(dialogue_index + 1).substr(0, 7));
+  if(scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/givexp") 
+  {
+    //M("Giving xp loop begins");
+    adventureUIManager->dialogpointer->visible = 0;
+    dialogpointergap->show = 0;
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    if(x.size() < 2) {
+      E("Not enough params for /teach call");
+    }
+    combatUIManager->xpToGrant = stoi(x[1]);
+
+    g_submode = submode::CHARAXP;
+    g_gainingXPInExplorationMode = 1;
+    g_learningMove = 0;
 
     adventureUIManager->hideTalkingUI();
 

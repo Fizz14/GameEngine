@@ -148,7 +148,7 @@ bool segmentsInSamePlace(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
 
 void drawUI() {
   adventureUIManager->dialogpointer->render(renderer, g_camera);
-  if((g_amState == amState::SPIRIT || g_amState == amState::SPIRITSELECT || g_amState == amState::STARGETING || g_amState == amState::ITARGETING || g_amState == amState::ITEM) && !protag_is_talking ) {
+  if((g_amState == amState::SPIRIT || g_amState == amState::SPIRITSELECT || g_amState == amState::STARGETING || g_amState == amState::ITARGETING || g_amState == amState::ITEM) && !protag_is_talking || g_amState == amState::USEORDISCARD) {
     drawCombatants();
   }
 
@@ -189,13 +189,36 @@ void drawUI() {
     }
   }
 
+  if(g_amState == amState::ITEM || g_amState == amState::ITARGETING || g_amState == amState::USEORDISCARD) {
+    renderInventoryPanel();
+  }
+
+  for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
+  {
+    if(g_textboxes[i]->layer1) {
+      g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+  }
+
+  //another ui render layer
+  for (long long unsigned int i = 0; i < g_ui.size(); i++)
+  {
+    if(g_ui[i]->renderOverText1) {
+      g_ui[i]->render(renderer, g_camera, elapsed);
+    }
+  }
+
+  for (long long unsigned int i = 0; i < g_textboxes.size(); i++)
+  {
+    if(g_textboxes[i]->layer2) {
+      g_textboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+  }
+
   if(g_amState == amState::SPIRITSELECT || g_amState == amState::STARGETING) {
     renderSpiritPanel();
   }
 
-  if(g_amState == amState::ITEM || g_amState == amState::ITARGETING) {
-    renderInventoryPanel();
-  }
 
 }
 
@@ -261,16 +284,23 @@ void ExplorationLoop() {
     bool advance = 1;
     for(auto x : g_combatWorldEnts) {
       //D(x->level);
+      if(XYWorldDistanceSquared(protag->getOriginX(), protag->getOriginY(), x->getOriginX(), x->getOriginY()) <= 15000) {
+        x->level = 0;
+        x->semisolid = 0;
+      } else {
+        //D(XYWorldDistanceSquared(protag->getOriginX(), protag->getOriginY(), x->getOriginX(), x->getOriginY()));
+      }
       if(x->level != 0) {
 //        M("Can't advance!");
 //        D(g_combatWorldEnts.size());
         advance = 0;
-        //break;
+        break;
       }
     }
     if(advance) {
       if(g_catchUpModeMs > 500) {
         g_catchUpModeMs = 500;
+        //M("ADVANCED!");
       }
     }
     if(g_catchUpModeMs <= 0) {
@@ -1167,7 +1197,7 @@ void ExplorationLoop() {
   specialObjectsOncePerFrame(elapsed);
 
   // INPUT
-  if(!g_learningMove && !g_catchUpMode) { //the two getInput functions can't be used at-once.
+  if(!g_learningMove && !g_catchUpMode && !g_gainingXPInExplorationMode) { //the two getInput functions can't be used at-once.
     getExplorationInput(elapsed);
   }
   if(g_gamemode != gamemode::EXPLORATION) { return; }
@@ -1563,11 +1593,87 @@ void ExplorationLoop() {
           combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_combatInventory.size()-1);
           if(input[11] &&!oldinput[11]&& !protag_is_talking) {
             if(combatUIManager->currentInventoryOption >= 0 && combatUIManager->currentInventoryOption < g_combatInventory.size()) {
+              //first see if we want to use or discard
+              g_amState = amState::USEORDISCARD;
+              combatUIManager->useOrDiscardPanel->show = 1;
+              combatUIManager->useOrDiscardPanel->x = combatUIManager->menuPicker->x + 0.05;
+              combatUIManager->useOrDiscardPanel->y = combatUIManager->menuPicker->y + 0.05;
+              combatUIManager->useOrDiscardUseText->boxX = combatUIManager->menuPicker->x + 0.05 + 0.05;
+              combatUIManager->useOrDiscardUseText->boxY = combatUIManager->menuPicker->y + 0.05 + 0.035;
+
+              combatUIManager->useOrDiscardDiscardText->boxX = combatUIManager->menuPicker->x + 0.05 + 0.05;
+              combatUIManager->useOrDiscardDiscardText->boxY = combatUIManager->menuPicker->y + 0.05 + 0.105;
+
+              combatUIManager->useOrDiscardUseText->show = 1;
+              combatUIManager->useOrDiscardDiscardText->show = 1;
+              combatUIManager->useOrDiscardMenuPicker->show = 1;
+              combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->useOrDiscardUseText->boxY + 0.005;
+              combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->useOrDiscardUseText->boxX - 0.03;
+              combatUIManager->UDOption = 0;
+
+
+              //this is the code for trying to use an item
+              //
+//              if(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting == 1) {
+//                g_amState = amState::ITARGETING;
+//                combatUIManager->currentTarget = 0;
+//                combatUIManager->partyText->show = 1;
+//                combatUIManager->partyMiniText->show = 1;
+//
+//                break;
+//              } else {
+//                vector<string> spiritScript = {};
+//                adventureUIManager->talker = narrarator;
+//                spiritScript.push_back(getLanguageData("ItemError"));
+//                spiritScript.push_back("#");
+//
+//                adventureUIManager->ownScript = spiritScript;
+//                adventureUIManager->dialogue_index = -1;
+//                adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+//                adventureUIManager->sleepingMS = 0;
+//                protag_is_talking = 1;
+//                g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
+//                g_forceEndDialogue = 0;
+//                adventureUIManager->continueDialogue();
+//
+//              }
+            }
+          }
+          break;
+        }
+      case amState::USEORDISCARD:
+        {
+          if(input[8] && !oldinput[8]) {
+            g_amState = amState::ITEM;
+            combatUIManager->useOrDiscardPanel->show = 0;
+            combatUIManager->useOrDiscardUseText->show = 0;
+            combatUIManager->useOrDiscardDiscardText->show = 0;
+            combatUIManager->useOrDiscardMenuPicker->show = 0;
+            break;
+          }
+          if(input[0] && !oldinput[0]) {
+            combatUIManager->UDOption = 0;
+            M("Press up");
+          }
+          if(input[1] && !oldinput[1]) {
+            combatUIManager->UDOption = 1;
+            M("Press down");
+          }
+          if(input[11] && !oldinput[11]) {
+
+            
+            if(combatUIManager->UDOption == 0) 
+            {
+              //try to use an item
               if(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting == 1) {
                 g_amState = amState::ITARGETING;
                 combatUIManager->currentTarget = 0;
                 combatUIManager->partyText->show = 1;
                 combatUIManager->partyMiniText->show = 1;
+                combatUIManager->useOrDiscardPanel->show = 0;
+                combatUIManager->useOrDiscardUseText->show = 0;
+                combatUIManager->useOrDiscardDiscardText->show = 0;
+                combatUIManager->useOrDiscardMenuPicker->show = 0;
 
                 break;
               } else {
@@ -1584,10 +1690,39 @@ void ExplorationLoop() {
                 g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
                 g_forceEndDialogue = 0;
                 adventureUIManager->continueDialogue();
+                g_amState = amState::ITEM;
+                combatUIManager->useOrDiscardPanel->show = 0;
+                combatUIManager->useOrDiscardUseText->show = 0;
+                combatUIManager->useOrDiscardDiscardText->show = 0;
+                combatUIManager->useOrDiscardMenuPicker->show = 0;
 
               }
+            } else {
+              //discard
+              g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
+              
+              g_amState = amState::ITEM;
+              combatUIManager->useOrDiscardPanel->show = 0;
+              combatUIManager->useOrDiscardUseText->show = 0;
+              combatUIManager->useOrDiscardDiscardText->show = 0;
+              combatUIManager->useOrDiscardMenuPicker->show = 0;
+              break;
+               
             }
+
           }
+
+          if(combatUIManager->UDOption) {
+            combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->useOrDiscardDiscardText->boxY + 0.005;
+            combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->useOrDiscardDiscardText->boxX - 0.03;
+
+          } else {
+            combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->useOrDiscardUseText->boxY + 0.005;
+            combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->useOrDiscardUseText->boxX - 0.03;
+
+          }
+
+
           break;
         }
       case amState::ITARGETING:
@@ -1817,10 +1952,8 @@ void ExplorationLoop() {
           if(input[11] && !oldinput[11] && !protag_is_talking) {
             int spiritIndex = g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption];
             int targeting = spiritTable[spiritIndex].targeting;
-            if(targeting == 1) {
-              combatUIManager->currentTarget = 0;
-              g_amState = amState::STARGETING;
-            } else {
+            D(curCombatantIndex);
+            if(targeting != 1) {
               vector<string> spiritScript = {};
               adventureUIManager->talker = narrarator;
               spiritScript.push_back(getLanguageData("SpiritError"));
@@ -1834,8 +1967,26 @@ void ExplorationLoop() {
               g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
               g_forceEndDialogue = 0;
               adventureUIManager->continueDialogue();
-            }
+            } else if(g_partyCombatants[curCombatantIndex]->health <= 0) {
+              vector<string> spiritScript = {};
+              adventureUIManager->talker = narrarator;
+              spiritScript.push_back(stringMultiInject(getLanguageData("SpiritError2"), {g_partyCombatants[curCombatantIndex]->name}));
+              spiritScript.push_back("#");
 
+              adventureUIManager->ownScript = spiritScript;
+              adventureUIManager->dialogue_index = -1;
+              adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+              adventureUIManager->sleepingMS = 0;
+              protag_is_talking = 1;
+              g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
+              g_forceEndDialogue = 0;
+              adventureUIManager->continueDialogue();
+
+
+            } else {
+              combatUIManager->currentTarget = 0;
+              g_amState = amState::STARGETING;
+            } 
           }
 
           break;
@@ -1908,7 +2059,7 @@ void ExplorationLoop() {
         adventureUIManager->dialogpointer->visible = 0;
         adventureUIManager->dialogpointergap->show = 0;
       } else {
-        if(!g_learningMove) {
+        if(!g_learningMove && adventureUIManager->sleepflag == 0 && !g_gainingXPInExplorationMode) {
           adventureUIManager->dialogpointer->visible = 1;
           adventureUIManager->dialogpointergap->show = 1;
         }
@@ -2052,53 +2203,53 @@ void ExplorationLoop() {
 
 
   // cycle right if the current character dies
-  if ((input[9] && !oldinput[9]) || protag->hp <= 0)
-  {
-    // keep switching if we switch to a dead partymember
-    int i = 0;
-
-    if (party.size() > 1 && protag->cooldown <= 0)
-    {
-      do
-      {
-        M("Cycle party right");
-        std::rotate(party.begin(), party.begin() + 1, party.end());
-        protag->tangible = 0;
-        protag->flashingMS = 0;
-        party[0]->tangible = 1;
-        party[0]->x = protag->getOriginX() - party[0]->bounds.x - party[0]->bounds.width / 2;
-        party[0]->y = protag->getOriginY() - party[0]->bounds.y - party[0]->bounds.height / 2;
-        party[0]->z = protag->z;
-        party[0]->xvel = protag->xvel;
-        party[0]->yvel = protag->yvel;
-        party[0]->zvel = protag->zvel;
-
-        party[0]->animation = protag->animation;
-        party[0]->flip = protag->flip;
-        protag->zvel = 0;
-        protag->xvel = 0;
-        protag->yvel = 0;
-        protag->zaccel = 0;
-        protag->xaccel = 0;
-        protag->yaccel = 0;
-        protag = party[0];
-        protag->shadow->x = protag->x + protag->shadow->xoffset;
-        protag->shadow->y = protag->y + protag->shadow->yoffset;
-        g_focus = protag;
-        protag->curheight = 0;
-        protag->curwidth = 0;
-        g_cameraShove = protag->hisweapon->attacks[0]->range / 2;
-        // prevent infinite loop
-        i++;
-        if (i > 600)
-        {
-          M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)");
-          break;
-          quit = 1;
-        }
-      } while (protag->hp <= 0);
-    }
-  }
+//  if ((input[9] && !oldinput[9]) || protag->hp <= 0)
+//  {
+//    // keep switching if we switch to a dead partymember
+//    int i = 0;
+//
+//    if (party.size() > 1 && protag->cooldown <= 0)
+//    {
+//      do
+//      {
+//        M("Cycle party right");
+//        std::rotate(party.begin(), party.begin() + 1, party.end());
+//        protag->tangible = 0;
+//        protag->flashingMS = 0;
+//        party[0]->tangible = 1;
+//        party[0]->x = protag->getOriginX() - party[0]->bounds.x - party[0]->bounds.width / 2;
+//        party[0]->y = protag->getOriginY() - party[0]->bounds.y - party[0]->bounds.height / 2;
+//        party[0]->z = protag->z;
+//        party[0]->xvel = protag->xvel;
+//        party[0]->yvel = protag->yvel;
+//        party[0]->zvel = protag->zvel;
+//
+//        party[0]->animation = protag->animation;
+//        party[0]->flip = protag->flip;
+//        protag->zvel = 0;
+//        protag->xvel = 0;
+//        protag->yvel = 0;
+//        protag->zaccel = 0;
+//        protag->xaccel = 0;
+//        protag->yaccel = 0;
+//        protag = party[0];
+//        protag->shadow->x = protag->x + protag->shadow->xoffset;
+//        protag->shadow->y = protag->y + protag->shadow->yoffset;
+//        g_focus = protag;
+//        protag->curheight = 0;
+//        protag->curwidth = 0;
+//        g_cameraShove = protag->hisweapon->attacks[0]->range / 2;
+//        // prevent infinite loop
+//        i++;
+//        if (i > 600)
+//        {
+//          M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)");
+//          break;
+//          quit = 1;
+//        }
+//      } while (protag->hp <= 0);
+//    }
+//  }
 
   SDL_RenderClear(renderer);
 
@@ -2163,7 +2314,7 @@ void ExplorationLoop() {
 
   // update ui
   curTextWait += elapsed * text_speed_up;
-  if (curTextWait >= textWait && protag_is_talking && !g_learningMove)
+  if (curTextWait >= textWait && protag_is_talking && !g_learningMove && !g_gainingXPInExplorationMode)
   {
     adventureUIManager->updateText();
     curTextWait = 0;
@@ -2882,6 +3033,14 @@ void ExplorationLoop() {
   if(g_breakFromPrimarySwitch) {
     g_breakFromPrimarySwitch = 0;
     return;
+  }
+
+  //make takekeyaniment drop
+  if(g_takekeyaniment->z > 0) { 
+    g_takekeyaniment->z -= 4;
+  }
+  if(g_takekeyaniment->z < 132) {
+    g_takekeyaniment->opacity_delta = -15;
   }
 
 
@@ -4408,6 +4567,7 @@ void ExplorationLoop() {
   {
     if (transition)
     {
+      //M("In transition");
       g_forceEndDialogue = 0;
       // onframe things
       SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
@@ -4459,7 +4619,7 @@ void ExplorationLoop() {
     }
   }
 
-  if(!g_learningMove) {
+  if(!g_learningMove && !g_gainingXPInExplorationMode) {
     SDL_RenderPresent(renderer);
   }
   B("End of frame");
@@ -4550,6 +4710,23 @@ int WinMain()
   narrarator->tangible = 0;
   narrarator->persistentHidden = 1;
   narrarator->turnToFacePlayer = 0; //idk why this doesn't load as expected
+
+  g_takekeyaniment = new entity(renderer, "engine/sp-deity");
+  g_takekeyaniment->tangible = 0;
+  g_takekeyaniment->persistentHidden = 1;
+  //g_takekeyaniment->texture = loadTexture(renderer, "resources/static/key-items/0.qoi");
+  g_takekeyaniment->texture = 0;
+  g_takekeyaniment->width = 64;
+  g_takekeyaniment->height = 64;
+  g_takekeyaniment->bounds.width = 64;
+  g_takekeyaniment->bounds.height = 64;
+  g_takekeyaniment->bounds.x = 0;
+  g_takekeyaniment->bounds.y = -32;
+  g_takekeyaniment->sortingOffset = -100;
+  //g_takekeyaniment->dynamic = 1;
+
+  g_takekeyaniment->curwidth = g_takekeyaniment->width;
+  g_takekeyaniment->curheight = g_takekeyaniment->height;
 
   // for transition
   transitionSurface = loadSurface("resources/engine/transition.qoi");
@@ -5279,11 +5456,14 @@ int WinMain()
   smokeEffect = new effectIndex("puff", renderer);
   smokeEffect->persistent = 1;
 
-  littleSmokeEffect = new effectIndex("steam", renderer);
-  littleSmokeEffect->persistent = 1;
+//  littleSmokeEffect = new effectIndex("steam", renderer);
+//  littleSmokeEffect->persistent = 1;
 
   blackSmokeEffect = new effectIndex("blackpowder", renderer);
   blackSmokeEffect->persistent = 1;
+
+  sparksEffect = new effectIndex("sparks", renderer);
+  sparksEffect->persistent = 1;
 
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   //SDL_RenderPresent(renderer);
@@ -5534,6 +5714,10 @@ int WinMain()
 
           if(g_learningMove) {
             learnMoveLoop();
+          }
+
+          if(g_gainingXPInExplorationMode) {
+            explorationLevelupLoop();
           }
 
           break;
@@ -7386,7 +7570,7 @@ void getExplorationInput(float &elapsed)
     }
     else
     {
-      if(!protag_is_talking && !inPauseMenu) {
+      if(!protag_is_talking && !inPauseMenu && g_amState == amState::CLOSED) {
         //open escape menu
         g_escapeUI->show();
         g_inEscapeMenu = 1;

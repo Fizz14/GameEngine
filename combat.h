@@ -303,6 +303,10 @@ public:
   textbox* partyText = 0;
   textbox* partyMiniText = 0;
 
+  ui* useOrDiscardPanel = 0;
+  textbox* useOrDiscardUseText = 0;
+  textbox* useOrDiscardDiscardText = 0;
+
   ui* mainPanel = 0;
   ui* dialogProceedIndicator = 0;
   textbox* mainText = 0;
@@ -322,6 +326,9 @@ public:
   textbox* optionsMiniText = 0;
   ui* menuPicker = 0;
   int currentOption = 0;
+
+  ui* useOrDiscardMenuPicker = 0;
+  bool UDOption = 0;
 
   ui* targetPanel = 0;
   textbox* targetText = 0;
@@ -435,6 +442,8 @@ void drawCombatants();
 void getCombatInput();
 
 void CombatLoop();
+
+void explorationLevelupLoop();
 
 void learnMoveLoop();
 
