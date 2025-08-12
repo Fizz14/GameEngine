@@ -746,6 +746,7 @@ extern int g_objectiveFadeWaitMs;
 
 extern int WIN_WIDTH;
 extern int WIN_HEIGHT;
+extern int WIN_DIAG;
 extern const int STANDARD_SCREENWIDTH;
 extern int old_WIN_WIDTH;
 extern int old_WIN_HEIGHT;

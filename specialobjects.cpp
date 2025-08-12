@@ -174,7 +174,7 @@ void specialObjectsInit(entity* a) {
       a->spawnlist[3]->loopAnimation = 1;
       a->spawnlist[3]->scriptedAnimation = 1;
 
-      for(int i = 0; i < 4) {
+      for(int i = 0; i < 4; i++) {
         a->spawnlist[i]->animWalkFrames = 1; //for setting damage to 5
       }
       break;

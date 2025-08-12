@@ -226,6 +226,8 @@ void updateWindowResolution() {
   // update camera
   SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
 
+  WIN_DIAG = pow( pow(WIN_WIDTH/2,2) + pow(WIN_HEIGHT/2,2),0.5) + 25;
+
   float w = WIN_WIDTH; float h = WIN_HEIGHT;
   // !!! it might be better to not run this every frame
   if (old_WIN_WIDTH != WIN_WIDTH || old_WIN_HEIGHT != WIN_HEIGHT || g_update_zoom)
@@ -2302,8 +2304,9 @@ void ExplorationLoop() {
   if (devMode)
   {
 
-    g_camera.width = WIN_WIDTH / (scalex * g_zoom_mod * 0.2); // the 0.2 is arbitrary. it just makes sure we don't end the camera before the screen
-    g_camera.height = WIN_HEIGHT / (scalex * g_zoom_mod * 0.2);
+    g_camera.width = WIN_WIDTH / ( g_zoom_mod ); // the 0.2 is arbitrary. it just makes sure we don't end the camera before the screen 
+                                                 // used to be /(scalex * g_zoom_mod * 0.2)
+    g_camera.height = WIN_HEIGHT / ( g_zoom_mod);
   }
   else
   {
@@ -2320,7 +2323,23 @@ void ExplorationLoop() {
     curTextWait = 0;
   }
 
-  if(0){ //behemoth ui
+  //try to set g_behemoth0 1 2 3 4
+  //based on items in the level
+
+  if(g_behemoth0 == nullptr || g_behemoth0->tangible == 0) {
+    //this should be set to tangible entities with identity 35
+
+    for(auto x : g_entities) {
+      if(x->identity == 35 && x->tangible) {
+        g_behemoth0 = x;
+      }
+
+    }
+
+  }
+
+
+  if(1){ //behemoth ui (floating item ui now)
     if(g_behemoth0 != nullptr && g_behemoth0->tangible) {
       adventureUIManager->b0_element->show = 1;
 
@@ -2341,7 +2360,7 @@ void ExplorationLoop() {
         crossy = 5;
       } else {
         //crosshair should point to the object
-        float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+        float angleToObj = atan2(ox - (g_camera.x + WIN_WIDTH/2), oy - (g_camera.y + WIN_HEIGHT/2));
         angleToObj += M_PI/2;
         float magnitude = 0.43;
 
@@ -2363,6 +2382,27 @@ void ExplorationLoop() {
 
         crossx += (-cos(angleToObj) * magnitude) * h/w;
         crossy += sin(angleToObj) * magnitude;
+
+        float cScreenPosX = crossx * WIN_WIDTH;
+        float cScreenPosY = crossy * WIN_HEIGHT;
+        float screenDistToCrosshair = Distance(WIN_WIDTH/2, WIN_HEIGHT/2, cScreenPosX, cScreenPosY);
+
+        rect b0rect = {g_behemoth0->getOriginX(), g_behemoth0->getOriginY(), 1, 1};
+        b0rect = transformRect(b0rect);
+
+        float screenDistToBehemoth0 = Distance(WIN_WIDTH/2, WIN_HEIGHT/2, b0rect.x, b0rect.y);
+//        D(screenDistToBehemoth0);
+//        D(screenDistToCrosshair);
+
+        if(screenDistToBehemoth0 < screenDistToCrosshair) {
+          crossx = 5;
+          crossy = 5;
+        }
+
+
+
+//        if(pow(distToObj,0.5) < Distance(0,0,crossx, crossy) {
+//        }
       }
 
 
@@ -2373,164 +2413,164 @@ void ExplorationLoop() {
     } else {
       adventureUIManager->b0_element->show = 0;
     }
-    if(g_behemoth1 != nullptr && g_behemoth1->tangible) {
-      adventureUIManager->b1_element->show = 1;
-
-      float ox = g_behemoth1->getOriginX();
-      float oy = g_behemoth1->getOriginY();
-
-      float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
-      // update crosshair to current objective
-      //
-
-      float crossx = 0;
-      float crossy = 0;
-
-      // hide crosshair if we are close
-      if(distToObj < pow(64*5.5,2))
-      {
-        crossx = 5;
-        crossy = 5;
-      } else {
-        //crosshair should point to the object
-        float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
-        angleToObj += M_PI/2;
-        float magnitude = 0.43;
-        crossx = 0.5;
-        crossy = 0.5;
-        float w = WIN_WIDTH;
-        float h = WIN_HEIGHT;
-
-        //Since the camera is angled, a world block appears wider than it is tall
-        //And so I want the reticles to travel around an elipse rather than a sphere
-        //it's not perfectly simple to accomodate for this here, though
-        //Let's do math to find the difference between the radius of a circle
-        //and of an elipse
-
-        float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
-        float b = 1;
-        float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
-        magnitude *=ellipseRadius;
-
-        crossx += (-cos(angleToObj) * magnitude) * h/w;
-        crossy += sin(angleToObj) * magnitude;
-      }
-
-
-
-      adventureUIManager->b1_element->x = crossx - adventureUIManager->crosshair->width / 2;
-      adventureUIManager->b1_element->y = crossy - adventureUIManager->crosshair->height;
-
-    } else {
-      adventureUIManager->b1_element->show = 0;
-    }
-
-
-    if(g_behemoth2 != nullptr && g_behemoth2->tangible) {
-      adventureUIManager->b2_element->show = 1;
-
-      float ox = g_behemoth2->getOriginX();
-      float oy = g_behemoth2->getOriginY();
-
-      float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
-      // update crosshair to current objective
-      //
-
-      float crossx = 0;
-      float crossy = 0;
-
-      // hide crosshair if we are close
-      if(distToObj < pow(64*5.5,2))
-      {
-        crossx = 5;
-        crossy = 5;
-      } else {
-        //crosshair should point to the object
-        float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
-        angleToObj += M_PI/2;
-        float magnitude = 0.43;
-        crossx = 0.5;
-        crossy = 0.5;
-        float w = WIN_WIDTH;
-        float h = WIN_HEIGHT;
-
-        //Since the camera is angled, a world block appears wider than it is tall
-        //And so I want the reticles to travel around an elipse rather than a sphere
-        //it's not perfectly simple to accomodate for this here, though
-        //Let's do math to find the difference between the radius of a circle
-        //and of an elipse
-
-        float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
-        float b = 1;
-        float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
-        magnitude *=ellipseRadius;
-
-        crossx += (-cos(angleToObj) * magnitude) * h/w;
-        crossy += sin(angleToObj) * magnitude;
-      }
-
-
-
-      adventureUIManager->b2_element->x = crossx - adventureUIManager->crosshair->width / 2;
-      adventureUIManager->b2_element->y = crossy - adventureUIManager->crosshair->height;
-
-    } else {
-      adventureUIManager->b2_element->show = 0;
-    }
-
-
-    if(g_behemoth3 != nullptr && g_behemoth3->tangible) {
-      adventureUIManager->b3_element->show = 1;
-
-
-      float ox = g_behemoth3->getOriginX();
-      float oy = g_behemoth3->getOriginY();
-
-      float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
-      // update crosshair to current objective
-      //
-
-      float crossx = 0;
-      float crossy = 0;
-
-      // hide crosshair if we are close
-      if(distToObj < pow(64*5.5,2))
-      {
-        crossx = 5;
-        crossy = 5;
-      } else {
-        //crosshair should point to the object
-        float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
-        angleToObj += M_PI/2;
-        float magnitude = 0.43;
-        crossx = 0.5;
-        crossy = 0.5;
-        float w = WIN_WIDTH;
-        float h = WIN_HEIGHT;
-
-        //Since the camera is angled, a world block appears wider than it is tall
-        //And so I want the reticles to travel around an elipse rather than a sphere
-        //it's not perfectly simple to accomodate for this here, though
-        //Let's do math to find the difference between the radius of a circle
-        //and of an elipse
-
-        float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
-        float b = 1;
-        float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
-        magnitude *=ellipseRadius;
-
-        crossx += (-cos(angleToObj) * magnitude) * h/w;
-        crossy += sin(angleToObj) * magnitude;
-      }
-
-
-
-      adventureUIManager->b3_element->x = crossx - adventureUIManager->crosshair->width / 2;
-      adventureUIManager->b3_element->y = crossy - adventureUIManager->crosshair->height;
-
-    } else {
-      adventureUIManager->b3_element->show = 0;
-    }
+//    if(g_behemoth1 != nullptr && g_behemoth1->tangible) {
+//      adventureUIManager->b1_element->show = 1;
+//
+//      float ox = g_behemoth1->getOriginX();
+//      float oy = g_behemoth1->getOriginY();
+//
+//      float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+//      // update crosshair to current objective
+//      //
+//
+//      float crossx = 0;
+//      float crossy = 0;
+//
+//      // hide crosshair if we are close
+//      if(distToObj < pow(64*5.5,2))
+//      {
+//        crossx = 5;
+//        crossy = 5;
+//      } else {
+//        //crosshair should point to the object
+//        float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+//        angleToObj += M_PI/2;
+//        float magnitude = 0.43;
+//        crossx = 0.5;
+//        crossy = 0.5;
+//        float w = WIN_WIDTH;
+//        float h = WIN_HEIGHT;
+//
+//        //Since the camera is angled, a world block appears wider than it is tall
+//        //And so I want the reticles to travel around an elipse rather than a sphere
+//        //it's not perfectly simple to accomodate for this here, though
+//        //Let's do math to find the difference between the radius of a circle
+//        //and of an elipse
+//
+//        float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+//        float b = 1;
+//        float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+//        magnitude *=ellipseRadius;
+//
+//        crossx += (-cos(angleToObj) * magnitude) * h/w;
+//        crossy += sin(angleToObj) * magnitude;
+//      }
+//
+//
+//
+//      adventureUIManager->b1_element->x = crossx - adventureUIManager->crosshair->width / 2;
+//      adventureUIManager->b1_element->y = crossy - adventureUIManager->crosshair->height;
+//
+//    } else {
+//      adventureUIManager->b1_element->show = 0;
+//    }
+//
+//
+//    if(g_behemoth2 != nullptr && g_behemoth2->tangible) {
+//      adventureUIManager->b2_element->show = 1;
+//
+//      float ox = g_behemoth2->getOriginX();
+//      float oy = g_behemoth2->getOriginY();
+//
+//      float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+//      // update crosshair to current objective
+//      //
+//
+//      float crossx = 0;
+//      float crossy = 0;
+//
+//      // hide crosshair if we are close
+//      if(distToObj < pow(64*5.5,2))
+//      {
+//        crossx = 5;
+//        crossy = 5;
+//      } else {
+//        //crosshair should point to the object
+//        float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+//        angleToObj += M_PI/2;
+//        float magnitude = 0.43;
+//        crossx = 0.5;
+//        crossy = 0.5;
+//        float w = WIN_WIDTH;
+//        float h = WIN_HEIGHT;
+//
+//        //Since the camera is angled, a world block appears wider than it is tall
+//        //And so I want the reticles to travel around an elipse rather than a sphere
+//        //it's not perfectly simple to accomodate for this here, though
+//        //Let's do math to find the difference between the radius of a circle
+//        //and of an elipse
+//
+//        float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+//        float b = 1;
+//        float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+//        magnitude *=ellipseRadius;
+//
+//        crossx += (-cos(angleToObj) * magnitude) * h/w;
+//        crossy += sin(angleToObj) * magnitude;
+//      }
+//
+//
+//
+//      adventureUIManager->b2_element->x = crossx - adventureUIManager->crosshair->width / 2;
+//      adventureUIManager->b2_element->y = crossy - adventureUIManager->crosshair->height;
+//
+//    } else {
+//      adventureUIManager->b2_element->show = 0;
+//    }
+//
+//
+//    if(g_behemoth3 != nullptr && g_behemoth3->tangible) {
+//      adventureUIManager->b3_element->show = 1;
+//
+//
+//      float ox = g_behemoth3->getOriginX();
+//      float oy = g_behemoth3->getOriginY();
+//
+//      float distToObj = XYWorldDistanceSquared(ox, oy, protag->getOriginX(), protag->getOriginY());
+//      // update crosshair to current objective
+//      //
+//
+//      float crossx = 0;
+//      float crossy = 0;
+//
+//      // hide crosshair if we are close
+//      if(distToObj < pow(64*5.5,2))
+//      {
+//        crossx = 5;
+//        crossy = 5;
+//      } else {
+//        //crosshair should point to the object
+//        float angleToObj = atan2(ox - protag->getOriginX(), oy - protag->getOriginY());
+//        angleToObj += M_PI/2;
+//        float magnitude = 0.43;
+//        crossx = 0.5;
+//        crossy = 0.5;
+//        float w = WIN_WIDTH;
+//        float h = WIN_HEIGHT;
+//
+//        //Since the camera is angled, a world block appears wider than it is tall
+//        //And so I want the reticles to travel around an elipse rather than a sphere
+//        //it's not perfectly simple to accomodate for this here, though
+//        //Let's do math to find the difference between the radius of a circle
+//        //and of an elipse
+//
+//        float a = YtoX; //this ellipse has the same dimensional ratio as an image of a block in the world
+//        float b = 1;
+//        float ellipseRadius = (a * b) / ( pow( (pow(a,2) * pow(sin(angleToObj),2) + pow(b,2) * pow(cos(angleToObj),2)  ) , 0.5) );
+//        magnitude *=ellipseRadius;
+//
+//        crossx += (-cos(angleToObj) * magnitude) * h/w;
+//        crossy += sin(angleToObj) * magnitude;
+//      }
+//
+//
+//
+//      adventureUIManager->b3_element->x = crossx - adventureUIManager->crosshair->width / 2;
+//      adventureUIManager->b3_element->y = crossy - adventureUIManager->crosshair->height;
+//
+//    } else {
+//      adventureUIManager->b3_element->show = 0;
+//    }
 
   }
 
@@ -3495,9 +3535,25 @@ void ExplorationLoop() {
     }
   }
 
+
+  rect cam(0, 0, g_camera.width, g_camera.height);
+
+  for(auto x : g_meshFloors) {
+    rect myRect = {x->origin.x - x->sleepRadius, x->origin.y - x->sleepRadius, x->sleepRadius * 2, x->sleepRadius *2};
+    myRect = transformRect(myRect);
+    x->awake = RectOverlap(myRect, cam);
+
+  }
+
+  for(auto x : g_meshVWalls) {
+    rect myRect = {x->origin.x - x->sleepRadius, x->origin.y - x->sleepRadius, x->sleepRadius * 2, x->sleepRadius *2};
+    myRect = transformRect(myRect);
+    x->awake = RectOverlap(myRect, cam);
+  }
+
   //meshes
   for(auto &x : g_meshFloors) {
-    if(x->visible) {
+    if(x->visible && x->awake) {
       SDL_Vertex v[x->numVertices];
       for(int i = 0; i < x->numVertices; i++) {
         v[i] = x->vertex[i];
@@ -3681,7 +3737,7 @@ void ExplorationLoop() {
   //these will be drawn again later IF they have an occluder
   if(1) { //!!! change to 1 asap, this should not be zero
     for(auto &x : g_meshVWalls) {
-      if(x->visible) {
+      if(x->visible && x->awake) {
         SDL_Vertex v[x->numVertices];
         for(int i = 0; i < x->numVertices; i++) {
           v[i] = x->vertex[i];
@@ -7968,22 +8024,22 @@ void dungeonFlash() {
     //I added some lines clearing g_behemothx to clear_map() to
     //prevent a memory error, so this is rather safe
     //probably not a big deal
-    for(auto x : g_entities) {
-      if(!x->isAI) {continue;}
-      if(x->aiIndex == 0) {
-        g_behemoth0 = x;
-        g_behemoths.push_back(x);
-      } else if(x->aiIndex == 1) {
-        g_behemoth1 = x;
-        g_behemoths.push_back(x);
-      } else if(x->aiIndex == 2) {
-        g_behemoth2 = x;
-        g_behemoths.push_back(x);
-      } else if(x->aiIndex == 3) {
-        g_behemoth3 = x;
-        g_behemoths.push_back(x);
-      }
-    }
+//    for(auto x : g_entities) {
+//      if(!x->isAI) {continue;}
+//      if(x->aiIndex == 0) {
+//        g_behemoth0 = x;
+//        g_behemoths.push_back(x);
+//      } else if(x->aiIndex == 1) {
+//        g_behemoth1 = x;
+//        g_behemoths.push_back(x);
+//      } else if(x->aiIndex == 2) {
+//        g_behemoth2 = x;
+//        g_behemoths.push_back(x);
+//      } else if(x->aiIndex == 3) {
+//        g_behemoth3 = x;
+//        g_behemoths.push_back(x);
+//      }
+//    }
 
 
     //M(" -- Active behemoths:");

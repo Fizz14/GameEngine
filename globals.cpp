@@ -624,6 +624,7 @@ void camera::resetCamera()
 // zoom is really g_defaultZoom when screenwidth is STANDARD_SCREENWIDTH
 int WIN_WIDTH = 640;
 int WIN_HEIGHT = 400;
+int WIN_DIAG = 377 + 25;
 // theres some warping if STANDARD_SCREENWIDTH < WIN_WIDTH but that shouldn't ever happen
 // if in the future kids have screens with 10 million pixels across feel free to mod the game
 const int STANDARD_SCREENWIDTH = 1080;

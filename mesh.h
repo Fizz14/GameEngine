@@ -95,6 +95,7 @@ public:
   vector<array<int, 2>> edgeDataStore;
 
   bool visible = 1;
+  bool awake = 0;
 
   vector<vertex3d> vertices;
   vector<edgeInfo> storedWEdges;

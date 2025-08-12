@@ -826,7 +826,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
 
 
 
-    result->sleepRadius = maxDistanceFromOrigin;
+    result->sleepRadius = maxDistanceFromOrigin * scale;
     result->faces = faces;
     for(auto& x : vertices) {
       x.x *= -scale;

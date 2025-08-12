@@ -10293,45 +10293,46 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     crosshair->frameheight = 128;
     crosshair->priority = -5; //crosshair goes ontop usable icons
 
-    b0_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+    b0_element = new ui(renderer, "resources/static/ui/crosshair.qoi", 0, 0, 0.05, 0.05, -15);
     b0_element->persistent = 1;
     b0_element->heightFromWidthFactor = 1;
     b0_element->show = 0;
+    b0_element->frame = 1;
     b0_element->xframes = 4;
     b0_element->framewidth = 128;
     b0_element->frameheight = 128;
     b0_element->priority = -5; //crosshair goes ontop usable icons
 
-    b1_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
-    b1_element->persistent = 1;
-    b1_element->heightFromWidthFactor = 1;
-    b1_element->show = 0;
-    b1_element->xframes = 4;
-    b1_element->frame = 1;
-    b1_element->framewidth = 128;
-    b1_element->frameheight = 128;
-    b1_element->priority = -5; //crosshair goes ontop usable icons
-
-
-    b2_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
-    b2_element->persistent = 1;
-    b2_element->heightFromWidthFactor = 1;
-    b2_element->show = 0;
-    b2_element->xframes = 4;
-    b2_element->frame = 2;
-    b2_element->framewidth = 128;
-    b2_element->frameheight = 128;
-    b2_element->priority = -5; //crosshair goes ontop usable icons
-
-    b3_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
-    b3_element->persistent = 1;
-    b3_element->heightFromWidthFactor = 1;
-    b3_element->show = 0;
-    b3_element->xframes = 4;
-    b3_element->frame = 3;
-    b3_element->framewidth = 128;
-    b3_element->frameheight = 128;
-    b3_element->priority = -5; //crosshair goes ontop usable icons
+//    b1_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+//    b1_element->persistent = 1;
+//    b1_element->heightFromWidthFactor = 1;
+//    b1_element->show = 0;
+//    b1_element->xframes = 4;
+//    b1_element->frame = 1;
+//    b1_element->framewidth = 128;
+//    b1_element->frameheight = 128;
+//    b1_element->priority = -5; //crosshair goes ontop usable icons
+//
+//
+//    b2_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+//    b2_element->persistent = 1;
+//    b2_element->heightFromWidthFactor = 1;
+//    b2_element->show = 0;
+//    b2_element->xframes = 4;
+//    b2_element->frame = 2;
+//    b2_element->framewidth = 128;
+//    b2_element->frameheight = 128;
+//    b2_element->priority = -5; //crosshair goes ontop usable icons
+//
+//    b3_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
+//    b3_element->persistent = 1;
+//    b3_element->heightFromWidthFactor = 1;
+//    b3_element->show = 0;
+//    b3_element->xframes = 4;
+//    b3_element->frame = 3;
+//    b3_element->framewidth = 128;
+//    b3_element->frameheight = 128;
+//    b3_element->priority = -5; //crosshair goes ontop usable icons
 
     //    hearingDetectable = new ui(renderer, "resources/static/ui/detection-hearing.qoi", 0.85, 0.05, 0.1, 1, -10);
     //    hearingDetectable->persistent = 1;
