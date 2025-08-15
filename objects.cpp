@@ -10539,7 +10539,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     stTextbox4->boxY = 0.12;
     stTextbox4->dropshadow = 1;
 
-    displayChar = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.25, 0.052, 0.13, 1, 1);
+    displayChar = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.24, 0.052, 0.11, 1, 1);
     displayChar->persistent = true;
     displayChar->show = 0;
     displayChar->priority = 1;

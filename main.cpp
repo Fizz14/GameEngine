@@ -1170,20 +1170,6 @@ void ExplorationLoop() {
     }
   }
 
-  if(g_behemoth0 != nullptr) {
-    g_behemoth0->mobile = !protag_is_talking;
-  }
-  if(g_behemoth1 != nullptr) {
-    g_behemoth1->mobile = !protag_is_talking;
-  }
-  if(g_behemoth2 != nullptr) {
-    g_behemoth2->mobile = !protag_is_talking;
-  }
-  if(g_behemoth3 != nullptr) {
-    g_behemoth3->mobile = !protag_is_talking;
-  }
-
-  // g_dash_cooldown -= elapsed;
 
   if(g_blinkingMS >= g_maxBlinkingMS) {
     g_blinkHidden = !g_blinkHidden;
@@ -1759,6 +1745,9 @@ void ExplorationLoop() {
 
           if(adventureUIManager->stIndex >= 0 && adventureUIManager->stIndex < party.size()) {
             adventureUIManager->displayChar->texture = party[adventureUIManager->stIndex]->texture;
+            if(adventureUIManager->stIndex == 0) {
+            } else {
+            }
             adventureUIManager->displayChar->show = 1;
           } else {
             adventureUIManager->displayChar->texture = 0;
@@ -1847,16 +1836,16 @@ void ExplorationLoop() {
           string s3 = "-";
           string s4 = "-";
 
-          if(c->spiritMoves[0] >= 0) {
+          if(c->spiritMoves.size() > 0 && c->spiritMoves[0] >= 0) {
             s1 = spiritTable[c->spiritMoves[0]].name;
           }
-          if(c->spiritMoves[1] >= 0) {
+          if(c->spiritMoves.size() > 1 && c->spiritMoves[1] >= 0) {
             s2 = spiritTable[c->spiritMoves[1]].name;
           }
-          if(c->spiritMoves[2] >= 0) {
+          if(c->spiritMoves.size() > 2 && c->spiritMoves[2] >= 0) {
             s3 = spiritTable[c->spiritMoves[2]].name;
           }
-          if(c->spiritMoves[3] >= 0) {
+          if(c->spiritMoves.size() > 3 && c->spiritMoves[3] >= 0) {
             s4 = spiritTable[c->spiritMoves[3]].name;
           }
 
@@ -1917,9 +1906,14 @@ void ExplorationLoop() {
         }
       case amState::SPIRITSELECT:
         {
-          string info = getLanguageData("SI" + to_string(g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption]));
+          string info = "";
+          string name = "";
+          if(g_partyCombatants[curCombatantIndex]->spiritMoves.size() > 0) {
+            info = getLanguageData("SI" + to_string(g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption]));
+            name = getLanguageData("S" + to_string(g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption]));
+          }
           while(replaceString(info, "\\n", "\n")){}
-          string name = getLanguageData("S" + to_string(g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption]));
+
           string final = name + "\n" + info;
 
           combatUIManager->spiritInfoText->updateText(final, -1, 0.43, g_textcolor, g_font);
@@ -2326,17 +2320,26 @@ void ExplorationLoop() {
   //try to set g_behemoth0 1 2 3 4
   //based on items in the level
 
+  constexpr int maxDistSquared = pow(21*64,2);
+
+  if(g_behemoth0 != nullptr && XYWorldDistanceSquared(g_camera.x + g_camera.width/2, g_camera.y+g_camera.height/2, g_behemoth0->getOriginX(), g_behemoth0->getOriginY()) > maxDistSquared) {
+    g_behemoth0 = nullptr;
+  }
+
   if(g_behemoth0 == nullptr || g_behemoth0->tangible == 0) {
     //this should be set to tangible entities with identity 35
 
     for(auto x : g_entities) {
-      if(x->identity == 35 && x->tangible) {
+      if(x->identity == 35 && x->tangible && XYWorldDistanceSquared(g_camera.x + g_camera.width/2, g_camera.y+g_camera.height/2, x->getOriginX(), x->getOriginY()) < maxDistSquared) {
         g_behemoth0 = x;
       }
 
     }
 
   }
+
+  //adventureUIManager->b0_element->show = g_amState != amState::CLOSED;
+
 
 
   if(1){ //behemoth ui (floating item ui now)

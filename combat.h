@@ -50,6 +50,7 @@ enum class status {
   BLINDED, //chance
   SLIMED, //take additional damage from Slime
   SYNCHRONIZED, //increased soul
+  STICKYBOMBED, //take a second hit from the stickybomb a turn later
 };
 
 struct bground {
@@ -199,6 +200,7 @@ struct itemInfo {
   int targeting = 0; //0 - target enemy
                      //1 - target teammate
                      //2 - no target
+                     //3 - no target, intended to be used on all allies
   
   bool usedByWhom = -1; //Which party member is using this item
                         //used to stop displaying an item

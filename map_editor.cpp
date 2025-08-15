@@ -1491,10 +1491,10 @@ void write_map(entity *mapent)
     SDL_GetMouseState(&mxint, &myint);
     float percentx = (float)mxint / (float)WIN_WIDTH;
     float percenty = (float)myint / (float)WIN_HEIGHT;
-    temp = percentx / (scalex) * (g_camera.width * ((scalex)*0.2)) + (g_camera.x - 32);
+    temp = percentx / (scalex) * (g_camera.width) + (g_camera.x - 32);
     float xf = temp;
     px = round(temp / grid) * grid;
-    temp = percenty / (scalex) * (g_camera.height * ((scalex)*0.2)) + (g_camera.y - 26);
+    temp = percenty / (scalex) * (g_camera.height) + (g_camera.y - 26);
     float yf = temp;
     py = round(temp / (float)round(grid * XtoY)) * (float)round(grid * XtoY);
     if(g_holdingTAB) {
