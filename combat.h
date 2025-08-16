@@ -20,6 +20,18 @@ void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint3
 
 class combatant;
 
+struct dropInfo {
+  string name = "";
+  float dropPercent = 0;
+  int dropIndex = 0;
+
+  float eDropPercent = 0;
+  float eDropIndex = 0;
+
+  dropInfo();
+
+};
+
 void runCombatScript(vector<string> combatScript, int turn, combatant* c, string& targeting, vector<int>& patterns, float& damage);
 
 enum type {
@@ -189,6 +201,14 @@ public:
 
   int article = 0; //0-> a, 1-> an, 2-> the 
 
+  int droppedItemIndex = 0;
+  float droppedItemPercent = 0;
+
+  int droppedEquipableIndex = 0;
+  float droppedEquipablePercent = 0;
+
+  combatant(); //for dropping items
+
   combatant(string filename, int level);
 
   ~combatant();
@@ -295,7 +315,9 @@ enum class submode {
   STATUS_E,
   TEXT_STATUS_E,
   MEMBERDEADTEXT_P, //member dead from self damage
-  TEXT_IDLE //prints the text when an enemy doesn't attack
+  TEXT_IDLE, //prints the text when an enemy doesn't attack
+  DROPITEMS,
+  DROPITEMTEXT,
 };
 
 

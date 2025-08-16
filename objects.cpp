@@ -1540,11 +1540,12 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
   if(cached) {
 
   } else {
-    image = loadSurface(filename);
-    texture = SDL_CreateTextureFromSurface(renderer, image);
-    if(wall) {
-      SDL_SetTextureColorMod(texture, -65, -65, -65);
-    }
+//    image = loadSurface(filename);
+//    texture = SDL_CreateTextureFromSurface(renderer, image);
+    texture = loadTexture(renderer, filename);
+//    if(wall) {
+//      SDL_SetTextureColorMod(texture, -65, -65, -65);
+//    }
 
     SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
     if(fileaddress.find("spec") != std::string::npos) {
@@ -10829,7 +10830,7 @@ void adventureUI::updateText()
 }
 
 void adventureUI::skipText() {
-  if(adventureUIManager->typing) {
+  if(adventureUIManager->typing || adventureUIManager->askingQuestion) {
     oldinput[8] = 1;
     g_fancybox->revealAll();
     if(pushedText != "") {
@@ -12335,6 +12336,13 @@ void adventureUI::continueDialogue()
   // change map
   if (scriptToUse->at(dialogue_index + 1).substr(0, 5) == "/map ")
   {
+
+    //this was added for warping
+    {
+      g_amState = amState::CLOSED;
+      adventureUIManager->hideAm();
+    }
+
     //M("changing map");
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 5);
@@ -12398,6 +12406,19 @@ void adventureUI::continueDialogue()
     return;
   }
 
+
+  // this is used for the warp feature
+  //
+  // /warpcancel
+  //
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 11) == "/warpcancel")
+  {
+    g_warpCooldown = 200;
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
 
   // do a smoke effect at selected entity
   //

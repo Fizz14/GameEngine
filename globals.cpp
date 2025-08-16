@@ -126,6 +126,8 @@ vector<ribbon *> g_ribbons;
 
 vector<combatant *> g_enemyCombatants;
 
+vector<dropInfo> g_dropInfos;
+
 vector<combatant*> g_deadCombatants; //for fade-out
 
 vector<combatant *> g_partyCombatants;
@@ -202,10 +204,10 @@ bool onionmode = 0; // hide custom graphics
 const bool g_useSimpleImpliedGeometry = 1;
 
 
-bool genericmode = 0;
 bool freecamera = 0;
 bool devMode = 1;
-bool g_ship = 0; //!!!
+const bool g_ship = 0; //!!!
+const bool g_linux = 0;
 string g_language = "english";
 bool canSwitchOffDevMode = 0;
 bool inputRefreshCanSwitchOffDevMode = 0;
@@ -1135,6 +1137,10 @@ float g_encounterChance = 0;
 vector<string> loadedBackgrounds={};
 int g_combatEntryType = 0;
 
+int g_warpCooldown = 0;
+
+vector<string> g_warpScript;
+
 // this Code is for the Feature for on-screen Overworld-enemies to approach
 // when another Overworld-enemy has reached Fomm.
 int g_catchUpMode = 0;
@@ -1605,10 +1611,18 @@ void doSpringForce(entity* target, entity* him)
 }
 
 string getCurrentDir() {
-  char cwd[2000];
-  getcwd(cwd, sizeof(cwd));
-  string curdir(cwd);
-  return curdir;
+  if(g_linux) {
+    //uncomment this for linux
+//    char buf[6000];
+//    GetCurrentDirectory(6000, buf);
+//    string curdir(buf);
+//    return curdir;
+  }else {
+    char cwd[2000];
+    getcwd(cwd, sizeof(cwd));
+    string curdir(cwd);
+    return curdir;
+  }
 }
 
 //string getCurrentDir() {

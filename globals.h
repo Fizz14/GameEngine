@@ -286,6 +286,8 @@ extern vector<ribbon *> g_ribbons;
 
 extern vector<combatant *> g_enemyCombatants;
 
+extern vector<dropInfo> g_dropInfos;
+
 extern vector<combatant*> g_deadCombatants;
 
 extern vector<combatant *> g_partyCombatants;
@@ -435,10 +437,10 @@ extern bool g_showCRMessages;
 extern bool onionmode;
 
 extern const bool g_useSimpleImpliedGeometry;
-extern bool genericmode;
 extern bool freecamera;
 extern bool devMode;
-extern bool g_ship;
+extern const bool g_ship;
+extern const bool g_linux;
 extern string g_language;
 extern bool canSwitchOffDevMode;
 extern bool inputRefreshCanSwitchOffDevMode;
@@ -1228,6 +1230,9 @@ extern vector<string> loadedBackgrounds;
 
 extern int g_combatEntryType;
 
+extern int g_warpCooldown;
+
+extern vector<string> g_warpScript;
 
 extern int g_catchUpMode;
 extern int g_catchUpModeMs; // start a Timer and stop CatchUpMode if the enemies

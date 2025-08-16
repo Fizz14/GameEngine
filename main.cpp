@@ -1274,7 +1274,8 @@ void ExplorationLoop() {
           }
           adventureUIManager->amPicker->x = adventureUIManager->amTexPos[adventureUIManager->amIndex].first - 0.028;
           adventureUIManager->amPicker->y = adventureUIManager->amTexPos[adventureUIManager->amIndex].second + 0.007;
-          if(input[11] && !oldinput[11] && !protag_is_talking) {
+          g_warpCooldown -= elapsed;
+          if(input[11] && !oldinput[11] && !protag_is_talking && g_warpCooldown <= 0) {
             switch(adventureUIManager->amIndex) {
               case 0:
                 {
@@ -1312,6 +1313,17 @@ void ExplorationLoop() {
                 }
               case 5:
                 {
+                  //warp
+                  adventureUIManager->talker = narrarator;
+                  adventureUIManager->dPointToMe = narrarator;
+
+                  adventureUIManager->ownScript = g_warpScript;
+                  adventureUIManager->dialogue_index = -1;
+                  adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+                  adventureUIManager->sleepingMS = 0;
+                  protag_is_talking = 1;
+                  g_forceEndDialogue = 0;
+                  adventureUIManager->continueDialogue();
 
                   //not sure what to use this menu option for
 
@@ -1352,45 +1364,9 @@ void ExplorationLoop() {
                 }
               case 4:
                 {
-                  if(party.size() > 1 && party[1]->name == "common/neheten") {
-                    //wife
-                    adventureUIManager->talker = party[1];
-                    adventureUIManager->dPointToMe = party[1];
-                    vector<string> helpScript = {};
 
-                    //keep trying to get language data until it fails
-                    int i = 0;
-                    for(;;) {
-                      string arg = "Help" + to_string(i) + "-" + g_mapdir + "/" + g_map;
-                      string resp = getLanguageData(arg);
-                      if(resp == "") {break;}
-                      helpScript.push_back(resp);
-                      i++;
-                      if(i > 40) {
-                        E("Stuck trying to pull dialog for help");
-                        abort();
-                      }
-                    }
-                    if(helpScript.size() == 0) {
-                      helpScript.push_back(getLanguageData("NoHelp"));
-                      adventureUIManager->talker = narrarator;
-                      adventureUIManager->dPointToMe = narrarator;
-                    }
-                    helpScript.push_back("#");
+                  //Equip menu
 
-                    adventureUIManager->ownScript = helpScript;
-                    adventureUIManager->dialogue_index = -1;
-                    adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-                    adventureUIManager->sleepingMS = 0;
-                    protag_is_talking = 1;
-                    g_forceEndDialogue = 0;
-                    g_keyItemFlavorDisplay = 1;
-                    adventureUIManager->continueDialogue();
-
-                    break;
-
-
-                  }
                   break;
 
                 }
@@ -4987,6 +4963,11 @@ int WinMain()
   SDL_SetTextureBlendMode(g_wSpec, SDL_BLENDMODE_ADD);
 
   // init static resources
+  string txtfilename = "resources/static/scripts/builtin/warp.txt";
+  g_warpScript = loadText(txtfilename);
+  parseScriptForLabels(g_warpScript);
+  parseScriptForDialogHooks(g_warpScript);
+
 
   { //init static sounds
     //g_staticSounds.push_back(loadWav("resources/static/sounds/....wav"));

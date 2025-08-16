@@ -25,6 +25,9 @@ void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint3
   SDL_FreeSurface(surface);
 }
 
+dropInfo::dropInfo() {
+}
+
 void runCombatScript(vector<string> combatScript, int turn, combatant* c, string& targeting, vector<int>& patterns, float& damage) {
   int line = 0;
 
@@ -436,6 +439,10 @@ void drawSimpleBackground() {
   SDL_RenderCopy(renderer, combatUIManager->scene, NULL, NULL);
 }
 
+//careful
+combatant::combatant() {
+}
+
 combatant::combatant(string ffilename, int fxp) {
   string loadstr;
   loadstr = "resources/static/combatfiles/" + ffilename + ".cmb";
@@ -561,6 +568,31 @@ combatant::combatant(string ffilename, int fxp) {
 
   file >> temp;
   file >> article;
+
+  file >> temp;
+  string parseMe = "";
+  file >> parseMe;
+
+  //percent, then index
+  
+  vector<string> x = splitString(parseMe, ':');
+  if(x.size() > 1) {
+    droppedItemPercent = stof(x[0]);
+    droppedItemIndex = stoi(x[1]);
+  }
+
+  file >> temp;
+  parseMe = "";
+  file >> parseMe;
+
+  x = splitString(parseMe, ':');
+  if(x.size() > 1) {
+    droppedEquipablePercent = stof(x[0]);
+    droppedEquipableIndex = stoi(x[1]);
+  }
+
+
+
 
   // now use combatscripts
   // to determine stuff like what attack to use, who the attack hits, what patterns are used, how much dmg,
@@ -1378,7 +1410,7 @@ int xpToLevel(int xp) {
 
   while(xp >= totalXP) {
     level++;
-    totalXP+= static_cast<int>(baseXP * pow(1.5, level - 1));
+    totalXP+= static_cast<int>(baseXP * pow(5, level - 1));
   }
   if(level > 100) {
     level = 100;
@@ -1398,7 +1430,7 @@ int levelToXp(int level) {
   int totalXP = baseXP;
 
   for (int i = 1; i < level; i++) {
-    totalXP += static_cast<int>(baseXP * std::pow(1.5, i - 1));
+    totalXP += static_cast<int>(baseXP * std::pow(5, i - 1));
   }
 
   return totalXP;
@@ -1409,9 +1441,14 @@ void useItem(int item, int target, combatant* user) {
     case 0:
       {
         //Bandage
-        int mag = 50.0f * (user->curSkill);
-        g_partyCombatants[target]->health += mag;
-        string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        int mag = 8.0f * frng(0.85,1.15) + 3 * (user->curSkill/100.0f);
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[0].name});
+        }
         combatUIManager->finalText = message;
         combatUIManager->currentText = "";
         combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
@@ -1424,7 +1461,7 @@ void useItem(int item, int target, combatant* user) {
     case 1:
       {
         //Bomb
-        int mag = 25.0f * frng(0.70, 1.30) * user->curSkill;
+        int mag = 25.0f * frng(0.85, 1.15) * user->curSkill;
         for(int i = 0; i < g_enemyCombatants.size(); i++) {
           int thisMag = mag - g_enemyCombatants[i]->curDefense;
           if(thisMag <0) {thisMag = 0;}
@@ -1453,7 +1490,7 @@ void useItem(int item, int target, combatant* user) {
     case 2:
       {
         //Super Bomb
-        int mag = 50.0f * frng(0.70, 1.30) * user->curSkill;
+        int mag = 50.0f * frng(0.85, 1.15) * user->curSkill;
         for(int i = 0; i < g_enemyCombatants.size(); i++) {
           int thisMag = mag - g_enemyCombatants[i]->curDefense;
           if(thisMag <0) {thisMag = 0;}
@@ -1482,7 +1519,7 @@ void useItem(int item, int target, combatant* user) {
     case 3:
       {
         //Mega Bomb
-        int mag = 75.0f * frng(0.70, 1.30) * user->curSkill;
+        int mag = 75.0f * frng(0.85, 1.15) * user->curSkill;
         for(int i = 0; i < g_enemyCombatants.size(); i++) {
           int thisMag = mag - g_enemyCombatants[i]->curDefense;
           if(thisMag <0) {thisMag = 0;}
@@ -1511,7 +1548,7 @@ void useItem(int item, int target, combatant* user) {
     case 4:
       {
         //Grenade
-        int mag = 35.0f * frng(0.70, 1.30) * user->curSkill;
+        int mag = 35.0f * frng(0.85, 1.15) * user->curSkill;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
@@ -1540,7 +1577,7 @@ void useItem(int item, int target, combatant* user) {
     case 5:
       {
         //S.Grenade
-        int mag = 60.0f * frng(0.70, 1.30) * user->curSkill;
+        int mag = 60.0f * frng(0.85, 1.15) * user->curSkill;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
@@ -1569,7 +1606,7 @@ void useItem(int item, int target, combatant* user) {
     case 6:
       {
         //U.Grenade
-        int mag = 85.0f * frng(0.70, 1.30) * user->curSkill;
+        int mag = 85.0f * frng(0.85, 1.15) * user->curSkill;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
@@ -1598,7 +1635,7 @@ void useItem(int item, int target, combatant* user) {
     case 7:
       {
         //Stickybomb
-        int mag = 20.0f * frng(0.70, 1.30) * user->curSkill;
+        int mag = 20.0f * frng(0.85, 1.15) * user->curSkill;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
@@ -1633,9 +1670,15 @@ void useItem(int item, int target, combatant* user) {
       {
         // Tofu
 
-        int mag = 45.0f * frng(0.70, 1.30) * (user->baseSkill);
-        g_partyCombatants[target]->health += mag;
-        string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        int mag = 45.0f * frng(0.85, 1.15) + 15 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
         combatUIManager->finalText = message;
         combatUIManager->currentText = "";
         combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
@@ -2772,16 +2815,16 @@ void drawCombatants() {
     combatUIManager->partyMiniText->boxWidth = actual_width;
     combatUIManager->partyMiniText->boxHeight = actual_height;
 
-    combatUIManager->partyMiniText->updateText("HP", -1, 1, combatUIManager->partyText->textcolor);
+    combatUIManager->partyMiniText->updateText(getLanguageData("PartyHP"), -1, 1, combatUIManager->partyText->textcolor);
     combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
     combatUIManager->partyMiniText->boxY += 0.025;
     combatUIManager->partyMiniText->updateText('/' + to_stringF(combatant->curStrength), -1, 1, combatUIManager->partyText->textcolor);
     combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
     combatUIManager->partyMiniText->boxY += 0.045;
-    combatUIManager->partyMiniText->updateText("SP", -1, 1, combatUIManager->partyText->textcolor);
+    combatUIManager->partyMiniText->updateText(getLanguageData("PartySP"), -1, 1, combatUIManager->partyText->textcolor);
     combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
     combatUIManager->partyMiniText->boxY += 0.025;
-    combatUIManager->partyMiniText->updateText('/' + to_stringF(combatant->curMind), -1, 1, combatUIManager->partyText->textcolor);
+    combatUIManager->partyMiniText->updateText('/' + to_stringF(floor(combatant->curMind)), -1, 1, combatUIManager->partyText->textcolor);
     combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
 
 
@@ -2843,6 +2886,27 @@ void CombatLoop() {
       }
     case submode::INWIPE:
       {
+
+        //copy g_enemyCombatants to g_enemyCombatantsForDropping
+        //so items can be dropped based on who was fought
+        g_dropInfos.clear();
+        for(auto x : g_enemyCombatants) {
+
+          dropInfo d;
+          d.dropPercent = x->droppedItemPercent;
+          d.dropIndex = x->droppedItemIndex;
+          d.name = x->name;
+          d.eDropPercent = x->droppedEquipablePercent;
+          d.eDropIndex = x->droppedEquipableIndex;
+          g_dropInfos.push_back(d);
+//          c.droppedItemPercent = x->droppedItemPercent;
+//          c.droppedItemIndex = x->droppedItemIndex;
+//          c.droppedEquipablePercent = x->droppedEquipablePercent;
+//          c.droppedEquipableIndex = x->droppedEquipableIndex;
+//          D(x->name);
+//          c.name = x->name;
+        }
+
         // onframe things
         SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
 
@@ -3576,7 +3640,7 @@ void CombatLoop() {
 
 
           int damage = c->curAttack - e->curDefense;
-          damage *= frng(0.80,1.20);
+          damage *= frng(0.85,1.15);
           if(crit) { damage *= 3;}
           if(damage < 0) {damage = 0;}
           int dmgToReport = damage;
@@ -3681,8 +3745,8 @@ void CombatLoop() {
           int random = rng(0,10);
           if(random + levelDifference >= 7) {
             //successful fleeing
-            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + " tries to run away...";
-            combatUIManager->queuedStrings.push_back(make_pair("And did!", 0));
+            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + getLanguageData("CombatRunAttempt");
+            combatUIManager->queuedStrings.push_back(make_pair(getLanguageData("CombatRunSuccess"), 0));
             combatUIManager->currentText = "";
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
             combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -3690,8 +3754,8 @@ void CombatLoop() {
 
           } else {
             //failed fleeing
-            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + " tries to run away...";
-            combatUIManager->queuedStrings.push_back(make_pair("But couldn't!", 0));
+            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + getLanguageData("CombatRunAttempt");
+            combatUIManager->queuedStrings.push_back(make_pair(getLanguageData("CombatRunFail"), 0));
             combatUIManager->currentText = "";
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
             combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -3957,8 +4021,8 @@ void CombatLoop() {
           }
           combatUIManager->partyDodgingCombatant = e;
           int damage = (c->curAttack* combatUIManager->specificMultiplier) - e->curDefense;
-          damage *= frng(0.70,1.30);
-          if(damage < 0) {damage = 0;}
+          damage *= frng(0.85,1.15);
+          if(damage < 1) {damage = 1;}
           combatUIManager->damageFromEachHit = damage;
           combatUIManager->dodgePanel->x = combatUIManager->dodgePanelSmallX;
           combatUIManager->dodgePanel->y = combatUIManager->dodgePanelSmallY;
@@ -4284,7 +4348,8 @@ void CombatLoop() {
           //        combatUIManager->finalText = "Fomm has won the battle!";
           //        g_submode = submode::FINALTEXT;
           //        break;
-          g_submode = submode::OUTWIPE;
+          //g_submode = submode::OUTWIPE;
+          g_submode = submode::DROPITEMS;
           break;
         }
         combatant* x = g_partyCombatants[curCombatantIndex];
@@ -6117,6 +6182,111 @@ void CombatLoop() {
 
         break;
       }
+    case submode::DROPITEMS:
+      {
+        vector<string> messages; messages.clear();
+        for(auto x : g_dropInfos) {
+          if(frng(0,100) <= x.dropPercent && g_combatInventory.size() < g_maxInventorySize) {
+            messages.push_back(stringMultiInject(getLanguageData("FoundText"), {itemsTable[x.dropIndex].name}));
+            //messages.push_back("Fomm found a " + itemsTable[x.dropIndex].name + " which the enemy left behind.");
+            g_combatInventory.push_back(x.dropIndex);
+          }
+        }
+
+        if(messages.size() > 0) {
+          combatUIManager->currentText = "";
+          combatUIManager->finalText = messages[0];
+        }
+        for(int i = 1; i < messages.size(); i++) {
+          combatUIManager->queuedStrings.push_back(make_pair(messages.at(i), 0));
+        }
+
+        if(g_combatInventory.size() < g_maxInventorySize) {
+
+        }
+
+        if(messages.size() == 0) {
+          g_submode = submode::OUTWIPE;
+          break;
+        }
+        
+        g_submode = submode::DROPITEMTEXT;
+        break;
+      }
+    case submode::DROPITEMTEXT:
+      {
+        M("Drop item text");
+        combatUIManager->mainPanel->show = 1;
+        combatUIManager->mainText->show = 1;
+        combatUIManager->optionsPanel->show = 0;
+
+        if(input[8]) {
+          text_speed_up = 50;
+        } else {
+          text_speed_up = 1;
+        }
+
+
+        curTextWait += elapsed * text_speed_up;
+
+        if(combatUIManager->finalText == combatUIManager->currentText) {
+          combatUIManager->dialogProceedIndicator->show = 1;
+        } else {
+          combatUIManager->dialogProceedIndicator->show = 0;
+        }
+
+        if (curTextWait >= textWait)
+        {
+
+          if(combatUIManager->finalText != combatUIManager->currentText) {
+            if(input[8]) {
+              combatUIManager->currentText = combatUIManager->finalText;
+            } else {
+              combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
+              playSound(6, g_ui_voice, 0);
+            }
+            combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+
+          }
+
+          curTextWait = 0;
+        }
+
+        if(combatUIManager->finalText == combatUIManager->currentText) {
+          if(input[11] && !oldinput[11]) {
+            //advance dialog
+            if(combatUIManager->queuedStrings.size() > 0) {
+              combatUIManager->dialogProceedIndicator->y = 0.25;
+              combatUIManager->currentText = "";
+              combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+              combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+            } else {
+
+              //change this
+              g_submode = submode::OUTWIPE;
+            }
+          }
+        }
+
+        //animate dialogproceedarrow
+        {
+          combatUIManager->c_dpiDesendMs += elapsed;
+          if(combatUIManager->c_dpiDesendMs > combatUIManager->dpiDesendMs) {
+            combatUIManager->c_dpiDesendMs = 0;
+            combatUIManager->c_dpiAsending = !combatUIManager->c_dpiAsending;
+
+          }
+
+          if(combatUIManager->c_dpiAsending) {
+            combatUIManager->dialogProceedIndicator->y += combatUIManager->dpiAsendSpeed;
+          } else {
+            combatUIManager->dialogProceedIndicator->y -= combatUIManager->dpiAsendSpeed;
+
+          }
+        }
+
+        break;
+      }
   }
 
 
@@ -7249,8 +7419,8 @@ void explorationLevelupLoop() {
           int random = rng(0,10);
           if(random + levelDifference >= 7) {
             //successful fleeing
-            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + " tries to run away...";
-            combatUIManager->queuedStrings.push_back(make_pair("And did!", 0));
+            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + getLanguageData("CombatRunAttempt");
+            combatUIManager->queuedStrings.push_back(make_pair(getLanguageData("CombatRunSuccess"), 0));
             combatUIManager->currentText = "";
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
             combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -7258,8 +7428,8 @@ void explorationLevelupLoop() {
 
           } else {
             //failed fleeing
-            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + " tries to run away...";
-            combatUIManager->queuedStrings.push_back(make_pair("But couldn't!", 0));
+            combatUIManager->finalText = g_partyCombatants[combatUIManager->executePIndex]->name + getLanguageData("CombatRunAttempt");
+            combatUIManager->queuedStrings.push_back(make_pair(getLanguageData("CombatRunFail"), 0));
             combatUIManager->currentText = "";
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
             combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -7525,7 +7695,7 @@ void explorationLevelupLoop() {
           }
           combatUIManager->partyDodgingCombatant = e;
           int damage = (c->curAttack* combatUIManager->specificMultiplier) - e->curDefense;
-          damage *= frng(0.70,1.30);
+          damage *= frng(0.85,1.15);
           if(damage < 0) {damage = 0;}
           combatUIManager->damageFromEachHit = damage;
           combatUIManager->dodgePanel->x = combatUIManager->dodgePanelSmallX;

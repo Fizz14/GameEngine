@@ -1551,7 +1551,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
         if(g_catchUpMode == 0) {
           //go into CatchUpMode
           g_catchUpMode = 1;
-          g_catchUpModeMs = 8000;
+          g_catchUpModeMs = 4000;
           a->level = 0; //stop chasing player
           a->semisolid = 0; 
           //stop player from starting dialog or something
