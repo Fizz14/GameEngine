@@ -988,7 +988,7 @@ SDL_Texture* cameraBlockerTextureA;
 SDL_Texture* cameraBlockerTextureB;
 SDL_Texture* cameraBlockerTextureC;
 SDL_Texture* cameraBlockerTextureD;
-textbox *nodeInfoText;
+textbox *nodeInfoText = 0;
 string entstring = ""; // last entity spawned;
 
 string mapname = "";
@@ -1611,18 +1611,19 @@ void doSpringForce(entity* target, entity* him)
 }
 
 string getCurrentDir() {
-  if(g_linux) {
-    //uncomment this for linux
+//  if(g_linux) {
+//    //uncomment this for linux
 //    char buf[6000];
 //    GetCurrentDirectory(6000, buf);
 //    string curdir(buf);
 //    return curdir;
-  }else {
+//  }else {
+    //windows
     char cwd[2000];
     getcwd(cwd, sizeof(cwd));
     string curdir(cwd);
     return curdir;
-  }
+  //}
 }
 
 //string getCurrentDir() {

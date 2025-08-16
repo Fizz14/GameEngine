@@ -11,7 +11,7 @@ map<string, pair<int, int>> languagePackIndices;
 SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
 {
   if(g_linux) {
-    fileaddress = "resources/static/sprites/common/onion.qoi";
+    fileaddress = "resources/static/sprites/common/onion.bmp";
   }
   if(PHYSFS_exists(fileaddress.c_str())) 
   {

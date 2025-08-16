@@ -290,7 +290,7 @@ bground::bground(SDL_Renderer* renderer, const char* configFilePath) {
         else if (key == "scrollYMagnitude") scrollYMagnitude = std::stof(value);
         else if (key == "paletteFile") {
           std::string paletteFilePath = "resources/static/backgrounds/pallets/" + value + ".qoi";
-          loadPalette(renderer, paletteFilePath.c_str(), palette);
+          //loadPalette(renderer, paletteFilePath.c_str(), palette);
         }
         else if (key == "texture2") texture2 = std::stoi(value);
         else if (key == "interleaved2") interleaved2 = std::stoi(value);
@@ -302,7 +302,7 @@ bground::bground(SDL_Renderer* renderer, const char* configFilePath) {
         else if (key == "scrollYMagnitude2") scrollYMagnitude2 = std::stof(value);
         else if (key == "paletteFile2") {
           std::string paletteFilePath2 = "resources/static/backgrounds/pallets/" + value + ".qoi";
-          loadPalette(renderer, paletteFilePath2.c_str(), palette2);
+          //loadPalette(renderer, paletteFilePath2.c_str(), palette2);
         }
       }
     }
@@ -421,7 +421,7 @@ void drawBackground() {
 
   // Cycle the palette every 0.5 seconds
   if (combatUIManager->time - combatUIManager->cycleTime >= 500) {
-    cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
+    //cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
     combatUIManager->cycleTime = combatUIManager->time;
   }
 

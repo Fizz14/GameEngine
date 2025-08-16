@@ -343,7 +343,7 @@ void ExplorationLoop() {
         combatUIManager->scene = loadTexture(renderer, loadme);
 
         
-        cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
+        //cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
 
         {
           g_gamemode = gamemode::COMBAT;
@@ -4803,7 +4803,7 @@ int WinMain()
   {
     //init_map_writing(renderer);
     // done once, because textboxes aren't cleared during clear_map()
-    nodeInfoText = new textbox(renderer, "", 1000* g_fontsize, 50, 50, WIN_WIDTH);
+    nodeInfoText = new textbox(renderer, "", 2, 50, 50, WIN_WIDTH);
     nodeInfoText->dropshadow = 1;
     nodeInfoText->align = 0;
     g_config = "dev";

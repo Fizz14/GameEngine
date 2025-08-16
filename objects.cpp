@@ -8132,9 +8132,9 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer,
 }
 
 textbox::textbox(SDL_Renderer* renderer, const char* fcontent, float size, float fx, float fy, float fwidth) {
-  //M("textbox()" );
   fontsize = size;
   content = fcontent;
+  font = g_ttf_fontMedium; //fallback
   if(size == 0) {
     font = g_ttf_fontTiny;
   } else if(size == 1) {
@@ -8154,6 +8154,7 @@ textbox::textbox(SDL_Renderer* renderer, const char* fcontent, float size, float
   //  if(!shareFont) {
   //    font = loadFont(g_font, size);
   //  }
+
 
   textsurface = TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
@@ -8315,6 +8316,7 @@ ui::ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float
       if(x->filename == filename) {
         texture = x->texture;
         sharingTexture = 1;
+        assetSharer = 1;
       }
     }
   }
@@ -8334,7 +8336,9 @@ ui::ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float
 }
 
 ui::~ui() {
-  SDL_DestroyTexture(texture);
+  if(!assetSharer) {
+    SDL_DestroyTexture(texture);
+  }
   g_ui.erase(remove(g_ui.begin(), g_ui.end(), this), g_ui.end());
 }
 
@@ -10302,7 +10306,8 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b0_element->xframes = 4;
     b0_element->framewidth = 128;
     b0_element->frameheight = 128;
-    b0_element->priority = -5; //crosshair goes ontop usable icons
+    b0_element->priority = 5; //crosshair goes ontop usable icons
+    b0_element->layer0 = 1;
 
 //    b1_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);
 //    b1_element->persistent = 1;
@@ -11247,7 +11252,7 @@ void adventureUI::continueDialogue()
     combatUIManager->scene = loadTexture(renderer, loadme);
 
 
-    cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
+    //cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
 
     dialogue_index++;
     this->continueDialogue();
