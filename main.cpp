@@ -3521,7 +3521,6 @@ void ExplorationLoop() {
     rect myRect = {x->origin.x - x->sleepRadius, x->origin.y - x->sleepRadius, x->sleepRadius * 2, x->sleepRadius *2};
     myRect = transformRect(myRect);
     x->awake = RectOverlap(myRect, cam);
-
   }
 
   for(auto x : g_meshVWalls) {
@@ -4663,6 +4662,15 @@ void ExplorationLoop() {
 
 int WinMain()
 {
+  if (__cplusplus == 202302L) std::cout << "C++23";
+    else if (__cplusplus == 202002L) std::cout << "C++20";
+    else if (__cplusplus == 201703L) std::cout << "C++17";
+    else if (__cplusplus == 201402L) std::cout << "C++14";
+    else if (__cplusplus == 201103L) std::cout << "C++11";
+    else if (__cplusplus == 199711L) std::cout << "C++98";
+    else std::cout << "pre-standard C++." << __cplusplus;
+    std::cout << "\n";
+
   locale::global(locale(""));
   cout.imbue(locale());
 
@@ -5241,6 +5249,7 @@ int WinMain()
 
     chunk* c = new chunk("ggrid/1", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5248,6 +5257,7 @@ int WinMain()
     }
     c = new chunk("ggrid/2", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5255,6 +5265,7 @@ int WinMain()
     }
     c = new chunk("ggrid/3", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5262,6 +5273,7 @@ int WinMain()
     }
     c = new chunk("ggrid/4", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5269,13 +5281,16 @@ int WinMain()
     }
     c = new chunk("ggrid/5", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
+
     c = new chunk("ggrid/6", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5283,6 +5298,7 @@ int WinMain()
     }
     c = new chunk("ggrid/7", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5290,6 +5306,7 @@ int WinMain()
     }
     c = new chunk("ggrid/8", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5297,6 +5314,7 @@ int WinMain()
     }
     c = new chunk("ggrid/9", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5304,6 +5322,7 @@ int WinMain()
     }
     c = new chunk("ggrid/10", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5311,6 +5330,7 @@ int WinMain()
     }
     c = new chunk("ggrid/11", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5318,6 +5338,7 @@ int WinMain()
     }
     c = new chunk("ggrid/12", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5325,6 +5346,7 @@ int WinMain()
     }
     c = new chunk("ggrid/13", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5332,6 +5354,7 @@ int WinMain()
     }
     c = new chunk("ggrid/14", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5339,6 +5362,7 @@ int WinMain()
     }
     c = new chunk("ggrid/15", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5346,6 +5370,7 @@ int WinMain()
     }
     c = new chunk("ggrid/16", "", "", origin, 1, 0);
     //c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5353,6 +5378,7 @@ int WinMain()
     }
     c = new chunk("ggrid/17", "", "", origin, 1, 0);
     //c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5360,6 +5386,7 @@ int WinMain()
     }
     c = new chunk("ggrid/18", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5367,6 +5394,7 @@ int WinMain()
     }
     c = new chunk("ggrid/19", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5374,6 +5402,7 @@ int WinMain()
     }
     c = new chunk("ggrid/20", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5381,6 +5410,7 @@ int WinMain()
     }
     c = new chunk("ggrid/21", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 1;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5388,6 +5418,7 @@ int WinMain()
     }
     c = new chunk("ggrid/22", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 0;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5396,6 +5427,7 @@ int WinMain()
 
     c = new chunk("ggrid/23", "", "", origin, 1, 0);
     c->floor->drawDiffuse = 0;
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5403,6 +5435,7 @@ int WinMain()
     }
 
     c = new chunk("ggrid/24", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5410,6 +5443,7 @@ int WinMain()
     }
     c->decorative->drawDiffuse = 0; //was 0
     c = new chunk("ggrid/25", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
@@ -5417,24 +5451,28 @@ int WinMain()
     }
     c->decorative->drawDiffuse = 0; //was 0
     c = new chunk("ggrid/26", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/27", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/28", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/29", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;

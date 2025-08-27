@@ -1540,9 +1540,9 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
   if(cached) {
 
   } else {
-//    image = loadSurface(filename);
-//    texture = SDL_CreateTextureFromSurface(renderer, image);
-    texture = loadTexture(renderer, filename);
+    image = loadSurface(filename);
+    texture = SDL_CreateTextureFromSurface(renderer, image);
+    //texture = loadTexture(renderer, filename);
 //    if(wall) {
 //      SDL_SetTextureColorMod(texture, -65, -65, -65);
 //    }
@@ -5397,7 +5397,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
       }
     }
 
-
     if(usedCZ == 0) {
       for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
 
@@ -5412,10 +5411,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
         if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
           ycollide = true;
           yvel = 0;
-
-
-
-
         }
         //update bounds with new pos
         movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
@@ -5444,43 +5439,68 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
       //now do that for implied slopes if I've chosen to treat them as regular collisions
       if(g_useSimpleImpliedGeometry) {
+
+        rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
         for(auto n : g_impliedSlopes) {
-          //update bounds with new pos
-          rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-
-          //don't worry about boxes if we're not even close
-          rect sleepbox = rect(n->bounds.x - 150, n->bounds.y-150, n->bounds.width+300, n->bounds.height+300);
-          if(!RectOverlap(sleepbox, movedbounds)) {continue;}
-
-          //uh oh, did we collide with something?
           if(RectOverlap(movedbounds, n->bounds)) {
             ycollide = true;
             yvel = 0;
           }
-          //update bounds with new pos
-          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
-          //uh oh, did we collide with something?
-          if(RectOverlap(movedbounds, n->bounds)) {
-            //box detected
-            xcollide = true;
-            xvel = 0;
-          }
-
-          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-          //uh oh, did we collide with something?
-          if(RectOverlap(movedbounds, n->bounds)) {
-            //box detected
-            xcollide = true;
-            ycollide = true;
-            xvel = 0;
-            yvel = 0;
-            continue;
-          }
-
-
-
-
         }
+        movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+        for(auto n : g_impliedSlopes) {
+          if(RectOverlap(movedbounds, n->bounds)) {
+            xcollide = true;
+            xvel = 0;
+          }
+        }
+
+        //dont even handle checking for both x and y velocities (should jiggle out of it lol)
+
+
+
+        //finally check both
+//        for(auto n : g_impliedSlopes) {
+//          //update bounds with new pos
+//          rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+//
+//          //don't worry about boxes if we're not even close
+//          rect sleepbox = rect(n->bounds.x - 150, n->bounds.y-150, n->bounds.width+300, n->bounds.height+300);
+//          if(!RectOverlap(sleepbox, movedbounds)) {continue;}
+//
+//          //uh oh, did we collide with something?
+//          if(RectOverlap(movedbounds, n->bounds)) {
+//            ycollide = true;
+//            yvel = 0;
+//            if(this == protag) {M("Ycollide");}
+//          }
+//          //update bounds with new pos
+//          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
+//          //uh oh, did we collide with something?
+//          if(RectOverlap(movedbounds, n->bounds)) {
+//            //box detected
+//            xcollide = true;
+//            xvel = 0;
+//            if(this == protag) {M("Xcollide");}
+//          }
+//
+//          movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
+//          //uh oh, did we collide with something?
+//          if(RectOverlap(movedbounds, n->bounds)) {
+//            if(this == protag) {
+//              M("Xcollide and Ycollide");
+//              D(xvel);
+//              D(yvel);
+//            }
+//            //box detected
+//            xcollide = true;
+//            ycollide = true;
+//            xvel = 0;
+//            yvel = 0;
+//            continue;
+//          }
+//
+//      }
       }
 
     } else {
@@ -6083,9 +6103,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
     }
   }
 
+  bool groundedByEntity = 0;
   //look for solid entities (new as of Nov 2023 for the bed)
   if(this == protag || this->isAI) { //seems to be causing slowdown
-    groundedByEntity = 0;
     for(auto n : g_solid_entities) {
       if(this->ignoreSolids) {break;}
 
@@ -6103,92 +6123,59 @@ door* entity::update(vector<door*> doors, float elapsed) {
         if(RectOverlap(thisb,that) && (thisb.z >= that.z + that.zeight)) {
           floor = that.z + that.zeight + 0.1;
           this->shadow->z = floor + 1;
+          groundedByEntity = 1;
 
         }
       }
     }
   }
 
-  //use entities with heightmaps (identity 35)
-  for (auto& e : g_eheightmaps) {
-    rect movedbounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
-    rect ehb = e->getMovedBounds();
-    if (RectOverlap(movedbounds, ehb)) {
-      float protagTopLeftX = ((getOriginX() - (float)ehb.x) /(float)ehb.width) * (float)e->eheightmap->w;
-      float protagTopLeftY = ((getOriginY() - (float)ehb.y) /(float)ehb.height) * (float)e->eheightmap->h;
-
-      SDL_Color rgb = {0,0,0};
-      Uint32 data;
-
-      int topLeft = -1;
-      if(protagTopLeftX >= 0 && protagTopLeftX < e->eheightmap->w && protagTopLeftY >= 0 && protagTopLeftY < e->eheightmap->h) {
-        data = getpixel(e->eheightmap, protagTopLeftX, protagTopLeftY);
-        SDL_GetRGB(data, e->eheightmap->format, &rgb.r, &rgb.g, &rgb.b);
-        topLeft = rgb.r;
-      }
-
-      if(topLeft >= 0) {
-
-        floor = topLeft;
-        if(abs(z - (floor + 1)) < 2) {
-          z = floor + 1;
-        }
-        this->shadow->z = floor+1;
-      }
-    }
-  }
-
+//  //use entities with heightmaps (identity 35)
+//  for (auto& e : g_eheightmaps) {
+//    rect movedbounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
+//    rect ehb = e->getMovedBounds();
+//    if (RectOverlap(movedbounds, ehb)) {
+//      float protagTopLeftX = ((getOriginX() - (float)ehb.x) /(float)ehb.width) * (float)e->eheightmap->w;
+//      float protagTopLeftY = ((getOriginY() - (float)ehb.y) /(float)ehb.height) * (float)e->eheightmap->h;
+//
+//      SDL_Color rgb = {0,0,0};
+//      Uint32 data;
+//
+//      int topLeft = -1;
+//      if(protagTopLeftX >= 0 && protagTopLeftX < e->eheightmap->w && protagTopLeftY >= 0 && protagTopLeftY < e->eheightmap->h) {
+//        data = getpixel(e->eheightmap, protagTopLeftX, protagTopLeftY);
+//        SDL_GetRGB(data, e->eheightmap->format, &rgb.r, &rgb.g, &rgb.b);
+//        topLeft = rgb.r;
+//      }
+//
+//      if(topLeft >= 0) {
+//
+//        floor = topLeft;
+//        if(abs(z - (floor + 1)) < 2) {
+//          z = floor + 1;
+//        }
+//        this->shadow->z = floor+1;
+//      }
+//    }
+//  }
+  
   //for meshes
-  for(auto m : g_meshFloors) {
-    if(Distance(m->origin.x, m->origin.y, getOriginX(), getOriginY()) < m->sleepRadius +(bounds.width + bounds.height)) {
-      for (const auto& f : m->faces) {
-
-        if(f.d < 100) {
-          // Get vertices of the face
-          vertex3d vA = m->vertices[f.a];
-          vertex3d vB = m->vertices[f.b];
-          vertex3d vC = m->vertices[f.c];
-
-          // Get barycentric coordinates
-          vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
-          auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
-
-          // Check if player is within the triangle
-          if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
-            // Calculate interpolated z value (floor)
-            float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
-            floor = interpolatedZ;
-            if(floor < 0) floor = 0;
-            if (abs(z - (floor + 1)) < 2) {
-              z = floor + 1;
-            } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
-              z = floor + 1;
-            }
-            this->shadow->z = floor + 1;
-
-            // Calculate normal of the face
-            auto normal = calculateNormal(vA, vB, vC);
-            float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
-            float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
-
-            slopeFactor += (slope) * 0.95;
-            if(slopeFactor < 1) {
-              // Adjust velocities based on the slope
-              xvel *= slopeFactor;
-              yvel *= slopeFactor;
-            }
-            break;
-
-          } else { //use A C *D* now, since it's a quad
-                   // Get vertices of the face
+  if(!groundedByEntity) {
+    for(auto m : g_meshFloors) {
+      if(m->ggridPiece) { continue;}
+      if(Distance(m->origin.x, m->origin.y, getOriginX(), getOriginY()) < m->sleepRadius +(bounds.width + bounds.height)) {
+        for (const auto& f : m->faces) {
+  
+          if(f.d < 100) {
+            // Get vertices of the face
             vertex3d vA = m->vertices[f.a];
-            vertex3d vB = m->vertices[f.c];
-            vertex3d vC = m->vertices[f.d];
-
+            vertex3d vB = m->vertices[f.b];
+            vertex3d vC = m->vertices[f.c];
+  
             // Get barycentric coordinates
             vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
             auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
-
+  
             // Check if player is within the triangle
             if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
               // Calculate interpolated z value (floor)
@@ -6201,12 +6188,12 @@ door* entity::update(vector<door*> doors, float elapsed) {
                 z = floor + 1;
               }
               this->shadow->z = floor + 1;
-
+  
               // Calculate normal of the face
               auto normal = calculateNormal(vA, vB, vC);
               float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
               float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
-
+  
               slopeFactor += (slope) * 0.95;
               if(slopeFactor < 1) {
                 // Adjust velocities based on the slope
@@ -6214,46 +6201,83 @@ door* entity::update(vector<door*> doors, float elapsed) {
                 yvel *= slopeFactor;
               }
               break;
-
+  
+            } else { //use A C *D* now, since it's a quad
+                     // Get vertices of the face
+              vertex3d vA = m->vertices[f.a];
+              vertex3d vB = m->vertices[f.c];
+              vertex3d vC = m->vertices[f.d];
+  
+              // Get barycentric coordinates
+              vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
+              auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
+  
+              // Check if player is within the triangle
+              if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
+                // Calculate interpolated z value (floor)
+                float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
+                floor = interpolatedZ;
+                if(floor < 0) floor = 0;
+                if (abs(z - (floor + 1)) < 2) {
+                  z = floor + 1;
+                } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
+                  z = floor + 1;
+                }
+                this->shadow->z = floor + 1;
+  
+                // Calculate normal of the face
+                auto normal = calculateNormal(vA, vB, vC);
+                float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+                float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
+  
+                slopeFactor += (slope) * 0.95;
+                if(slopeFactor < 1) {
+                  // Adjust velocities based on the slope
+                  xvel *= slopeFactor;
+                  yvel *= slopeFactor;
+                }
+                break;
+  
+              }
             }
-          }
-        } else {
-
-          // Get vertices of the face
-          vertex3d vA = m->vertices[f.a];
-          vertex3d vB = m->vertices[f.b];
-          vertex3d vC = m->vertices[f.c];
-
-          // Get barycentric coordinates
-          vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
-          auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
-
-          // Check if player is within the triangle
-          if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
-            // Calculate interpolated z value (floor)
-            float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
-            floor = interpolatedZ;
-            if(floor < 0) floor = 0;
-            if (abs(z - (floor + 1)) < 2) {
-              z = floor + 1;
-            } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
-              z = floor + 1;
+          } else {
+  
+            // Get vertices of the face
+            vertex3d vA = m->vertices[f.a];
+            vertex3d vB = m->vertices[f.b];
+            vertex3d vC = m->vertices[f.c];
+  
+            // Get barycentric coordinates
+            vertex3d playerPos = { getOriginX() -m->origin.x, getOriginY()-m->origin.y, 0 };
+            auto baryCoords = getBarycentricCoords(playerPos, vA, vB, vC);
+  
+            // Check if player is within the triangle
+            if (baryCoords[0] >= 0 && baryCoords[1] >= 0 && baryCoords[2] >= 0) {
+              // Calculate interpolated z value (floor)
+              float interpolatedZ = vA.z * baryCoords[0] + vB.z * baryCoords[1] + vC.z * baryCoords[2];
+              floor = interpolatedZ;
+              if(floor < 0) floor = 0;
+              if (abs(z - (floor + 1)) < 2) {
+                z = floor + 1;
+              } else if(grounded && abs(z - (floor+1) < 10) && zvel <= 0) {
+                z = floor + 1;
+              }
+              this->shadow->z = floor + 1;
+  
+              // Calculate normal of the face
+              auto normal = calculateNormal(vA, vB, vC);
+              float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+              float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
+  
+              slopeFactor += (slope) * 0.95;
+              if(slopeFactor < 1) {
+                // Adjust velocities based on the slope
+                xvel *= slopeFactor;
+                yvel *= slopeFactor;
+              }
+  
+              break;
             }
-            this->shadow->z = floor + 1;
-
-            // Calculate normal of the face
-            auto normal = calculateNormal(vA, vB, vC);
-            float slope = sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
-            float slopeFactor = 1 - slope; // Slope factor decreases with increasing slope
-
-            slopeFactor += (slope) * 0.95;
-            if(slopeFactor < 1) {
-              // Adjust velocities based on the slope
-              xvel *= slopeFactor;
-              yvel *= slopeFactor;
-            }
-
-            break;
           }
         }
       }
@@ -10306,7 +10330,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     b0_element->xframes = 4;
     b0_element->framewidth = 128;
     b0_element->frameheight = 128;
-    b0_element->priority = 5; //crosshair goes ontop usable icons
+    b0_element->priority = -5;
     b0_element->layer0 = 1;
 
 //    b1_element = new ui(renderer, "resources/static/ui/behemoth_element.qoi", 0, 0, 0.05, 0.05, -15);

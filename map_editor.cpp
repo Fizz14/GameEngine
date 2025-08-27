@@ -1876,6 +1876,19 @@ void write_map(entity *mapent)
         skip = 1;
       }
     }
+    
+    if(skip == 0) {
+      //try to select ggrid
+      for(auto x : g_ggrids) {
+        rect blah = {x->x-20,x->y-20, 40,40};
+        if (RectOverlap(blah, marker->getMovedBounds())) {
+          g_activeGgrid = x;
+          M("Active ggrid changed");
+          skip = 1;
+          break;
+        }
+      }
+    }
 
     if(skip == 0) {
       //try to select chunk

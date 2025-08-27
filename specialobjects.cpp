@@ -1567,6 +1567,9 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   
           //all onscreen enemies will participate in the fight
           
+          float zoomoffsetx = ((float)WIN_WIDTH / 2) / g_zoom_mod;
+          float zoomoffsety = ((float)WIN_HEIGHT / 2) / g_zoom_mod;
+          g_camera.update_movement(elapsed, g_focus->getOriginX() - zoomoffsetx, ((g_focus->getOriginY() - XtoZ * g_focus->z) - zoomoffsety));
           g_camera.width = WIN_WIDTH;
           g_camera.height = WIN_HEIGHT;
           rect cam(0, 0, g_camera.width, g_camera.height);
@@ -1587,6 +1590,14 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   //            x->height
   //            );
 
+          D(obj.x);
+          D(obj.y);
+          D(obj.width);
+          D(obj.height);
+          D(cam.x);
+          D(cam.y);
+          D(cam.width);
+          D(cam.height);
           if(RectOverlap(cam, obj) 
 //              && 
 //              LineTrace(x->getOriginX(), x->getOriginY(), protag->getOriginX(), protag->getOriginY(), false, 1, 0, 5, true, true)
@@ -1605,7 +1616,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 //            D(cam.height);
 
             g_combatWorldEnts.push_back(x);
-            M("pushed back on combatworldents");
+            //M("pushed back on combatworldents");
             x->level = 2;
             x->agrod = 1;
             x->target = protag;

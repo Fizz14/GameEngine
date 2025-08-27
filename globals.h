@@ -23,6 +23,7 @@
 #include "title.h"
 #include "loss.h"
 #include "mesh.h"
+//#include <stacktrace>
 
 // this is unique to the windowsport
 //#include "windowsinclude.h"
@@ -390,10 +391,12 @@ struct cmpCoord
   std::cout << (a) << endl; \
 }
 
-#define E(a)                                \
+#define E(a)                              \
 {                                         \
-  std::cout << "ERROR: " << (a) << endl; \
+  breakpoint();                     \
+  std::cout << "ERROR: " << (a) << endl;\
 }
+
 #define W(a)                                \
 {                                         \
   std::cout << "Warning: " << (a) << endl; \

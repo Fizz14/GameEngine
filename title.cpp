@@ -270,6 +270,7 @@ void TitleLoop() {
         loadSave();
         g_saveName = "a";
         g_gamemode = gamemode::EXPLORATION;
+        devMode = 0;
         resetTrivialData();
         Mix_FadeOutMusic(1000);
     

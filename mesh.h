@@ -79,6 +79,8 @@ public:
   int numVertices = 0;
   int numIndices = 0;
 
+  bool ggridPiece = 0; //turn off using the floors for height
+
   float sleepRadius = 0;
 
   vector<face> faces; //for 3d data, for determining z of entities ontop.

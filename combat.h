@@ -63,6 +63,8 @@ enum class status {
   SLIMED, //take additional damage from Slime
   SYNCHRONIZED, //increased soul
   STICKYBOMBED, //take a second hit from the stickybomb a turn later
+  IGNITED, //burn
+  BESTOWED,
 };
 
 struct bground {
@@ -161,6 +163,8 @@ public:
 
   int xp;
   int level;
+
+  int damageTakenThisTurn = 0; //used for Ignite
 
   Uint8 opacity = 255;
   bool disappearing = 0;
@@ -399,7 +403,7 @@ public:
   int damageTakenFromDodgingPhase = 0;
   int damageFromEachHit = 0;
   int dodgeTimer = 0;
-  const int maxDodgeTimer = 15000;
+  const int maxDodgeTimer = 8000;
   int invincibleMs = 0;
   const int maxInvincibleMs = 1000;
   int blinkMs = 0;

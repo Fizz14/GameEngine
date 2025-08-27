@@ -135,9 +135,7 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
       s.erase(0, 1);
       string blockstr = s.substr(0, s.find(']'));
       int block = stoi(blockstr);
-      D(block);
       string res = combatScript[line + j];
-      D(res);
 
       while (res.find('*') != std::string::npos)
       {
@@ -145,7 +143,6 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
         // parse option
         //  *15 29 -> if data is 15, go to line 29
         string s = combatScript[line + j];
-        D(s);
         s.erase(0, 1);
         int condition = stoi(s.substr(0, s.find(':')));
         s.erase(0, s.find(':') + 1);
@@ -153,7 +150,6 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
         if (c->data[block] <= condition)
         {
           line = jump-3;
-          D(line);
           break;
         }
         j++;
@@ -176,8 +172,6 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
       string s = combatScript[line];
       string idleText = s.substr(9);
       combatUIManager->idleText = c->name + idleText;
-      D(idleText);
-      D(combatUIManager->idleText);
     }
     
 
@@ -1336,6 +1330,74 @@ void spawnBullets(int pattern, int& accumulator) {
         }
         break;
       }
+    case 26:
+      {
+        // simple come from the right pattern
+        int cooldown = 5000; // Cooldown between each shot
+
+        if (accumulator >= cooldown) {
+          accumulator = 0;
+
+          miniBullet* a = new miniBullet();
+          a->x = SCREEN_WIDTH + SPAWN_MARGIN; // Spawn off-screen
+          a->y = rng(0, SCREEN_HEIGHT); // Random y position
+          a->angle = -M_PI; // Shoot left
+          a->velocity = 0.2; // Set bullet velocity
+          //a->exploding = 2; // Enable explosion feature
+          //a->numFragments = 3;
+          //a->fragSize = 0.75;
+          //a->explosionTimer = rng(1000, 3000); // Set explosion timer
+          a->texture = combatUIManager->bulletTexture;
+          a->red = 128;   // Set color for initial bullet
+          a->green = 128;
+          a->blue = 128;
+          a->randomExplodeAngle = 1;
+        }
+        break;
+      }
+    case 27:
+      { 
+        //slower version of pattern 10
+        int cooldown = 1200;
+
+        if (accumulator >= cooldown) {
+          accumulator = 0;
+
+          miniBullet* a = new miniBullet();
+          a->velocity = 0.6;
+          a->acceleration = -0.0015;
+          a->texture = combatUIManager->bulletTexture;
+          a->red = 0;
+          a->green = 128;
+          a->blue = 128;
+        }
+        break;
+      }
+    case 28:
+      {
+        // faster version of 26
+        int cooldown = 2500; // Cooldown between each shot
+
+        if (accumulator >= cooldown) {
+          accumulator = 0;
+
+          miniBullet* a = new miniBullet();
+          a->x = SCREEN_WIDTH + SPAWN_MARGIN; // Spawn off-screen
+          a->y = rng(0, SCREEN_HEIGHT); // Random y position
+          a->angle = -M_PI; // Shoot left
+          a->velocity = 0.2; // Set bullet velocity
+          //a->exploding = 2; // Enable explosion feature
+          //a->numFragments = 3;
+          //a->fragSize = 0.75;
+          //a->explosionTimer = rng(1000, 3000); // Set explosion timer
+          a->texture = combatUIManager->bulletTexture;
+          a->red = 128;   // Set color for initial bullet
+          a->green = 128;
+          a->blue = 128;
+          a->randomExplodeAngle = 1;
+        }
+        break;
+      }
   }
 }
 
@@ -1377,6 +1439,18 @@ void initTables() {
     itemsTable[16] = itemInfo(getLanguageData("I16"), 1); // Burger
     itemsTable[17] = itemInfo(getLanguageData("I17"), 1); // Grilledcheese
     itemsTable[18] = itemInfo(getLanguageData("I18"), 3); // Picnicbox
+    itemsTable[19] = itemInfo(getLanguageData("I19"), 1); // Bagel
+    itemsTable[20] = itemInfo(getLanguageData("I20"), 1); // Pasta
+    itemsTable[21] = itemInfo(getLanguageData("I21"), 1); // Pickle
+    itemsTable[22] = itemInfo(getLanguageData("I22"), 1); // OrangeJuice
+    itemsTable[23] = itemInfo(getLanguageData("I23"), 1); // Rice
+    itemsTable[24] = itemInfo(getLanguageData("I24"), 1); // Apple
+    itemsTable[25] = itemInfo(getLanguageData("I25"), 1); // Toast
+    itemsTable[26] = itemInfo(getLanguageData("I26"), 1); // Cookie
+    itemsTable[27] = itemInfo(getLanguageData("I27"), 1); // DeluxePicnic
+    itemsTable[28] = itemInfo(getLanguageData("I28"), 1); // Weddingcake
+    itemsTable[29] = itemInfo(getLanguageData("I29"), 1); // Icecream
+    itemsTable[30] = itemInfo(getLanguageData("I30"), 2); // Devbomb
    
 
   }
@@ -1387,15 +1461,23 @@ void initTables() {
     // 2 -> untargeted
     //name, targeting, cost
     spiritTable[0] = spiritInfo(getLanguageData("S0"), 0, 1); //Debug
-    spiritTable[1] = spiritInfo(getLanguageData("S1"), 2, 5); //Harden
+    spiritTable[1] = spiritInfo(getLanguageData("S1"), 2, 1); //Harden
     spiritTable[2] = spiritInfo(getLanguageData("S2"), 0, 2); //Tackle
-    spiritTable[3] = spiritInfo(getLanguageData("S3"), 1, 5); //Tea
+    spiritTable[3] = spiritInfo(getLanguageData("S3"), 1, 5); //Coffee
     spiritTable[4] = spiritInfo(getLanguageData("S4"), 2, 2); //Chant
-    spiritTable[5] = spiritInfo(getLanguageData("S5"), 0, 5); //Inspect
+    spiritTable[5] = spiritInfo(getLanguageData("S5"), 0, 1); //Inspect
     spiritTable[6] = spiritInfo(getLanguageData("S6"), 0, 2); //Taunt
     spiritTable[7] = spiritInfo(getLanguageData("S7"), 0, 2); //Slime
     spiritTable[8] = spiritInfo(getLanguageData("S8"), 2, 2); //Synchronize
-    spiritTable[9] = spiritInfo(getLanguageData("S9"), 1, 6); //Optimize
+    spiritTable[9] = spiritInfo(getLanguageData("S9"), 1, 6); //Optimize, all
+    spiritTable[10] = spiritInfo(getLanguageData("S10"), 0, 4); //Ignite, Dafua
+    spiritTable[11] = spiritInfo(getLanguageData("S11"), 0, 6); //Exploit, Neheten
+    spiritTable[12] = spiritInfo(getLanguageData("S12"), 1, 2); //Bestow, Fomm
+    spiritTable[13] = spiritInfo(getLanguageData("S13"), 0, 5); //Curse, Blish
+    spiritTable[14] = spiritInfo(getLanguageData("S14"), 0, 3); //Finish, Fomm
+    spiritTable[15] = spiritInfo(getLanguageData("S15"), 0, 5); //Exhaust, Neheten
+    spiritTable[16] = spiritInfo(getLanguageData("S16"), 0, 5); //Scary Face, Blish
+    spiritTable[17] = spiritInfo(getLanguageData("S17"), 0, 5); //Combust, Dafua
   }
 }
 
@@ -1461,11 +1543,12 @@ void useItem(int item, int target, combatant* user) {
     case 1:
       {
         //Bomb
-        int mag = 25.0f * frng(0.85, 1.15) * user->curSkill;
+        int mag = 25.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
         for(int i = 0; i < g_enemyCombatants.size(); i++) {
           int thisMag = mag - g_enemyCombatants[i]->curDefense;
           if(thisMag <0) {thisMag = 0;}
           g_enemyCombatants[i]->health -= thisMag;
+          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
           user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
           string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I1")});
           combatUIManager->queuedStrings.push_back(make_pair(message,0));
@@ -1490,11 +1573,12 @@ void useItem(int item, int target, combatant* user) {
     case 2:
       {
         //Super Bomb
-        int mag = 50.0f * frng(0.85, 1.15) * user->curSkill;
+        int mag = 95.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
         for(int i = 0; i < g_enemyCombatants.size(); i++) {
           int thisMag = mag - g_enemyCombatants[i]->curDefense;
           if(thisMag <0) {thisMag = 0;}
           g_enemyCombatants[i]->health -= thisMag;
+          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
           user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
           string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I2")});
           combatUIManager->queuedStrings.push_back(make_pair(message,0));
@@ -1519,11 +1603,12 @@ void useItem(int item, int target, combatant* user) {
     case 3:
       {
         //Mega Bomb
-        int mag = 75.0f * frng(0.85, 1.15) * user->curSkill;
+        int mag = 175.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
         for(int i = 0; i < g_enemyCombatants.size(); i++) {
           int thisMag = mag - g_enemyCombatants[i]->curDefense;
           if(thisMag <0) {thisMag = 0;}
           g_enemyCombatants[i]->health -= thisMag;
+          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
           user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
           string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I3")});
           combatUIManager->queuedStrings.push_back(make_pair(message,0));
@@ -1548,11 +1633,12 @@ void useItem(int item, int target, combatant* user) {
     case 4:
       {
         //Grenade
-        int mag = 35.0f * frng(0.85, 1.15) * user->curSkill;
+        int mag = 35.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
         g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
         user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
           string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I4")});
         combatUIManager->queuedStrings.push_back(make_pair(message,0));
@@ -1577,11 +1663,12 @@ void useItem(int item, int target, combatant* user) {
     case 5:
       {
         //S.Grenade
-        int mag = 60.0f * frng(0.85, 1.15) * user->curSkill;
+        int mag = 70.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
         g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
         user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
           string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I5")});
         combatUIManager->queuedStrings.push_back(make_pair(message,0));
@@ -1606,11 +1693,12 @@ void useItem(int item, int target, combatant* user) {
     case 6:
       {
         //U.Grenade
-        int mag = 85.0f * frng(0.85, 1.15) * user->curSkill;
+        int mag = 150.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
         g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
         user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
           string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I6")});
         combatUIManager->queuedStrings.push_back(make_pair(message,0));
@@ -1635,11 +1723,12 @@ void useItem(int item, int target, combatant* user) {
     case 7:
       {
         //Stickybomb
-        int mag = 20.0f * frng(0.85, 1.15) * user->curSkill;
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
         int i = target;
         mag -= g_enemyCombatants[i]->curDefense;
         if(mag <0) { mag = 0;}
         g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
         user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
         string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I7")});
         combatUIManager->queuedStrings.push_back(make_pair(message,0));
@@ -1688,6 +1777,43 @@ void useItem(int item, int target, combatant* user) {
         combatUIManager->dialogProceedIndicator->y = 0.25;
         break;
       }
+    case 30:
+      {
+        //Devbomb
+        int mag = 2500.0f * frng(0.85, 1.15) + (user->curSkill * 2);
+
+        if(canSwitchOffDevMode) {
+          if(g_combatInventory.size() < g_maxInventorySize) {
+            g_combatInventory.push_back(30);
+          }
+        }
+
+        for(int i = 0; i < g_enemyCombatants.size(); i++) {
+          int thisMag = mag - g_enemyCombatants[i]->curDefense;
+          if(thisMag <0) {thisMag = 0;}
+          g_enemyCombatants[i]->health -= thisMag;
+          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
+          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I1")});
+          combatUIManager->queuedStrings.push_back(make_pair(message,0));
+          combatUIManager->currentText = "";
+          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+          combatant* e = g_enemyCombatants[i];
+          if(e->health < 0) {
+            string deathmessage = e->name + " " + e->deathText;
+            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+            g_deadCombatants.push_back(e);
+            //delete e;
+            i--;
+          }
+        }
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
   }
 }
 
@@ -1714,6 +1840,7 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
 
         if(mag < 0) {mag = 0;}
         g_enemyCombatants[target]->health -= mag;
+        g_enemyCombatants[target]->damageTakenThisTurn += mag;
         user->dmgDealtOverFight += min(g_enemyCombatants[target]->health, (int)mag);
 
         string message = getLanguageData("DebugMoveText");
@@ -1736,11 +1863,13 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
       {
         //see if we already have the status
         bool alreadyHave = 0;
+        int mag = 0;
         for(auto &x : user->statuses) {
           if(x.type == status::TOUGHENED) {
             alreadyHave = 1;
             if(x.turns < 6) {
               x.turns = 6;
+              mag = x.magnitude;
             }
             break;
           }
@@ -1750,12 +1879,13 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
           statusEntry e;
           e.type = status::TOUGHENED;
           e.turns = 6;
-          e.magnitude = 1.1 + (0.02 * user->curSoul);
+          e.magnitude = 1.1 + (0.5 * user->curSoul);
+          mag = e.magnitude;
           user->statuses.push_back(e);
         }
 
         string message = getLanguageData("HardenMoveText");
-        message = stringMultiInject(message, {user->name, getPossessivePronoun(user)});
+        message = stringMultiInject(message, {user->name, to_string((int)mag)});
         combatUIManager->finalText = message;
         combatUIManager->currentText = "";
         combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
@@ -1774,6 +1904,7 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
         if(dmg < 0) {dmg = 0;}
 
         g_enemyCombatants[target]->health -= dmg;
+        g_enemyCombatants[target]->damageTakenThisTurn += dmg;
         user->dmgDealtOverFight += min(g_enemyCombatants[target]->health, (int)mag);
  
         int selfdmg = (mag - user->curDefense) * 0.2;
@@ -1864,7 +1995,7 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
         combatant* e = g_enemyCombatants[target];
         string message = getLanguageData("InspectMoveText0");
         D(message);
-        message = stringMultiInject(message, {e->name, to_string(e->baseStrength), to_stringF(e->baseAttack), to_stringF(e->baseDefense)});
+        message = stringMultiInject(message, {e->name, to_stringF(e->baseStrength), to_stringF(e->baseAttack), to_stringF(e->baseDefense)});
         string message2 = getLanguageData("InspectMoveText1");
         message2 = stringMultiInject(message2, {getSubjectivePronoun(e), to_string(e->health), to_stringF(e->curStrength), to_stringF(e->curDefense)});
         string message3 = getLanguageData("InspectMoveText2");
@@ -1944,6 +2075,7 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
         }
 
         g_enemyCombatants[target]->health -= dmg;
+        g_enemyCombatants[target]->damageTakenThisTurn += dmg;
         user->dmgDealtOverFight += min(g_enemyCombatants[target]->health, (int)dmg);
 
         string message = user->name + " slimes " + e->name + " for " + to_string(dmg) + " damage.";
@@ -1995,6 +2127,166 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
 
         break;
       }
+    case 9:
+      {
+        //Optimize
+        
+        //revisit this when characters can have debuffs (Exhaust)
+      }
+    case 10:
+      {
+        //Ignite
+        combatant* e = g_enemyCombatants[target];
+        D(e->damageTakenThisTurn);
+        if(e->damageTakenThisTurn > 1) {
+          float baseDmg = 12;
+  
+          float mag = (baseDmg + (user->curSoul * 1.3) );
+          mag*= frng(0.8, 1.2);
+  
+          int dmg = mag - g_enemyCombatants[target]->curDefense;
+          if(dmg < 0) {dmg = 0;}
+  
+          g_enemyCombatants[target]->health -= dmg;
+          g_enemyCombatants[target]->damageTakenThisTurn += dmg;
+          user->dmgDealtOverFight += min(g_enemyCombatants[target]->health, (int)mag);
+   
+          string message = getLanguageData("IgniteMove1");
+          message = stringMultiInject(message, {user->name, g_enemyCombatants[target]->name, to_string(dmg)});
+  
+          combatUIManager->finalText = message;
+          combatUIManager->currentText = "";
+          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+          combatant* e = g_enemyCombatants[target];
+          if(e->health < 0) {
+            string deathmessage = e->name + " " +  e->deathText;
+            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+            g_enemyCombatants.erase(g_enemyCombatants.begin() + target);
+            g_deadCombatants.push_back(e);
+          }
+          
+        } else {
+
+          bool alreadyHave = 0;
+          combatant* e = g_enemyCombatants[target];
+          int dmg = 0;
+          for(auto &x : e->statuses) {
+            if(x.type == status::IGNITED) {
+              alreadyHave = 1;
+              x.turns = 4;
+              break;
+            }
+          }
+  
+          if(!alreadyHave) {
+            statusEntry se;
+            se.type = status::IGNITED;
+            se.turns = 4;
+            se.magnitude = 5 + user->curSoul * 1.2;
+            e->statuses.push_back(se);
+            M("Pushed back ignited status");
+          }
+          string message = getLanguageData("IgniteMove2");
+          message = stringMultiInject(message, {user->name, g_enemyCombatants[target]->name});
+
+          combatUIManager->finalText = message;
+          combatUIManager->currentText = "";
+          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+  
+        }
+        break;
+      }
+    case 11:
+      {
+        //punish
+        float baseDmg = 6 + 0.4 * user->curSoul;
+
+        combatant* e = g_enemyCombatants[target];
+        bool punish = 0;
+        
+        for(auto x : e->statuses) {
+          if(x.type == status::IGNITED) {
+            punish = 1;
+            baseDmg = 10 + 1.3 * user->curSoul;
+          }
+        }
+
+
+        float mag = baseDmg;
+        mag*= frng(0.8, 1.2);
+
+        int dmg = mag - g_enemyCombatants[target]->curDefense;
+        if(dmg < 0) {dmg = 0;}
+
+        g_enemyCombatants[target]->health -= dmg;
+        g_enemyCombatants[target]->damageTakenThisTurn += dmg;
+        user->dmgDealtOverFight += min(g_enemyCombatants[target]->health, (int)mag);
+ 
+
+        string message = getLanguageData("PunishMove");
+        message = stringMultiInject(message, {user->name, g_enemyCombatants[target]->name, to_string(dmg)});
+
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        if(e->health < 0) {
+          string deathmessage = e->name + " " +  e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + target);
+          g_deadCombatants.push_back(e);
+          //delete e;
+        }
+        break;
+      }
+    case 12:
+      {
+        //Bestow
+        
+        //give a teammate an attack boost based on user's defense
+        
+        //see if we already have the status
+        bool alreadyHave = 0;
+        combatant* c = g_partyCombatants[target];
+        float mag = 0;
+        for(auto &x : c->statuses) {
+          if(x.type == status::BESTOWED) {
+            alreadyHave = 1;
+            if(x.turns < 3) {
+              x.turns = 3;
+            }
+            float bonusDefense = user->curDefense - user->baseDefense;
+            x.magnitude = 0.5 * user->curSoul + 1.5 * bonusDefense;
+            x.magnitude *= frng(0.8,1.2);
+            mag = x.magnitude;
+            break;
+          }
+        }
+
+        if(!alreadyHave) {
+          statusEntry e;
+          e.type = status::BESTOWED;
+          e.turns = 3;
+          float bonusDefense = user->curDefense - user->baseDefense;
+          e.magnitude = 0.5 * user->curSoul + 1.5 * bonusDefense;
+          e.magnitude *= frng(0.8,1.2);
+          mag = e.magnitude;
+          c->statuses.push_back(e);
+        }
+
+        string message = getLanguageData("BestowMove");
+        c->curAttack += mag;
+        message = stringMultiInject(message, {user->name, c->name, to_string((int)mag)});
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+
+        break;
+      }
+
   }
 }
 
@@ -2007,9 +2299,11 @@ bool applyStatus(combatant* c, statusEntry* e) {
       }
     case status::TOUGHENED:
       {
+        M("Apply toughened Status");
         if(e->turns <= 0) {
           //the status wore off
-          combatUIManager->finalText = c->name + "'s Harden has worn off.";
+          combatUIManager->finalText = stringMultiInject(getLanguageData("StatusWornOff"), {spiritTable[1].name, c->name});
+
           combatUIManager->currentText = "";
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
           combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -2062,7 +2356,8 @@ bool applyStatus(combatant* c, statusEntry* e) {
       {
         if(e->turns <= 0) {
           //combatUIManager->finalText = c->name + " is out-of-sync.";
-          combatUIManager->finalText = stringMultiInject(getLanguageData("SynchronizeOverText"), {c->name});
+          //combatUIManager->finalText = stringMultiInject(getLanguageData("SynchronizeOverText"), {c->name});
+          combatUIManager->finalText = stringMultiInject(getLanguageData("StatusWornOff"), {spiritTable[8].name, c->name});
           combatUIManager->currentText = "";
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
           combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -2077,9 +2372,10 @@ bool applyStatus(combatant* c, statusEntry* e) {
     case status::STICKYBOMBED:
       {
         if(e->turns == 1) {
-          int damage = e->magnitude - c->curDefense;
+          int damage = (frng(0.8,1.2) * e->magnitude) - c->curDefense;
           if(damage <0) {damage =0;}
           c->health -= damage;
+          c->damageTakenThisTurn += damage;
   
           //combatUIManager->finalText = c->name + " is out-of-sync.";
           combatUIManager->finalText = stringMultiInject(getLanguageData("TookFrom"), {c->name, to_stringF(e->magnitude), getLanguageData("I7")});
@@ -2091,6 +2387,39 @@ bool applyStatus(combatant* c, statusEntry* e) {
 
         e->turns--;
       }
+
+    case status::IGNITED:
+      {
+        int damage = (frng(0.8,1.2) * e->magnitude) - c->curDefense;
+        if(damage <0) {damage =0;}
+        c->health -= damage;
+        c->damageTakenThisTurn += damage;
+  
+        combatUIManager->finalText = stringMultiInject(getLanguageData("IgniteStatus"), {c->name, to_string(damage)});
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        g_submode = submode::TEXT_STATUS_E;
+
+        e->turns--;
+      }
+    case status::BESTOWED:
+      {
+        if(e->turns <= 0) {
+          //wore off
+
+          combatUIManager->finalText = stringMultiInject(getLanguageData("StatusWornOff"), {spiritTable[12].name, c->name});
+          combatUIManager->currentText = "";
+          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+          g_submode = submode::TEXT_STATUS_P;
+          return 1;
+        }
+        c->curAttack += e->magnitude;
+        e->turns--;
+      }
+
+
   }
   curStatusIndex++;
   return 0;
@@ -2818,7 +3147,7 @@ void drawCombatants() {
     combatUIManager->partyMiniText->updateText(getLanguageData("PartyHP"), -1, 1, combatUIManager->partyText->textcolor);
     combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
     combatUIManager->partyMiniText->boxY += 0.025;
-    combatUIManager->partyMiniText->updateText('/' + to_stringF(combatant->curStrength), -1, 1, combatUIManager->partyText->textcolor);
+    combatUIManager->partyMiniText->updateText('/' + to_stringF(floor(combatant->curStrength)), -1, 1, combatUIManager->partyText->textcolor);
     combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
     combatUIManager->partyMiniText->boxY += 0.045;
     combatUIManager->partyMiniText->updateText(getLanguageData("PartySP"), -1, 1, combatUIManager->partyText->textcolor);
@@ -2869,6 +3198,7 @@ void CombatLoop() {
         g_autoFight = 0;
 
         //clear statuses
+        M("Clearing statuses on party");
         for(auto x : g_partyCombatants) {
           x->statuses.clear();
           x->curStrength = x->baseStrength;
@@ -2880,12 +3210,6 @@ void CombatLoop() {
           x->curCritical = x->baseCritical;
           x->curRecovery = x->baseSoul;
         }
-
-        g_forceEndDialogue = 0;
-        g_submode = submode::INWIPE;
-      }
-    case submode::INWIPE:
-      {
 
         //copy g_enemyCombatants to g_enemyCombatantsForDropping
         //so items can be dropped based on who was fought
@@ -2899,13 +3223,15 @@ void CombatLoop() {
           d.eDropPercent = x->droppedEquipablePercent;
           d.eDropIndex = x->droppedEquipableIndex;
           g_dropInfos.push_back(d);
-//          c.droppedItemPercent = x->droppedItemPercent;
-//          c.droppedItemIndex = x->droppedItemIndex;
-//          c.droppedEquipablePercent = x->droppedEquipablePercent;
-//          c.droppedEquipableIndex = x->droppedEquipableIndex;
-//          D(x->name);
-//          c.name = x->name;
         }
+
+
+        g_forceEndDialogue = 0;
+        g_submode = submode::INWIPE;
+      }
+    case submode::INWIPE:
+      {
+
 
         // onframe things
         SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
@@ -2935,8 +3261,8 @@ void CombatLoop() {
           }
         }
 
-        ticks = SDL_GetTicks();
-        elapsed = ticks - lastticks;
+//        ticks = SDL_GetTicks();
+//        elapsed = ticks - lastticks;
 
         SDL_UnlockTexture(transitionTexture);
         SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
@@ -3568,6 +3894,11 @@ void CombatLoop() {
           while(g_partyCombatants[curCombatantIndex]->health <= 0) {
             curCombatantIndex++;
             if(curCombatantIndex >= g_partyCombatants.size()) {
+
+              for(auto x : g_enemyCombatants) {
+                x->damageTakenThisTurn = 0;
+              }
+
               g_submode = submode::EXECUTE_P;
               combatUIManager->executePIndex = 0;
               curCombatantIndex = 0;
@@ -3650,6 +3981,7 @@ void CombatLoop() {
           c->dmgDealtOverFight += dmgToReport;
 
           e->health -= damage;
+          e->damageTakenThisTurn += damage;
           string message;
           if(crit) {
             //message = c->name + " crits " + e->name + " for " + to_string(damage) + ".";
@@ -4312,16 +4644,20 @@ void CombatLoop() {
         }
 
         //apply recovery
-        for(auto &x : g_partyCombatants) {
+        for(auto x : g_partyCombatants) {
           if(x->health > 0) {
             x->health += (x->curRecovery/100.0f) * x->baseStrength;
             x->sp += (x->curRecovery/100.0f) * x->baseMind;
-            if(x->health > x->baseStrength) {
+            if(x->health > floor(x->baseStrength)) {
               x->health = floor(x->baseStrength);
             }
-            if(x->sp > x->baseMind) {
+            x->curStrength = x->baseStrength;
+            D(x->health);
+            D(x->baseStrength);
+            if(x->sp > floor(x->baseMind)) {
               x->sp = floor(x->baseMind);
             }
+            x->curMind = x->baseMind;
           }
         }
 
@@ -4499,6 +4835,18 @@ void CombatLoop() {
 
 
         g_partyCombatants[curCombatantIndex]->level = combatUIManager->thisLevel;
+
+        //reset all stats
+        for(auto x : g_partyCombatants) {
+          x->curStrength = x->baseStrength;
+          x->curMind = x->baseMind;
+          x->curAttack = x->baseAttack;
+          x->curDefense = x->baseDefense;
+          x->curSoul = x->baseSoul;
+          x->curSkill = x->baseSkill;
+          x->curCritical = x->baseCritical;
+          x->curRecovery = x->baseSoul;
+        }
 
         g_submode = submode::LEVELTEXT;
 
@@ -5214,6 +5562,7 @@ void CombatLoop() {
                   g_partyCombatants[curCombatantIndex]->serial.actionIndex = spiritNumber;
 
                   g_submode = submode::TARGETING;
+                  combatUIManager->currentTarget = 0;
                   break;
                 }
               case 1:
@@ -5400,6 +5749,7 @@ void CombatLoop() {
           //end early
           combatUIManager->dodgeTimer = combatUIManager->maxDodgeTimer + 1;
         }
+
 
         if(combatUIManager->dodgeTimer > combatUIManager->maxDodgeTimer) {
           // delete all miniEnts
@@ -6215,7 +6565,6 @@ void CombatLoop() {
       }
     case submode::DROPITEMTEXT:
       {
-        M("Drop item text");
         combatUIManager->mainPanel->show = 1;
         combatUIManager->mainText->show = 1;
         combatUIManager->optionsPanel->show = 0;
@@ -7324,6 +7673,7 @@ void explorationLevelupLoop() {
           c->dmgDealtOverFight += dmgToReport;
 
           e->health -= damage;
+          e->damageTakenThisTurn += damage;
           string message;
           if(crit) {
             //message = c->name + " crits " + e->name + " for " + to_string(damage) + ".";
