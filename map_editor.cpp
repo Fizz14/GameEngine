@@ -120,6 +120,11 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     g_waypoint = destWaypointName;
   }
 
+  if(g_secondaryLanguagePack != g_mapdir) {
+    initSecondaryIndices(g_mapdir);
+    M("  MUST LOAD SECONDARY LANGUAGEPACK");
+  }
+
   vector<string> strings = {};
   if(PHYSFS_exists(filename.c_str())) {
     strings = loadText(filename);

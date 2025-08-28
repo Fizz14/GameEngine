@@ -4719,7 +4719,8 @@ int WinMain()
   }
 
   if(devMode) {
-    generateIndicesFile();
+    generateIndicesFile("major");
+    generateIndicesFile("trial");
   }
 
   //language pack

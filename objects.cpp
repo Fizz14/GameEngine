@@ -30,6 +30,7 @@
 #include "utils.h"
 #include "combat.h"
 #include "main.h"
+#include "utils.h"
 
 #include <utility>
 #include <tuple>
@@ -12333,6 +12334,7 @@ void adventureUI::continueDialogue()
     D(g_map);
     clear_map(g_camera);
     load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_map + ".map", "a");
+
 
     for(auto x : party) {
       x->setOriginX(sx);

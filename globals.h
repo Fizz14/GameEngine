@@ -445,6 +445,7 @@ extern bool devMode;
 extern const bool g_ship;
 extern const bool g_linux;
 extern string g_language;
+extern string g_secondaryLanguagePack;
 extern bool canSwitchOffDevMode;
 extern bool inputRefreshCanSwitchOffDevMode;
 extern bool showDevMessages;

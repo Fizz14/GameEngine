@@ -8,6 +8,10 @@ map<string, string> languagePack;
 
 map<string, pair<int, int>> languagePackIndices;
 
+map<string, string> secondaryLanguagePack;
+
+map<string, pair<int, int>> secondaryLanguagePackIndices;
+
 SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
 {
   if(g_linux) {
@@ -277,12 +281,12 @@ Mix_Music* loadMusic(string fileaddress)
   }
 }
 
-void generateIndicesFile() {
+void generateIndicesFile(string file) {
   if(!devMode || g_ship) {
     E("Tried to generate languagepack indices file for release!");
   }
-  string input_file = "resources/languagepack/" + g_language + "/major.txt";
-  string output_file = "resources/languagepack/" + g_language + "/indices.dat";
+  string input_file = "resources/languagepack/" + g_language + "/" + file + ".txt";
+  string output_file = "resources/languagepack/" + g_language + "/" + file + "_indices.dat";
   std::istringstream infile(loadTextAsString(input_file));
   std::ofstream outfile(output_file);
   std::string line;
@@ -302,7 +306,7 @@ void generateIndicesFile() {
 }
 
 void initLanguageIndices() {
-  string input_file = "resources/languagepack/" + g_language + "/indices.dat";
+  string input_file = "resources/languagepack/" + g_language + "/major_indices.dat";
 
   istringstream infile(loadTextAsString(input_file));
   string line = "";
@@ -317,6 +321,28 @@ void initLanguageIndices() {
     int pos = stoi(y[0]);
     int length = stoi(y[1]);
     languagePackIndices[key] = std::make_pair(pos, length);
+  }
+
+}
+
+void initSecondaryIndices(string mapdir) {
+  string input_file = "resources/languagepack/" + g_language + "/" + mapdir + "_indices.dat";
+  secondaryLanguagePackIndices.clear();
+  g_secondaryLanguagePack = mapdir;
+
+  istringstream infile(loadTextAsString(input_file));
+  string line = "";
+  while (std::getline(infile, line)) {
+    auto x = splitString(line, ':');
+    auto y = splitString(x[1], ',');
+    if(y[1].back() == '\r') {
+      y[1].pop_back();
+    }
+  
+    string key = x[0];
+    int pos = stoi(y[0]);
+    int length = stoi(y[1]);
+    secondaryLanguagePackIndices[key] = std::make_pair(pos, length);
   }
 }
 
@@ -398,8 +424,14 @@ string getLanguageData(string handle) {
     position = languagePackIndices[handle].first;
     length = languagePackIndices[handle].second;
   } else {
-    E("Missing Languagepackhook for " + handle);
-    return "";
+    if(secondaryLanguagePackIndices.count(handle) > 0) {
+      position = secondaryLanguagePackIndices[handle].first;
+      length = secondaryLanguagePackIndices[handle].second;
+      fileaddress = "resources/languagepack/" + g_language + "/" + g_secondaryLanguagePack + ".txt";
+    } else {
+      E("Missing Languagepackhook for " + handle);
+      return "";
+    }
   }
 
   if(PHYSFS_exists(fileaddress.c_str())) {

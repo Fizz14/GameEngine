@@ -209,6 +209,7 @@ bool devMode = 1;
 const bool g_ship = 0; //!!!
 const bool g_linux = 0;
 string g_language = "english";
+string g_secondaryLanguagePack = "";
 bool canSwitchOffDevMode = 0;
 bool inputRefreshCanSwitchOffDevMode = 0;
 bool showDevMessages = 1;

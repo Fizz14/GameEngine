@@ -17,6 +17,11 @@ extern map<string, string> languagePack;
 
 extern map<string, pair<int, int>> languagePackIndices;
 
+extern map<string, string> secondaryLanguagePack;
+
+extern map<string, pair<int, int>> secondaryLanguagePackIndices;
+
+
 SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress);
 
 SDL_Surface* loadSurface(string fileaddress);
@@ -33,7 +38,9 @@ Mix_Music* loadMusic(string fileaddress);
 
 void initLanguageIndices();
 
-void generateIndicesFile();
+void initSecondaryIndices(string mapdir);
+
+void generateIndicesFile(string file);
 
 wstring bytes_to_wstring(const std::vector<unsigned char>& bytes);
 
