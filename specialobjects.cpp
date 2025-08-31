@@ -415,12 +415,7 @@ void specialObjectsInit(entity* a) {
         }
       }
 
-
-
-
-
-
-
+      break;
     }
     case 35:
     {
@@ -538,6 +533,7 @@ void specialObjectsInit(entity* a) {
     }
 
   }
+
 }
 
 void specialObjectsBump(entity* a, bool xcollide, bool ycollide) {

@@ -173,6 +173,48 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
       string idleText = s.substr(9);
       combatUIManager->idleText = c->name + idleText;
     }
+
+
+    if(combatScript[line].substr(0,17) == "/physicalbarrier ") {
+      
+      vector<string> x = splitString(combatScript[line], ' ');
+      int magnitude = 0;
+      int turns = 0;
+      if(x.size() > 2) {
+        magnitude = stoi(x[1]);
+        turns = stoi(x[2]);
+      }
+      if(g_enemyCombatants.size() > 1) {
+        combatUIManager->idleText = stringMultiInject(getLanguageData("CombatPhysicalBarrierTeam"), {c->name, getPossessivePronoun(c), to_string(magnitude)});
+      } else {
+        combatUIManager->idleText = stringMultiInject(getLanguageData("CombatPhysicalBarrier"), {c->name, to_string(magnitude)});
+
+      }
+      
+      for(auto user :g_enemyCombatants) {
+        bool alreadyHave = 0;
+        int mag = 0;
+        for(auto &x : user->statuses) {
+          if(x.type == status::PHYSICALBARRIER) {
+            alreadyHave = 1;
+            if(x.magnitude <= magnitude) {
+              x.turns = turns;
+              x.magnitude = magnitude;
+            }
+            break;
+          }
+        }
+  
+        if(!alreadyHave) {
+          statusEntry e;
+          e.type = status::PHYSICALBARRIER;
+          e.turns = turns;
+          e.magnitude = magnitude;
+          user->statuses.push_back(e);
+        }
+      }
+
+    }
     
 
     line++;
@@ -1126,7 +1168,7 @@ void spawnBullets(int pattern, int& accumulator) {
     case 18:
       {
         // Star pattern
-        int cooldown = 8000;
+        int cooldown = 9000;
         if (accumulator >= cooldown) {
           accumulator = 0;
           int numBullets = 6; // Number of bullets in the star pattern
@@ -1459,6 +1501,7 @@ void initTables() {
     // 0 -> enemy targeted
     // 1 -> ally targeted
     // 2 -> untargeted
+    // 3 -> ally targeted, in-combat only (e.g., bestow, so bestow can't be used in exploration mode)
     //name, targeting, cost
     spiritTable[0] = spiritInfo(getLanguageData("S0"), 0, 1); //Debug
     spiritTable[1] = spiritInfo(getLanguageData("S1"), 2, 1); //Harden
@@ -1472,7 +1515,7 @@ void initTables() {
     spiritTable[9] = spiritInfo(getLanguageData("S9"), 1, 6); //Optimize, all
     spiritTable[10] = spiritInfo(getLanguageData("S10"), 0, 4); //Ignite, Dafua
     spiritTable[11] = spiritInfo(getLanguageData("S11"), 0, 6); //Exploit, Neheten
-    spiritTable[12] = spiritInfo(getLanguageData("S12"), 1, 2); //Bestow, Fomm
+    spiritTable[12] = spiritInfo(getLanguageData("S12"), 3, 2); //Bestow, Fomm
     spiritTable[13] = spiritInfo(getLanguageData("S13"), 0, 5); //Curse, Blish
     spiritTable[14] = spiritInfo(getLanguageData("S14"), 0, 3); //Finish, Fomm
     spiritTable[15] = spiritInfo(getLanguageData("S15"), 0, 5); //Exhaust, Neheten
@@ -1738,7 +1781,7 @@ void useItem(int item, int target, combatant* user) {
         combatant* e = g_enemyCombatants[i];
         statusEntry se;
         se.type = status::STICKYBOMBED;
-        se.turns = 2;
+        se.turns = 1;
         se.magnitude = mag;
         e->statuses.push_back(se);
         if(e->health < 0) {
@@ -1759,7 +1802,181 @@ void useItem(int item, int target, combatant* user) {
       {
         // Tofu
 
-        int mag = 45.0f * frng(0.85, 1.15) + 15 * (user->baseSkill/100.0f);
+        int mag = 45.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 9:
+      {
+        // Noodles
+
+        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 10:
+      {
+        // Avocado
+
+        int mag = 25.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 11:
+      {
+        // Pretzel
+
+        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 12:
+      {
+        // Donut
+
+        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        int smag = 5.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        string message = "";
+        D(target);
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          g_partyCombatants[target]->sp += smag;
+          if(g_partyCombatants[target]->sp > g_partyCombatants[target]->curMind) {
+            g_partyCombatants[target]->sp = g_partyCombatants[target]->curMind;
+          }
+
+          D(user->name);
+          D(g_partyCombatants[target]->name);
+          if(user->name == g_partyCombatants[target]->name) {
+            message = stringMultiInject(getLanguageData("HealedForSelf"),{user->name, to_stringF(mag)});
+          } else {
+            message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          }
+          string spmessage = "";
+          if(user->name == g_partyCombatants[target]->name) {
+            spmessage = stringMultiInject(getLanguageData("RestoredSpForSelf"),{user->name, to_stringF(mag)});
+          } else {
+            spmessage = stringMultiInject(getLanguageData("RestoredSpFor"),{user->name, to_stringF(mag), g_partyCombatants[target]->name});
+          }
+          combatUIManager->queuedStrings.push_back(make_pair(spmessage,0));
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 13:
+      {
+        // Nutmilk
+
+        int mag = 12.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 14:
+      {
+        // Sandwich
+
+        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 15:
+      {
+        // TVDinner
+
+        int mag = 18.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
@@ -1994,7 +2211,6 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
       {
         combatant* e = g_enemyCombatants[target];
         string message = getLanguageData("InspectMoveText0");
-        D(message);
         message = stringMultiInject(message, {e->name, to_stringF(e->baseStrength), to_stringF(e->baseAttack), to_stringF(e->baseDefense)});
         string message2 = getLanguageData("InspectMoveText1");
         message2 = stringMultiInject(message2, {getSubjectivePronoun(e), to_string(e->health), to_stringF(e->curStrength), to_stringF(e->curDefense)});
@@ -2137,7 +2353,6 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
       {
         //Ignite
         combatant* e = g_enemyCombatants[target];
-        D(e->damageTakenThisTurn);
         if(e->damageTakenThisTurn > 1) {
           float baseDmg = 12;
   
@@ -2321,7 +2536,7 @@ bool applyStatus(combatant* c, statusEntry* e) {
     case status::CHANTED:
       {
         if(e->turns <= 0) {
-          combatUIManager->finalText = c->name + "'s chant has worn off.";
+          combatUIManager->finalText = stringMultiInject(getLanguageData("StatusWornOff"), {spiritTable[4].name, c->name});
           combatUIManager->currentText = "";
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
           combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -2386,6 +2601,7 @@ bool applyStatus(combatant* c, statusEntry* e) {
         }
 
         e->turns--;
+        break;
       }
 
     case status::IGNITED:
@@ -2402,6 +2618,7 @@ bool applyStatus(combatant* c, statusEntry* e) {
         g_submode = submode::TEXT_STATUS_E;
 
         e->turns--;
+        break;
       }
     case status::BESTOWED:
       {
@@ -2417,6 +2634,26 @@ bool applyStatus(combatant* c, statusEntry* e) {
         }
         c->curAttack += e->magnitude;
         e->turns--;
+        break;
+      }
+    case status::PHYSICALBARRIER:
+      {
+        if(e->turns <= 0) {
+          //wore off
+          combatUIManager->finalText = stringMultiInject(getLanguageData("PhysicalBarrierWornOff"), {c->name});
+          combatUIManager->currentText = "";
+          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+          if(g_submode == submode::STATUS_P) {
+            g_submode = submode::TEXT_STATUS_P;
+          } else {
+            g_submode = submode::TEXT_STATUS_E;
+          }
+          return 1;
+        }
+        c->physicalDefense = e->magnitude;
+        e->turns --;
+        break;
       }
 
 
@@ -3209,6 +3446,8 @@ void CombatLoop() {
           x->curSkill = x->baseSkill;
           x->curCritical = x->baseCritical;
           x->curRecovery = x->baseSoul;
+          x->physicalDefense = 0;
+          x->spiritDefense = 0;
         }
 
         //copy g_enemyCombatants to g_enemyCombatantsForDropping
@@ -3755,7 +3994,6 @@ void CombatLoop() {
                 if(adventureUIManager->executingScript) {
                   //can't run from this fight
                   combatUIManager->finalText = getLanguageData("CombatCantRun");
-                  D(adventureUIManager->executingScript);
                   combatUIManager->currentText = "";
                   combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
                   combatUIManager->dialogProceedIndicator->y = 0.25;
@@ -3927,6 +4165,8 @@ void CombatLoop() {
             x->curSkill = x->baseSkill;
             x->curCritical = x->baseCritical;
             x->curRecovery = x->baseSoul;
+            x->physicalDefense = 0;
+            x->spiritDefense = 0;
           }
           g_submode = submode::STATUS_P;
           break;
@@ -3942,6 +4182,8 @@ void CombatLoop() {
             x->curSkill = x->baseSkill;
             x->curCritical = x->baseCritical;
             x->curRecovery = x->baseSoul;
+            x->physicalDefense = 0;
+            x->spiritDefense = 0;
           }
           g_submode = submode::STATUS_P;
           break;
@@ -3970,7 +4212,7 @@ void CombatLoop() {
           }
 
 
-          int damage = c->curAttack - e->curDefense;
+          int damage = c->curAttack - e->curDefense - e->physicalDefense;
           damage *= frng(0.85,1.15);
           if(crit) { damage *= 3;}
           if(damage < 0) {damage = 0;}
@@ -4012,7 +4254,7 @@ void CombatLoop() {
             g_submode = submode::FINAL;
             break;
           }
-          while(c->serial.target >= g_enemyCombatants.size()) {
+          while(c->serial.target >= g_partyCombatants.size()) {
             c->serial.target-= 1;
             if(c->serial.target <0) {break;}
           }
@@ -4195,6 +4437,8 @@ void CombatLoop() {
                 x->curSkill = x->baseSkill;
                 x->curCritical = x->baseCritical;
                 x->curRecovery = x->baseSoul;
+                x->physicalDefense = 0;
+                x->spiritDefense = 0;
               }
               g_submode = submode::STATUS_P;
             } else {
@@ -4352,7 +4596,7 @@ void CombatLoop() {
             adjustedDIndex++;
           }
           combatUIManager->partyDodgingCombatant = e;
-          int damage = (c->curAttack* combatUIManager->specificMultiplier) - e->curDefense;
+          int damage = (c->curAttack* combatUIManager->specificMultiplier) - e->curDefense - e->physicalDefense;
           damage *= frng(0.85,1.15);
           if(damage < 1) {damage = 1;}
           combatUIManager->damageFromEachHit = damage;
@@ -4507,8 +4751,6 @@ void CombatLoop() {
       {
         int breakout = 0;
         //got a crash here after idle text state
-        D(curCombatantIndex);
-        D(g_enemyCombatants.size());
         while(curStatusIndex >= (int)g_enemyCombatants[curCombatantIndex]->statuses.size()) {
           curStatusIndex = 0;
           curCombatantIndex++;
@@ -4601,6 +4843,8 @@ void CombatLoop() {
                 x->curSkill = x->baseSkill;
                 x->curCritical = x->baseCritical;
                 x->curRecovery = x->baseSoul;
+                x->physicalDefense = 0;
+                x->spiritDefense = 0;
               }
 
               g_submode = submode::STATUS_E;
@@ -4652,8 +4896,6 @@ void CombatLoop() {
               x->health = floor(x->baseStrength);
             }
             x->curStrength = x->baseStrength;
-            D(x->health);
-            D(x->baseStrength);
             if(x->sp > floor(x->baseMind)) {
               x->sp = floor(x->baseMind);
             }
@@ -4662,7 +4904,6 @@ void CombatLoop() {
         }
 
         combatUIManager->calculateXP();
-        //D(combatUIManager->xpToGrant);
         //combatUIManager->xpToGrant = 1000;
         curCombatantIndex = 0;
 
@@ -4692,7 +4933,6 @@ void CombatLoop() {
         x->level = xpToLevel(x->xp);
         combatUIManager->oldLevel = x->level;
         x->xp += combatUIManager->xpToGrant * frng(0.95, 1.05);
-        D(combatUIManager->xpToGrant);
         combatUIManager->newLevel= xpToLevel(x->xp);
         combatUIManager->thisLevel = combatUIManager->oldLevel+1;
         //g_submode = submode::LEVELUP;
@@ -4846,6 +5086,8 @@ void CombatLoop() {
           x->curSkill = x->baseSkill;
           x->curCritical = x->baseCritical;
           x->curRecovery = x->baseSoul;
+          x->physicalDefense = 0;
+          x->spiritDefense = 0;
         }
 
         g_submode = submode::LEVELTEXT;
@@ -5586,6 +5828,17 @@ void CombatLoop() {
                   g_submode = submode::CONTINUE;
                   break;
                 }
+              case 3:
+                {
+                  //teamate
+                  g_partyCombatants[curCombatantIndex]->serial.action = turnAction::SPIRITMOVE;
+                  int spiritMove = g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption];
+                  int spiritNumber = spiritMove;
+                  g_partyCombatants[curCombatantIndex]->serial.actionIndex = spiritNumber;
+
+                  g_submode = submode::ALLYTARGETING;
+                  break;
+                }
             }
           }
 
@@ -5805,6 +6058,8 @@ void CombatLoop() {
               x->curSkill = x->baseSkill;
               x->curCritical = x->baseCritical;
               x->curRecovery = x->baseSoul;
+              x->physicalDefense = 0;
+              x->spiritDefense = 0;
             }
 
             g_submode = submode::STATUS_E;
@@ -6342,6 +6597,8 @@ void CombatLoop() {
                   x->curSkill = x->baseSkill;
                   x->curCritical = x->baseCritical;
                   x->curRecovery = x->baseSoul;
+                  x->physicalDefense = 0;
+                  x->spiritDefense = 0;
                 }
                 g_submode = submode::STATUS_E;
                 //g_submode = submode::MAIN;
@@ -6429,6 +6686,8 @@ void CombatLoop() {
                   x->curSkill = x->baseSkill;
                   x->curCritical = x->baseCritical;
                   x->curRecovery = x->baseSoul;
+                  x->physicalDefense = 0;
+                  x->spiritDefense = 0;
                 }
                 g_submode = submode::STATUS_P;
               } else {
@@ -6924,6 +7183,8 @@ void explorationLevelupLoop() {
           x->curSkill = x->baseSkill;
           x->curCritical = x->baseCritical;
           x->curRecovery = x->baseSoul;
+          x->physicalDefense = 0;
+          x->spiritDefense = 0;
         }
 
         g_forceEndDialogue = 0;
@@ -7619,6 +7880,8 @@ void explorationLevelupLoop() {
             x->curSkill = x->baseSkill;
             x->curCritical = x->baseCritical;
             x->curRecovery = x->baseSoul;
+            x->physicalDefense = 0;
+            x->spiritDefense = 0;
           }
           g_submode = submode::STATUS_P;
           break;
@@ -7634,6 +7897,8 @@ void explorationLevelupLoop() {
             x->curSkill = x->baseSkill;
             x->curCritical = x->baseCritical;
             x->curRecovery = x->baseSoul;
+            x->physicalDefense = 0;
+            x->spiritDefense = 0;
           }
           g_submode = submode::STATUS_P;
           break;
@@ -7662,7 +7927,7 @@ void explorationLevelupLoop() {
           }
 
 
-          int damage = c->curAttack - e->curDefense;
+          int damage = c->curAttack - e->curDefense - e->physicalDefense;
           damage *= frng(0.80,1.20);
           if(crit) { damage *= 3;}
           if(damage < 0) {damage = 0;}
@@ -7748,7 +8013,6 @@ void explorationLevelupLoop() {
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
           combatUIManager->dodgingThisTurn[combatUIManager->executePIndex] = 1;
 //          for(auto x :combatUIManager->dodgingThisTurn) {
-//            D(x);
 //          }
           g_submode = submode::TEXT_P;
         } else if(c->serial.action == turnAction::FLEE) {
@@ -7887,6 +8151,8 @@ void explorationLevelupLoop() {
                 x->curSkill = x->baseSkill;
                 x->curCritical = x->baseCritical;
                 x->curRecovery = x->baseSoul;
+                x->physicalDefense = 0;
+                x->spiritDefense = 0;
               }
               g_submode = submode::STATUS_P;
             } else {
@@ -8199,8 +8465,6 @@ void explorationLevelupLoop() {
       {
         int breakout = 0;
         //got a crash here after idle text state
-        D(curCombatantIndex);
-        D(g_enemyCombatants.size());
         while(curStatusIndex >= (int)g_enemyCombatants[curCombatantIndex]->statuses.size()) {
           curStatusIndex = 0;
           curCombatantIndex++;
@@ -8293,6 +8557,8 @@ void explorationLevelupLoop() {
                 x->curSkill = x->baseSkill;
                 x->curCritical = x->baseCritical;
                 x->curRecovery = x->baseSoul;
+                x->physicalDefense = 0;
+                x->spiritDefense = 0;
               }
 
               g_submode = submode::STATUS_E;
@@ -8383,7 +8649,6 @@ void explorationLevelupLoop() {
         x->level = xpToLevel(x->xp);
         combatUIManager->oldLevel = x->level;
         x->xp += combatUIManager->xpToGrant * frng(0.95, 1.05);
-        D(combatUIManager->xpToGrant);
         combatUIManager->newLevel= xpToLevel(x->xp);
         combatUIManager->thisLevel = combatUIManager->oldLevel+1;
         //g_submode = submode::LEVELUP;
@@ -9483,6 +9748,8 @@ void explorationLevelupLoop() {
               x->curSkill = x->baseSkill;
               x->curCritical = x->baseCritical;
               x->curRecovery = x->baseSoul;
+              x->physicalDefense = 0;
+              x->spiritDefense = 0;
             }
 
             g_submode = submode::STATUS_E;
@@ -10021,6 +10288,8 @@ void explorationLevelupLoop() {
                   x->curSkill = x->baseSkill;
                   x->curCritical = x->baseCritical;
                   x->curRecovery = x->baseSoul;
+                  x->physicalDefense = 0;
+                  x->spiritDefense = 0;
                 }
                 g_submode = submode::STATUS_E;
                 //g_submode = submode::MAIN;
@@ -10108,6 +10377,8 @@ void explorationLevelupLoop() {
                   x->curSkill = x->baseSkill;
                   x->curCritical = x->baseCritical;
                   x->curRecovery = x->baseSoul;
+                  x->physicalDefense = 0;
+                  x->spiritDefense = 0;
                 }
                 g_submode = submode::STATUS_P;
               } else {
@@ -10478,8 +10749,6 @@ void learnMoveLoop() {
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
           combatUIManager->finalText = stringMultiInject(getLanguageData("LearnedMovePossible"), {g_partyCombatants[g_whoLearnsMove]->name, spiritTable[combatUIManager->moveToLearn].name});
           combatUIManager->queuedStrings.push_back(make_pair(stringMultiInject(getLanguageData("LearnedMovePossible2"), {g_partyCombatants[g_whoLearnsMove]->name}),0));
-            M("It's working here");
-            D(curCombatantIndex);
           g_submode = submode::LEARNTEXT;
           break;
         }
@@ -10749,8 +11018,6 @@ void learnMoveLoop() {
         }
         if(input[11] && !oldinput[11]) {
           if(combatUIManager->forgetOption < 4) {
-            M("It's not working here");
-            D(curCombatantIndex);
             combatUIManager->finalText = stringMultiInject(getLanguageData("ForgetMoveConfirm"), {g_partyCombatants[g_whoLearnsMove]->name, spiritTable[g_partyCombatants[g_whoLearnsMove]->spiritMoves[combatUIManager->forgetOption]].name, spiritTable[combatUIManager->moveToLearn].name});
             //combatUIManager->finalText = g_partyCombatants[curCombatantIndex]->name + " will forget " + spiritTable[g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->forgetOption]].name + " and learn " + spiritTable[combatUIManager->moveToLearn].name + ".";
             combatUIManager->currentText = "";

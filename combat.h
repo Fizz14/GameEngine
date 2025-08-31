@@ -20,6 +20,8 @@ void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint3
 
 class combatant;
 
+string getPossessivePronoun(combatant *c);
+
 struct dropInfo {
   string name = "";
   float dropPercent = 0;
@@ -65,6 +67,7 @@ enum class status {
   STICKYBOMBED, //take a second hit from the stickybomb a turn later
   IGNITED, //burn
   BESTOWED,
+  PHYSICALBARRIER,
 };
 
 struct bground {
@@ -134,6 +137,9 @@ public:
   float defenseGain;
   float baseDefense;
   float curDefense;
+
+  float physicalDefense = 0;
+  float spiritDefense = 0;
 
   float l0Soul; 
   float soulGain;

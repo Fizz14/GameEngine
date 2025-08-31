@@ -786,10 +786,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   }
 
   // put enemies in map
-  if (!devMode)
-  {
-    populateMapWithEntities();
-  }
+//  if (!devMode)
+//  {
+//    populateMapWithEntities();
+//  }
 
   Update_NavNode_Costs(g_navNodes);
 
@@ -885,6 +885,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   g_camera.repoY = -1;
   g_camera.natX = -1;
   g_camera.natY = -1;
+
 
   // call map's init-script
   // seemingly crashes the game sometimes

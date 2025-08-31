@@ -13813,7 +13813,7 @@ void adventureUI::continueDialogue()
   D(scriptToUse->at(dialogue_index + 1).substr(0, 7));
   if(scriptToUse->at(dialogue_index + 1).substr(0, 7) == "/givexp") 
   {
-    //M("Giving xp loop begins");
+    M("Giving xp loop begins");
     adventureUIManager->dialogpointer->visible = 0;
     dialogpointergap->show = 0;
     string s = scriptToUse->at(dialogue_index + 1);

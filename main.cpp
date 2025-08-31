@@ -271,6 +271,8 @@ void updateWindowResolution() {
 }
 
 void ExplorationLoop() {
+
+
   // cooldowns
   if(g_dungeonSystemOn) {g_dungeonMs += elapsed;}
   halfsecondtimer += elapsed;
@@ -7430,7 +7432,6 @@ void getExplorationInput(float &elapsed)
             n.waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor; 
           } else {
             float waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor + g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * frng(0.6,1.4);
-            D(waitFloors);
             n.waitFloors = waitFloors; 
           }
           setFirst = 1;
