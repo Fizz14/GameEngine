@@ -4372,17 +4372,17 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 
   if(RectOverlap(obj, cam)) {
 
-    if(this != protag) {
-      //optimize this with g_osEdges
-      if(isOccluderBetween(protag->getOriginX() -g_camera.x, protag->getOriginY() - g_camera.y /*- protag->z * XtoZ*/, getOriginX() - g_camera.x, getOriginY() - g_camera.y/* - z * XtoZ*/)) {
-        opacity -= 40;
-        if(opacity < 0) {opacity = 0;}
-      } else {
-        opacity += 40;
-        if(opacity > 255) {opacity = 255;}
-      }
-      shadow->alphamod = opacity;
-    }
+//    if(this != protag) {
+//      //optimize this with g_osEdges
+//      if(isOccluderBetween(protag->getOriginX() -g_camera.x, protag->getOriginY() - g_camera.y /*- protag->z * XtoZ*/, getOriginX() - g_camera.x, getOriginY() - g_camera.y/* - z * XtoZ*/)) {
+//        opacity -= 40;
+//        if(opacity < 0) {opacity = 0;}
+//      } else {
+//        opacity += 40;
+//        if(opacity > 255) {opacity = 255;}
+//      }
+//      shadow->alphamod = opacity;
+//    }
     //SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
 
     if(directionUpdateCooldownMs < 0) {
@@ -4453,6 +4453,9 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 
 
       if(texture != NULL) {
+        if(useTint) {
+          SDL_SetTextureColorMod(texture, red, green, blue);
+        }
         SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
       }
     } else {
@@ -4461,6 +4464,9 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
       }
 
       if(texture != NULL) {
+        if(useTint) {
+          SDL_SetTextureColorMod(texture, red, green, blue);
+        }
         SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
       }
       //      if(flashingMS > 0) {
@@ -4774,6 +4780,12 @@ door* entity::update(vector<door*> doors, float elapsed) {
   }
 
   if(msPerFrame != 0) {
+    if(frameLoopTimeLimit > 0 && frameLoopTimeLimit - elapsed <= 0) {
+      loopAnimation = 0;
+    }
+    if(frameLoopTimeLimit > 0) {
+      frameLoopTimeLimit -= elapsed;
+    }
 
     msTilNextFrame += elapsed;
     if(msTilNextFrame > msPerFrame && xframes > 1) {
@@ -4781,7 +4793,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
       if(reverseAnimation) {
         frameInAnimation--;
-        if(frameInAnimation < 0) {
+        if(frameInAnimation < firstFrameInScriptedAnimation) {
           if(loopAnimation) {
             if(scriptedAnimation) {
               frameInAnimation = xframes - 1;
@@ -4791,9 +4803,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
           } else {
             frameInAnimation = 0;
             msPerFrame = 0;
-            if(name == "desert/tumbleweed") {
-              M("D");
-            }
+//            if(name == "trial/eden-crank") {
+//              M("D");
+//            }
             //!!! slightly ambiguous. open to review later
             scriptedAnimation = 0;
           }
@@ -4803,16 +4815,16 @@ door* entity::update(vector<door*> doors, float elapsed) {
         if(frameInAnimation == xframes || (useAnimForWalking && frameInAnimation == animWalkFrames + 1 && !scriptedAnimation)) {
           if(loopAnimation) {
             if(scriptedAnimation) {
-              frameInAnimation = 0;
+              frameInAnimation = firstFrameInScriptedAnimation;
             } else {
               frameInAnimation = 1;
             }
           } else {
             frameInAnimation = xframes - 1;
             msPerFrame = 0;
-            if(name == "desert/tumbleweed") {
-              M("C");
-            }
+//            if(name == "trial/eden-crank") {
+//              M("C");
+//            }
             scriptedAnimation = 0;
           }
         }
@@ -4864,20 +4876,20 @@ door* entity::update(vector<door*> doors, float elapsed) {
         msPerFrame = walkAnimMsPerFrame;
       } else {
         msPerFrame = 0;
-        if(name == "desert/tumbleweed") {
-          D(scriptedAnimation);
-          D(msPerFrame);
-          M("B");
-        }
+//        if(name == "trial/eden-crank") {
+//          D(scriptedAnimation);
+//          D(msPerFrame);
+//          M("B");
+//        }
       }
     }
   } else {
     animate = 0;
     if(useAnimForWalking && !scriptedAnimation && this->useAnimForWalking) {
       msPerFrame = 0;
-      if(name == "desert/tumbleweed") {
-        M("A");
-      }
+//      if(name == "trial/eden-crank") {
+//        M("A");
+//      }
       frameInAnimation = 0;
     }
   }
@@ -10866,6 +10878,9 @@ void adventureUI::skipText() {
     if(pushedText != "") {
       curText = pushedText;
       Mix_HaltChannel(6);
+      if(adventureUIManager->blip == nullptr) {
+        adventureUIManager->blip = g_ui_voice;
+      }
       Mix_VolumeChunk(blip, 20);
     }
     playSound(6, blip, 0);
@@ -10960,6 +10975,7 @@ void adventureUI::continueDialogue()
   }
 
 
+  M("Executing: '" + scriptToUse->at(dialogue_index + 1) + "'");
 
   if ((int)scriptToUse->size() <= dialogue_index + 2 || scriptToUse->at(dialogue_index + 1) == "#")
   {
@@ -11031,6 +11047,7 @@ void adventureUI::continueDialogue()
   }
 
   //keyprompt
+  // keyitemprompt
   //
   // /keyprompt Can you give me something?
   // *-1:<gavenothing>
@@ -12495,11 +12512,12 @@ void adventureUI::continueDialogue()
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 8);
 
-    entity* x = searchEntities(s, talker);
-    x->banished = 1;
-    x->zaccel = 220;
-    x->shadow->enabled = 0;
-    x->navblock = 0;
+    if(selected != nullptr) {
+      selected->banished = 1;
+      selected->zaccel = 220;
+      selected->shadow->enabled = 0;
+      selected->navblock = 0;
+    }
 
     dialogue_index++;
     this->continueDialogue();
@@ -12511,12 +12529,13 @@ void adventureUI::continueDialogue()
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 10);
 
-    entity* x = searchEntities(s, talker);
-    x->banished = 0;
-    x->dynamic = 1;
-    x->opacity = 255;
-    x->shadow->enabled = 1;
-    x->navblock = 1;
+    if(selected != nullptr) {
+      selected->banished = 0;
+      selected->dynamic = 1;
+      selected->opacity = 255;
+      selected->shadow->enabled = 1;
+      selected->navblock = 1;
+    }
 
     dialogue_index++;
     this->continueDialogue();
@@ -13432,6 +13451,33 @@ void adventureUI::continueDialogue()
     return;
   }
 
+  //set rgb of sprite
+  // /rgb trial/eden-crank 100 20 200
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 4) == "/rgb") 
+  {
+    M("Gotta tint something");
+    string s = scriptToUse->at(dialogue_index + 1);
+    auto x = splitString(s, ' ');
+    if(x.size() > 4) {
+      M("Got here");
+      entity* h = 0;
+      h = searchEntities(x[1]);
+      if(h != nullptr) {
+        h->red = stoi(x[2]);
+        h->green = stoi(x[3]);
+        h->blue = stoi(x[4]);
+        h->useTint = 1;
+      }
+          
+
+    }
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+
   // solidify entity
   //  /solidify door 1
   //  /solidify wall 0
@@ -13535,8 +13581,29 @@ void adventureUI::continueDialogue()
     return;
   }
 
+  // after x seconds, stop an entity's animation
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 13) == "/animatetimer")
+  {
+    string s = scriptToUse->at(dialogue_index + 1);
+    s.erase(0, 14);
+    vector<string> split = splitString(s, ' ');
+
+    entity *ent = selected;
+    if (ent != 0)
+    {
+      int ms = stoi(split[0]);
+      D(ms);
+      ent->frameLoopTimeLimit = ms;
+    }
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
+
+
   // change animation data for selected
-  // animate direction msPerFrame frameInAnimation LoopAnimation reverse
+  // animate direction msPerFrame frameInAnimation LoopAnimation reverse firstFrame
   // set direction to -1 to not set the direction
   // set msperframe to 0 to not animate
   // set frameInAnimation to -1 to not change
@@ -13544,8 +13611,8 @@ void adventureUI::continueDialogue()
   // set reverse to 1 to play backwards
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
   {
-    M("Animate interpreter");
-    D(selected->name);
+//    M("Animate interpreter");
+//    D(selected->name);
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 9);
     vector<string> split = splitString(s, ' ');
@@ -13553,7 +13620,7 @@ void adventureUI::continueDialogue()
     entity *ent = selected;
     if (ent != 0)
     {
-      M("Setting anim data for ent");
+      //M("Setting anim data for ent");
       int animationset = stoi(split[0]);
       if (animationset != -1)
       {
@@ -13573,12 +13640,16 @@ void adventureUI::continueDialogue()
       }
 
       ent->loopAnimation = stoi(split[3]);
-      //I("Set loopAnimation to ");
-      //I(ent->loopAnimation);
+      I("Set loopAnimation to ");
+      I(ent->loopAnimation);
 
       ent->reverseAnimation = stoi(split[4]);
       //I("Set reverseAnimation to ");
       //I(ent->reverseAnimation);
+      D(split.size());
+      if(split.size() > 5) {
+        ent->firstFrameInScriptedAnimation = stoi(split[5]);
+      }
 
       ent->scriptedAnimation = 1;
     } 

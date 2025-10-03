@@ -1355,6 +1355,11 @@ class entity:public actor {
     float zvel = 0;
     bool useGravity = 1;
 
+    int red = 0;
+    int green = 0;
+    int blue = 0;
+    int useTint = 0;
+
     // angular reform of movement system
     // as long-planned, entities will not move in explicit directions,
     // but rather specify target angles and move (forwards)
@@ -1419,6 +1424,8 @@ class entity:public actor {
     float animtime = 0; //time since having started animating
     float animspeed = 0;
     float animlimit = 0.5; // the extent to the animation. 0.5 means halfway
+    int frameLoopTimeLimit = 0; //ms before stopping the frame animation loop
+    int firstFrameInScriptedAnimation = 0;
 
     bool growFromFloor = 1; //when entities shrink/grow, do they shrink 
                             //to the floor or to their center?

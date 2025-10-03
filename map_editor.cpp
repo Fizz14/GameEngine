@@ -122,7 +122,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
   if(g_secondaryLanguagePack != g_mapdir) {
     initSecondaryIndices(g_mapdir);
-    M("  MUST LOAD SECONDARY LANGUAGEPACK");
   }
 
   vector<string> strings = {};
@@ -2142,10 +2141,12 @@ void write_map(entity *mapent)
   {
     rect mrect = {marker->x, marker->y, 64, 55};
     vector<navNode*> navNodesToDelete;
+    bool deleted = 0;
     for(auto x: g_navNodes) {
-      rect nrect = {x->x-5, x->y-5, 10, 10};
+      rect nrect = {x->x-10, x->y-10, 20, 20};
       if(RectOverlap(mrect, nrect)) {
         navNodesToDelete.push_back(x);
+        deleted = 1;
       }
     }
 
@@ -2154,7 +2155,9 @@ void write_map(entity *mapent)
     }
 
     // make a single navnode
-    new navNode(marker->x + 0.5 * marker->width, marker->y + 0.5 * marker->height, wallstart);
+    if(!deleted) {
+      new navNode(marker->x + 0.5 * marker->width, marker->y + 0.5 * marker->height, wallstart);
+    }
   }
 
   if (g_holddelete)

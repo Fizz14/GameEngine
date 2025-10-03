@@ -831,6 +831,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
     for(auto& x : vertices) {
       x.x *= -scale;
       x.y *= scale * XtoY;
+      //x.y -= x.z * scale * XtoZ;
       x.z *= scale;
     }
 

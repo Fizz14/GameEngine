@@ -113,7 +113,6 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
 
     if (regex_match(combatScript[line], regex("\\[[[:digit:]]+\\]")))
     {
-      M("reading selfdata to jump");
       // read selfdata
       //
       // Make sure to use values in the order low to high
@@ -1492,7 +1491,36 @@ void initTables() {
     itemsTable[27] = itemInfo(getLanguageData("I27"), 1); // DeluxePicnic
     itemsTable[28] = itemInfo(getLanguageData("I28"), 1); // Weddingcake
     itemsTable[29] = itemInfo(getLanguageData("I29"), 1); // Icecream
-    itemsTable[30] = itemInfo(getLanguageData("I30"), 2); // Devbomb
+    itemsTable[30] = itemInfo(getLanguageData("I30"), 0); // Snare
+    itemsTable[31] = itemInfo(getLanguageData("I31"), 0); // Electrosnare
+    itemsTable[32] = itemInfo(getLanguageData("I32"), 0); // Herbicide
+    itemsTable[33] = itemInfo(getLanguageData("I33"), 0); // HerbicideX
+    itemsTable[34] = itemInfo(getLanguageData("I34"), 0); // Bugspray
+    itemsTable[35] = itemInfo(getLanguageData("I35"), 0); // PremiumBugspray
+    itemsTable[36] = itemInfo(getLanguageData("I36"), 0); // Jammer
+    itemsTable[37] = itemInfo(getLanguageData("I37"), 0); // RetroJammer
+    itemsTable[38] = itemInfo(getLanguageData("I38"), 0); // Acid
+    itemsTable[39] = itemInfo(getLanguageData("I39"), 0); // IndustrialAcid
+    itemsTable[40] = itemInfo(getLanguageData("I40"), 0); // Strobe 
+    itemsTable[41] = itemInfo(getLanguageData("I41"), 0); // Discostrobe
+    itemsTable[42] = itemInfo(getLanguageData("I42"), 0); // Offering
+    itemsTable[43] = itemInfo(getLanguageData("I43"), 0); // ChaoticOffering
+    itemsTable[44] = itemInfo(getLanguageData("I44"), 0); // Spike
+    itemsTable[45] = itemInfo(getLanguageData("I45"), 0); // GoldenSpike
+    itemsTable[46] = itemInfo(getLanguageData("I46"), 0); // Chemicalwaste
+    itemsTable[47] = itemInfo(getLanguageData("I47"), 0); // Steeltrap
+    itemsTable[48] = itemInfo(getLanguageData("I48"), 0); // Defenspill
+    itemsTable[49] = itemInfo(getLanguageData("I49"), 0); // Shrinkray
+    itemsTable[50] = itemInfo(getLanguageData("I50"), 1); // Healthium
+    itemsTable[51] = itemInfo(getLanguageData("I51"), 1); // Attackase
+    itemsTable[52] = itemInfo(getLanguageData("I52"), 1); // Defendine
+    itemsTable[53] = itemInfo(getLanguageData("I53"), 1); // Critium
+    itemsTable[54] = itemInfo(getLanguageData("I54"), 1); // Skillium
+    itemsTable[55] = itemInfo(getLanguageData("I55"), 1); // Soulium
+    itemsTable[56] = itemInfo(getLanguageData("I56"), 1); // Mindium
+    itemsTable[57] = itemInfo(getLanguageData("I57"), 1); // Recoverum
+    itemsTable[58] = itemInfo(getLanguageData("I58"), 1); // UnstableConcoction
+    itemsTable[59] = itemInfo(getLanguageData("I59"), 2); // Devbomb
    
 
   }
@@ -1505,8 +1533,8 @@ void initTables() {
     //name, targeting, cost
     spiritTable[0] = spiritInfo(getLanguageData("S0"), 0, 1); //Debug
     spiritTable[1] = spiritInfo(getLanguageData("S1"), 2, 1); //Harden
-    spiritTable[2] = spiritInfo(getLanguageData("S2"), 0, 2); //Tackle
-    spiritTable[3] = spiritInfo(getLanguageData("S3"), 1, 5); //Coffee
+    spiritTable[2] = spiritInfo(getLanguageData("S2"), 0, 1); //Tackle
+    spiritTable[3] = spiritInfo(getLanguageData("S3"), 1, 3); //Coffee
     spiritTable[4] = spiritInfo(getLanguageData("S4"), 2, 2); //Chant
     spiritTable[5] = spiritInfo(getLanguageData("S5"), 0, 1); //Inspect
     spiritTable[6] = spiritInfo(getLanguageData("S6"), 0, 2); //Taunt
@@ -1535,7 +1563,7 @@ int xpToLevel(int xp) {
 
   while(xp >= totalXP) {
     level++;
-    totalXP+= static_cast<int>(baseXP * pow(5, level - 1));
+    totalXP+= static_cast<int>(baseXP * pow(1.4, level - 1));
   }
   if(level > 100) {
     level = 100;
@@ -1555,7 +1583,7 @@ int levelToXp(int level) {
   int totalXP = baseXP;
 
   for (int i = 1; i < level; i++) {
-    totalXP += static_cast<int>(baseXP * std::pow(5, i - 1));
+    totalXP += static_cast<int>(baseXP * std::pow(1.4, i - 1));
   }
 
   return totalXP;
@@ -1802,12 +1830,13 @@ void useItem(int item, int target, combatant* user) {
       {
         // Tofu
 
-        int mag = 45.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 45.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
           g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
         } else {
           message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
         }
@@ -1824,12 +1853,13 @@ void useItem(int item, int target, combatant* user) {
       {
         // Noodles
 
-        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
           g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
         } else {
           message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
         }
@@ -1846,12 +1876,13 @@ void useItem(int item, int target, combatant* user) {
       {
         // Avocado
 
-        int mag = 25.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 25.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
           g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
         } else {
           message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
         }
@@ -1868,12 +1899,13 @@ void useItem(int item, int target, combatant* user) {
       {
         // Pretzel
 
-        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
           g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
         } else {
           message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
         }
@@ -1890,9 +1922,9 @@ void useItem(int item, int target, combatant* user) {
       {
         // Donut
 
-        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        int smag = 5.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int smag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         string message = "";
         D(target);
         if(g_partyCombatants[target]->health > 0) {
@@ -1904,16 +1936,18 @@ void useItem(int item, int target, combatant* user) {
 
           D(user->name);
           D(g_partyCombatants[target]->name);
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          int value2 = min(smag, g_partyCombatants[target]->curMind - g_partyCombatants[target]->sp);
           if(user->name == g_partyCombatants[target]->name) {
-            message = stringMultiInject(getLanguageData("HealedForSelf"),{user->name, to_stringF(mag)});
+            message = stringMultiInject(getLanguageData("HealedForSelf"),{user->name, to_stringF(value)});
           } else {
-            message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+            message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
           }
           string spmessage = "";
           if(user->name == g_partyCombatants[target]->name) {
-            spmessage = stringMultiInject(getLanguageData("RestoredSpForSelf"),{user->name, to_stringF(mag)});
+            spmessage = stringMultiInject(getLanguageData("RestoredSpForSelf"),{user->name, to_stringF(value2)});
           } else {
-            spmessage = stringMultiInject(getLanguageData("RestoredSpFor"),{user->name, to_stringF(mag), g_partyCombatants[target]->name});
+            spmessage = stringMultiInject(getLanguageData("RestoredSpFor"),{user->name, to_stringF(value2), g_partyCombatants[target]->name});
           }
           combatUIManager->queuedStrings.push_back(make_pair(spmessage,0));
         } else {
@@ -1932,12 +1966,13 @@ void useItem(int item, int target, combatant* user) {
       {
         // Nutmilk
 
-        int mag = 12.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 12.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
           g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
         } else {
           message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
         }
@@ -1954,12 +1989,13 @@ void useItem(int item, int target, combatant* user) {
       {
         // Sandwich
 
-        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
           g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
         } else {
           message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
         }
@@ -1976,12 +2012,13 @@ void useItem(int item, int target, combatant* user) {
       {
         // TVDinner
 
-        int mag = 18.0f * frng(0.85, 1.15) + 35 * (user->baseSkill/100.0f);
+        int mag = 18.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
         //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
         string message = "";
         if(g_partyCombatants[target]->health > 0) {
           g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
         } else {
           message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
         }
@@ -1994,7 +2031,365 @@ void useItem(int item, int target, combatant* user) {
         combatUIManager->dialogProceedIndicator->y = 0.25;
         break;
       }
-    case 30:
+    case 16: 
+      {
+        // Burger
+
+        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 17: 
+      {
+        // Grilledcheese
+
+        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 18: 
+      {
+        // Picnicbox
+
+        int mag = 50.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        int smag = 10 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
+        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
+        for(int i =0; i <g_partyCombatants.size(); i++) {
+          if(g_partyCombatants[i]->health > 0) {
+            g_partyCombatants[i]->health += mag;
+            g_partyCombatants[i]->sp += smag;
+            
+
+            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
+              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
+            }
+
+            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
+              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
+            }
+
+
+            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
+            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
+            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
+            combatUIManager->queuedStrings.push_back(make_pair(spmessage,0));
+          }
+        }
+
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 19: 
+      {
+        // Bagel
+
+        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 20: 
+      {
+        // Pasta
+
+        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 21: 
+      {
+        // Pickle
+
+        int mag = 8.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 22: 
+      {
+        // Orangejuice
+
+        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 23: 
+      {
+        // Rice
+
+        int mag = 20.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 24: 
+      {
+        // Apple
+
+        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 25: 
+      {
+        // Toast
+
+        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 26: 
+      {
+        // Cookie
+
+        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 27: 
+      {
+        // DeluxePicnicbox
+
+        int mag = 100.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        int smag = 20 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
+        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
+        for(int i =0; i <g_partyCombatants.size(); i++) {
+          if(g_partyCombatants[i]->health > 0) {
+            g_partyCombatants[i]->health += mag;
+            g_partyCombatants[i]->sp += smag;
+            
+
+            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
+              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
+            }
+
+            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
+              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
+            }
+
+
+            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
+            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
+            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
+            combatUIManager->queuedStrings.push_back(make_pair(spmessage,0));
+          }
+        }
+
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 28: 
+      {
+        // Weddingcake
+
+        int mag = 150.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        int smag = 30 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
+        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
+        for(int i =0; i <g_partyCombatants.size(); i++) {
+          if(g_partyCombatants[i]->health > 0) {
+            g_partyCombatants[i]->health += mag;
+            g_partyCombatants[i]->sp += smag;
+            
+
+            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
+              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
+            }
+
+            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
+              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
+            }
+
+
+            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
+            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
+            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
+            combatUIManager->queuedStrings.push_back(make_pair(spmessage,0));
+          }
+        }
+
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 29: 
+      {
+        // Icecream
+
+        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+        string message = "";
+        if(g_partyCombatants[target]->health > 0) {
+          g_partyCombatants[target]->health += mag;
+          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+        } else {
+          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+        }
+        combatUIManager->finalText = message;
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+        }
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        break;
+      }
+    case 100:
       {
         //Devbomb
         int mag = 2500.0f * frng(0.85, 1.15) + (user->curSkill * 2);
@@ -2112,9 +2507,9 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
       }
     case 2: //Tackle
       {
-        float baseDmg = 10;
+        float baseDmg = 18;
 
-        float mag = (baseDmg + (user->curSoul * 1.2) );
+        float mag = (baseDmg + (user->curSoul * 1.5) );
         mag*= frng(0.8, 1.2);
 
         int dmg = mag - g_enemyCombatants[target]->curDefense;
@@ -2124,7 +2519,7 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
         g_enemyCombatants[target]->damageTakenThisTurn += dmg;
         user->dmgDealtOverFight += min(g_enemyCombatants[target]->health, (int)mag);
  
-        int selfdmg = (mag - user->curDefense) * 0.2;
+        int selfdmg = (mag * 0.25) - user->curDefense;
         if(selfdmg < 0) {selfdmg = 0;}
         if(selfdmg > user->health) {selfdmg = user->health;}
         user->health -= selfdmg;
@@ -2273,7 +2668,10 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
         for(auto &x : e->statuses) {
           if(x.type == status::SLIMED) {
             alreadyHave = 1;
-            x.magnitude += x.magnitude * (user->curSoul / 40);
+            x.magnitude *= (1.3 + (user->curSoul / 25));
+            if(x.magnitude > user->curSoul * 4.8) {
+              x.magnitude = 50;
+            }
             dmg = x.magnitude * frng(0.8, 1.2);
             break;
           }
@@ -2284,7 +2682,7 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
           statusEntry se;
           se.type = status::SLIMED;
           se.turns = 1;
-          se.magnitude = 5;
+          se.magnitude = 8;
           se.datastr = user->filename;
           e->statuses.push_back(se);
           dmg = se.magnitude * frng(0.8, 1.2);
@@ -2294,7 +2692,8 @@ void useSpiritMove(int spiritNumber, int target, combatant* user) {
         g_enemyCombatants[target]->damageTakenThisTurn += dmg;
         user->dmgDealtOverFight += min(g_enemyCombatants[target]->health, (int)dmg);
 
-        string message = user->name + " slimes " + e->name + " for " + to_string(dmg) + " damage.";
+        //string message = user->name + " slimes " + e->name + " for " + to_string(dmg) + " damage.";
+        string message = stringMultiInject(getLanguageData("Slime"), {user->name, e->name, to_string(dmg)});
         combatUIManager->finalText = message;
         combatUIManager->currentText = "";
         combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
@@ -2889,7 +3288,7 @@ combatUI::combatUI(SDL_Renderer* renderer) {
   dodgePanel->is9patch = true;
   dodgePanel->persistent = true;
 
-  useOrDiscardPanel = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.2, 0.2, 0.2, 0);
+  useOrDiscardPanel = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.45, 0.2, 0.2, 0.273, 0);
   useOrDiscardPanel->patchwidth = 213;
   useOrDiscardPanel->patchscale = 0.4;
   useOrDiscardPanel->is9patch = true;
@@ -2916,6 +3315,17 @@ combatUI::combatUI(SDL_Renderer* renderer) {
   useOrDiscardDiscardText->dropshadow = 1;
   useOrDiscardDiscardText->updateText(getLanguageData("UDdiscardText"), -1, 15);
   useOrDiscardDiscardText->layer2 = 1;
+
+
+  udInfoText = new textbox(renderer, "", 1, 0, 0, 0.9);
+  udInfoText->boxWidth = 0.9;
+  udInfoText->width = 0.9;
+  udInfoText->boxHeight = 0.25;
+  udInfoText->boxX = 0.05;
+  udInfoText->boxY = 0.05;
+  udInfoText->dropshadow = 1;
+  udInfoText->updateText(getLanguageData("UDinfoText"), -1, 15);
+  udInfoText->layer2 = 1;
 
   useOrDiscardMenuPicker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.92, 0.88, 0.03, 1, 0);
   useOrDiscardMenuPicker->heightFromWidthFactor = 1;
@@ -3012,6 +3422,7 @@ void combatUI::hideAll() {
   useOrDiscardUseText->show = 0;
   useOrDiscardDiscardText->show = 0;
   useOrDiscardMenuPicker->show = 0;
+  udInfoText->show = 0;
 }
 
 void getCombatInput() {
@@ -3435,7 +3846,6 @@ void CombatLoop() {
         g_autoFight = 0;
 
         //clear statuses
-        M("Clearing statuses on party");
         for(auto x : g_partyCombatants) {
           x->statuses.clear();
           x->curStrength = x->baseStrength;
@@ -4472,7 +4882,6 @@ void CombatLoop() {
       }
     case submode::EXECUTE_E:
       {
-        M("EXECUTE_E");
         //it's possible that the protags died during or right after their turn
         //it can crash in this switch case if you aren't careful handling
         //status damage or self damage
@@ -5673,6 +6082,13 @@ void CombatLoop() {
               break;
             case 2:
               //none
+              g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_submode = submode::CONTINUE;
+              break;
+            case 3:
+              //to be used on allies, untargeted, e.g., picnicbox
+              //must be usable in overworld
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
               g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
               g_submode = submode::CONTINUE;
@@ -7277,7 +7693,7 @@ void explorationLevelupLoop() {
           }
           drawCombatants();
 
-          SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+          //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
@@ -7336,7 +7752,7 @@ void explorationLevelupLoop() {
 
             drawCombatants();
 
-            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+            //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
             SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
@@ -7423,7 +7839,7 @@ void explorationLevelupLoop() {
           }
           drawCombatants();
 
-          SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+          //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
@@ -7482,7 +7898,7 @@ void explorationLevelupLoop() {
 
             drawCombatants();
 
-            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+            //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
             SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
@@ -8186,7 +8602,6 @@ void explorationLevelupLoop() {
       }
     case submode::EXECUTE_E:
       {
-        M("EXECUTE_E");
         //it's possible that the protags died during or right after their turn
         //it can crash in this switch case if you aren't careful handling
         //status damage or self damage

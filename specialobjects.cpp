@@ -1569,7 +1569,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
           g_camera.width = WIN_WIDTH;
           g_camera.height = WIN_HEIGHT;
           rect cam(0, 0, g_camera.width, g_camera.height);
-          D(g_worldEnemies.size());
 
           for(auto x : g_worldEnemies) {
             rect obj;
@@ -1586,14 +1585,6 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   //            x->height
   //            );
 
-          D(obj.x);
-          D(obj.y);
-          D(obj.width);
-          D(obj.height);
-          D(cam.x);
-          D(cam.y);
-          D(cam.width);
-          D(cam.height);
           if(RectOverlap(cam, obj) 
 //              && 
 //              LineTrace(x->getOriginX(), x->getOriginY(), protag->getOriginX(), protag->getOriginY(), false, 1, 0, 5, true, true)
@@ -2913,7 +2904,6 @@ void specialObjectsInteract(entity* a) {
     {
       //lever
       if(a->flagA == 0) {
-        breakpoint();
         //to power a door, all other doors must close
         for(auto x: g_poweredDoors) {
           x->banished = 0;

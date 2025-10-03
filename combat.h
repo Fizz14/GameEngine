@@ -126,7 +126,7 @@ public:
   float l0Mind;
   float mindGain;
   float baseMind; //max spirit points
-  float curMind;
+  int curMind;
 
   float l0Attack; //misleading, refers to the attack stat at level 0
   float attackGain; //refers to the average attack gain per level
@@ -340,6 +340,7 @@ public:
   ui* useOrDiscardPanel = 0;
   textbox* useOrDiscardUseText = 0;
   textbox* useOrDiscardDiscardText = 0;
+  textbox* udInfoText = 0;
 
   ui* mainPanel = 0;
   ui* dialogProceedIndicator = 0;
@@ -362,7 +363,7 @@ public:
   int currentOption = 0;
 
   ui* useOrDiscardMenuPicker = 0;
-  bool UDOption = 0;
+  int UDOption = 0;
 
   ui* targetPanel = 0;
   textbox* targetText = 0;

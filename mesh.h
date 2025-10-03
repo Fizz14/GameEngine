@@ -112,6 +112,7 @@ public:
 };
 
 
+// guide:
 //four meshes:
 //a floor, a wall, a collision, and an occluder
 //
@@ -122,6 +123,7 @@ public:
 //wall - quads with two uv channels, same requirement for vertex colors as floor
 //decorative - same as floor
 //collision - completely vertical walls, inside corners should often be 90*
+// !!! For collisions, ensure that the lower verts of the quad are at z=0 !!!
 //occluder - edges in 3d space, no faces, no color channels, no uv data
 //
 

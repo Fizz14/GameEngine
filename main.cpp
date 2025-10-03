@@ -1570,8 +1570,14 @@ void ExplorationLoop() {
               combatUIManager->useOrDiscardDiscardText->boxX = combatUIManager->menuPicker->x + 0.05 + 0.05;
               combatUIManager->useOrDiscardDiscardText->boxY = combatUIManager->menuPicker->y + 0.05 + 0.105;
 
+
+              combatUIManager->udInfoText->boxX = combatUIManager->menuPicker->x + 0.05 + 0.05;
+              combatUIManager->udInfoText->boxY = combatUIManager->menuPicker->y + 0.05 + 0.175;
+
               combatUIManager->useOrDiscardUseText->show = 1;
               combatUIManager->useOrDiscardDiscardText->show = 1;
+              combatUIManager->udInfoText->show = 1;
+
               combatUIManager->useOrDiscardMenuPicker->show = 1;
               combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->useOrDiscardUseText->boxY + 0.005;
               combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->useOrDiscardUseText->boxX - 0.03;
@@ -1614,17 +1620,23 @@ void ExplorationLoop() {
             combatUIManager->useOrDiscardPanel->show = 0;
             combatUIManager->useOrDiscardUseText->show = 0;
             combatUIManager->useOrDiscardDiscardText->show = 0;
+            combatUIManager->udInfoText->show = 0;
             combatUIManager->useOrDiscardMenuPicker->show = 0;
             break;
           }
           if(input[0] && !oldinput[0]) {
-            combatUIManager->UDOption = 0;
-            M("Press up");
+            combatUIManager->UDOption--;
           }
           if(input[1] && !oldinput[1]) {
-            combatUIManager->UDOption = 1;
-            M("Press down");
+            combatUIManager->UDOption++;
           }
+          if(combatUIManager->UDOption < 0) {
+            combatUIManager->UDOption = 0;
+          }
+          if(combatUIManager->UDOption > 2) {
+            combatUIManager->UDOption = 2;
+          }
+
           if(input[11] && !oldinput[11]) {
 
             
@@ -1639,9 +1651,28 @@ void ExplorationLoop() {
                 combatUIManager->useOrDiscardPanel->show = 0;
                 combatUIManager->useOrDiscardUseText->show = 0;
                 combatUIManager->useOrDiscardDiscardText->show = 0;
+                combatUIManager->udInfoText->show = 0;
                 combatUIManager->useOrDiscardMenuPicker->show = 0;
 
                 break;
+              } else if(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting == 3) {
+                //this means that the item affects allies and is untargeted, e.g. picnicbox
+                combatant *c = g_partyCombatants[0];
+                for(auto x : g_partyCombatants) {
+                  if(x->baseSkill > c->baseSkill) {
+                    c = x;
+                  }
+                }
+                useItem(g_combatInventory[combatUIManager->currentInventoryOption], combatUIManager->currentTarget, c);
+                g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
+                combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_combatInventory.size()-1);
+                g_amState = amState::ITEM;
+                combatUIManager->useOrDiscardPanel->show = 0;
+                combatUIManager->useOrDiscardUseText->show = 0;
+                combatUIManager->useOrDiscardDiscardText->show = 0;
+                combatUIManager->udInfoText->show = 0;
+                combatUIManager->useOrDiscardMenuPicker->show = 0;
+
               } else {
                 vector<string> spiritScript = {};
                 adventureUIManager->talker = narrarator;
@@ -1660,10 +1691,11 @@ void ExplorationLoop() {
                 combatUIManager->useOrDiscardPanel->show = 0;
                 combatUIManager->useOrDiscardUseText->show = 0;
                 combatUIManager->useOrDiscardDiscardText->show = 0;
+                combatUIManager->udInfoText->show = 0;
                 combatUIManager->useOrDiscardMenuPicker->show = 0;
 
               }
-            } else {
+            } else if(combatUIManager->UDOption == 1) {
               //discard
               g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
               
@@ -1671,21 +1703,49 @@ void ExplorationLoop() {
               combatUIManager->useOrDiscardPanel->show = 0;
               combatUIManager->useOrDiscardUseText->show = 0;
               combatUIManager->useOrDiscardDiscardText->show = 0;
+              combatUIManager->udInfoText->show = 0;
               combatUIManager->useOrDiscardMenuPicker->show = 0;
               break;
                
+            } else {
+              //info
+              vector<string> spiritScript = {};
+              adventureUIManager->talker = narrarator;
+              spiritScript.push_back(getLanguageData("I" + to_string(g_combatInventory[combatUIManager->currentInventoryOption]) ) + getLanguageData("ItemDescSeparator") + getLanguageData("Idesc" + to_string(g_combatInventory[combatUIManager->currentInventoryOption])));
+              spiritScript.push_back("#");
+
+              adventureUIManager->ownScript = spiritScript;
+              adventureUIManager->dialogue_index = -1;
+              adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+              adventureUIManager->sleepingMS = 0;
+              protag_is_talking = 1;
+              g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
+              g_forceEndDialogue = 0;
+              adventureUIManager->continueDialogue();
+              g_amState = amState::ITEM;
+              combatUIManager->useOrDiscardPanel->show = 0;
+              combatUIManager->useOrDiscardUseText->show = 0;
+              combatUIManager->useOrDiscardDiscardText->show = 0;
+              combatUIManager->udInfoText->show = 0;
+              combatUIManager->useOrDiscardMenuPicker->show = 0;
+              break;
+            
             }
 
           }
 
-          if(combatUIManager->UDOption) {
+          if(combatUIManager->UDOption == 1) {
             combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->useOrDiscardDiscardText->boxY + 0.005;
             combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->useOrDiscardDiscardText->boxX - 0.03;
 
-          } else {
+          } else if(combatUIManager->UDOption == 0) {
             combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->useOrDiscardUseText->boxY + 0.005;
             combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->useOrDiscardUseText->boxX - 0.03;
 
+          } else {
+            //info 
+            combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->udInfoText->boxY + 0.005;
+            combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->udInfoText->boxX - 0.03;
           }
 
 
@@ -4723,6 +4783,7 @@ int WinMain()
   if(devMode) {
     generateIndicesFile("major");
     generateIndicesFile("trial");
+    generateIndicesFile("desert");
   }
 
   //language pack
@@ -5236,13 +5297,11 @@ int WinMain()
 
   //populate oPieceMeshes and oPieceChunks here
   {
-    D(g_meshes.size());
     if(g_meshes.size() != 0) {
       E("g_meshes has some meshes in it, and this will cause problems with the code for storing the piece-meshes in memory");
       abort();
     }
 
-    D(g_chunks.size());
     if(g_chunks.size() != 0) {
       E("g_chunks has some chunks in it, and this will cause problems with the code for storing the piece-chunks in memory");
       abort();
