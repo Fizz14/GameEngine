@@ -68,6 +68,7 @@ enum class status {
   IGNITED, //burn
   BESTOWED,
   PHYSICALBARRIER,
+  STEELTRAPPED
 };
 
 struct bground {
@@ -160,6 +161,8 @@ public:
   float recoveryGain;
   float baseRecovery; //%hp/sp regen after a battle
   float curRecovery;
+
+  int bossPoints;
 
   //stats for last fight
   float dmgDealtOverFight = 0;
@@ -326,6 +329,7 @@ enum class submode {
   TEXT_STATUS_E,
   MEMBERDEADTEXT_P, //member dead from self damage
   TEXT_IDLE, //prints the text when an enemy doesn't attack
+  TEXT_ENEMY_BLINDED,
   DROPITEMS,
   DROPITEMTEXT,
 };

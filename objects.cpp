@@ -8905,6 +8905,7 @@ void escapeUI::uiSelecting() {
 //clear map
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
+  M("Clear map");
   g_worldEnemies.clear();
   resetTrivialData();
   g_eheightmaps.clear();
@@ -9649,30 +9650,34 @@ void clear_map(camera& cameraToReset) {
     }
   }
 
-  g_behemoths.clear();
-  g_behemoth0 = 0;
-  g_behemoth1 = 0;
-  g_behemoth2 = 0;
-  g_behemoth3 = 0;
+//  g_behemoths.clear();
+//  g_behemoth0 = 0;
+//  g_behemoth1 = 0;
+//  g_behemoth2 = 0;
+//  g_behemoth3 = 0;
 
   {
     g_meshes.clear();
 
     size = g_meshFloors.size();
+    M("Delete g_meshFloors");
     for(int i = 0; i < size; i++) {
       delete g_meshFloors[0];
     }
 
+    M("Delete g_meshVWalls");
     size = g_meshVWalls.size();
     for(int i = 0; i < size; i++) {
       delete g_meshVWalls[0];
     }
 
+    M("Delete g_meshCollisions");
     size = g_meshCollisions.size();
     for(int i = 0; i < size; i++) {
       delete g_meshCollisions[0];
     }
 
+    M("Delete g_meshOccluders");
     size = g_meshOccluders.size();
     for(int i = 0; i < size; i++) {
       delete g_meshOccluders[0];
@@ -9680,16 +9685,19 @@ void clear_map(camera& cameraToReset) {
     g_oEdges.clear();
     g_wEdges.clear();
 
+    M("Delete g_meshDecorative");
     size = g_meshDecorative.size();
     for(int i = 0; i < size; i++) {
       delete g_meshDecorative[0];
     }
 
+    M("Delete g_chunks");
     size = g_chunks.size();
     for(int i = 0; i < size; i++) {
       delete g_chunks[0];
     }
 
+    M("Delete g_ggrids");
     size = g_ggrids.size();
     for(int i = 0; i < size; i++) {
       delete g_ggrids[0];
@@ -9697,27 +9705,32 @@ void clear_map(camera& cameraToReset) {
 
   }
 
+  M("Delete g_tallGrasses");
   size = g_tallGrasses.size();
   for(int i = 0; i < size; i++) {
     delete g_tallGrasses[0];
   }
 
+  M("Delete g_camBlockers");
   size = g_camBlockers.size();
   for(int i = 0; i < size; i++) {
     delete g_camBlockers[0];
   }
 
+  M("Delete g_gradients");
   size = g_gradients.size();
   for(int i = 0; i < size; i++) {
     delete g_gradients[0];
   }
 
 
+  M("Delete g_ribbons");
   size = g_ribbons.size();
   for(int i = 0; i < size; i++) {
     delete g_ribbons[0];
   }
 
+  M("Push back any entities that were in the party");
   //push back any entities that were in the party
   for (long long unsigned int i = 0; i < party.size(); i++) {
     g_entities.push_back(party[i]);
@@ -9749,16 +9762,19 @@ void clear_map(camera& cameraToReset) {
   //with lastReferencedEntity fields set to deleted entity
   adventureUIManager->lastReferencedEntity = 0;
 
+  M("Delete g_tiles");
   size = (int)g_tiles.size();
   for(int i = 0; i < size; i++) {
     delete g_tiles[0];
   }
 
+  M("Delete g_emitters");
   size = (int)g_emitters.size();
   for(int i = 0; i < size; i++) {
     delete g_emitters[0];
   }
 
+  M("Delete g_navNodes");
   size = (int)g_navNodes.size();
   for(int i = 0; i < size; i++) {
     delete g_navNodes[0];
@@ -9788,52 +9804,62 @@ void clear_map(camera& cameraToReset) {
   //
   //  }
 
+  M("Delete g_worldsounds");
   //just do a typical clear
   size = (int)g_worldsounds.size();
   for(int i = 0; i < size; i++) {
     delete g_worldsounds[0];
   }
 
+  M("Delete g_musicNodes");
   size = (int)g_musicNodes.size();
   for(int i = 0; i < size; i++) {
     delete g_musicNodes[0];
   }
 
+  M("Delete g_cueSounds");
   size = (int)g_cueSounds.size();
   for(int i = 0; i < size; i++) {
     delete g_cueSounds[0];
   }
 
+  M("Delete g_waypoints");
   size = (int)g_waypoints.size();
   for(int i = 0; i < size; i++) {
     delete g_waypoints[0];
   }
 
+  M("Delete g_doors");
   size = (int)g_doors.size();
   for(int i = 0; i < size; i++) {
     delete g_doors[0];
   }
 
+  M("Delete g_dungeonsDoors");
   size = (int)g_dungeonDoors.size();
   for(int i = 0; i < size; i++) {
     delete g_dungeonDoors[0];
   }
 
+  M("Delete g_triggers");
   size = (int)g_triggers.size();
   for(int i = 0; i < size; i++) {
     delete g_triggers[0];
   }
 
+  M("Delete g_heightmaps");
   size = (int)g_heightmaps.size();
   for(int i = 0; i < size; i++) {
     delete g_heightmaps[0];
   }
 
+  M("Delete g_listeners");
   size = (int)g_listeners.size();
   for(int i = 0; i < size; i++) {
     delete g_listeners[0];
   }
 
+  M("Delete g_effectIndexes");
   vector<effectIndex*> savedEffectIndexes;
   size = (int)g_effectIndexes.size();
   for(int i = 0; i < size; i++) {
@@ -9900,7 +9926,7 @@ void clear_map(camera& cameraToReset) {
   //    g_weapons.push_back(x);
   //  }
 
-
+  M("Delete g_ui");
   vector<ui*> persistentui;
   size = (int)g_ui.size();
   for(int i = 0; i < size; i++) {
@@ -9925,6 +9951,7 @@ void clear_map(camera& cameraToReset) {
 
   //new, delete all mc, which will automatycznie delete the others
   //here's where we could save some textures if we're going to a map in the same level, might be worth it
+  M("Delete g_mapCollisions");
   size = (int)g_mapCollisions.size();
   for (int i = 0; i < size; i++) {
     //M("Lets delete a mapCol");
@@ -9951,6 +9978,7 @@ void clear_map(camera& cameraToReset) {
   for(long long unsigned int i = 0; i < g_ramps.size(); i++) {
     g_ramps[i].clear();
   }
+  M("Delete background");
   if(g_backgroundLoaded && background != 0) {
     //M("deleted background");
     SDL_DestroyTexture(background);
@@ -9959,6 +9987,7 @@ void clear_map(camera& cameraToReset) {
     background = 0;
   }
 
+  M("Delete g_setsOfInterest");
   for(int i = 0; i < g_numberOfInterestSets; i++) {
     while(g_setsOfInterest[i].size() > 0) {
       delete g_setsOfInterest[i][0];
@@ -12398,13 +12427,6 @@ void adventureUI::continueDialogue()
     s.erase(0, s.find(' ') + 1);
     string dest_waypoint = s.substr(0, s.find(' '));
     s.erase(0, s.find(' ') + 1);
-    // if the script just has "@" and that's all, send the player to the last saved map
-    if (name.length() == 0)
-    {
-      name = g_mapOfLastSave;
-      cout << g_waypointOfLastSave << endl;
-      dest_waypoint = g_waypointOfLastSave;
-    }
 
     // close dialogue
     adventureUIManager->hideTalkingUI();

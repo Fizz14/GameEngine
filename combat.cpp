@@ -587,6 +587,9 @@ combatant::combatant(string ffilename, int fxp) {
   recoveryGain /= 100; //attack at level 100
 
   file >> temp;
+  file >> bossPoints; //each bossPoint increases resistance to stuns and blinds by 10%
+
+  file >> temp;
   file >> deathText;
 
   if(deathText.back() == '\r') {
@@ -1488,8 +1491,8 @@ void initTables() {
     itemsTable[24] = itemInfo(getLanguageData("I24"), 1); // Apple
     itemsTable[25] = itemInfo(getLanguageData("I25"), 1); // Toast
     itemsTable[26] = itemInfo(getLanguageData("I26"), 1); // Cookie
-    itemsTable[27] = itemInfo(getLanguageData("I27"), 1); // DeluxePicnic
-    itemsTable[28] = itemInfo(getLanguageData("I28"), 1); // Weddingcake
+    itemsTable[27] = itemInfo(getLanguageData("I27"), 3); // DeluxePicnic
+    itemsTable[28] = itemInfo(getLanguageData("I28"), 3); // Weddingcake
     itemsTable[29] = itemInfo(getLanguageData("I29"), 1); // Icecream
     itemsTable[30] = itemInfo(getLanguageData("I30"), 0); // Snare
     itemsTable[31] = itemInfo(getLanguageData("I31"), 0); // Electrosnare
@@ -1627,7 +1630,7 @@ void useItem(int item, int target, combatant* user) {
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
           combatUIManager->dialogProceedIndicator->y = 0.25;
           combatant* e = g_enemyCombatants[i];
-          if(e->health < 0) {
+          if(e->health <= 0) {
             string deathmessage = e->name + " " + e->deathText;
             combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
             g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
@@ -2389,6 +2392,616 @@ void useItem(int item, int target, combatant* user) {
         combatUIManager->dialogProceedIndicator->y = 0.25;
         break;
       }
+    case 30:
+      {
+        // Snare
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::ANIMAL) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I30")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 31:
+      {
+        // Electrosnare
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::ANIMAL) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I31")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 32:
+      {
+        // Herbicide
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::PLANT) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I32")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 33:
+      {
+        // HerbicideX
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::PLANT) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I33")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 34:
+      {
+        // Bugspray
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::BUG) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I34")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 35:
+      {
+        // PremiumBugspray
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::BUG) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I35")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 36:
+      {
+        // Jammer
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::ROBOT) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I36")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 37:
+      {
+        // RetroJammer
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::ROBOT) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I37")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 38:
+      {
+        // Acid
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::ALIEN) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I38")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 39:
+      {
+        // IndustrialAcid
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::ALIEN) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I39")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 40:
+      {
+        // Strobe
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::UNDEAD) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I40")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 41:
+      {
+        // Discostrobe
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::UNDEAD) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I41")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 42:
+      {
+        // Offering
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::GHOST) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I42")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 43:
+      {
+        // ChaoticOffering
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::GHOST) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I43")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 44:
+      {
+        // Spike
+        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::DEMON) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I44")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 45:
+      {
+        // GoldenSpike
+        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+        int i = target;
+        mag -= g_enemyCombatants[i]->curDefense;
+        if(mag <0) { mag = 0;}
+        if(g_enemyCombatants[i]->myType == type::DEMON) {
+          mag *= 2;
+        }
+        g_enemyCombatants[i]->health -= mag;
+        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I45")});
+        combatUIManager->queuedStrings.push_back(make_pair(message,0));
+        combatUIManager->currentText = "";
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+        if(e->health < 0) {
+          string deathmessage = e->name + " " + e->deathText;
+          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+          g_deadCombatants.push_back(e);
+          //delete e;
+          i--;
+        }
+
+        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+        user->serial.target = 1;
+        break;
+      }
+    case 46:
+      {
+        // Chemicalwaste - blinds enemy
+        int i = target;
+        int bossPoints = g_enemyCombatants[target]->bossPoints;
+        bool succ = 0;
+        if(rng(0,100) > bossPoints * 10) {
+          succ = 1;
+        }
+        string message = "";
+        if(succ) {
+          message = stringMultiInject(getLanguageData("BlindedBy"), {g_enemyCombatants[i]->name, getLanguageData("I46") });
+          combatant* c = g_enemyCombatants[i];
+          bool alreadyHave = 0;
+          for(auto &x : c->statuses) {
+            if(x.type == status::BLINDED) {
+              alreadyHave = 1;
+              if(x.turns < 4) {
+                x.turns = 3;
+              }
+              float chanceToMiss = 0.5;
+              x.magnitude = chanceToMiss;
+              break;
+            }
+          }
+          if(!alreadyHave) {
+            statusEntry e;
+            e.type = status::BLINDED;
+            e.turns = 3;
+            float chanceToMiss = 0.5;
+            e.magnitude = chanceToMiss;
+            c->statuses.push_back(e);
+          }
+
+        } else {
+          message = stringMultiInject(getLanguageData("DidntWorkOn"), {getLanguageData("I45"), g_enemyCombatants[i]->name});
+        }
+
+        combatUIManager->currentText = "";
+        combatUIManager->finalText = message;
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+        combatant* e = g_enemyCombatants[i];
+
+        user->serial.target = 1;
+        break;
+      }
+    case 47:
+      {
+        //Steeltrap
+        int i = target;
+        string message = "";
+        combatant* c = g_enemyCombatants[i];
+        message = stringMultiInject(getLanguageData("SteeltrapUsage"), {user->name, c->name});
+        bool alreadyHave = 0;
+        for(auto &x : c->statuses) {
+          if(x.type == status::STEELTRAPPED) {
+            alreadyHave = 1;
+            if(x.turns < 4) {
+              x.turns = 3;
+            }
+            float chanceToMiss = 0.5;
+            x.magnitude = 5 + user->curSkill;
+            break;
+          }
+        }
+        if(!alreadyHave) {
+          statusEntry e;
+          e.type = status::STEELTRAPPED;
+          e.turns = 3;
+          e.magnitude = 5 + user->curSkill;
+          c->statuses.push_back(e);
+        }
+
+        combatUIManager->currentText = "";
+        combatUIManager->finalText = message;
+        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+        combatUIManager->dialogProceedIndicator->y = 0.25;
+
+        user->serial.target = 1;
+        break;
+      }
     case 100:
       {
         //Devbomb
@@ -3054,6 +3667,24 @@ bool applyStatus(combatant* c, statusEntry* e) {
         e->turns --;
         break;
       }
+    case status::BLINDED:
+      {
+        if(e->turns <= 0) {
+          //wore off
+          combatUIManager->finalText = stringMultiInject(getLanguageData("StatusWornOff"), { getLanguageData("BlindedStatus"), c->name});
+          combatUIManager->currentText = "";
+          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+          if(g_submode == submode::STATUS_P) {
+            g_submode = submode::TEXT_STATUS_P;
+          } else {
+            g_submode = submode::TEXT_STATUS_E;
+          }
+          return 1;
+        }
+        e->turns --;
+        break;
+      }
 
 
   }
@@ -3614,6 +4245,9 @@ void renderInventoryPanel()
           abort();
         }
         combatUIManager->inventoryText->updateText(itemName, -1, 0.85, g_textcolor, g_font);
+        if(combatUIManager->inventoryText->width > 0.185 * WIN_WIDTH) {
+          combatUIManager->inventoryText->width = 0.185 * WIN_WIDTH;
+        }
         if(index == combatUIManager->currentInventoryOption) {
           combatUIManager->menuPicker->x = initialX + (i * width) - 0.028;
           combatUIManager->menuPicker->y = initialY + (j * height) + 0.007;
@@ -4899,6 +5533,28 @@ void CombatLoop() {
         //by an identity field
 
         if(c->serial.action == turnAction::ATTACK) {
+
+          //if the enemy attacker is blind, we should display a different message
+          float blindedChance = 0; // (0-1)
+          for(auto &x : c->statuses) {
+            if(x.type == status::BLINDED) {
+              blindedChance = x.magnitude;
+              break;
+            }
+          }
+          float random = frng(0,1);
+          D(random);
+          D(1-blindedChance);
+          if(random > (1-blindedChance)) {
+            //the enemy failed to attack
+            combatUIManager->finalText = stringMultiInject(getLanguageData("EnemyBlindedText"), {c->name, getPossessivePronoun(c)});
+            combatUIManager->currentText = "";
+            combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+            combatUIManager->dialogProceedIndicator->y = 0.25;
+            g_submode = submode::TEXT_ENEMY_BLINDED;
+            break;
+          }
+
           //        combatant* e = g_partyCombatants[rng(0, g_partyCombatants.size() - 1)];
           //        int damage = c->baseAttack + (c->attackGain * c->level) - (e->baseDefense + (e->defenseGain * e->level));
           //        damage *= frng(0.70,1.30);
@@ -5047,6 +5703,39 @@ void CombatLoop() {
             combatUIManager->currentText = "";
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
             combatUIManager->dialogProceedIndicator->y = 0.25;
+
+            //check for steeltrap
+            bool st = 0;
+            int damage = 0;
+            for(auto &x : c->statuses) {
+              if(x.type == status::STEELTRAPPED) {
+                st = 1;
+                damage = x.magnitude;
+                break;
+              }
+            }
+            if(st) {
+              damage *= frng(0.8, 1.2);
+              combatUIManager->finalText = stringMultiInject(getLanguageData("SteeltrapProc"), {c->name, to_stringF(damage)});
+              if(damage < 0) { damage = 0;}
+              c->health -= damage;
+              c->damageTakenThisTurn += damage; //maybe remove this
+              if(c->health <= 0) {
+                string deathmessage = e->name + " " + e->deathText;
+                combatUIManager->queuedStrings.push_back(make_pair(deathmessage,1));
+                g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+                g_deadCombatants.push_back(e);
+
+                blah blah bug here
+                joseph don't forget to fix death from stickybomb status
+                also the items check for death if health < 0 not <=
+
+              }
+
+
+
+            }
+
             g_submode = submode::TEXT_IDLE;
             break;
 
@@ -5341,7 +6030,7 @@ void CombatLoop() {
         combatant* x = g_partyCombatants[curCombatantIndex];
         x->level = xpToLevel(x->xp);
         combatUIManager->oldLevel = x->level;
-        x->xp += combatUIManager->xpToGrant * frng(0.95, 1.05);
+        x->xp += combatUIManager->xpToGrant * frng(0.8, 1.2);
         combatUIManager->newLevel= xpToLevel(x->xp);
         combatUIManager->thisLevel = combatUIManager->oldLevel+1;
         //g_submode = submode::LEVELUP;
@@ -6526,6 +7215,101 @@ void CombatLoop() {
         break;
       }
     case submode::TEXT_IDLE:
+      {
+        combatUIManager->mainPanel->show = 1;
+        combatUIManager->mainText->show = 1;
+        combatUIManager->optionsPanel->show = 0;
+
+        if(input[8]) {
+          text_speed_up = 50;
+        } else {
+          text_speed_up = 1;
+        }
+
+
+        curTextWait += elapsed * text_speed_up;
+
+        if(combatUIManager->finalText == combatUIManager->currentText) {
+          combatUIManager->dialogProceedIndicator->show = 1;
+        } else {
+          combatUIManager->dialogProceedIndicator->show = 0;
+        }
+
+        if (curTextWait >= textWait)
+        {
+
+          if(combatUIManager->finalText != combatUIManager->currentText) {
+            if(input[8]) {
+              combatUIManager->currentText = combatUIManager->finalText;
+            } else {
+              combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
+              playSound(6, g_ui_voice, 0);
+            }
+            combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+
+          }
+
+          curTextWait = 0;
+        }
+
+        if(combatUIManager->finalText == combatUIManager->currentText) {
+          if(input[11] && !oldinput[11]) {
+            //advance dialog
+            if(combatUIManager->queuedStrings.size() > 0) {
+              combatUIManager->dialogProceedIndicator->y = 0.25;
+              combatUIManager->currentText = "";
+              combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+              combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+            } else {
+//              combatUIManager->mainPanel->show = 0;
+//              combatUIManager->mainText->show = 0;
+//              combatUIManager->dialogProceedIndicator->show = 0;
+              combatUIManager->optionsPanel->show = 1;
+              //curStatusIndex++;
+
+//              combatUIManager->executeEIndex++;
+//              M("IDLETEXT TO EXECUTE_E");
+//              g_submode = submode::EXECUTE_E;
+
+              if(combatUIManager->executeEIndex + 1 ==  g_enemyCombatants.size()) {
+              combatUIManager->mainPanel->show = 0;
+              combatUIManager->mainText->show = 0;
+              combatUIManager->dialogProceedIndicator->show = 0;
+              curCombatantIndex = 0;
+              combatUIManager->executeEIndex = 0;
+              g_submode = submode::STATUS_E;
+              curStatusIndex = 0;
+
+  
+  
+              } else {
+                combatUIManager->executeEIndex++;
+                g_submode = submode::EXECUTE_E;
+              }
+            }
+          }
+        }
+
+        //animate dialogproceedarrow
+        {
+          combatUIManager->c_dpiDesendMs += elapsed;
+          if(combatUIManager->c_dpiDesendMs > combatUIManager->dpiDesendMs) {
+            combatUIManager->c_dpiDesendMs = 0;
+            combatUIManager->c_dpiAsending = !combatUIManager->c_dpiAsending;
+
+          }
+
+          if(combatUIManager->c_dpiAsending) {
+            combatUIManager->dialogProceedIndicator->y += combatUIManager->dpiAsendSpeed;
+          } else {
+            combatUIManager->dialogProceedIndicator->y -= combatUIManager->dpiAsendSpeed;
+
+          }
+        }
+
+        break;
+      }
+    case submode::TEXT_ENEMY_BLINDED:
       {
         combatUIManager->mainPanel->show = 1;
         combatUIManager->mainText->show = 1;
@@ -8619,6 +9403,9 @@ void explorationLevelupLoop() {
         //by an identity field
 
         if(c->serial.action == turnAction::ATTACK) {
+
+
+
           //        combatant* e = g_partyCombatants[rng(0, g_partyCombatants.size() - 1)];
           //        int damage = c->baseAttack + (c->attackGain * c->level) - (e->baseDefense + (e->defenseGain * e->level));
           //        damage *= frng(0.70,1.30);
