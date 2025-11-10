@@ -12,6 +12,7 @@ void titleUI::hideAll() {
   handMarker->show = 0;
   panel->show = 0;
   title->show = 0;
+  //titleExplosion->show = 0;
   titles->show = 0;
   bg->show = 0;
 }
@@ -20,10 +21,11 @@ void titleUI::showAll() {
   newText->show = 1;
   continueText->show = 1;
   endText->show = 1;
-  creditText->show = 1;
+  creditText->show = 0;
   handMarker->show = 1;
   panel->show = 1;
   title->show = 1;
+  //titleExplosion->show = 0;
   titles->show = 1;
   bg->show = 1;
 }
@@ -61,7 +63,7 @@ titleUI::titleUI(SDL_Renderer* renderer) {
   creditText->align = 2;
   creditText->dropshadow = 1;
   creditText->updateText(getLanguageData("AuthorText"), 400 * g_fontsize, 0, {235, 235, 235}, g_font);
-
+  creditText->show = 0;
 
   handMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", 0.5, 0.65, 0.1, 1, 2);
   handMarker->persistent = 1;
@@ -76,10 +78,15 @@ titleUI::titleUI(SDL_Renderer* renderer) {
   panel->is9patch = true;
   panel->persistent = true;
 
-  title = new ui(renderer, "resources/engine/title.qoi", 0.15, 0.13, 1-0.3, 0.13, 0);
+  //title = new ui(renderer, "resources/engine/title.qoi", 0.15, 0.13, 1-0.3, 0.13, 0);
+  title = new ui(renderer, "resources/engine/title.qoi", 0.1, 0.22, 1-0.2, 0.16, 0);
   title->persistent = true;
 
-  titles = new ui(renderer, "resources/engine/title_shadow.qoi", 0.15 + 0.005, 0.13 + (0.005*1.6), 1-0.3, 0.13, 0);
+//  titleExplosion = new ui(renderer, "resources/engine/title_explosion.qoi", 0, 0.05, 1, 0.5, 0);
+//  titleExplosion->opacity = 255*90;
+//  titleExplosion->persistent = true;
+
+  titles = new ui(renderer, "resources/engine/title_shadow.qoi", 0.1 + 0.003, 0.22 + (0.003*1.6), 1-0.2, 0.16, 0);
   titles->persistent = true;
 
   bg = new ui(renderer, "resources/engine/titlebg.qoi", 0, 0, 1, 1, 0);
@@ -256,6 +263,7 @@ void TitleLoop() {
 
   titleUIManager->handMarker->render(renderer, g_camera, elapsed);
 
+//  titleUIManager->titleExplosion->render(renderer, g_camera, elapsed);
   titleUIManager->titles->render(renderer, g_camera, elapsed);
   titleUIManager->title->render(renderer, g_camera, elapsed);
 
@@ -310,6 +318,7 @@ void TitleLoop() {
       
         titleUIManager->handMarker->render(renderer, g_camera, elapsed);
       
+//        titleUIManager->titleExplosion->render(renderer, g_camera, elapsed);
         titleUIManager->titles->render(renderer, g_camera, elapsed);
         titleUIManager->title->render(renderer, g_camera, elapsed);
       
@@ -436,6 +445,7 @@ void TitleLoop() {
       
         titleUIManager->handMarker->render(renderer, g_camera, elapsed);
       
+//        titleUIManager->titleExplosion->render(renderer, g_camera, elapsed);
         titleUIManager->titles->render(renderer, g_camera, elapsed);
         titleUIManager->title->render(renderer, g_camera, elapsed);
       
@@ -561,6 +571,7 @@ void TitleLoop() {
       
         titleUIManager->handMarker->render(renderer, g_camera, elapsed);
       
+//        titleUIManager->titleExplosion->render(renderer, g_camera, elapsed);
         titleUIManager->titles->render(renderer, g_camera, elapsed);
         titleUIManager->title->render(renderer, g_camera, elapsed);
       

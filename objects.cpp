@@ -111,6 +111,8 @@ void resetTrivialData() {
   g_afterspin_duration = 0;
   storedSpin = 0;
 
+  g_shrinkTurns = 0;
+
 }
 
 // Helper function to calculate edge length
@@ -2983,6 +2985,7 @@ void fancybox::arrange(string fcontent) {
 
   int i = 0;
   fancyword word;
+  int totalLettersInWord = 0;
   int runningIndex = 0;
   int color = 0;
   char movement = 0;
@@ -3101,6 +3104,15 @@ void fancybox::arrange(string fcontent) {
 
       words.push_back(word);
       word.chars.clear();
+      int j = i + 1;
+      totalLettersInWord = 0;
+      while(j < fcontent.size()) {
+        totalLettersInWord++;
+        if(fcontent[j] == ' ') {
+          break;
+        }
+        j++;
+      }
       word.width = 0;
       word.x = newx + (0.01);
       word.y = newy;
@@ -3111,6 +3123,36 @@ void fancybox::arrange(string fcontent) {
     if(movement == '9') { bonusWidth = 3;}
     if(movement == 'a') { bonusWidth = 0.5; word.y=0.025;}
     word.append(g_fancyCharLookup[fcontent[i]], bonusWidth);
+
+    if(totalLettersInWord >= 10 && word.x + word.width > 0.78 && fcontent[i+1] != ' ' && fcontent[i+1] != '.' && fcontent[i+1] != ',' && fcontent[i+1] != '!' && fcontent[i+1] != '?') {
+      //hyphenate this word
+      float bonusWidth = 1;
+      if(movement == '9') { bonusWidth = 3;}
+      if(movement == 'a') { bonusWidth = 0.5; word.y=0.025;}
+      word.append(g_fancyCharLookup['-'], bonusWidth);
+      
+      if(movement == '9') {
+        word.y += 0.08;
+      }
+      if(movement != '3') {
+        //parade movement involves dancing lines
+        runningIndex = 0;
+      }
+
+      float newx = 0;
+      float newy = word.y + 0.08; 
+      words.push_back(word);
+      word.chars.clear();
+
+      totalLettersInWord -= word.chars.size();
+
+      word.width = 0;
+      word.x = newx;
+      word.y = newy;
+      continue;
+
+      
+    }
 
     //word.chars.at(word.chars.size() -1).debug = fcontent[i];
     word.chars.at(word.chars.size() -1).index = runningIndex;
@@ -3174,7 +3216,7 @@ int fancybox::reveal() {
   } else {
     //all done!
     if(adventureUIManager->dialogProceedIndicator->show == 0) {
-      if(!adventureUIManager->keyPrompting) {
+      if(!adventureUIManager->keyPrompting && !adventureUIManager->askingQuestion) {
         adventureUIManager->dialogProceedIndicator->show = 1;
         adventureUIManager->dialogProceedIndicator->y = 0.9;
         adventureUIManager->c_dpiDesendMs = 0;
@@ -7726,6 +7768,16 @@ int loadSave() {
     a->inParty = 1;
 
     combatant* b = new combatant(name, exp);
+
+//    b->strIncrease = stof(tokens[16]);
+//    b->mindIncrease = stof(tokens[17]);
+//    b->attackIncrease = stof(tokens[18]);
+//    b->defenseIncrease = stof(tokens[19]);
+//    b->soulIncrease = stof(tokens[20]);
+//    b->criticalIncrease = stof(tokens[21]);
+//    b->skillIncrease = stof(tokens[22]);
+//    b->recoveryIncrease = stof(tokens[23]);
+
     b->health = floor(currentHP);
     b->sp = floor(currentSP);
 
@@ -7737,7 +7789,7 @@ int loadSave() {
     b->baseSkill = skill;
     b->baseCritical = critical;
     b->baseRecovery = recovery;
-    if(b->level == 0) {
+    if(b->xp == 0) {
       b->baseStrength = b->l0Strength;
       b->health = floor(b->baseStrength);
       b->baseMind = b->l0Mind;
@@ -7859,6 +7911,10 @@ int loadSave() {
     keyItemInfo* k = new keyItemInfo(stoi(line));
   }
 
+  getline(file,line);
+  g_currency = stoi(line);
+  D(g_currency);
+
 
 
 
@@ -7971,6 +8027,8 @@ int writeSave() {
     file << x->index << endl;
   }
   file << "&" << endl; //token to stop writing key items
+
+  file << g_currency << endl;
 
 
   file.close();
@@ -8408,8 +8466,6 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
         jbound = ibound * height;
       }
 
-
-
       if(WIN_WIDTH != 0) {
         patchscale = WIN_WIDTH;
         patchscale /= 4000;
@@ -8443,8 +8499,8 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
 
           //shrink the last non-border tile to fit well.
           int newheight = jbound - (j + scaledpatchwidth);
-          if(j + (2 * scaledpatchwidth) >= jbound && newheight > 0) {
 
+          if(j + (2 * scaledpatchwidth) >= jbound && newheight > 0) {
             dstrect.h = newheight;
             j+=  newheight;
           } else {
@@ -8453,7 +8509,6 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
 
           int newwidth = ibound - (i + scaledpatchwidth);
           if(i + (2 * scaledpatchwidth) >= ibound && newwidth > 0) {
-
             dstrect.w = newwidth;
           } else {
           }
@@ -8461,16 +8516,13 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
           //done to fix occasional 1px gap. not a good fix
           dstrect.h += 1;
           SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
-
-
-
         }
         //increment i based on last shrink
         int newwidth = ibound - (i + scaledpatchwidth);
         if(i + (2 * scaledpatchwidth) >= ibound && newwidth > 0) {
-          i+=  newwidth;
+          i += newwidth;
         } else {
-          i+= scaledpatchwidth;
+          i += scaledpatchwidth;
         }
       }
 
@@ -8906,6 +8958,8 @@ void escapeUI::uiSelecting() {
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
   M("Clear map");
+  g_numPresentsLoaded = 0;
+  g_numMoneybagsLoaded = 0;
   g_worldEnemies.clear();
   resetTrivialData();
   g_eheightmaps.clear();
@@ -9661,6 +9715,8 @@ void clear_map(camera& cameraToReset) {
 
     size = g_meshFloors.size();
     M("Delete g_meshFloors");
+    D(g_meshFloors.size());
+    //This segfaults when leaving desert/1-under
     for(int i = 0; i < size; i++) {
       delete g_meshFloors[0];
     }
@@ -10212,7 +10268,8 @@ void adventureUI::hideInventoryUI()
 
 void adventureUI::showAm() {
   amPanel->show = 1;
-
+  amCurrencyPanel->show = 1;
+  amCurrencyText->show = 1;
   for(int i =0; i< amTextboxes.size(); i++) {
     amTextboxes[i]->show = 1;
     string hook = "AdventureMenuOption" + to_string(i);
@@ -10225,6 +10282,8 @@ void adventureUI::showAm() {
 
 void adventureUI::hideAm() {
   amPanel->show = 0;
+  amCurrencyPanel->show = 0;
+  amCurrencyText->show = 0;
   for(auto &x : amTextboxes) {
     x->show = 0;
   }
@@ -10468,6 +10527,55 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     inputText->dropshadow = 1; 
 
     playersUI = 1;
+
+    amCurrencyPanel = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.75, 0.042, 0.15, 0.14, 1);
+    amCurrencyPanel->is9patch = true;
+    amCurrencyPanel->patchwidth = 213;
+    amCurrencyPanel->patchfactor = 1;
+    amCurrencyPanel->persistent = true;
+    amCurrencyPanel->show = 0;
+    amCurrencyPanel->layer0 = 1;
+
+    amCurrencyText = new textbox(renderer, "$", 1, 0, 0, 0.9);
+    amCurrencyText->boxWidth = 0.9;
+    amCurrencyText->width = 0.9;
+    amCurrencyText->boxHeight = 0.25;
+    amCurrencyText->boxX = 0.825;
+    amCurrencyText->boxY = 0.085;
+    amCurrencyText->dropshadow = 1;
+    amCurrencyText->layer0 = 1;
+    amCurrencyText->align = 2;
+
+    amCurrencyPanel->show = 0;
+    amCurrencyText->show = 0;
+
+    qPanel = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.65, 0.43, 1-0.65, 0.22, 1);
+    qPanel->is9patch = true;
+    qPanel->patchwidth = 213;
+    qPanel->patchscale = 0.4;
+    qPanel->persistent = true;
+    qPanel->show = 0;
+    qPanel->layer0 = 1;
+
+    qHand = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", 0.5, 0.65, 0.1, 1, 2);
+    qHand->persistent = 1;
+    qHand->show = 0;
+    qHand->priority = 3;
+    qHand->heightFromWidthFactor = 1;
+    qHand->renderOverText = 1;
+
+    for(int i = 0; i < 5; i++) {
+      textbox* a;
+      a = new textbox(renderer, "", 2, 0, 0, 0.9);
+      a->boxWidth = 0.3;
+      a->width = 0.5;
+      a->boxHeight = 0.5;
+      a->boxX = 0.7;
+      a->boxY = 0;
+      a->align = 2;
+      a->dropshadow = 1;
+      qTextboxes.push_back(a);
+    }
 
     amPanel = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0.25, 0, 0.5, 0.22, 1);
     amPanel->is9patch = true;
@@ -10834,17 +10942,17 @@ void adventureUI::updateText()
 
   if (askingQuestion)
   {
-    string former = "   ";
-    string latter = "   ";
-    if (response_index > 0)
-    {
-      former = " < ";
-    }
-    if (response_index < responses.size() - 1)
-    {
-      latter = " > ";
-    }
-
+//    string former = "   ";
+//    string latter = "   ";
+//    if (response_index > 0)
+//    {
+//      former = " < ";
+//    }
+//    if (response_index < responses.size() - 1)
+//    {
+//      latter = " > ";
+//    }
+//
     string content = responses[response_index];
     if(g_saveOverwriteResponse == 1 || g_saveOverwriteResponse == 2) {
       if(response_index < 3) {
@@ -10852,15 +10960,19 @@ void adventureUI::updateText()
       }
     }
 
-    responseText->updateText(former + content + latter, -1, 0.9, currentTextcolor, currentFontStr);
-    responseText->show = 1;
+//    responseText->updateText(former + content + latter, -1, 0.9, currentTextcolor, currentFontStr);
+//    responseText->show = 1;
     response = responses[response_index];
-    if(g_saveOverwriteResponse == 2) {
-      if(response_index <3) {
-        g_saveToDelete = g_saveNames[response_index];
-      }
+    if(response_index < 5) {
+      int texW = 0;
+      int texH = 0;
+      SDL_QueryTexture(qTextboxes[response_index]->texttexture, NULL, NULL, &texW, &texH);
+      qHand->targety = qTextboxes[response_index]->boxY + 0.03;
+      float w = texW;
+      qHand->targetx = qTextboxes[response_index]->boxX + w/(WIN_WIDTH*2) + 0;
+//      D(qHand->y);
+//      D(response_index);
     }
-
   }
   else if (keyPrompting) {
 
@@ -10993,8 +11105,6 @@ void adventureUI::continueDialogue()
     //given item is in value of response_index
     //-1 for nothing (canceled prompt or had no item)
     for(auto x : keyPromptMap) {
-      D(response_index);
-      D(x.first);
       if(x.first == response_index) {
         dialogue_index = x.second - 3;
       }
@@ -11058,21 +11168,81 @@ void adventureUI::continueDialogue()
     askingQuestion = true;
     left_ui_refresh = 1; //wait a frame, ignore first input
     right_ui_refresh = 1;
+    dialogProceedIndicator->show = 0;
+    qHand->show = 1;
+    qPanel->show = 1;
     // put responses in responses vector
     int j = 1;
     string res = scriptToUse->at(dialogue_index + j);
     responses.clear();
+
+    for(int i = 0; i < 5; i++) {
+      qTextboxes[i]->show = 0;
+    }
+
     while (res.find('*') != std::string::npos)
     {
+      string answer = res.substr(1, res.find(':')-1);
       responses.push_back(res.substr(1, res.find(':')-1));
+      qTextboxes[j-1]->updateText(answer, -1, 1);
+      qTextboxes[j-1]->show = 1;
       j++;
       res = scriptToUse->at(dialogue_index + j);
+
+      if(j > 6) {
+        E("Too many answers for a question. Max is five.");
+        abort();
+      }
     }
+
+    //we want to anchor the lower right corner of the responses
+
+   
+
+    float pos = 0.53;
+    float largestWidth = 0;
+    for(int i = j-2; i >= 0; i--) {
+      qTextboxes[i]->boxY = pos;
+      pos -= 0.1;
+      if(qTextboxes[i]->width > largestWidth) {
+        largestWidth = qTextboxes[i]->width;
+      }
+    }
+
+    //using the largest width, position each textbox
+    
+    for(int i = 0; i < j-1; i++) {
+      qTextboxes[i]->boxX = 0.9 - largestWidth/(2*WIN_WIDTH);
+      D(largestWidth);
+
+    }
+
+    //arrange the qPanel to fit all the answers
+    qPanel->x = 0.85- largestWidth/(WIN_WIDTH);
+    qPanel->y = qTextboxes[0]->boxY-0.04;
+
+    //make sure the qPanel's bottom right corner is in the same spot as always
+    qPanel->width = 0.95-qPanel->x;
+    qPanel->height = 0.65 - qPanel->y;
+
+    //arrange hand so it doesn't glide in
+    int texW = 0;
+    int texH = 0;
+    SDL_QueryTexture(qTextboxes[response_index]->texttexture, NULL, NULL, &texW, &texH);
+    qHand->y = qTextboxes[response_index]->boxY + 0.03;
+    float w = texW;
+    qHand->x = qTextboxes[response_index]->boxX + w/(WIN_WIDTH*2) + 0;
+
     return;
   }
   else
   {
     askingQuestion = false;
+    qPanel->show = 0;
+    for(int i = 0; i < 5; i++) {
+      qTextboxes[i]->show = 0;
+    }
+    qHand->show = 0;
   }
 
   //keyprompt
@@ -11715,6 +11885,29 @@ void adventureUI::continueDialogue()
 //    return;
 //  }
 
+    //get combat item
+    //get item
+    //get supplies
+    //give item
+    //give combat item
+    if(scriptToUse->at(dialogue_index + 1).substr(0,8) == "/supply ")
+    {
+      M("Give the player a supplies-item");
+      string s = scriptToUse->at(dialogue_index + 1);
+      vector<string> x = splitString(s, ' ');
+
+      if(s.size() > 1) {
+        int itemToGet = stoi(x[1]);
+        g_combatInventory.push_back(itemToGet);
+      }
+  
+      dialogue_index++;
+      this->continueDialogue();
+      return;
+
+    }
+
+
 //  // give item
 //  if (scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/give ")
 //  {
@@ -12014,10 +12207,12 @@ void adventureUI::continueDialogue()
 
       string entName = x[1];
       entity *hopeful = 0;
+      D(talker->name);
       hopeful = searchEntities(entName, talker);
       if (hopeful != nullptr)
       {
         selected = hopeful;
+        D(selected->name);
       }
       else
       {
@@ -12031,6 +12226,34 @@ void adventureUI::continueDialogue()
     return;
   }
 
+  if (scriptToUse->at(dialogue_index + 1).substr(0, 19) == "/disableinteraction")
+  {
+    M("Disableinteraction");
+    string s = scriptToUse->at(dialogue_index + 1);
+    vector<string> x = splitString(s, ' ');
+
+    if(x.size() < 2) {
+      E("Not enough args for /disableinteraction call.");
+    } else {
+
+      string entName = x[1];
+      entity *hopeful = 0;
+      hopeful = searchEntities(entName, talker);
+      if (hopeful != nullptr)
+      {
+        hopeful->disableInteraction = 1;
+      }
+      else
+      {
+        E("Couldn't find entity for /disableinteraction call.");
+        D(x[1]);
+      }
+    }
+
+    dialogue_index++;
+    this->continueDialogue();
+    return;
+  }
 
   //disable a trigger by the name of the script it runs
   if (scriptToUse->at(dialogue_index + 1).substr(0, 15) == "/disabletrigger")
@@ -13477,11 +13700,9 @@ void adventureUI::continueDialogue()
   // /rgb trial/eden-crank 100 20 200
   if (scriptToUse->at(dialogue_index + 1).substr(0, 4) == "/rgb") 
   {
-    M("Gotta tint something");
     string s = scriptToUse->at(dialogue_index + 1);
     auto x = splitString(s, ' ');
     if(x.size() > 4) {
-      M("Got here");
       entity* h = 0;
       h = searchEntities(x[1]);
       if(h != nullptr) {
@@ -13633,8 +13854,8 @@ void adventureUI::continueDialogue()
   // set reverse to 1 to play backwards
   if (scriptToUse->at(dialogue_index + 1).substr(0, 8) == "/animate")
   {
-//    M("Animate interpreter");
-//    D(selected->name);
+    M("Animate interpreter");
+    D(selected->name);
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 9);
     vector<string> split = splitString(s, ' ');

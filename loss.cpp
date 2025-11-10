@@ -310,7 +310,32 @@ void LossLoop() {
       lossUIManager->timer += elapsed;
       if(lossUIManager->timer >= 1500) {
         g_lossSub = lossSub::TEXT;
-        combatUIManager->finalText = getLanguageData("Continue");
+        combatUIManager->finalText = getLanguageData("EveryoneLoses");
+        loadSave();
+
+        //UUUUU!! Aghh ouch
+        for(auto x : g_partyCombatants) {
+          x->baseStrength -= x->strengthGain;
+          if(x->baseStrength < 1) {x->baseStrength = 1;}
+          x->baseMind -= x->mindGain;
+          if(x->baseMind < 1) {x->baseMind = 1;}
+          x->baseAttack -= x->attackGain;
+          if(x->baseAttack < 1) {x->baseAttack = 1;}
+          x->baseDefense -= x->defenseGain;
+          if(x->baseDefense < 0) {x->baseDefense = 0;}
+          x->baseSoul -= x->soulGain;
+          if(x->baseSoul < 1) {x->baseSoul = 1;}
+          x->baseCritical -= x->criticalGain;
+          if(x->baseCritical < 0) {x->baseCritical = 0;}
+          x->baseSkill -= x->skillGain;
+          if(x->baseSkill < 1) {x->baseSkill = 1;}
+          x->baseRecovery -= x->recoveryGain;
+          if(x->baseRecovery < 0) {x->baseRecovery = 0;}
+        }
+
+        writeSave();
+
+        combatUIManager->queuedStrings.push_back(make_pair(getLanguageData("Continue"),(combatant*)0));
         combatUIManager->currentText = "";
         combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
       }
@@ -351,7 +376,7 @@ void LossLoop() {
         curTextWait = 0;
       }
 
-      if(combatUIManager->finalText == combatUIManager->currentText) {
+      if( ((input[11] && !oldinput[11]) || combatUIManager->queuedStrings.size() == 0 ) && combatUIManager->finalText == combatUIManager->currentText) {
         if(1) {
           //advance dialog
           if(combatUIManager->queuedStrings.size() > 0) {

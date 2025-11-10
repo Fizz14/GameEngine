@@ -21,6 +21,7 @@ public:
   ui* handMarker;
   ui* title;
   ui* titles;
+  ui* titleExplosion;
   ui* bg;
   textbox* newText;
   textbox* continueText;

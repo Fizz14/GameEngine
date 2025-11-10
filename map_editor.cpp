@@ -98,7 +98,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   M("Loading map: " + filename);
   g_mapHasMusic = 0;
   g_usingMsToStunned = 0;
-  protag->hisStatusComponent.enraged.clearStatuses();
+  //protag->hisStatusComponent.enraged.clearStatuses();
   protag->bonusSpeed = 0;
   transition = 1;
   debugClock = clock();
@@ -148,6 +148,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   while (index < strings.size())
   {
     line = strings[index];
+    M("Parsing line: " + line); //got a crash after leaving the desert cylindrical structure
     index++;
     istringstream iss(line);
     word = line.substr(0, line.find(" "));
@@ -421,6 +422,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     }
     if (word == "entity")
     {
+      //this code can segfault when leaving the cylindrical structure in desert/1
       // M("loading entity" << endl;
       iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3 >> p4;
       const char *plik = s1.c_str();
@@ -434,13 +436,20 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         }
       }
 
+      D(copy);
+
       entity* e;
       if(copy > -1) {
         e = new entity(renderer, g_entities[copy]);
+        M("Making e from copy");
       } else {
         e = new entity(renderer, plik);
+        M("Making e from file");
       }
+
+      M("About to set data of e");
       e->x = p0;
+      M("Did it crash?");
       e->y = p1;
       e->z = p2;
       e->shadow->x = e->x + e->shadow->xoffset;
@@ -567,6 +576,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       // if an entity has been set to navblock, disable overlapping nodes now that the position has been set
       if (e->navblock)
       {
+        M("Running code for navblock");
         auto r = e->getMovedBounds();
         for (auto x : g_navNodes)
         {
@@ -580,6 +590,24 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         }
       }
 
+    }
+    if(word == "entitydata") {
+      int value;
+      int i = 0;
+      iss >> s0;
+      while(iss >> value && i < 15) {
+        g_entities[g_entities.size() - 1]->data[i] = value;
+        i++;
+      }
+    }
+    if(word == "entitydatastr") {
+      string value;
+      int i = 0;
+      iss >> s0;
+      while(iss >> value && i < 15) {
+        g_entities[g_entities.size() - 1]->datastr[i] = value;
+        i++;
+      }
     }
     if(word == "chunk") {
       iss >> s0 >> s1 >> s2 >> s3 >> p0 >> p1 >> p2 >> p3;
@@ -623,6 +651,13 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       const char *plik2 = s2.c_str();
       tile *t = new tile(renderer, plik1, plik2, p1, p2, p3, p4, 0, p6, p7, p8, p9);
       (void)t;
+    }
+    if(word == "tilelayer")
+    {
+      M("Found tilelayer");
+      iss >> s0 >> p1;
+      D(p1);
+      g_tiles[g_tiles.size()-1]->z = p1;
     }
     if (word == "triangle")
     {
@@ -908,6 +943,10 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     if (script.size() > 0)
     {
       D(script.size());
+      M("This is the initscript");
+      for(auto x : script) {
+        D(x);
+      }
       adventureUIManager->continueDialogue();
     }
   }
@@ -1165,6 +1204,10 @@ bool mapeditor_save_map(string word)
     }
 
     ofile << "tile " << g_tiles[i]->fileaddress << " " << g_tiles[i]->mask_fileaddress << " " << to_string((int)g_tiles[i]->x) << " " << to_string((int)g_tiles[i]->y) << " " << to_string((int)g_tiles[i]->width) << " " << to_string((int)g_tiles[i]->height) << " " << g_tiles[i]->wraptexture << " " << g_tiles[i]->wall << " " << g_tiles[i]->dxoffset << " " << g_tiles[i]->dyoffset << endl;
+    //use tilelayer to put masked transition tiles ontop of ggrids. I use it in trial/5.map
+    if(g_tiles[i]->z != 0) {
+      ofile << "tilelayer " << g_tiles[i]->z << endl;
+    }
   }
   for (long long unsigned int i = 0; i < g_heightmaps.size(); i++)
   {
@@ -1249,6 +1292,9 @@ bool mapeditor_save_map(string word)
         }
 
         ofile << "entity " << g_entities[i]->name << " " << to_string((int)g_entities[i]->x) << " " << to_string((int)g_entities[i]->y) << " " << to_string((int)g_entities[i]->z) << " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
+
+
+        specialObjectsMapWrite(g_entities[i], ofile);
       }
     }
   }
@@ -5253,6 +5299,7 @@ void write_map(entity *mapent)
         for(auto x : e->children) {
           specialObjectsInit(x);
         }
+
         break;
       }
 
@@ -5261,12 +5308,36 @@ void write_map(entity *mapent)
         line >> entstring;
         worldsound *w = new worldsound(entstring, px + marker->width / 2, py + marker->height / 2);
         (void)w;
+        break;
       }
       if (word == "music" || word == "m")
       {
         line >> entstring;
-        musicNode *m = new musicNode(entstring, px + marker->width / 2, py + marker->height / 2);
-        (void)m;
+        g_loadedMusicStr = entstring;
+        g_mapHasMusic = 1;
+        Mix_FadeOutMusic(1000);
+        if(g_loadedMusic != 0) {
+          g_deleteMusic = g_loadedMusic;
+        } else {
+          g_deleteMusic = 0;
+        }
+        g_loadedMusic = loadMusic("resources/static/music/" + g_loadedMusicStr + ".ogg");
+
+        if(Mix_PlayingMusic()) {
+          Mix_HookMusicFinished(playNextMusic);
+        } else {
+          playNextMusic();
+        }
+        break;
+      }
+      if(word == "musicvolume" || word == "musicvol") {
+        line >> entstring;
+        g_loadedMusicVolume = stof(entstring);
+
+        float realVolume = 128 * g_loadedMusicVolume * g_music_volume;
+        Mix_VolumeMusic(realVolume);
+
+        break;
       }
       if (word == "cue" || word == "cuesound")
       {

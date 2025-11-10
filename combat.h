@@ -22,6 +22,8 @@ class combatant;
 
 string getPossessivePronoun(combatant *c);
 
+string getItemArticle(int itemnum);
+
 struct dropInfo {
   string name = "";
   float dropPercent = 0;
@@ -68,7 +70,9 @@ enum class status {
   IGNITED, //burn
   BESTOWED,
   PHYSICALBARRIER,
-  STEELTRAPPED
+  STEELTRAPPED,
+  DEFENSPILLED
+
 };
 
 struct bground {
@@ -167,6 +171,17 @@ public:
   //stats for last fight
   float dmgDealtOverFight = 0;
   float dmgTakenOverFight = 0;
+
+  //for reversing levelups on loss (I don't think I'm gonna use these afterall)
+  float strIncrease = 0;
+  float mindIncrease = 0;
+  float attackIncrease = 0;
+  float defenseIncrease = 0;
+  float soulIncrease = 0;
+  float criticalIncrease = 0;
+  float skillIncrease = 0;
+  float recoveryIncrease = 0;
+
 
   type myType;
 
@@ -358,7 +373,7 @@ public:
   std::vector<std::string> options = {"", "", "", "", "", ""};
   std::string finalText = "";
   std::string currentText = "";
-  std::vector<pair<std::string,int>> queuedStrings;
+  std::vector<pair<std::string,combatant*>> queuedStrings;
 
   ui* optionsPanel = 0;
   textbox* optionsText = 0;
@@ -426,6 +441,8 @@ public:
   float dodgerWidth = 100;
   float dodgerHeight = 100;
   SDL_Texture* dodgerTexture = 0;
+  float dodgerAngle = 0;
+  const float dodgerAngleDelta = 1;
   SDL_Texture* rendertarget = 0;
   SDL_Texture* bulletTexture = 0;
   int accuA = 0;
@@ -510,6 +527,8 @@ public:
   float spinSpeed = 0;
   float spinAngle = 0;
   float radius = 0;
+
+  float sleepMS = 0; //this is just for convenience, for pattern 26
 
   bool isInPlayArea = 0;
   bool canBounce = 0;

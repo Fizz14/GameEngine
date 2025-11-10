@@ -1230,6 +1230,7 @@ void ExplorationLoop() {
           g_amState = amState::MAJOR;
           adventureUIManager->keyPrompting = 0;
           adventureUIManager->showAm();
+          adventureUIManager->amCurrencyText->updateText(to_string(g_currency) + "g", -1, 1);
           adventureUIManager->amIndex = 0;
         }
         else if(g_amState == amState::MAJOR) {
@@ -2358,9 +2359,9 @@ void ExplorationLoop() {
   //try to set g_behemoth0 1 2 3 4
   //based on items in the level
 
-  constexpr int maxDistSquared = pow(21*64,2);
+  constexpr int maxDistSquared = pow(13*64,2);
 
-  if(g_behemoth0 != nullptr && XYWorldDistanceSquared(g_camera.x + g_camera.width/2, g_camera.y+g_camera.height/2, g_behemoth0->getOriginX(), g_behemoth0->getOriginY()) > maxDistSquared) {
+  if(0 && g_behemoth0 != nullptr && XYWorldDistanceSquared(g_camera.x + g_camera.width/2, g_camera.y+g_camera.height/2, g_behemoth0->getOriginX(), g_behemoth0->getOriginY()) > maxDistSquared) {
     g_behemoth0 = nullptr;
   }
 
@@ -2380,7 +2381,7 @@ void ExplorationLoop() {
 
 
 
-  if(1){ //behemoth ui (floating item ui now)
+  if(0){ //behemoth ui (floating item ui now)
     if(g_behemoth0 != nullptr && g_behemoth0->tangible) {
       adventureUIManager->b0_element->show = 1;
 
@@ -6124,12 +6125,15 @@ int interact(float elapsed, entity *protag)
     if (g_entities[i] != protag && RectOverlap(hisrect, srect))
     {
       if(g_entities[i]->tangible && g_entities[i]->identity != 0) {
-        specialObjectsInteract(g_entities[i]);
+        int val = specialObjectsInteract(g_entities[i]);
         //can do a special object interaction AND execute a script (but I haven't done it yet)
         g_ignoreInput = 1;
         dialogue_cooldown = 500;
+        if(val == 1) {
+          return 0;
+        }
       }
-      if (g_entities[i]->tangible && g_entities[i]->sayings.size() > 0 && g_entities[i]->inParty == 0)
+      if (g_entities[i]->tangible && g_entities[i]->sayings.size() > 0 && g_entities[i]->inParty == 0 && g_entities[i]->disableInteraction == 0)
       {
         if (g_entities[i]->animlimit != 0)
         {
@@ -7050,7 +7054,7 @@ void getExplorationInput(float &elapsed)
     g_cameraAimingOffsetXTarget = 0;
     g_cameraAimingOffsetYTarget = 0;
 
-    if (keystate[bindings[2]] && !left_ui_refresh)
+    if (keystate[bindings[0]] && !left_ui_refresh)
     {
       if (adventureUIManager->askingQuestion)
       {
@@ -7061,11 +7065,11 @@ void getExplorationInput(float &elapsed)
       }
       left_ui_refresh = 1;
     }
-    else if (!keystate[bindings[2]])
+    else if (!keystate[bindings[0]])
     {
       left_ui_refresh = 0;
     }
-    if (keystate[bindings[3]] && !right_ui_refresh)
+    if (keystate[bindings[1]] && !right_ui_refresh)
     {
       if (adventureUIManager->askingQuestion)
       {
@@ -7077,7 +7081,7 @@ void getExplorationInput(float &elapsed)
       }
       right_ui_refresh = 1;
     }
-    else if (!keystate[bindings[3]])
+    else if (!keystate[bindings[1]])
     {
       right_ui_refresh = 0;
     }

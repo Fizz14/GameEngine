@@ -16,6 +16,7 @@
 #include "globals.h"
 #include "objects.h"
 #include "specialobjects.h"
+#include "map_editor.h"
 #include "utils.h"
 #include "main.h"
 
@@ -451,29 +452,19 @@ void specialObjectsInit(entity* a) {
     {
       //present linked to savefile
 
-      //the present's faction field is unique and points to a savefield
-      //the present's base_health field stores which item it gives the player
-      //no scripts!
-
-
-      //keep the presents listed here
-      // Handled differently -> the present by the train in desert 1, where the player gets the tickets
-      // 1 -> the present by the dune in desert 1, where the player gets water
-      
-
-      string sfh =  "present-" + to_string(a->faction);
-
+      string sfh =  "present-" + g_mapdir + "/" + g_map + "-" + to_string(g_numPresentsLoaded);
+      a->data[2] = g_numPresentsLoaded;
       int res = checkSaveField(sfh);
 
       if(res == -1) {
         //present should be unopened
-        a->data[0] = 0;
+        a->data[1] = 0;
       } else {
         a->frameInAnimation = 1;
-        a->data[0] = 1;
+        a->data[1] = 1;
       }
 
-
+      g_numPresentsLoaded ++;
       break;
     }
     case 38:
@@ -491,6 +482,82 @@ void specialObjectsInit(entity* a) {
       }
       a->timeToLiveMs = 25000;
       a->usingTimeToLive = 1;
+
+      break;
+    }
+    case 39:
+    {
+      //god's nose, eyes, and mouth
+      //use xoffset and yoffset (originally for textured entities)
+      //to move the pieces around slightly
+      a->xoffset = 0;
+      a->yoffset = 0;
+      a->extraYOffset = 0; //for z
+
+
+      a->minAggressiveness = a->getOriginX(); //use these to store original x, y, z positions
+      a->maxAggressiveness = a->getOriginY();
+      a->aggressivenessSpread = a->z;
+
+      break;
+    }
+    case 40:
+    {
+      //moneybags linked to savefile
+      
+      string sfh = "moneybag-" + g_mapdir + "/" + g_map + "-" + to_string(g_numMoneybagsLoaded);
+      a->data[1] = g_numMoneybagsLoaded;
+      int res = checkSaveField(sfh);
+      if(res == -1) {
+        //moneybag should be full
+        a->data[0] = 0;
+      } else {
+        a->frameInAnimation = 1;
+        a->data[0] = 1;
+        a->shadow->width = 0;
+        a->shadow->height = 0;
+        a->semisolid = 0;
+        a->sortingOffset = -100;
+      }
+      g_numMoneybagsLoaded ++;
+      break;
+    }
+    case 41:
+    {
+      //2disp
+      string sfh = "dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(g_numDispensersLoaded);
+      a->data[5] = g_numDispensersLoaded;
+      int res = checkSaveField(sfh);
+      if(res == -1) {
+        //dispenser should be loaded
+        a->data[4] = 0;
+        a->animation = 1;
+      } else {
+        a->data[4] = 1;
+        a->animation = 0;
+      }
+      break;
+    }
+    case 42:
+    {
+      //3disp
+      string sfh = "dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(g_numDispensersLoaded);
+      a->data[5] = g_numDispensersLoaded;
+      int res = checkSaveField(sfh);
+      if(res == -1) {
+        //dispenser should be loaded
+        a->data[4] = 0;
+        a->animation = 1;
+      } else {
+        a->data[4] = 1;
+        a->animation = 0;
+      }
+      break;
+    }
+    case 43:
+    {
+      //door to another map
+      //the other map and the waypoint it takes you to are stored in entitydatastr fields in the mapfile
 
       break;
     }
@@ -1607,8 +1674,8 @@ void specialObjectsUpdate(entity* a, float elapsed) {
             x->level = 2;
             x->agrod = 1;
             x->target = protag;
-            if(x->faction < 0) { D(x); D(x->faction); E("Check faction value of entity with name " + a->name); abort();} //this has been observed when I put down music in the map :S mem error?
-            for(auto x : loadedEncounters[x->faction]) {
+            if(x->data[0] < 0 || x->data[0] > loadedEncounters.size()) { D(x); D(x->data[0]); D(loadedEncounters.size()); E("Check data[0] value of entity with name " + a->name); abort();} //this has been observed when I put down music in the map :S mem error?
+            for(auto x : loadedEncounters[x->data[0]]) {
               combatant* c = new combatant(x.first, x.second);
               c->level = x.second;
               c->baseStrength = c->l0Strength + (c->strengthGain * c->level);
@@ -2485,6 +2552,48 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       a->x += a->xagil * elapsed / 256;
       break;
     }
+    case 39:
+    {
+      float mag = 0.2;
+
+      a->walkingyaccel += elapsed;
+      if(a->walkingyaccel > 1000) {
+        a->xaccel = frng(-mag, mag);
+        a->yaccel = frng(-mag, mag);
+        a->walkingxaccel = frng(-mag, mag);
+        a->walkingyaccel = 0;
+
+      }
+
+      
+//      a->xaccel *= 0.99;
+//      a->yaccel *= 0.99;
+//      a->walkingxaccel *= 0.99;
+      a->aggressiveness += a->xaccel;
+      a->aggressivenessGain += a->yaccel;
+      a->aggressivenessLoss += a->walkingxaccel;
+
+      a->aggressiveness *= 0.99;
+      a->aggressivenessGain *= 0.99;
+      a->aggressivenessLoss *= 0.99;
+
+      a->xoffset += a->aggressiveness;
+      a->yoffset += a->aggressivenessGain;
+      a->extraYOffset += a->aggressivenessLoss;
+      
+
+      a->xoffset *= 0.995;
+      a->yoffset *= 0.995;
+      a->extraYOffset *= 0.995;
+
+      a->setOriginX(a->minAggressiveness + a->xoffset*0.2);
+      //a->x = a->minAggressiveness + a->xoffset * 0.04;
+      a->setOriginY(a->maxAggressiveness + a->yoffset*0.2);
+      //a->y = a->maxAggressiveness + a->yoffset * 0.04;
+      a->z = a->aggressivenessSpread + a->extraYOffset*0.010;
+
+      break;
+    }
 
     case 100: 
     {
@@ -2864,7 +2973,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
   }
 }
 
-void specialObjectsInteract(entity* a) {
+int specialObjectsInteract(entity* a) {
   switch(a->identity) {
 
     case 9:
@@ -3134,11 +3243,10 @@ void specialObjectsInteract(entity* a) {
     }
     case 37:
     {
-      M("Present interacted with");
       //make a script and push it to the auim
 
       vector<string> script;
-      if(a->data[0] == 1) {
+      if(a->data[1] == 1) {
         //present is opened
         script.push_back(getLanguageData("PresentEmpty"));
         script.push_back("#");
@@ -3154,8 +3262,8 @@ void specialObjectsInteract(entity* a) {
         //open present
         script.push_back(getLanguageData("PresentOpen"));
         string itemName = "";
-        if(a->maxhp >= 0 && a->maxhp < itemsTable.size()) {
-          itemName = itemsTable[a->maxhp].name;
+        if(a->data[0] >= 0 && a->data[0] < itemsTable.size()) {
+          itemName = itemsTable[a->data[0]].name;
         } else {
           E("Bad itemIndex from present " + a->faction);
           abort();
@@ -3169,12 +3277,12 @@ void specialObjectsInteract(entity* a) {
         
         if(g_combatInventory.size() < g_maxInventorySize) {
           script.push_back(getLanguageData("PresentTake"));
-          g_combatInventory.push_back(a->maxhp);
+          g_combatInventory.push_back(a->data[0]);
           script.push_back("#");
 
-          string sfh = "present-" + to_string(a->faction);
+          string sfh = "present-" + g_mapdir + "/" + g_map + "-" + to_string(a->data[2]);
           writeSaveField(sfh, 1);
-          a->data[0] = 1;
+          a->data[1] = 1;
           a->frameInAnimation = 1;
 
         } else {
@@ -3196,7 +3304,237 @@ void specialObjectsInteract(entity* a) {
 
       break;
     }
+    case 40: 
+    {
+      //moneybag
+      vector<string> script;
+      if(a->data[0] == 1) {
+        //bag is empty
+        script.push_back(getLanguageData("MoneybagEmpty"));
+        script.push_back("#");
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->talker = narrarator; //whatever lol
+        adventureUIManager->continueDialogue();
+      } else {
+        //open present
+        script.push_back(getLanguageData("MoneybagTake"));
+        script.push_back("#");
+        g_currency += 35;
+
+        string sfh = "moneybag-" + g_mapdir + "/" + g_map + "-" + to_string(a->data[1]);
+        writeSaveField(sfh, 1);
+        a->data[0] = 1;
+        a->frameInAnimation = 1;
+        a->shadow->width = 0;
+        a->shadow->height = 0;
+        a->semisolid = 0;
+        a->sortingOffset = -100;
+
+
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->talker = narrarator; //whatever lol
+        adventureUIManager->continueDialogue();
+
+      }
+      break;
+    }
+    case 41:
+    {
+      //2disp
+      vector<string> script;
+      if(a->data[4] == 1) {
+        //dispenser is empty
+        script.push_back(getLanguageData("DispenserEmpty"));
+        script.push_back("#");
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->talker = narrarator; //whatever lol
+        adventureUIManager->continueDialogue();
+      } else {
+        //can fomm hold more items?
+        if(g_combatInventory.size() < g_maxInventorySize) {
+          //choose from dispenser
+          script.push_back(getLanguageData("DispenserOpen"));
+          int itemA = a->data[0];
+          int itemB = a->data[1];
+          string itemAName = getLanguageData("I" + to_string(itemA));
+          string itemBName = getLanguageData("I" + to_string(itemB));
+          script.push_back("*" + itemAName + ":6");
+          script.push_back("*" + itemBName + ":11");
+          script.push_back("#");
+          script.push_back("/supply " + to_string(itemA));
+          script.push_back("/select this");
+          script.push_back("/animate 0 0 -1 0 0 0");
+          script.push_back(stringMultiInject(getLanguageData("DispenserTake"), {itemAName}));
+          script.push_back("#");
+          script.push_back("/supply " + to_string(itemB));
+          script.push_back("/select this");
+          script.push_back("/animate 0 0 -1 0 0 0");
+          script.push_back(stringMultiInject(getLanguageData("DispenserTake"), {itemBName}));
+          script.push_back("#");
+  
+          a->data[4] = 1;
+          string sfh = "dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(a->data[5]);
+          writeSaveField(sfh, 1);
+          //a->animation = 0;
+
+          adventureUIManager->ownScript = script;
+          adventureUIManager->dialogue_index = -1;
+          adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+          adventureUIManager->sleepingMS = 0;
+          protag_is_talking = 1;
+          g_forceEndDialogue = 0;
+          adventureUIManager->talker = a;
+          adventureUIManager->continueDialogue();
+        } else {
+          int itemA = a->data[0];
+          int itemB = a->data[1];
+          string itemAName = getLanguageData("I" + to_string(itemA));
+          string itemBName = getLanguageData("I" + to_string(itemB));
+
+          string articleA = getItemArticle(itemA);
+          string articleB = getItemArticle(itemB);
+
+          string message = stringMultiInject(getLanguageData("DispenserCantTake"), {articleA, itemAName, articleB, itemBName});
+          script.push_back(message);
+          script.push_back("#");
+
+          adventureUIManager->ownScript = script;
+          adventureUIManager->dialogue_index = -1;
+          adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+          adventureUIManager->sleepingMS = 0;
+          protag_is_talking = 1;
+          g_forceEndDialogue = 0;
+          adventureUIManager->talker = narrarator; //whatever lol
+          adventureUIManager->continueDialogue();
+        }
+      }
+      break;
+    }
+    case 42:
+    {
+      //3disp
+      vector<string> script;
+      if(a->data[4] == 1) {
+        //dispenser is empty
+        script.push_back(getLanguageData("DispenserEmpty"));
+        script.push_back("#");
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->talker = narrarator; //whatever lol
+        adventureUIManager->continueDialogue();
+      } else {
+        //can fomm hold more items?
+        if(g_combatInventory.size() < g_maxInventorySize) {
+          //choose from dispenser
+          script.push_back(getLanguageData("DispenserOpen"));
+          int itemA = a->data[0];
+          int itemB = a->data[1];
+          int itemC = a->data[2];
+          string itemAName = getLanguageData("I" + to_string(itemA));
+          string itemBName = getLanguageData("I" + to_string(itemB));
+          string itemCName = getLanguageData("I" + to_string(itemC));
+          script.push_back("*" + itemAName + ":7");
+          script.push_back("*" + itemBName + ":12");
+          script.push_back("*" + itemCName + ":17");
+          script.push_back("#");
+          script.push_back("/supply " + to_string(itemA));
+          script.push_back("/select this");
+          script.push_back("/animate 0 0 -1 0 0 0");
+          script.push_back(stringMultiInject(getLanguageData("DispenserTake"), {itemAName}));
+          script.push_back("#");
+          script.push_back("/supply " + to_string(itemB));
+          script.push_back("/select this");
+          script.push_back("/animate 0 0 -1 0 0 0");
+          script.push_back(stringMultiInject(getLanguageData("DispenserTake"), {itemBName}));
+          script.push_back("#");
+          script.push_back("/supply " + to_string(itemC));
+          script.push_back("/select this");
+          script.push_back("/animate 0 0 -1 0 0 0");
+          script.push_back(stringMultiInject(getLanguageData("DispenserTake"), {itemCName}));
+          script.push_back("#");
+  
+          a->data[4] = 1;
+          string sfh = "dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(a->data[5]);
+          writeSaveField(sfh, 1);
+          //a->animation = 0;
+
+          adventureUIManager->ownScript = script;
+          adventureUIManager->dialogue_index = -1;
+          adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+          adventureUIManager->sleepingMS = 0;
+          protag_is_talking = 1;
+          g_forceEndDialogue = 0;
+          adventureUIManager->talker = a;
+          adventureUIManager->continueDialogue();
+        } else {
+          int itemA = a->data[0];
+          int itemB = a->data[1];
+          int itemC = a->data[2];
+          string itemAName = getLanguageData("I" + to_string(itemA));
+          string itemBName = getLanguageData("I" + to_string(itemB));
+          string itemCName = getLanguageData("I" + to_string(itemC));
+
+          string articleA = getItemArticle(itemA);
+
+          string articleB = getItemArticle(itemB);
+
+          string articleC = getItemArticle(itemC);
+
+          string message = stringMultiInject(getLanguageData("DispenserCantTake3"), {articleA, itemAName, articleB, itemBName, articleC, itemCName});
+          script.push_back(message);
+          script.push_back("#");
+
+          adventureUIManager->ownScript = script;
+          adventureUIManager->dialogue_index = -1;
+          adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+          adventureUIManager->sleepingMS = 0;
+          protag_is_talking = 1;
+          g_forceEndDialogue = 0;
+          adventureUIManager->talker = narrarator; //whatever lol
+          adventureUIManager->continueDialogue();
+        }
+      }
+      break;
+    }
+    case 43:
+    {
+      //door to another map
+      
+      const string toMap = "resources/maps/" + a->datastr[0] + ".map";
+      const string wayp = a->datastr[1];
+      clear_map(g_camera);
+      load_map(renderer, toMap, wayp);
+      if (canSwitchOffDevMode)
+      {
+        init_map_writing(renderer);
+      }
+      protag_is_talking = 0;
+      protag_can_move = 1;
+      transition = 1;
+      return 1;
+      break;
+    }
   }
+  return 0;
 }
 
 void specialObjectsOncePerFrame(float elapsed) 
@@ -3247,6 +3585,43 @@ void specialObjectsOncePerFrame(float elapsed)
     lastShortSpikesState = shortSpikesState;
   }
 
+}
+
+void specialObjectsMapWrite(entity* a, ofstream& ofile) {
+  switch(a->identity) {
+    case 34:
+      {
+        //overworld enemy 
+        ofile << "entitydata " << a->data[0] << endl;
+        break;
+      }
+    case 37:
+      {
+        //present
+        //store which item it gives in data[1]
+        ofile << "entitydata " << a->data[0] << endl;
+        break;
+      }
+    case 41:
+      {
+        //2disp
+        //data[0] is the first item offered
+        //data[1] is the second item offered
+        ofile << "entitydata " << a->data[0] << " " << a->data[1] << endl;
+        break;
+      }
+    case 42:
+      {
+        //3disp
+        ofile << "entitydata " << a->data[0] << " " << a->data[1] <<  " " << a->data[2] << endl;
+        break;
+      }
+    case 43:
+      {
+        ofile << "entitydatastr " << a->datastr[0] << " " << a->datastr[1] << endl;
+        break;
+      }
+  }
 }
 
 

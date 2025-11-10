@@ -371,6 +371,11 @@ TTF_Font* g_ttf_fontTiny;
 float g_minifontsize = 0.01;
 float g_transitionSpeed = 1; // 3, 9
 
+int g_currency = 0;
+int g_numPresentsLoaded = 0;
+int g_numMoneybagsLoaded = 0;
+int g_numDispensersLoaded = 0;
+
 // inventory - we're switching things up. This will be the picnic-box, the inventory for consumables
 float use_cooldown = 0; // misleading, its not for attacks at all
 vector<attack *> AdventureattackSet;
@@ -1098,6 +1103,8 @@ gamemode g_gamemode = gamemode::TITLE; //exploration, combat, gameover
 //    dialogue_index++;
 //    this->continueDialogue();
 int g_learningMove = 0;
+
+int g_shrinkTurns = 0;
 
 int g_gainingXPInExplorationMode = 0;
 

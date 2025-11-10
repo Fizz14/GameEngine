@@ -1124,6 +1124,15 @@ class adventureUI {
     ui* amPicker;
     int amIndex = 0;
 
+    //question prompt
+    ui* qPanel = 0;
+    vector<textbox*> qTextboxes; //5
+    int numAnswers;
+    ui* qHand;
+
+    ui* amCurrencyPanel = 0; //shows currency during Am-pause
+    textbox* amCurrencyText = 0;
+
     vector<pair<float, float>> amTexPos = {
       {0.29,0.04},
       {0.29,0.12},
@@ -1304,6 +1313,7 @@ public:
 
 class entity:public actor {
   public:
+    bool disableInteraction = 0;
     float inRangeSlowdownFactor = 0;
     combatant* hisCombatant = nullptr;
     SDL_Surface* eheightmap = nullptr;
@@ -1557,7 +1567,8 @@ class entity:public actor {
     bool asset_sharer = 0;
 
     //self-data
-    int data[25] = {0};
+    int data[15] = {0};
+    string datastr[15] = {""};
 
     //combat
     weapon* hisweapon = 0;

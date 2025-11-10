@@ -657,6 +657,12 @@ extern TTF_Font* g_ttf_fontTiny;
 extern float g_minifontsize;
 extern float g_transitionSpeed;
 
+extern int g_currency;
+
+extern int g_numPresentsLoaded;
+extern int g_numMoneybagsLoaded;
+extern int g_numDispensersLoaded;
+
 extern int inPauseMenu;
 extern bool g_firstFrameOfPauseMenu;
 extern bool g_firstFrameOfSettingsMenu;
@@ -1189,6 +1195,8 @@ enum gamemode {
 extern gamemode g_gamemode;
 
 extern int g_learningMove;
+
+extern int g_shrinkTurns;
 
 extern int g_gainingXPInExplorationMode;
 
