@@ -1,4 +1,4 @@
-A game-engine written in C++ with Autofs.
+A game-engine written in C++ with SDL2 and Autofs.
 
 Features a robust AI system, a scripting system, dialog system, save system, baked lighting, tile-based fog and other stuff.
 
