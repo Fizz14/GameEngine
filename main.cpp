@@ -355,8 +355,6 @@ void ExplorationLoop() {
           transitionDelta = transitionImageHeight;
           g_combatEntryType = 1;
         
-          combatUIManager->partyHealthBox->show = 1;
-          combatUIManager->partyText->show = 1;
 
 
           
@@ -1227,6 +1225,14 @@ void ExplorationLoop() {
     if(input[12] && !oldinput[12]) {
       if(!inPauseMenu && !g_inSettingsMenu && !protag_is_talking) {
         if(g_amState == amState::CLOSED) {
+
+//          for(int i = 0; i < g_partyCombatants.size(); i++) {
+//            combatUIManager->pHpRValues[i] = -1;
+//            combatUIManager->pMhpRValues[i] = -1;
+//            combatUIManager->pSpRValues[i] = -1;
+//            combatUIManager->pMspRValues[i] = -1;
+//          }
+
           g_amState = amState::MAJOR;
           adventureUIManager->keyPrompting = 0;
           adventureUIManager->showAm();
@@ -1295,8 +1301,18 @@ void ExplorationLoop() {
                   combatUIManager->currentInventoryOption = 0;
                   combatUIManager->menuPicker->show = 1;
                   combatUIManager->menuPicker->x = 10;
-                  combatUIManager->partyText->show = 1;
-                  combatUIManager->partyMiniText->show = 1;
+
+                  for(int i = 0; i < g_partyCombatants.size(); i++) {
+                    combatUIManager->partyNameTextboxes[i]->show = 1;
+                    combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+                    combatUIManager->partyHealthTextboxes[i]->show = 1;
+                    combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+                    combatUIManager->partyManaTextboxes[i]->show = 1;
+                    combatUIManager->partyHealthBoxes[i]->show = 1;
+                  }
+                    
+//                  combatUIManager->partyText->show = 1;
+//                  combatUIManager->partyMiniText->show = 1;
                   break;
                 }
               case 2:
@@ -1308,8 +1324,16 @@ void ExplorationLoop() {
               case 3:
                 {
                   g_amState = amState::SPIRIT;
-                  combatUIManager->partyText->show = 1;
-                  combatUIManager->partyMiniText->show = 1;
+                  for(int i = 0; i < g_partyCombatants.size(); i++) {
+                    combatUIManager->partyNameTextboxes[i]->show = 1;
+                    combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+                    combatUIManager->partyHealthTextboxes[i]->show = 1;
+                    combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+                    combatUIManager->partyManaTextboxes[i]->show = 1;
+                    combatUIManager->partyHealthBoxes[i]->show = 1;
+                  }
+//                  combatUIManager->partyText->show = 1;
+//                  combatUIManager->partyMiniText->show = 1;
                   oldinput[11] = 1;
                   curCombatantIndex = 0;
                   break;
@@ -1317,16 +1341,18 @@ void ExplorationLoop() {
               case 5:
                 {
                   //warp
-                  adventureUIManager->talker = narrarator;
-                  adventureUIManager->dPointToMe = narrarator;
-
-                  adventureUIManager->ownScript = g_warpScript;
-                  adventureUIManager->dialogue_index = -1;
-                  adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-                  adventureUIManager->sleepingMS = 0;
-                  protag_is_talking = 1;
-                  g_forceEndDialogue = 0;
-                  adventureUIManager->continueDialogue();
+                  if(0){
+                    adventureUIManager->talker = narrarator;
+                    adventureUIManager->dPointToMe = narrarator;
+  
+                    adventureUIManager->ownScript = g_warpScript;
+                    adventureUIManager->dialogue_index = -1;
+                    adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+                    adventureUIManager->sleepingMS = 0;
+                    protag_is_talking = 1;
+                    g_forceEndDialogue = 0;
+                    adventureUIManager->continueDialogue();
+                  }
 
                   //not sure what to use this menu option for
 
@@ -1527,8 +1553,16 @@ void ExplorationLoop() {
             combatUIManager->inventoryPanel->show = 0;
             combatUIManager->inventoryText->show = 0;
             combatUIManager->menuPicker->show = 0;
-            combatUIManager->partyText->show = 0;
-            combatUIManager->partyMiniText->show = 0;
+            for(int i = 0; i < g_partyCombatants.size(); i++) {
+              combatUIManager->partyNameTextboxes[i]->show = 0;
+              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyHealthTextboxes[i]->show = 0;
+              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyManaTextboxes[i]->show = 0;
+              combatUIManager->partyHealthBoxes[i]->show = 0;
+            }
+//            combatUIManager->partyText->show = 0;
+//            combatUIManager->partyMiniText->show = 0;
           }
           if(input[0] && !oldinput[0]&& !protag_is_talking) {
             if(combatUIManager->currentInventoryOption != 0 &&
@@ -1647,8 +1681,16 @@ void ExplorationLoop() {
               if(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting == 1) {
                 g_amState = amState::ITARGETING;
                 combatUIManager->currentTarget = 0;
-                combatUIManager->partyText->show = 1;
-                combatUIManager->partyMiniText->show = 1;
+                for(int i = 0; i < g_partyCombatants.size(); i++) {
+                  combatUIManager->partyNameTextboxes[i]->show = 1;
+                  combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+                  combatUIManager->partyHealthTextboxes[i]->show = 1;
+                  combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+                  combatUIManager->partyManaTextboxes[i]->show = 1;
+                  combatUIManager->partyHealthBoxes[i]->show = 1;
+                }
+//                combatUIManager->partyText->show = 1;
+//                combatUIManager->partyMiniText->show = 1;
                 combatUIManager->useOrDiscardPanel->show = 0;
                 combatUIManager->useOrDiscardUseText->show = 0;
                 combatUIManager->useOrDiscardDiscardText->show = 0;
@@ -1695,10 +1737,24 @@ void ExplorationLoop() {
                 combatUIManager->udInfoText->show = 0;
                 combatUIManager->useOrDiscardMenuPicker->show = 0;
 
+
+//                  for(int i = 0; i < g_partyCombatants.size(); i++) {
+//                    combatUIManager->partyNameTextboxes[i]->show = 0;
+//                    combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+//                    combatUIManager->partyHealthTextboxes[i]->show = 0;
+//                    combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+//                    combatUIManager->partyManaTextboxes[i]->show = 0;
+//                    combatUIManager->partyHealthBoxes[i]->show = 0;
+//                  }
+
               }
             } else if(combatUIManager->UDOption == 1) {
               //discard
               g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
+              if(g_combatInventory.size() == 0) {
+                combatUIManager->menuPicker->x = -1;
+
+              }
               
               g_amState = amState::ITEM;
               combatUIManager->useOrDiscardPanel->show = 0;
@@ -1915,8 +1971,16 @@ void ExplorationLoop() {
         {
           if(input[8] && !oldinput[8]) {
             g_amState = amState::MAJOR;
-            combatUIManager->partyText->show = 0;
-            combatUIManager->partyMiniText->show = 0;
+            for(int i = 0; i < g_partyCombatants.size(); i++) {
+              combatUIManager->partyNameTextboxes[i]->show = 0;
+              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyHealthTextboxes[i]->show = 0;
+              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyManaTextboxes[i]->show = 0;
+              combatUIManager->partyHealthBoxes[i]->show = 0;
+            }
+//            combatUIManager->partyText->show = 0;
+//            combatUIManager->partyMiniText->show = 0;
           }
 
           if(input[2] && !oldinput[2]) {
@@ -1958,11 +2022,27 @@ void ExplorationLoop() {
           combatUIManager->spiritInfoText->updateText(final, -1, 0.43, g_textcolor, g_font);
 
           if(protag_is_talking) {
-            combatUIManager->partyText->show = 0;
-            combatUIManager->partyMiniText->show = 0;
+            for(int i = 0; i < g_partyCombatants.size(); i++) {
+              combatUIManager->partyNameTextboxes[i]->show = 0;
+              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyHealthTextboxes[i]->show = 0;
+              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyManaTextboxes[i]->show = 0;
+              combatUIManager->partyHealthBoxes[i]->show = 0;
+            }
+//            combatUIManager->partyText->show = 0;
+//            combatUIManager->partyMiniText->show = 0;
           } else {
-            combatUIManager->partyText->show = 1;
-            combatUIManager->partyMiniText->show = 1;
+            for(int i = 0; i < g_partyCombatants.size(); i++) {
+              combatUIManager->partyNameTextboxes[i]->show = 1;
+              combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+              combatUIManager->partyHealthTextboxes[i]->show = 1;
+              combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+              combatUIManager->partyManaTextboxes[i]->show = 1;
+              combatUIManager->partyHealthBoxes[i]->show = 1;
+            }
+//            combatUIManager->partyText->show = 1;
+//            combatUIManager->partyMiniText->show = 1;
           }
           if(input[8] && !oldinput[8] && !protag_is_talking) {
             g_amState = amState::SPIRIT;
@@ -1985,43 +2065,46 @@ void ExplorationLoop() {
             combatUIManager->currentInventoryOption = g_partyCombatants[curCombatantIndex]->spiritMoves.size()-1;
           }
           if(input[11] && !oldinput[11] && !protag_is_talking) {
-            int spiritIndex = g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption];
-            int targeting = spiritTable[spiritIndex].targeting;
-            D(curCombatantIndex);
-            if(targeting != 1) {
-              vector<string> spiritScript = {};
-              adventureUIManager->talker = narrarator;
-              spiritScript.push_back(getLanguageData("SpiritError"));
-              spiritScript.push_back("#");
+            int spiritIndex = 0;
+            if(combatUIManager->currentInventoryOption < g_partyCombatants[curCombatantIndex]->spiritMoves.size()) {
+              spiritIndex = g_partyCombatants[curCombatantIndex]->spiritMoves[combatUIManager->currentInventoryOption];
+              int targeting = spiritTable[spiritIndex].targeting;
+              if(targeting != 1) {
+                vector<string> spiritScript = {};
+                adventureUIManager->talker = narrarator;
+                spiritScript.push_back(getLanguageData("SpiritError"));
+                spiritScript.push_back("#");
+  
+                adventureUIManager->ownScript = spiritScript;
+                adventureUIManager->dialogue_index = -1;
+                adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+                adventureUIManager->sleepingMS = 0;
+                protag_is_talking = 1;
+                g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
+                g_forceEndDialogue = 0;
+                adventureUIManager->continueDialogue();
+              } else if(g_partyCombatants[curCombatantIndex]->health <= 0) {
+                vector<string> spiritScript = {};
+                adventureUIManager->talker = narrarator;
+                spiritScript.push_back(stringMultiInject(getLanguageData("SpiritError2"), {g_partyCombatants[curCombatantIndex]->name}));
+                spiritScript.push_back("#");
+  
+                adventureUIManager->ownScript = spiritScript;
+                adventureUIManager->dialogue_index = -1;
+                adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+                adventureUIManager->sleepingMS = 0;
+                protag_is_talking = 1;
+                g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
+                g_forceEndDialogue = 0;
+                adventureUIManager->continueDialogue();
+  
+  
+              } else {
+                combatUIManager->currentTarget = 0;
+                g_amState = amState::STARGETING;
+              } 
 
-              adventureUIManager->ownScript = spiritScript;
-              adventureUIManager->dialogue_index = -1;
-              adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-              adventureUIManager->sleepingMS = 0;
-              protag_is_talking = 1;
-              g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
-              g_forceEndDialogue = 0;
-              adventureUIManager->continueDialogue();
-            } else if(g_partyCombatants[curCombatantIndex]->health <= 0) {
-              vector<string> spiritScript = {};
-              adventureUIManager->talker = narrarator;
-              spiritScript.push_back(stringMultiInject(getLanguageData("SpiritError2"), {g_partyCombatants[curCombatantIndex]->name}));
-              spiritScript.push_back("#");
-
-              adventureUIManager->ownScript = spiritScript;
-              adventureUIManager->dialogue_index = -1;
-              adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-              adventureUIManager->sleepingMS = 0;
-              protag_is_talking = 1;
-              g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
-              g_forceEndDialogue = 0;
-              adventureUIManager->continueDialogue();
-
-
-            } else {
-              combatUIManager->currentTarget = 0;
-              g_amState = amState::STARGETING;
-            } 
+            }
           }
 
           break;
@@ -2029,11 +2112,27 @@ void ExplorationLoop() {
       case amState::STARGETING:
         {
           if(protag_is_talking) {
-            combatUIManager->partyText->show = 0;
-            combatUIManager->partyMiniText->show = 0;
+            for(int i = 0; i < g_partyCombatants.size(); i++) {
+              combatUIManager->partyNameTextboxes[i]->show = 0;
+              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyHealthTextboxes[i]->show = 0;
+              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+              combatUIManager->partyManaTextboxes[i]->show = 0;
+              combatUIManager->partyHealthBoxes[i]->show = 0;
+            }
+//            combatUIManager->partyText->show = 0;
+//            combatUIManager->partyMiniText->show = 0;
           } else {
-            combatUIManager->partyText->show = 1;
-            combatUIManager->partyMiniText->show = 1;
+            for(int i = 1; i < g_partyCombatants.size(); i++) {
+              combatUIManager->partyNameTextboxes[i]->show = 1;
+              combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+              combatUIManager->partyHealthTextboxes[i]->show = 1;
+              combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+              combatUIManager->partyManaTextboxes[i]->show = 1;
+                    combatUIManager->partyHealthBoxes[i]->show = 1;
+            }
+//            combatUIManager->partyText->show = 1;
+//            combatUIManager->partyMiniText->show = 1;
           }
           if(input[8] && !oldinput[8] && !protag_is_talking ) {
             g_amState = amState::SPIRITSELECT;
@@ -2617,10 +2716,10 @@ void ExplorationLoop() {
   }
 
   //should we show the visionDetectable?
-  adventureUIManager->seeingDetectable->show = 0;
-  if(g_protagIsBeingDetectedBySight) {
-    adventureUIManager->seeingDetectable->show = 1;
-  }
+//  adventureUIManager->seeingDetectable->show = 0;
+//  if(g_protagIsBeingDetectedBySight) {
+//    adventureUIManager->seeingDetectable->show = 1;
+//  }
 
 
   // SDL_Rect FoWrect;
@@ -2926,20 +3025,21 @@ void ExplorationLoop() {
 
   if(!devMode){ //set frames for protags
 
-    for(auto &x : party) {
-      if(x->hisCombatant->health <= 0) {
-        x->frameInAnimation = 2;
-        x->animlimit = 0;
-      } else {
-        x->animlimit = 0.01;
-        if(x->flashingMS > 0) {
-          x->frameInAnimation = 1;
-        } else {
-          x->frameInAnimation = 0;
-        }
-      }
-
-    }
+    //this needs to be revisited
+//    for(auto &x : party) {
+//      if(x->hisCombatant->health <= 0) {
+//        x->frameInAnimation = 2;
+//        x->animlimit = 0;
+//      } else {
+//        x->animlimit = 0.01;
+//        if(x->flashingMS > 0) {
+//          x->frameInAnimation = 1;
+//        } else {
+//          x->frameInAnimation = 0;
+//        }
+//      }
+//
+//    }
     if(protag->hisCombatant != nullptr && protag->hisCombatant->health <= 0) {
       g_spin_entity->animation = 1;
     } else {

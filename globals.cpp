@@ -830,6 +830,7 @@ SDL_Color g_textcolor = { 155, 115, 115 };
 SDL_Color g_goldcolor = { 156, 127, 11 };
 SDL_Color g_healthtextcolor = { 220, 203, 25 };
 SDL_Color g_healthtextlowcolor = { 100, 100, 100 };
+SDL_Color g_whitetextcolor = {255, 255, 255};
 
 string g_levelSequenceName = "default"; //use the default level sequence for the base game by default
 levelSequence* g_levelSequence;

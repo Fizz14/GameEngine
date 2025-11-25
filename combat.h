@@ -352,9 +352,22 @@ enum class submode {
 
 class combatUI {
 public:
-  ui* partyHealthBox = 0;
-  textbox* partyText = 0;
-  textbox* partyMiniText = 0;
+  //ui* partyHealthBox = 0;
+  vector<ui*> partyHealthBoxes;
+  //textbox* partyText = 0;
+  vector<textbox*> partyNameTextboxes; // "Fomm"
+  vector<textbox*> partyHealthDescripterTextboxes; // "HP:"
+  vector<textbox*> partyHealthTextboxes;          // "33/40"
+  vector<textbox*> partyManaDescripterTextboxes;  // "SP:"
+  vector<textbox*> partyManaTextboxes;            // "12/14"
+  
+  //this is for re-rendering the text when the values change
+  vector<int> pHpRValues = {0,0,0,0};
+  vector<int> pMhpRValues = {0,0,0,0};
+  vector<int> pSpRValues = {0,0,0,0};
+  vector<int> pMspRValues = {0,0,0,0};
+
+  //textbox* partyMiniText = 0;
 
   ui* useOrDiscardPanel = 0;
   textbox* useOrDiscardUseText = 0;
@@ -441,6 +454,10 @@ public:
   float dodgerWidth = 100;
   float dodgerHeight = 100;
   SDL_Texture* dodgerTexture = 0;
+  SDL_Texture* fommDodgerTex = 0;
+  SDL_Texture* nehetenDodgerTex = 0;
+  SDL_Texture* blishDodgerTex = 0;
+  SDL_Texture* dafuaDodgerTex = 0;
   float dodgerAngle = 0;
   const float dodgerAngleDelta = 1;
   SDL_Texture* rendertarget = 0;
@@ -540,7 +557,7 @@ public:
 
   SDL_Texture* texture;
   void update(float elapsed);
-  void render();
+  void render(int shadow);
   miniEnt();
   virtual ~miniEnt();
 };

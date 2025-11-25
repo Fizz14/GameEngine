@@ -943,6 +943,7 @@ extern SDL_Color g_textcolor;
 extern SDL_Color g_goldcolor;
 extern SDL_Color g_healthtextcolor;
 extern SDL_Color g_healthtextlowcolor;
+extern SDL_Color g_whitetextcolor;
 
 extern string g_levelSequenceName;
 extern levelSequence* g_levelSequence;

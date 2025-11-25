@@ -30,6 +30,8 @@
 
 using namespace std;
 
+int doAnimation(entity* a);
+
 void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py);
 
 void removeBackfacingWEdges(std::vector<edgeInfo>& edges, float px, float py);
@@ -1072,15 +1074,15 @@ class adventureUI {
     //ui* hearingDetectable = 0;
     
     //shown when a behemoth is finding the player by sight
-    ui* seeingDetectable = 0;
+    //ui* seeingDetectable = 0;
 
     textbox* healthText = 0;
     textbox* hungerText = 0;
 
-    ui* healthPicture = 0; //picture of a heart
-    ui* hungerPicture = 0; //picture of a heart
-    ui* tastePicture = 0; //picture of a tung
-    ui* thoughtPicture = 0; //picture of a brain
+//    ui* healthPicture = 0; //picture of a heart
+//    ui* hungerPicture = 0; //picture of a heart
+//    ui* tastePicture = 0; //picture of a tung
+//    ui* thoughtPicture = 0; //picture of a brain
 
     //for making the heart shake every now and then
     int heartShakeIntervalMs = 12000;
@@ -1935,11 +1937,14 @@ class textbox {
     SDL_Surface* textsurface = 0;
     SDL_Texture* texttexture = 0;
     SDL_Color textcolor = { 155, 115, 115 };
+    SDL_Color textcolormod = {255, 255, 255}; //for changing color without re-rendering the texture, used in comba
     SDL_FRect thisrect = {0, 0, 50, 50};
     string content = "Default text.";
     TTF_Font* font = 0;
     int x = 0;
     int y = 0;
+    float bonusX = 0;
+    float bonusY = 0;
     int width = 0;
     int height = 0;
     bool show = true;
@@ -1979,6 +1984,9 @@ class ui {
 
     float x = 0;
     float y = 0;
+
+    float bonusX = 0;
+    float bonusY = 0;
     
     float targetx = -10; //for gliding to a position
     float targety = -10;
@@ -2024,7 +2032,7 @@ class ui {
     bool layer0 = 0; //lowest possible layer of ui, render before layer0 text
     bool renderOverText = 0;
     bool renderOverText1 = 0; //highest possible layer of ui, render after all text
-                             //what a shitty system lol
+                             //what a system lol
 
     int worldspace = 0;
 

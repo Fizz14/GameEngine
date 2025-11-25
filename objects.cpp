@@ -41,6 +41,338 @@ using namespace std;
 
 class usable;
 
+int doAnimation(entity* a, int elapsed) {
+  switch(a->animationconfig) {
+    case 1:
+      {
+        if(a->msPerFrame != 0) {
+          if(a->frameLoopTimeLimit > 0 && a->frameLoopTimeLimit - elapsed <= 0) {
+            a->loopAnimation = 0;
+          }
+          if(a->frameLoopTimeLimit > 0) {
+            a->frameLoopTimeLimit -= elapsed;
+          }
+      
+          a->msTilNextFrame += elapsed;
+          if(a->msTilNextFrame > a->msPerFrame && a->xframes > 1) {
+            a->msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
+      
+            if(a->reverseAnimation) {
+              a->frameInAnimation--;
+              if(a->frameInAnimation < a->firstFrameInScriptedAnimation) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->xframes - 1;
+                  } else {
+                    a->frameInAnimation = 0;
+                  }
+                } else {
+                  a->frameInAnimation = 0;
+                  a->msPerFrame = 0;
+      //            if(name == "trial/eden-crank") {
+      //              M("D");
+      //            }
+                  //!!! slightly ambiguous. open to review later
+                  a->scriptedAnimation = 0;
+                }
+              }
+            } else {
+              a->frameInAnimation++;
+              if(a->frameInAnimation == a->xframes || (a->useAnimForWalking && a->frameInAnimation == a->animWalkFrames + 1 && !a->scriptedAnimation)) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->firstFrameInScriptedAnimation;
+                  } else {
+                    a->frameInAnimation = 1;
+                  }
+                } else {
+                  a->frameInAnimation = a->xframes - 1;
+                  a->msPerFrame = 0;
+        //          if(name == "trial/eden-crank") {
+        //            M("C");
+        //          }
+                  a->scriptedAnimation = 0;
+                }
+              }
+            }
+          }
+        }
+
+        if(a->animate && !transition && a->animlimit != 0) {
+          a->curwidth = (a->curwidth * 0.8 + a->width * 0.2) * ((sin(a->animtime*a->animspeed))   + (1/a->animlimit)) * (a->animlimit);
+          a->curheight = (a->curheight * 0.8 + a->height* 0.2) * ((sin(a->animtime*a->animspeed + PI))+ (1/a->animlimit)) * (a->animlimit);
+          a->animtime += elapsed;
+          if(a == protag && ( pow( pow(a->xvel,2) + pow(a->yvel, 2), 0.5) > 30 ) && (1 - sin(a->animtime * a->animspeed) < 0.01)) {
+            if(a->footstep_reset && a->grounded) {
+              a->footstep_reset = 0;
+              if(rng(0,1) == 0) {
+                playSound(-1, g_staticSounds[1], 0);
+              } else {
+                playSound(-1, g_staticSounds[2], 0);
+              }
+      
+            }
+          } else {
+            a->footstep_reset = 1;
+          }
+
+        } else {
+          a->animtime = 0;
+          a->curwidth = a->curwidth * 0.8 + a->width * 0.2;
+          a->curheight = a->curheight * 0.8 + a->height* 0.2;
+        }
+
+        break;
+      }
+    case 2:
+      {
+        if(a->msPerFrame != 0) {
+          if(a->frameLoopTimeLimit > 0 && a->frameLoopTimeLimit - elapsed <= 0) {
+            a->loopAnimation = 0;
+          }
+          if(a->frameLoopTimeLimit > 0) {
+            a->frameLoopTimeLimit -= elapsed;
+          }
+      
+          a->msTilNextFrame += elapsed;
+          if(a->msTilNextFrame > a->msPerFrame && a->xframes > 1) {
+            a->msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
+      
+            if(a->reverseAnimation) {
+              a->frameInAnimation--;
+              if(a->frameInAnimation < a->firstFrameInScriptedAnimation) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->xframes - 1;
+                  } else {
+                    a->frameInAnimation = 0;
+                  }
+                } else {
+                  a->frameInAnimation = 0;
+                  a->msPerFrame = 0;
+      //            if(name == "trial/eden-crank") {
+      //              M("D");
+      //            }
+                  //!!! slightly ambiguous. open to review later
+                  a->scriptedAnimation = 0;
+                }
+              }
+            } else {
+              a->frameInAnimation++;
+              if(a->frameInAnimation == a->xframes || (a->useAnimForWalking && a->frameInAnimation == a->animWalkFrames + 1 && !a->scriptedAnimation)) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->firstFrameInScriptedAnimation;
+                  } else {
+                    a->frameInAnimation = 1;
+                  }
+                } else {
+                  a->frameInAnimation = a->xframes - 1;
+                  a->msPerFrame = 0;
+        //          if(name == "trial/eden-crank") {
+        //            M("C");
+        //          }
+                  a->scriptedAnimation = 0;
+                }
+              }
+            }
+          }
+        }
+        break;
+      }
+    case 3:
+      {
+        if(a->msPerFrame != 0) {
+          if(a->frameLoopTimeLimit > 0 && a->frameLoopTimeLimit - elapsed <= 0) {
+            a->loopAnimation = 0;
+          }
+          if(a->frameLoopTimeLimit > 0) {
+            a->frameLoopTimeLimit -= elapsed;
+          }
+      
+          a->msTilNextFrame += elapsed;
+          if(a->msTilNextFrame > a->msPerFrame && a->xframes > 1) {
+            a->msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
+      
+            if(a->reverseAnimation) {
+              a->frameInAnimation--;
+              if(a->frameInAnimation < a->firstFrameInScriptedAnimation) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->xframes - 1;
+                  } else {
+                    a->frameInAnimation = 0;
+                  }
+                } else {
+                  a->frameInAnimation = 0;
+                  a->msPerFrame = 0;
+      //            if(name == "trial/eden-crank") {
+      //              M("D");
+      //            }
+                  //!!! slightly ambiguous. open to review later
+                  a->scriptedAnimation = 0;
+                }
+              }
+            } else {
+              a->frameInAnimation++;
+              if(a->frameInAnimation == a->xframes || (a->useAnimForWalking && a->frameInAnimation == a->animWalkFrames + 1 && !a->scriptedAnimation)) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->firstFrameInScriptedAnimation;
+                  } else {
+                    a->frameInAnimation = 1;
+                  }
+                } else {
+                  a->frameInAnimation = a->xframes - 1;
+                  a->msPerFrame = 0;
+        //          if(name == "trial/eden-crank") {
+        //            M("C");
+        //          }
+                  a->scriptedAnimation = 0;
+                }
+              }
+            }
+          }
+        }
+        break;
+      }
+    case 4:
+      {
+        if(a->msPerFrame != 0) {
+          if(a->frameLoopTimeLimit > 0 && a->frameLoopTimeLimit - elapsed <= 0) {
+            a->loopAnimation = 0;
+          }
+          if(a->frameLoopTimeLimit > 0) {
+            a->frameLoopTimeLimit -= elapsed;
+          }
+      
+          a->msTilNextFrame += elapsed;
+          if(a->msTilNextFrame > a->msPerFrame && a->xframes > 1) {
+            a->msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
+      
+            if(a->reverseAnimation) {
+              a->frameInAnimation--;
+              if(a->frameInAnimation < a->firstFrameInScriptedAnimation) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->xframes - 1;
+                  } else {
+                    a->frameInAnimation = 0;
+                  }
+                } else {
+                  a->frameInAnimation = 0;
+                  a->msPerFrame = 0;
+      //            if(name == "trial/eden-crank") {
+      //              M("D");
+      //            }
+                  //!!! slightly ambiguous. open to review later
+                  a->scriptedAnimation = 0;
+                }
+              }
+            } else {
+              a->frameInAnimation++;
+              if(a->frameInAnimation == a->xframes || (a->useAnimForWalking && a->frameInAnimation == a->animWalkFrames + 1 && !a->scriptedAnimation)) {
+                if(a->loopAnimation) {
+                  if(a->scriptedAnimation) {
+                    a->frameInAnimation = a->firstFrameInScriptedAnimation;
+                  } else {
+                    a->frameInAnimation = 1;
+                  }
+                } else {
+                  a->frameInAnimation = a->xframes - 1;
+                  a->msPerFrame = 0;
+        //          if(name == "trial/eden-crank") {
+        //            M("C");
+        //          }
+                  a->scriptedAnimation = 0;
+                }
+              }
+            }
+          }
+        }
+        break;
+      }
+    case 5:
+      {
+        //used for protagonists
+        a->msTilNextFrame += elapsed;
+        if(a->msTilNextFrame > a->walkAnimMsPerFrame) {
+          if(abs(a->xaccel) < 10 && abs(a->yaccel) < 10) {
+            a->frameInAnimation = 0;
+            a->animate = 0;
+          } else {
+            a->animate = 1;
+            a->msTilNextFrame = 0;
+            a->frameInAnimation++;
+            if(a->frameInAnimation == 4) a->frameInAnimation = 0;
+            switch(a->frameInAnimation) {
+              case 0:
+                {
+                  a->walkAnimMsPerFrame = 100;
+                  break;
+                }
+              case 1:
+                {
+                  a->walkAnimMsPerFrame = 200;
+                  break;
+                }
+              case 2:
+                {
+                  a->walkAnimMsPerFrame = 100;
+                  break;
+                }
+              case 3:
+                {
+                  a->walkAnimMsPerFrame = 200;
+                  break;
+                }
+            }
+          }
+        }
+        if(!a->grounded) {
+          a->frameInAnimation = 0;
+          a->animate = 0;
+        }
+        if(a->hisCombatant->health <= 0) {
+          a->frameInAnimation = 4;
+          a->animspeed = 0;
+        } else {
+          a->animspeed = 0.015;
+        }
+
+
+        if(a->animate && !transition && a->animlimit != 0) {
+          a->curwidth = (a->curwidth * 0.8 + a->width * 0.2) * ((sin(a->animtime*a->animspeed))   + (1/a->animlimit)) * (a->animlimit);
+          a->curheight = (a->curheight * 0.8 + a->height* 0.2) * ((sin(a->animtime*a->animspeed + PI))+ (1/a->animlimit)) * (a->animlimit);
+          a->animtime += elapsed;
+          if(a == protag && ( pow( pow(a->xvel,2) + pow(a->yvel, 2), 0.5) > 30 ) && (1 - sin(a->animtime * a->animspeed) < 0.01)) {
+            if(a->footstep_reset && a->grounded) {
+              a->footstep_reset = 0;
+              if(rng(0,1) == 0) {
+                playSound(-1, g_staticSounds[1], 0);
+              } else {
+                playSound(-1, g_staticSounds[2], 0);
+              }
+      
+            }
+          } else {
+            a->footstep_reset = 1;
+          }
+
+        } else {
+          a->animtime = 0;
+          a->curwidth = a->curwidth * 0.8 + a->width * 0.2;
+          a->curheight = a->curheight * 0.8 + a->height* 0.2;
+        }
+
+
+        break;
+      }
+  }
+
+  return 0;
+}
+
 void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py) {
     edges.erase(
         std::remove_if(edges.begin(), edges.end(), [px, py](const edgeInfo& edge) {
@@ -3727,6 +4059,8 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   } else if(animationconfig == 4) {
     //this one was made for the tumbleweed
     //animated missile
+  } else if(animationconfig == 5) {
+    //xframes = 4;
   }
 
   //identity
@@ -3857,8 +4191,6 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
 
   xframes = w / framewidth;
   yframes = h / frameheight;
-
-
 
   for (int j = 0; j < h; j+=frameheight) {
     for (int i = 0; i < w; i+= framewidth) {
@@ -4471,8 +4803,15 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
     hadInput = 0;
 
 
-
-    frame = animation * xframes + frameInAnimation;
+    if(animationconfig == 5) {
+      int useThisFrame = frameInAnimation;
+      if(useThisFrame == 2) useThisFrame = 0;
+      if(useThisFrame == 3) useThisFrame = 2;
+      if(useThisFrame == 4) useThisFrame = 3;
+      frame = animation * xframes + useThisFrame;
+    } else {
+      frame = animation * xframes + frameInAnimation;
+    }
     SDL_FRect dstrect = { (float)obj.x, (float)obj.y, (float)obj.width, (float)obj.height};
     if(animationconfig == 2) {
       //this is used to share a texture between multiple sprites who really just use one frame of the texture, e.g. collectible familiars
@@ -4820,59 +5159,9 @@ door* entity::update(vector<door*> doors, float elapsed) {
     //i commented this out
     //to make biting work
   }
+  
+  doAnimation(this, elapsed);
 
-  if(msPerFrame != 0) {
-    if(frameLoopTimeLimit > 0 && frameLoopTimeLimit - elapsed <= 0) {
-      loopAnimation = 0;
-    }
-    if(frameLoopTimeLimit > 0) {
-      frameLoopTimeLimit -= elapsed;
-    }
-
-    msTilNextFrame += elapsed;
-    if(msTilNextFrame > msPerFrame && xframes > 1) {
-      msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
-
-      if(reverseAnimation) {
-        frameInAnimation--;
-        if(frameInAnimation < firstFrameInScriptedAnimation) {
-          if(loopAnimation) {
-            if(scriptedAnimation) {
-              frameInAnimation = xframes - 1;
-            } else {
-              frameInAnimation = 0;
-            }
-          } else {
-            frameInAnimation = 0;
-            msPerFrame = 0;
-//            if(name == "trial/eden-crank") {
-//              M("D");
-//            }
-            //!!! slightly ambiguous. open to review later
-            scriptedAnimation = 0;
-          }
-        }
-      } else {
-        frameInAnimation++;
-        if(frameInAnimation == xframes || (useAnimForWalking && frameInAnimation == animWalkFrames + 1 && !scriptedAnimation)) {
-          if(loopAnimation) {
-            if(scriptedAnimation) {
-              frameInAnimation = firstFrameInScriptedAnimation;
-            } else {
-              frameInAnimation = 1;
-            }
-          } else {
-            frameInAnimation = xframes - 1;
-            msPerFrame = 0;
-//            if(name == "trial/eden-crank") {
-//              M("C");
-//            }
-            scriptedAnimation = 0;
-          }
-        }
-      }
-    }
-  }
   if(g_entityBenchmarking) {
     g_eu_timer -= SDL_GetTicks();
     g_eu_a -= g_eu_timer;
@@ -4880,61 +5169,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
   }
 
 
-  if(animate && !transition && animlimit != 0) {
-    curwidth = (curwidth * 0.8 + width * 0.2) * ((sin(animtime*animspeed))   + (1/animlimit)) * (animlimit);
-    curheight = (curheight * 0.8 + height* 0.2) * ((sin(animtime*animspeed + PI))+ (1/animlimit)) * (animlimit);
-    animtime += elapsed;
-    if(this == protag && ( pow( pow(xvel,2) + pow(yvel, 2), 0.5) > 30 ) && (1 - sin(animtime * animspeed) < 0.01 || 1 - sin(animtime * animspeed + PI) < 0.01)) {
-      if(footstep_reset && grounded) {
-        footstep_reset = 0;
-        if(1 - sin(animtime * animspeed) < 0.04) {
-          playSound(-1, g_staticSounds[1], 0);
-        } else {
-          playSound(-1, g_staticSounds[2], 0);
-        }
-
-
-      }
-    } else {
-      footstep_reset = 1;
-    }
-  } else {
-    animtime = 0;
-    curwidth = curwidth * 0.8 + width * 0.2;
-    curheight = curheight * 0.8 + height* 0.2;
-  }
-
-
-  //should we animate?
-  if(xaccel != 0 || yaccel != 0) {
-    extraAnimateFrames = 6;
-  }
-
-  if( (xaccel != 0 || yaccel != 0) || !grounded || extraAnimateFrames > 0) {
-    extraAnimateFrames --;
-    animate = 1;
-    if(useAnimForWalking) {
-      if( (!scriptedAnimation|| animationconfig == 4) && grounded ) {
-        msPerFrame = walkAnimMsPerFrame;
-      } else {
-        msPerFrame = 0;
-//        if(name == "trial/eden-crank") {
-//          D(scriptedAnimation);
-//          D(msPerFrame);
-//          M("B");
-//        }
-      }
-    }
-  } else {
-    animate = 0;
-    if(useAnimForWalking && !scriptedAnimation && this->useAnimForWalking) {
-      msPerFrame = 0;
-//      if(name == "trial/eden-crank") {
-//        M("A");
-//      }
-      frameInAnimation = 0;
-    }
-  }
 
   //should we enabled semisolidness? (for entities spawned after map-load far from protag)
   if(semisolidwaittoenable) {
@@ -7870,7 +8104,7 @@ int loadSave() {
     entity* a = new entity(renderer, spinEntFilename);
     g_spin_entity = a;
     g_spin_entity->visible = 0;
-    g_spin_entity->msPerFrame = 50;
+    g_spin_entity->msPerFrame = g_spin_entity->walkAnimMsPerFrame;
     g_spin_entity->loopAnimation = 1;
     g_spin_entity->canFight = 0;
 
@@ -8317,7 +8551,8 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
 
       //thisrect.w is not meant to be multiplied by winwidth
       //if you change this, it will break textboxes that align themselves at the end of their boxX/Y/Width/Height region
-      SDL_FRect dstrect = {(boxX) * winwidth - thisrect.w, boxY * winheight, (float)width,  (float)thisrect.h};
+
+      SDL_FRect dstrect = {(boxX + bonusX) * winwidth - thisrect.w, (boxY+bonusY) * winheight, (float)width,  (float)thisrect.h};
       dstrect.x /= g_zoom_mod;
       dstrect.y /= g_zoom_mod;
       dstrect.w /= g_zoom_mod;
@@ -8327,15 +8562,15 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
         float booshAmount = getShadowOffset(fontsize);
         shadowRect.x += booshAmount;
         shadowRect.y += booshAmount;
-        SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+        SDL_SetTextureColorMod(texttexture, textcolormod.r * 0.392,textcolormod.g * 0.392,textcolormod.b * 0.392);
         SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
-        SDL_SetTextureColorMod(texttexture, 255,255,255);
+        SDL_SetTextureColorMod(texttexture, textcolormod.r,textcolormod.g,textcolormod.b);
       }
       SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
     } else {
       if(align == 0) {
         //left
-        SDL_FRect dstrect = {boxX * winwidth, boxY * winheight, (float)width,  (float)thisrect.h};
+        SDL_FRect dstrect = {(boxX + bonusX) * winwidth, (boxY+bonusY) * winheight, (float)width,  (float)thisrect.h};
         dstrect.x /= g_zoom_mod;
         dstrect.y /= g_zoom_mod;
         dstrect.w /= g_zoom_mod;
@@ -8345,15 +8580,15 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
           float booshAmount = getShadowOffset(fontsize);
           shadowRect.x += booshAmount;
           shadowRect.y += booshAmount;
-          SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+          SDL_SetTextureColorMod(texttexture, textcolormod.r * 0.392,textcolormod.g * 0.392,textcolormod.b * 0.392);
           SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
-          SDL_SetTextureColorMod(texttexture, 255,255,255);
+          SDL_SetTextureColorMod(texttexture, textcolormod.r,textcolormod.g,textcolormod.b);
         }
 
         SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
       } else {
         //center text
-        SDL_FRect dstrect = {(boxX * winwidth)-width/2, boxY * winheight, (float)width,  (float)thisrect.h};
+        SDL_FRect dstrect = {((boxX + bonusX) * winwidth)-width/2, (boxY+bonusY) * winheight, (float)width,  (float)thisrect.h};
         dstrect.x /= g_zoom_mod;
         dstrect.y /= g_zoom_mod;
         dstrect.w /= g_zoom_mod;
@@ -8363,9 +8598,9 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
           float booshAmount = getShadowOffset(fontsize);
           shadowRect.x += booshAmount;
           shadowRect.y += booshAmount;
-          SDL_SetTextureColorMod(texttexture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+          SDL_SetTextureColorMod(texttexture, textcolormod.r * 0.392,textcolormod.g * 0.392,textcolormod.b * 0.392);
           SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
-          SDL_SetTextureColorMod(texttexture, 255,255,255);
+          SDL_SetTextureColorMod(texttexture, textcolormod.r,textcolormod.g,textcolormod.b);
         }
 
         SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
@@ -8459,8 +8694,8 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
 
       ibound /= g_zoom_mod;
       jbound /= g_zoom_mod;
-      float tempx = x / g_zoom_mod;
-      float tempy = y / g_zoom_mod;
+      float tempx = (x+bonusX) / g_zoom_mod;
+      float tempy = (y+bonusY) / g_zoom_mod;
 
       if(heightFromWidthFactor) {
         jbound = ibound * height;
@@ -8528,7 +8763,7 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
 
     } else {
       if(worldspace) {
-        SDL_FRect dstrect = {x, y, width, height};
+        SDL_FRect dstrect = {x + bonusX, y + bonusY, width, height};
 
         dstrect.x *= g_camera.zoom;
         dstrect.y *= g_camera.zoom;
@@ -8548,7 +8783,7 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
         SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
       } else {
         if(heightFromWidthFactor != 0) {
-          SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
+          SDL_FRect dstrect = {(x + bonusX) * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), (y+bonusY) * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
           dstrect.x /= g_zoom_mod;
           dstrect.y /= g_zoom_mod;
           dstrect.w /= g_zoom_mod;
@@ -8587,7 +8822,7 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
           }
 
         } else {
-          SDL_FRect dstrect = {x * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), y * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2};
+          SDL_FRect dstrect = {(x+bonusX) * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), (y+bonusY) * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2, height * WIN_HEIGHT - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2};
           if(dropshadow) {
             SDL_FRect shadowRect = dstrect;
             float booshAmount = 10;
@@ -8853,12 +9088,20 @@ escapeUI::escapeUI() {
   ninePatch->show = 1;
   ninePatch->priority = 2;
 
-  handMarker = new ui(renderer, "resources/static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
-  handMarker->persistent = 1;
-  handMarker->show = 1;
-  handMarker->priority = 3;
+//  handMarker = new ui(renderer, "resources/static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
+//  handMarker->persistent = 1;
+//  handMarker->show = 1;
+//  handMarker->priority = 3;
+//  handMarker->heightFromWidthFactor = 1;
+//  handMarker->renderOverText = 1;
+
+  handMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.92, 0.88, 0.03, 1, 0);
   handMarker->heightFromWidthFactor = 1;
-  handMarker->renderOverText = 1;
+  handMarker->persistent = true;
+  handMarker->priority = 8;
+  handMarker->dropshadow = 1;
+  handMarker->y =  0.25;
+  handMarker->layer0 = 1;
 
   fingerMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
   fingerMarker->persistent = 1;
@@ -10062,12 +10305,22 @@ settingsUI::settingsUI() {
   ninePatch->show = 1;
   ninePatch->priority = 0;
 
-  handMarker = new ui(renderer, "resources/static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
-  handMarker->persistent = 1;
-  handMarker->show = 1;
-  handMarker->priority = 3;
+//  handMarker = new ui(renderer, "resources/static/ui/hand_selector.qoi", markerHandX, 0.1, markerWidth, 1, 2);
+//  handMarker->persistent = 1;
+//  handMarker->show = 1;
+//  handMarker->priority = 3;
+//  handMarker->heightFromWidthFactor = 1;
+//  handMarker->renderOverText = 1;
+
+  handMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.92, 0.88, 0.03, 1, 0);
   handMarker->heightFromWidthFactor = 1;
-  handMarker->renderOverText = 1;
+  handMarker->persistent = true;
+  handMarker->priority = 8;
+  handMarker->dropshadow = 1;
+  handMarker->y =  0.25;
+  handMarker->layer0 = 1;
+
+
 
   fingerMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
   fingerMarker->persistent = 1;
@@ -10339,7 +10592,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
   this->light = plight;
   if(!light) {
     talkingBox = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
-    M("Devinput 35 is triggered");
+    talkingBox->renderOverText = 1;
     talkingBox->patchwidth = 213;
     talkingBox->patchscale = 0.4;
     talkingBox->is9patch = true;
@@ -10362,6 +10615,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     talkingText->boxHeight = 0.25;
     talkingText->boxX = 0.05;
     talkingText->boxY = 0.7;
+    talkingText->layer1 = 1;
     talkingText->dropshadow = 1;
 
     responseText = new textbox(renderer, "", 2, 0, 0, 0.9);
@@ -10471,15 +10725,15 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     //    hearingDetectable->show = 1;
     //    hearingDetectable->priority = -3;
 
-    seeingDetectable = new ui(renderer, "resources/static/ui/detection-seeing.qoi", 0.85, 0.075, 0.1, 1, -10);
-    seeingDetectable->persistent = 1;
-    seeingDetectable->heightFromWidthFactor = 1;
-    seeingDetectable->xframes = 8;
-    seeingDetectable->msPerFrame = 100;
-    seeingDetectable->framewidth = 256;
-    seeingDetectable->frameheight = 256;
-    seeingDetectable->show = 1;
-    seeingDetectable->priority = -2;
+//    seeingDetectable = new ui(renderer, "resources/static/ui/detection-seeing.qoi", 0.85, 0.075, 0.1, 1, -10);
+//    seeingDetectable->persistent = 1;
+//    seeingDetectable->heightFromWidthFactor = 1;
+//    seeingDetectable->xframes = 8;
+//    seeingDetectable->msPerFrame = 100;
+//    seeingDetectable->framewidth = 256;
+//    seeingDetectable->frameheight = 256;
+//    seeingDetectable->show = 1;
+//    seeingDetectable->priority = -2;
 
     //    healthText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
     //    healthText->boxWidth = 0.95;
@@ -10557,12 +10811,23 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     qPanel->show = 0;
     qPanel->layer0 = 1;
 
-    qHand = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", 0.5, 0.65, 0.1, 1, 2);
-    qHand->persistent = 1;
-    qHand->show = 0;
-    qHand->priority = 3;
+//    qHand = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", 0.5, 0.65, 0.1, 1, 2);
+//    qHand->persistent = 1;
+//    qHand->show = 0;
+//    qHand->priority = 3;
+//    qHand->heightFromWidthFactor = 1;
+//    qHand->renderOverText = 1;
+
+
+    qHand = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.92, 0.88, 0.04, 1, 0);
     qHand->heightFromWidthFactor = 1;
+    qHand->persistent = true;
+    qHand->priority = 3;
+    qHand->show = 0;
+    qHand->dropshadow = 1;
+    qHand->y =  0.25;
     qHand->renderOverText = 1;
+
 
     for(int i = 0; i < 5; i++) {
       textbox* a;
@@ -10668,6 +10933,7 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 
     dialogpointergap = new ui(renderer, "resources/engine/dialogpointergap.qoi", 0.26, 0.655, 0.1, 0.05, 1);
     dialogpointergap->persistent = true;
+    dialogpointergap->renderOverText = 1;
     dialogpointergap->show = 1;
 
     //remove dialogpointer from g_actors and g_ribbons
@@ -10967,9 +11233,10 @@ void adventureUI::updateText()
       int texW = 0;
       int texH = 0;
       SDL_QueryTexture(qTextboxes[response_index]->texttexture, NULL, NULL, &texW, &texH);
-      qHand->targety = qTextboxes[response_index]->boxY + 0.03;
+      qHand->y = qTextboxes[response_index]->boxY + 0.01;
       float w = texW;
-      qHand->targetx = qTextboxes[response_index]->boxX + w/(WIN_WIDTH*2) + 0;
+      //qHand->x = qTextboxes[response_index]->boxX + w/(WIN_WIDTH*2) + 0;
+      qHand->x = qTextboxes[response_index]->boxX - w/(WIN_WIDTH*2) - 0.037;
 //      D(qHand->y);
 //      D(response_index);
     }
@@ -11511,8 +11778,6 @@ void adventureUI::continueDialogue()
     transitionDelta = transitionImageHeight;
     g_combatEntryType = 0;
 
-    combatUIManager->partyHealthBox->show = 1;
-    combatUIManager->partyText->show = 1;
 
     combatUIManager->finalText = getLanguageData("BattleStartText");
 

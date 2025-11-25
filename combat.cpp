@@ -1296,7 +1296,7 @@ void spawnBullets(int pattern, int& accumulator) {
     case 22:
       {
         // Concentric circles pattern
-        int cooldown = 4000;
+        int cooldown = 2000;
         if (accumulator >= cooldown) {
           accumulator = 0;
           float centerX = SCREEN_WIDTH / 2;
@@ -1322,7 +1322,7 @@ void spawnBullets(int pattern, int& accumulator) {
               a->radius = radius;
               a->centerX = centerX;
               a->centerY = centerY;
-              a->velocity = 0.45;
+              a->velocity = 0.05;
             }
           }
         }
@@ -1392,7 +1392,7 @@ void spawnBullets(int pattern, int& accumulator) {
     case 26:
       {
         // simple come from the right pattern
-        int cooldown = 1000; // Cooldown between each shot
+        int cooldown = 5000; // Cooldown between each shot
 
         if (accumulator >= cooldown) {
           accumulator = 0;
@@ -1400,18 +1400,6 @@ void spawnBullets(int pattern, int& accumulator) {
           miniBullet* a = new miniBullet();
           a->x = SCREEN_WIDTH + SPAWN_MARGIN; // Spawn off-screen
           float rand = rng(0, SCREEN_HEIGHT);
-          a->y = rand; // Random y position
-          a->angle = -M_PI; // Shoot left
-          a->velocity = 0.2; // Set bullet velocity
-          a->texture = combatUIManager->bulletTexture;
-          a->red = 128;   // Set color for initial bullet
-          a->green = 128;
-          a->blue = 128;
-          a->randomExplodeAngle = 1;
-
-          a = new miniBullet();
-          a->x = SCREEN_WIDTH + SPAWN_MARGIN; // Spawn off-screen
-          a->sleepMS = 1000;
           a->y = rand; // Random y position
           a->angle = -M_PI; // Shoot left
           a->velocity = 0.2; // Set bullet velocity
@@ -1463,6 +1451,75 @@ void spawnBullets(int pattern, int& accumulator) {
           a->green = 128;
           a->blue = 128;
           a->randomExplodeAngle = 1;
+        }
+        break;
+      }
+    case 29:
+      {
+        // double come from right
+        int cooldown = 1000; // Cooldown between each shot
+
+        if (accumulator >= cooldown) {
+          accumulator = 0;
+
+          miniBullet* a = new miniBullet();
+          a->x = SCREEN_WIDTH + SPAWN_MARGIN; // Spawn off-screen
+          float rand = rng(0, SCREEN_HEIGHT);
+          a->y = rand; // Random y position
+          a->angle = -M_PI; // Shoot left
+          a->velocity = 0.2; // Set bullet velocity
+          a->texture = combatUIManager->bulletTexture;
+          a->red = 128;   // Set color for initial bullet
+          a->green = 128;
+          a->blue = 128;
+          a->randomExplodeAngle = 1;
+
+          a = new miniBullet();
+          a->x = SCREEN_WIDTH + SPAWN_MARGIN; // Spawn off-screen
+          a->sleepMS = 1000;
+          a->y = rand; // Random y position
+          a->angle = -M_PI; // Shoot left
+          a->velocity = 0.2; // Set bullet velocity
+          a->texture = combatUIManager->bulletTexture;
+          a->red = 128;   // Set color for initial bullet
+          a->green = 128;
+          a->blue = 128;
+          a->randomExplodeAngle = 1;
+        }
+        break;
+      }
+    case 30:
+      {
+        // Concentric circles pattern
+        int cooldown = 4000;
+        if (accumulator >= cooldown) {
+          accumulator = 0;
+          float centerX = SCREEN_WIDTH / 2;
+          float centerY = SCREEN_HEIGHT / 2;
+          int numCircles = 3;
+          int bulletsPerCircle = 4;
+          float initialRadius = 560;
+          for (int j = 0; j < numCircles; j++) {
+            for (int i = 0; i < bulletsPerCircle; i++) {
+              miniBullet* a = new miniBullet();
+              float angle = i * 2 * M_PI / bulletsPerCircle;
+              float radius = initialRadius + j * 50;
+              a->x = centerX + cos(angle) * radius;
+              a->y = centerY + sin(angle) * radius;
+              a->angle = angle + M_PI / 2;
+              a->texture = combatUIManager->bulletTexture;
+              a->numFragments = 0;
+              a->red = 50;
+              a->green = 190;
+              a->blue = 180;
+              a->spinSpeed = 0.0001 + j * 0.0002;
+              a->spinAngle = angle;
+              a->radius = radius;
+              a->centerX = centerX;
+              a->centerY = centerY;
+              a->velocity = 0.45;
+            }
+          }
         }
         break;
       }
@@ -1595,7 +1652,7 @@ int xpToLevel(int xp) {
 
   while(xp >= totalXP) {
     level++;
-    totalXP+= static_cast<int>(baseXP * pow(1.4, level - 1));
+    totalXP+= static_cast<int>(baseXP * pow(1.6, level - 1));
   }
   if(level > 100) {
     level = 100;
@@ -3819,32 +3876,98 @@ combatUI::combatUI(SDL_Renderer* renderer) {
   options[4] = getLanguageData("CombatOption5");
   options[5] = getLanguageData("CombatOption6");
 
-  partyHealthBox = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
-  partyHealthBox->patchwidth = 213;
-  partyHealthBox->patchscale = 0.4;
-  partyHealthBox->is9patch = true;
-  partyHealthBox->persistent = true;
-  partyHealthBox->show = 0;
+  for(int i = 0; i < 4; i++) {
+    ui* u = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
+    u->patchwidth = 213;
+    u->patchscale = 0.4;
+    u->is9patch = true;
+    u->persistent = true;
+    u->show = 0;
+    u->layer0 = 1;
+    partyHealthBoxes.push_back(u);
+  }
 
-  partyText = new textbox(renderer, "", 1, 0, 0, 0.9);
-  partyText->boxWidth = 0;
-  partyText->width = 0.95;
-  partyText->boxHeight = 0;
-  partyText->boxX = 0.2;
-  partyText->boxY = 1-0.1;
-  partyText->align = 0;
-  partyText->dropshadow = 1;
-  partyText->show = 1;
+  for(int i = 0; i < 4; i++) {
+    textbox* t = new textbox(renderer, "", 1, 0, 0, 0.9);
+    t->boxWidth = 0;
+    t->width = 0.95;
+    t->boxHeight = 0;
+    t->boxX = -1;
+    t->boxY = -1;
+    t->align = 2;
+    t->dropshadow = 1;
+    t->show = 1;
+    t->layer0 = 1;
+    partyNameTextboxes.push_back(t);
+  }
 
-  partyMiniText = new textbox(renderer, "", 0, 0, 0, 0.9);
-  partyMiniText->boxWidth = 0;
-  partyMiniText->width = 0.95;
-  partyMiniText->boxHeight = 0;
-  partyMiniText->boxX = 0.2;
-  partyMiniText->boxY = 1-0.1;
-  partyMiniText->align = 1;
-  partyMiniText->dropshadow = 1;
-  partyMiniText->show = 1;
+
+  for(int i = 0; i < 4; i++) {
+    textbox* t = new textbox(renderer, getLanguageData("PartyHP").c_str(), 0, 0, 0, 0.9);
+    t->boxWidth = 0;
+    t->width = 0.95;
+    t->boxHeight = 0;
+    t->boxX = -1;
+    t->boxY = -1;
+    t->align = 0;
+    t->dropshadow = 1;
+    t->show = 1;
+    t->layer0 = 1;
+    partyHealthDescripterTextboxes.push_back(t);
+  }
+
+  for(int i = 0; i < 4; i++) {
+    textbox* t = new textbox(renderer, "", 1, 0, 0, 0.9);
+    t->boxWidth = 0;
+    t->width = 0.95;
+    t->boxHeight = 0;
+    t->boxX = -1;
+    t->boxY = -1;
+    t->align = 1;
+    t->dropshadow = 1;
+    t->show = 1;
+    t->layer0 = 1;
+    partyHealthTextboxes.push_back(t);
+  }
+
+
+  for(int i = 0; i < 4; i++) {
+    textbox* t = new textbox(renderer, getLanguageData("PartySP").c_str(), 0, 0, 0, 0.9);
+    t->boxWidth = 0;
+    t->width = 0.95;
+    t->boxHeight = 0;
+    t->boxX = -1;
+    t->boxY = -1;
+    t->align = 0;
+    t->dropshadow = 1;
+    t->show = 1;
+    t->layer0 = 1;
+    partyManaDescripterTextboxes.push_back(t);
+  }
+
+  for(int i = 0; i < 4; i++) {
+    textbox* t = new textbox(renderer, "", 1, 0, 0, 0.9);
+    t->boxWidth = 0;
+    t->width = 0.95;
+    t->boxHeight = 0;
+    t->boxX = -1;
+    t->boxY = -1;
+    t->align = 1;
+    t->dropshadow = 1;
+    t->show = 1;
+    t->layer0 = 1;
+    partyManaTextboxes.push_back(t);
+  }
+
+//  partyMiniText = new textbox(renderer, "", 0, 0, 0, 0.9);
+//  partyMiniText->boxWidth = 0;
+//  partyMiniText->width = 0.95;
+//  partyMiniText->boxHeight = 0;
+//  partyMiniText->boxX = 0.2;
+//  partyMiniText->boxY = 1-0.1;
+//  partyMiniText->align = 1;
+//  partyMiniText->dropshadow = 1;
+//  partyMiniText->show = 1;
 
   mainPanel = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
   mainPanel->patchwidth = 213;
@@ -4071,7 +4194,19 @@ combatUI::combatUI(SDL_Renderer* renderer) {
   useOrDiscardMenuPicker->renderOverText1 = 1;
 
   const char* file = "resources/static/sprites/minigame/fomm.qoi";
-  dodgerTexture = loadTexture(renderer, file);
+
+  fommDodgerTex = loadTexture(renderer, file);
+  
+  const char* filen = "resources/static/sprites/minigame/neheten.qoi";
+  nehetenDodgerTex = loadTexture(renderer, filen);
+
+  const char* fileb = "resources/static/sprites/minigame/blish.qoi";
+  blishDodgerTex = loadTexture(renderer, fileb);
+
+
+  const char* filed = "resources/static/sprites/minigame/dafua.qoi";
+  dafuaDodgerTex = loadTexture(renderer, filed);
+  dodgerTexture = fommDodgerTex;
 
   file = "resources/static/sprites/minigame/bullet.qoi";
   bulletTexture = loadTexture(renderer, file);
@@ -4126,9 +4261,17 @@ void drawOptionsPanel() {
 }
 
 void combatUI::hideAll() {
-  partyHealthBox->show = 0;
-  partyText->show = 0;
-  partyMiniText->show = 0;
+  for(int i = 0; i < 4; i++) {
+    partyHealthBoxes[i]->show = 0;
+    partyHealthDescripterTextboxes[i]->show = 0;
+    partyHealthTextboxes[i]->show = 0;
+    partyManaDescripterTextboxes[i]->show = 0;
+    partyManaTextboxes[i]->show = 0;
+    partyNameTextboxes[i]->show = 0;
+  }
+//  partyHealthBox->show = 0;
+//  partyText->show = 0;
+//  partyMiniText->show = 0;
   mainPanel->show = 0;
   dialogProceedIndicator->show = 0;
   mainText->show = 0;
@@ -4439,12 +4582,10 @@ void drawCombatants() {
   }
 
   count = g_partyCombatants.size();
-  combatUIManager->partyHealthBox->show = 1;
-  combatUIManager->partyMiniText->show = 1;
-  combatUIManager->partyText->show = 1;
   gap = 0.1;
 
-  for (int i = 0; i < count; ++i) {
+  for (int i = 0; i < count; i++) {
+    SDL_Color textcolor {155, 115, 115};
     combatant* combatant = g_partyCombatants[i];
     float bonusY = 0;
     if(g_submode == submode::MAIN ||
@@ -4461,12 +4602,18 @@ void drawCombatants() {
       if(i == curCombatantIndex){
         bonusY = -0.05;
       }
-
     }
 
-    combatUIManager->partyText->textcolor = { 155, 115, 115};
+    combatUIManager->partyHealthBoxes[i]->bonusY = bonusY;
+    combatUIManager->partyNameTextboxes[i]->bonusY = bonusY;
+    combatUIManager->partyHealthDescripterTextboxes[i]->bonusY = bonusY;
+    combatUIManager->partyManaDescripterTextboxes[i]->bonusY = bonusY;
+    combatUIManager->partyHealthTextboxes[i]->bonusY = bonusY;
+    combatUIManager->partyManaTextboxes[i]->bonusY = bonusY;
+
+    //combatUIManager->partyText->textcolor = { 155, 115, 115};
     if(combatant->health <= 0) {
-      combatUIManager->partyText->textcolor = g_healthtextlowcolor;
+      textcolor = g_healthtextlowcolor;
     }
 
     if(g_submode == submode::ALLYTARGETING
@@ -4474,80 +4621,148 @@ void drawCombatants() {
         || g_amState == amState::ITARGETING) {
       if(i == combatUIManager->currentTarget) {
         if(combatant->health <= 0) {
-          combatUIManager->partyText->textcolor = g_healthtextlowcolor;
-          combatUIManager->partyText->textcolor.r -= 45;
-          combatUIManager->partyText->textcolor.g -= 45;
-          combatUIManager->partyText->textcolor.b -= 45;
+          textcolor = g_healthtextlowcolor;
+          textcolor.r -= 45;
+          textcolor.g -= 45;
+          textcolor.b -= 45;
         } else {
-          combatUIManager->partyText->textcolor = { 108, 80, 80};
+          textcolor = { 108, 80, 80};
         }
       } else {
         if(combatant->health <= 0) {
-          combatUIManager->partyText->textcolor = g_healthtextlowcolor;
+          textcolor = g_healthtextlowcolor;
         } else {
-          combatUIManager->partyText->textcolor = { 155, 115, 115};
+          textcolor = { 155, 115, 115};
         }
       }
     }
 
 
 
-    // Convert percentage-based width and height to actual pixel values
-    float actual_width = 0.3 *  WIN_HEIGHT / WIN_WIDTH;
-    float actual_height = 0.3;
-
-    // Calculate X position to arrange horizontally
-    float total_width = (count * actual_width) + ((count - 1) * gap);
-    float x = (1 - total_width) / 2 + i * (actual_width + gap);
-    float y = (1 - actual_height) / 2; // Centering vertically
-
-    combatUIManager->partyHealthBox->x = x;
-    combatUIManager->partyHealthBox->y = 0.7 + bonusY;
-    combatUIManager->partyHealthBox->width = actual_width;
-    combatUIManager->partyHealthBox->height = actual_height;
-
-    combatUIManager->partyHealthBox->render(renderer, g_camera, elapsed);
+    combatUIManager->partyNameTextboxes[i]->textcolormod = textcolor;
+    combatUIManager->partyHealthDescripterTextboxes[i]->textcolormod = textcolor;
+    combatUIManager->partyHealthTextboxes[i]->textcolormod = textcolor;
+    combatUIManager->partyManaDescripterTextboxes[i]->textcolormod = textcolor;
+    combatUIManager->partyManaTextboxes[i]->textcolormod = textcolor;
 
 
+    if(combatUIManager->partyNameTextboxes[0]->boxX == -1) {
+      for(int i = 0; i < g_partyCombatants.size(); i++) {
 
-    combatUIManager->partyText->boxX = x + 0.02;
-    combatUIManager->partyText->boxY = 0.7 + 0.02 + bonusY;
-    combatUIManager->partyText->boxWidth = actual_width;
-    combatUIManager->partyText->boxHeight = actual_height;
-    combatUIManager->partyText->updateText(combatant->name, -1, 34, combatUIManager->partyText->textcolor);
-    combatUIManager->partyText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+        //update these values so we know to not re-render the text textures
+        combatUIManager->pHpRValues[i] = g_partyCombatants[i]->health;
+        combatUIManager->pMhpRValues[i] = g_partyCombatants[i]->curStrength;
+        combatUIManager->pSpRValues[i] = g_partyCombatants[i]->sp;
+        combatUIManager->pMspRValues[i] = g_partyCombatants[i]->curMind;
+        
+        // Convert percentage-based width and height to actual pixel values
+        float actual_width = 0.3 *  WIN_HEIGHT / WIN_WIDTH;
+        float actual_height = 0.3;
+    
+        // Calculate X position to arrange horizontally
+        float total_width = (count * actual_width) + ((count - 1) * gap);
+        float x = (1 - total_width) / 2 + i * (actual_width + gap);
+        float y = (1 - actual_height) / 2; // Centering vertically
+    
+        //combatUIManager->partyHealthBox->x = x;
+        combatUIManager->partyHealthBoxes[i]->x = x;
+        //combatUIManager->partyHealthBox->y = 0.7 + bonusY;
+        combatUIManager->partyHealthBoxes[i]->y = 0.7;
+    //    combatUIManager->partyHealthBox->width = actual_width;
+        combatUIManager->partyHealthBoxes[i]->width = actual_width;
+    //    combatUIManager->partyHealthBox->height = actual_height;
+        combatUIManager->partyHealthBoxes[i]->height = actual_height;
+    
+        //combatUIManager->partyHealthBox->render(renderer, g_camera, elapsed);
+    
+    
+    
+        //combatUIManager->partyText->boxX = x + 0.02;
+        combatUIManager->partyNameTextboxes[i]->boxX = x + 0.02 + 0.075;
+    //    combatUIManager->partyText->boxY = 0.7 + 0.02 + bonusY;
+        combatUIManager->partyNameTextboxes[i]->boxY = 0.7 + 0.02;
+    //    combatUIManager->partyText->boxWidth = actual_width;
+        combatUIManager->partyNameTextboxes[i]->boxWidth = actual_width;
+    //    combatUIManager->partyText->boxHeight = actual_height;
+        combatUIManager->partyNameTextboxes[i]->boxHeight = actual_height;
+    //    combatUIManager->partyText->updateText(combatant->name, -1, 34, combatUIManager->partyText->textcolor);
+        combatUIManager->partyNameTextboxes[i]->updateText(g_partyCombatants[i]->name, -1, 34,  g_whitetextcolor);
+    //    combatUIManager->partyText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+        combatUIManager->partyHealthDescripterTextboxes[i]->boxX = combatUIManager->partyNameTextboxes[i]->boxX - 0.075;
+        combatUIManager->partyHealthDescripterTextboxes[i]->boxY = combatUIManager->partyNameTextboxes[i]->boxY + 0.07 + 0.01;
+        combatUIManager->partyHealthDescripterTextboxes[i]->boxHeight = actual_height;
+        combatUIManager->partyHealthDescripterTextboxes[i]->boxWidth = actual_width;
+        combatUIManager->partyHealthDescripterTextboxes[i]->updateText(getLanguageData("PartyHP"), -1, 34, g_whitetextcolor);
 
-    combatUIManager->partyText->boxY += 0.07;
-    combatUIManager->partyText->updateText(to_string(combatant->health), -1, 34, combatUIManager->partyText->textcolor);
-    combatUIManager->partyText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-    combatUIManager->partyText->boxY += 0.07;
-    combatUIManager->partyText->updateText(to_string(combatant->sp), -1, 34, combatUIManager->partyText->textcolor);
-    combatUIManager->partyText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+        combatUIManager->partyManaDescripterTextboxes[i]->boxX = combatUIManager->partyNameTextboxes[i]->boxX - 0.075;
+        combatUIManager->partyManaDescripterTextboxes[i]->boxY = combatUIManager->partyNameTextboxes[i]->boxY + 0.14 + 0.01;
+        combatUIManager->partyManaDescripterTextboxes[i]->boxHeight = actual_height;
+        combatUIManager->partyManaDescripterTextboxes[i]->boxWidth = actual_width;
+        combatUIManager->partyManaDescripterTextboxes[i]->updateText(getLanguageData("PartySP"), -1, 34,  g_whitetextcolor);
 
-    combatUIManager->partyMiniText->show = 1;
-    combatUIManager->partyMiniText->boxX = x + 0.15 + 0.02;
-    combatUIManager->partyMiniText->boxY = 0.7 + 0.02 + bonusY + 0.073;
-    combatUIManager->partyMiniText->boxWidth = actual_width;
-    combatUIManager->partyMiniText->boxHeight = actual_height;
+        combatUIManager->partyHealthTextboxes[i]->boxX = combatUIManager->partyNameTextboxes[i]->boxX + 0.15 - 0.075;
+        combatUIManager->partyHealthTextboxes[i]->boxY = combatUIManager->partyNameTextboxes[i]->boxY + 0.07;
+        combatUIManager->partyHealthTextboxes[i]->boxHeight = actual_height;
+        combatUIManager->partyHealthTextboxes[i]->boxWidth = actual_width;
+        combatUIManager->partyHealthTextboxes[i]->updateText(to_string(g_partyCombatants[i]->health) + '/' + to_stringF(floor(g_partyCombatants[i]->curStrength)), -1, 34,  g_whitetextcolor);
 
-    combatUIManager->partyMiniText->updateText(getLanguageData("PartyHP"), -1, 1, combatUIManager->partyText->textcolor);
-    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-    combatUIManager->partyMiniText->boxY += 0.025;
-    combatUIManager->partyMiniText->updateText('/' + to_stringF(floor(combatant->curStrength)), -1, 1, combatUIManager->partyText->textcolor);
-    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-    combatUIManager->partyMiniText->boxY += 0.045;
-    combatUIManager->partyMiniText->updateText(getLanguageData("PartySP"), -1, 1, combatUIManager->partyText->textcolor);
-    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-    combatUIManager->partyMiniText->boxY += 0.025;
-    combatUIManager->partyMiniText->updateText('/' + to_stringF(floor(combatant->curMind)), -1, 1, combatUIManager->partyText->textcolor);
-    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+        combatUIManager->partyManaTextboxes[i]->boxX = combatUIManager->partyNameTextboxes[i]->boxX + 0.15 - 0.075;
+        combatUIManager->partyManaTextboxes[i]->boxY = combatUIManager->partyNameTextboxes[i]->boxY + 0.14;
+        combatUIManager->partyManaTextboxes[i]->boxHeight = actual_height;
+        combatUIManager->partyManaTextboxes[i]->boxWidth = actual_width;
+        combatUIManager->partyManaTextboxes[i]->updateText(to_string(g_partyCombatants[i]->sp) + '/' + to_stringF(floor(g_partyCombatants[i]->curMind)), -1, 34,  g_whitetextcolor);
 
+      }
+    
+    //    combatUIManager->partyText->boxY += 0.07;
+    //    combatUIManager->partyText->updateText(to_string(combatant->health), -1, 34, combatUIManager->partyText->textcolor);
+    //    combatUIManager->partyText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    //    combatUIManager->partyText->boxY += 0.07;
+    //    combatUIManager->partyText->updateText(to_string(combatant->sp), -1, 34, combatUIManager->partyText->textcolor);
+    //    combatUIManager->partyText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    //
+    //    combatUIManager->partyMiniText->show = 1;
+    //    combatUIManager->partyMiniText->boxX = x + 0.15 + 0.02;
+    //    combatUIManager->partyMiniText->boxY = 0.7 + 0.02 + bonusY + 0.073;
+    //    combatUIManager->partyMiniText->boxWidth = actual_width;
+    //    combatUIManager->partyMiniText->boxHeight = actual_height;
+    //
+    //    combatUIManager->partyMiniText->updateText(getLanguageData("PartyHP"), -1, 1, combatUIManager->partyText->textcolor);
+    //    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    //    combatUIManager->partyMiniText->boxY += 0.025;
+    //    combatUIManager->partyMiniText->updateText('/' + to_stringF(floor(combatant->curStrength)), -1, 1, combatUIManager->partyText->textcolor);
+    //    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    //    combatUIManager->partyMiniText->boxY += 0.045;
+    //    combatUIManager->partyMiniText->updateText(getLanguageData("PartySP"), -1, 1, combatUIManager->partyText->textcolor);
+    //    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    //    combatUIManager->partyMiniText->boxY += 0.025;
+    //    combatUIManager->partyMiniText->updateText('/' + to_stringF(floor(combatant->curMind)), -1, 1, combatUIManager->partyText->textcolor);
+    //    combatUIManager->partyMiniText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+
+
+    }
 
   }
-  combatUIManager->partyHealthBox->show = 0;
-  combatUIManager->partyMiniText->show = 0;
-  combatUIManager->partyText->show = 0;
-  //combatUIManager->partyMiniText->x = 10;
+
+  for(int i = 0; i < g_partyCombatants.size(); i++) {
+
+    if(combatUIManager->pHpRValues[i] != g_partyCombatants[i]->health
+        || combatUIManager->pMhpRValues[i] != g_partyCombatants[i]->curStrength) {
+        combatUIManager->partyHealthTextboxes[i]->updateText(to_string(g_partyCombatants[i]->health) + '/' + to_stringF(floor(g_partyCombatants[i]->curStrength)), -1, 34,  g_whitetextcolor);
+    }
+
+    if(combatUIManager->pSpRValues[i] != g_partyCombatants[i]->sp  
+        || combatUIManager->pMspRValues[i] != g_partyCombatants[i]->curMind) {
+        combatUIManager->partyManaTextboxes[i]->updateText(to_string(g_partyCombatants[i]->sp) + '/' + to_stringF(floor(g_partyCombatants[i]->curMind)), -1, 34,  g_whitetextcolor);
+    }
+
+    combatUIManager->partyHealthBoxes[i]->render(renderer, g_camera, elapsed);
+    combatUIManager->partyNameTextboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    combatUIManager->partyHealthDescripterTextboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    combatUIManager->partyManaDescripterTextboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    combatUIManager->partyHealthTextboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    combatUIManager->partyManaTextboxes[i]->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+  }
 
 
 }
@@ -4565,9 +4780,12 @@ void CombatLoop() {
     drawSimpleBackground();
   }
 
+  B("Before drawCombatants()");
   drawCombatants();
+  B("drawCombatants()");
 
   SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+
 
   switch (g_submode) {
     case submode::BEFORE:
@@ -4618,6 +4836,20 @@ void CombatLoop() {
       }
     case submode::INWIPE:
       {
+
+       for(int i = 0; i < g_partyCombatants.size(); i++) {
+//         combatUIManager->pHpRValues[i] = -1;
+//         combatUIManager->pMhpRValues[i] = -1;
+//         combatUIManager->pSpRValues[i] = -1;
+//         combatUIManager->pMspRValues[i] = -1;
+
+         combatUIManager->partyNameTextboxes[i]->show = 1;
+         combatUIManager->partyHealthBoxes[i]->show = 1;
+         combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+         combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+         combatUIManager->partyHealthTextboxes[i]->show = 1;
+         combatUIManager->partyManaTextboxes[i]->show = 1;
+       }
 
 
         // onframe things
@@ -5763,6 +5995,15 @@ void CombatLoop() {
             adjustedDIndex++;
           }
           combatUIManager->partyDodgingCombatant = e;
+
+          if(combatUIManager->partyDodgingCombatant->filename == "common/fomm") {combatUIManager->dodgerTexture = combatUIManager->fommDodgerTex;}
+  
+          if(combatUIManager->partyDodgingCombatant->filename == "common/neheten") {combatUIManager->dodgerTexture = combatUIManager->nehetenDodgerTex;}
+  
+          if(combatUIManager->partyDodgingCombatant->filename == "common/blish") {combatUIManager->dodgerTexture = combatUIManager->blishDodgerTex;}
+  
+          if(combatUIManager->partyDodgingCombatant->filename == "common/dafua") {combatUIManager->dodgerTexture = combatUIManager->dafuaDodgerTex;}
+
           int damage = (c->curAttack* combatUIManager->specificMultiplier) - e->curDefense - e->physicalDefense;
           damage *= frng(0.85,1.15);
           bool skipDodgingPhase = 0;
@@ -5912,8 +6153,6 @@ void CombatLoop() {
             combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
             combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
           } else {
-            M("Should we skip the dodging phase?");
-            D(combatUIManager->damageFromEachHit);
 
             if(combatUIManager->damageFromEachHit <1) {
               if(combatUIManager->executeEIndex + 1 ==  g_enemyCombatants.size()) {
@@ -5947,6 +6186,12 @@ void CombatLoop() {
             }
 
             g_submode = submode::DODGING;
+            for(int i = 0; i < g_partyCombatants.size(); i++) {
+              if(combatUIManager->partyDodgingCombatant == g_partyCombatants[i]) {
+
+
+              }
+            }
             combatUIManager->accuA = 1000000;
             combatUIManager->accuB = 1000000;
             combatUIManager->accuC = 1000000;
@@ -8307,6 +8552,8 @@ void CombatLoop() {
       }
   }
 
+  B("After submode handling");
+
 
   combatUIManager->mainPanel->render(renderer, g_camera, elapsed);
   combatUIManager->mainText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
@@ -8356,7 +8603,10 @@ void CombatLoop() {
         }
       }
       for(auto x : g_miniEnts) {
-        x->render();
+        x->render(1);
+      }
+      for(auto x : g_miniEnts) {
+        x->render(0);
       }
       if(combatUIManager->shrink) {
         combatUIManager->dodgerWidth = 50;
@@ -8398,6 +8648,9 @@ void CombatLoop() {
       }
 
       if(combatUIManager->drawDodger) {
+
+
+
         SDL_SetTextureColorMod(combatUIManager->dodgerTexture, 255*0.7, 255*0.7, 255*0.7);
         //SDL_RenderCopy(renderer, combatUIManager->dodgerTexture, NULL, &drect);
         SDL_Point center = {drect.w/2,drect.h/2};
@@ -8406,10 +8659,10 @@ void CombatLoop() {
 
             
         SDL_SetTextureColorMod(combatUIManager->dodgerTexture, 255, 255, 255);
-        drect.x += 10;
-        drect.y += 10;
-        drect.w -= 20;
-        drect.h -= 20;
+        drect.x += 8;
+        drect.y += 8;
+        drect.w -= 16;
+        drect.h -= 16;
         center = {drect.w/2,drect.h/2};
         //SDL_RenderCopy(renderer, combatUIManager->dodgerTexture, NULL, &drect);
         SDL_RenderCopyEx(renderer, combatUIManager->dodgerTexture, NULL, &drect, combatUIManager->dodgerAngle, &center, SDL_FLIP_NONE);
@@ -8554,6 +8807,7 @@ void CombatLoop() {
 
 
   SDL_RenderPresent(renderer);
+  B("After present");
 }
 
 //this is for gaining xp out of combat (including learning/forgetting spiritmoves
@@ -8609,6 +8863,21 @@ void explorationLevelupLoop() {
       }
     case submode::INWIPE:
       {
+
+         for(int i = 0; i < g_partyCombatants.size(); i++) {
+//           combatUIManager->pHpRValues[i] = -1;
+//           combatUIManager->pMhpRValues[i] = -1;
+//           combatUIManager->pSpRValues[i] = -1;
+//           combatUIManager->pMspRValues[i] = -1;
+  
+           combatUIManager->partyNameTextboxes[i]->show = 1;
+           combatUIManager->partyHealthBoxes[i]->show = 1;
+           combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+           combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+           combatUIManager->partyHealthTextboxes[i]->show = 1;
+           combatUIManager->partyManaTextboxes[i]->show = 1;
+         }
+  
         // onframe things
         SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
 
@@ -11966,8 +12235,12 @@ void explorationLevelupLoop() {
         }
       }
       for(auto x : g_miniEnts) {
-        x->render();
+        x->render(1);
       }
+      for(auto x : g_miniEnts) {
+        x->render(0);
+      }
+
       if(combatUIManager->shrink) {
         combatUIManager->dodgerWidth = 50;
         combatUIManager->dodgerHeight = 50;
@@ -12797,7 +13070,7 @@ void miniEnt::update(float elapsed) {
   }
 }
 
-void miniEnt::render() {
+void miniEnt::render(int shadow) {
   SDL_Rect drect = {
     (int)x - w/2,
     (int)y - h/2,
@@ -12810,14 +13083,17 @@ void miniEnt::render() {
   red = 155;
   blue = 115;
   green = 115;
-  SDL_SetTextureColorMod(texture, red*0.7, blue*0.7, green*0.7);
-  SDL_RenderCopy(renderer, texture, NULL, &drect);
-  drect.x += 10;
-  drect.y += 10;
-  drect.w -= 20;
-  drect.h -= 20;
-  SDL_SetTextureColorMod(texture, red, blue, green);
-  SDL_RenderCopy(renderer, texture, NULL, &drect);
+  if(shadow) {
+    SDL_SetTextureColorMod(texture, red*0.7, blue*0.7, green*0.7);
+    SDL_RenderCopy(renderer, texture, NULL, &drect);
+  } else {
+    drect.x += 7;
+    drect.y += 7;
+    drect.w -= 14;
+    drect.h -= 14;
+    SDL_SetTextureColorMod(texture, red, blue, green);
+    SDL_RenderCopy(renderer, texture, NULL, &drect);
+  }
 }
 
 miniBullet::miniBullet(float f_angle, float f_velocity) {
