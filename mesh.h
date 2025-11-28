@@ -69,13 +69,20 @@ class mesh {
 public:
   vec3 origin = {0,0,0};
   SDL_Texture* texture = NULL;
+
+  SDL_Texture* trimTexture = NULL;
+
+  vector<SDL_Vertex> vbuffer;
+
+  bool useTrim = 0;
+
   string textureAddress = "";
   bool assetSharer = 0;
 
   SDL_Vertex* vertex = NULL;
   int* indices = NULL;
  
-  vector<pair<float, float>> vertexExtraData;
+  vector<pair<float, float>> vertexExtraData = {};
   int numVertices = 0;
   int numIndices = 0;
 
@@ -83,9 +90,9 @@ public:
 
   float sleepRadius = 0;
 
-  vector<face> faces; //for 3d data, for determining z of entities ontop.
+  vector<face> faces = {}; //for 3d data, for determining z of entities ontop.
   
-  vector<SDL_Vertex> oGeo; //screenspace geo for occluders
+  vector<SDL_Vertex> oGeo = {}; //screenspace geo for occluders
 //  map<int, int> facePairing; //for finding quads in occluders
 //  map<int, tuple<int, int, int, int>> twinMap; //maps the first int of facePairing to twin coordinates for where to draw the rectangle blocking the wall
 
@@ -94,13 +101,13 @@ public:
   bool drawDiffuse = 1;
 
   bool edgeInfoSet = 0;
-  vector<array<int, 2>> edgeDataStore;
+  vector<array<int, 2>> edgeDataStore = {};
 
   bool visible = 1;
   bool awake = 0;
 
-  vector<vertex3d> vertices;
-  vector<edgeInfo> storedWEdges;
+  vector<vertex3d> vertices = {};
+  vector<edgeInfo> storedWEdges = {};
 
 
 
@@ -177,8 +184,12 @@ class ggrid {
 
     string walltexSTR = "";
     string floortexSTR = "";
+    string trimtexSTR = "notrim";
     SDL_Texture* walltex = 0;
     SDL_Texture* floortex = 0;
+    SDL_Texture* trimtex = 0;
+
+    bool useTrim = 0;
 
     //bounds of the grid
     int originX = 0; //in coords

@@ -272,6 +272,11 @@ void updateWindowResolution() {
 
 void ExplorationLoop() {
 
+  if(g_meshFloors.size() > 0) {
+    //this reveals some memory issues
+    //D(g_meshFloors[0]->textureAddress);
+  }
+
 
   // cooldowns
   if(g_dungeonSystemOn) {g_dungeonMs += elapsed;}
@@ -3692,39 +3697,52 @@ void ExplorationLoop() {
     x->awake = RectOverlap(myRect, cam);
   }
 
-  //meshes
-  for(auto &x : g_meshFloors) {
-    if(x->visible && x->awake) {
-      SDL_Vertex v[x->numVertices];
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i] = x->vertex[i];
-        v[i].position.x += x->origin.x - g_camera.x;
-        v[i].position.y += x->origin.y - g_camera.y;
-        v[i].color.a = x->vertex[i].color.a;
-      }
 
-      if(x->drawDiffuse == 1) {
-        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-//        SDL_Rect a = {0,0.2, 0.2, 0.2};
-//        SDL_RenderCopy(renderer, x->texture, NULL, &a);
-      }
+ std::map<mesh*, std::vector<SDL_Vertex>> vbuffer;
 
+ M("Time for the first pass");
+for (auto &x : g_meshFloors) {
+    if (x->visible && x->awake) {
+        std::vector<SDL_Vertex> v(x->numVertices);
+        M("A");
+        for (int i = 0; i < x->numVertices; i++) {
+            v[i] = x->vertex[i];
+            v[i].position.x += x->origin.x - g_camera.x;
+            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].color.a = x->vertex[i].color.a;
+        }
 
-      //render shade
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i].tex_coord.x = x->vertexExtraData[i].first;
-        v[i].tex_coord.y = x->vertexExtraData[i].second;
-        v[i].color.r = 255;
-        v[i].color.g = 255;
-        v[i].color.b = 255;
-        v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
-      }
+        M("B");
+        // shade pass
+        for (int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
+            v[i].color = {255, 255, 255, 255};
+        }
 
-      SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+        M("C");
+        if (x->useTrim) {
+            vbuffer[x] = v; // copy into map
+        }
 
+        SDL_RenderGeometry(renderer, g_floorShadeTexture,
+                           v.data(), x->numVertices,
+                           x->indices, x->numIndices);
+        M("D");
     }
-  }
+}
 
+M("Time for the second pass");
+// second pass
+for (auto &x : g_meshFloors) {
+    if (x->visible && x->awake && x->useTrim) {
+        auto &v = vbuffer[x];
+        SDL_RenderGeometry(renderer, x->trimTexture,
+                           v.data(), x->numVertices,
+                           x->indices, x->numIndices);
+    }
+}
+M("Finished both passes");
 
   //decorative meshes
   for(auto &x : g_meshDecorative) {
@@ -5604,7 +5622,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c->decorative->drawDiffuse = 0; //was 0
+    //c->decorative->drawDiffuse = 0; //was 0
     c = new chunk("ggrid/25", "", "", origin, 1, 0);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -5612,7 +5630,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c->decorative->drawDiffuse = 0; //was 0
+    //c->decorative->drawDiffuse = 0; //was 0
     c = new chunk("ggrid/26", "", "", origin, 1, 0);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -5635,6 +5653,34 @@ int WinMain()
       c->floor->vertex[i].color.b = 255;
     }
     c = new chunk("ggrid/29", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/30", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/31", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/32", "", "", origin, 1, 0);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/33", "", "", origin, 1, 0);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;

@@ -541,7 +541,7 @@ void specialObjectsInit(entity* a) {
     case 42:
     {
       //3disp
-      string sfh = "dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(g_numDispensersLoaded);
+      string sfh = "3dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(g_numDispensersLoaded);
       a->data[5] = g_numDispensersLoaded;
       int res = checkSaveField(sfh);
       if(res == -1) {
@@ -557,6 +557,7 @@ void specialObjectsInit(entity* a) {
     case 43:
     {
       //door to another map
+      //travel
       //the other map and the waypoint it takes you to are stored in entitydatastr fields in the mapfile
 
       break;
@@ -3473,7 +3474,7 @@ int specialObjectsInteract(entity* a) {
           script.push_back("#");
   
           a->data[4] = 1;
-          string sfh = "dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(a->data[5]);
+          string sfh = "3dispenser-" + g_mapdir + "/" + g_map + "-" + to_string(a->data[5]);
           writeSaveField(sfh, 1);
           //a->animation = 0;
 
@@ -3518,9 +3519,13 @@ int specialObjectsInteract(entity* a) {
     case 43:
     {
       //door to another map
+      //travel
       
       const string toMap = "resources/maps/" + a->datastr[0] + ".map";
       const string wayp = a->datastr[1];
+      M("Clearing map from specialobjects.cpp");
+      D(g_meshFloors.size());
+      D(g_meshFloors[0]->textureAddress);
       clear_map(g_camera);
       load_map(renderer, toMap, wayp);
       if (canSwitchOffDevMode)

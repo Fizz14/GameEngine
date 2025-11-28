@@ -148,7 +148,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   while (index < strings.size())
   {
     line = strings[index];
-    M("Parsing line: " + line); //got a crash after leaving the desert cylindrical structure
+    //M("Parsing line: " + line); //got a crash after leaving the desert cylindrical structure
     index++;
     istringstream iss(line);
     word = line.substr(0, line.find(" "));
@@ -209,6 +209,11 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   
             if(c->floor != 0) {
               c->floor->texture = g_activeGgrid->floortex;
+              if(g_activeGgrid->useTrim) {
+                c->floor->useTrim = g_activeGgrid->useTrim;
+                c->floor->trimTexture = g_activeGgrid->trimtex;
+              }
+
               for(int i = 0; i < c->floor->numVertices; i++) {
                 float xpos = c->floor->vertex[i].position.x + c->origin.x;
                 float ypos = c->floor->vertex[i].position.y + c->origin.y;
@@ -436,20 +441,20 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         }
       }
 
-      D(copy);
+      //D(copy);
 
       entity* e;
       if(copy > -1) {
         e = new entity(renderer, g_entities[copy]);
-        M("Making e from copy");
+        //M("Making e from copy");
       } else {
         e = new entity(renderer, plik);
-        M("Making e from file");
+        //M("Making e from file");
       }
 
-      M("About to set data of e");
+      //M("About to set data of e");
       e->x = p0;
-      M("Did it crash?");
+      //M("Did it crash?");
       e->y = p1;
       e->z = p2;
       e->shadow->x = e->x + e->shadow->xoffset;
@@ -619,6 +624,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
           >> p1
           >> s0
           >> s1
+          >> s2
           >> p2
           >> p3
           >> p4
@@ -631,9 +637,14 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
       g->floortexSTR = s0;
       g->walltexSTR = s1;
+      g->trimtexSTR = s2;
 
       g->floortex = loadTexture(renderer, "resources/static/diffuse/" + g->floortexSTR + ".qoi");
       g->walltex = loadTexture(renderer, "resources/static/diffuse/" + g->walltexSTR + ".qoi");
+      g->trimtex = loadTexture(renderer, "resources/static/diffuse/" + g->trimtexSTR + ".qoi");
+      if(g->trimtexSTR != "notrim") {
+        g->useTrim = 1;
+      }
 
       g->originX = p2;
       g->originY = p3;
@@ -1363,6 +1374,7 @@ bool mapeditor_save_map(string word)
                       << x->y << " "
                       << x->floortexSTR << " "
                       << x->walltexSTR << " "
+                      << x->trimtexSTR << " "
                       << x->originX << " "
                       << x->originY << " "
                       << x->width << " "
@@ -3150,6 +3162,7 @@ void write_map(entity *mapent)
         ggrid* g = new ggrid();
         g->floortexSTR = "mapeditor/floor";
         g->walltexSTR = "mapeditor/wall";
+        //g->trimtexSTR = "notrim";
         g->floortex = loadTexture(renderer, "resources/static/diffuse/mapeditor/floor.qoi");
         g->walltex = loadTexture(renderer, "resources/static/diffuse/mapeditor/wall.qoi");
         g->x = marker->x + marker->width/2;

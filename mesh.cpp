@@ -430,6 +430,7 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
 }
 
 
+//I think this has issues
 mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone) {
   string address = faddress;
   vector<vertex3d> vertices;

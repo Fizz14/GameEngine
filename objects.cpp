@@ -9201,6 +9201,8 @@ void escapeUI::uiSelecting() {
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
   M("Clear map");
+  D(g_meshFloors.size());
+  D(g_meshFloors[0]->textureAddress);
   g_numPresentsLoaded = 0;
   g_numMoneybagsLoaded = 0;
   g_worldEnemies.clear();
@@ -9297,8 +9299,13 @@ void clear_map(camera& cameraToReset) {
 
       //meshes
 
+      breakpoint();
+      D(g_meshFloors.size());
       for(auto &x : g_meshFloors) {
         if(x->visible) {
+          D(x->textureAddress);
+          D(x->ggridPiece);
+          D(x->numVertices); //this is about to crash atm
           SDL_Vertex v[x->numVertices];
           for(int i = 0; i < x->numVertices; i++) {
             v[i] = x->vertex[i];
@@ -9963,12 +9970,14 @@ void clear_map(camera& cameraToReset) {
     for(int i = 0; i < size; i++) {
       delete g_meshFloors[0];
     }
+    g_meshFloors.clear();
 
     M("Delete g_meshVWalls");
     size = g_meshVWalls.size();
     for(int i = 0; i < size; i++) {
       delete g_meshVWalls[0];
     }
+    g_meshVWalls.clear();
 
     M("Delete g_meshCollisions");
     size = g_meshCollisions.size();
