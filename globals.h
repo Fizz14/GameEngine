@@ -61,6 +61,8 @@ class ramp;
 
 class textbox;
 
+class fontmem;
+
 class ui;
 
 class fancychar;
@@ -76,8 +78,6 @@ class settingsUI;
 class escapeUI;
 
 class attack;
-
-class weapon;
 
 class projectile;
 
@@ -231,6 +231,8 @@ extern vector<impliedSlopeTri*> g_impliedSlopeTris;
 
 extern vector<textbox *> g_textboxes;
 
+extern vector<fontmem> g_fontmems;
+
 extern vector<ui *> g_ui;
 
 extern vector<actor *> g_actors;
@@ -270,8 +272,6 @@ extern vector<listener *> g_listeners;
 extern vector<projectile *> g_projectiles;
 
 extern vector<attack *> g_attacks;
-
-extern vector<weapon *> g_weapons;
 
 extern vector<particle *> g_particles;
 

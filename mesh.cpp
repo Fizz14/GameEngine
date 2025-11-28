@@ -107,19 +107,24 @@ mesh::mesh(){
 }
 
 mesh::~mesh() {
-  if(mtype == meshtype::FLOOR) {
-    g_meshFloors.erase(remove(g_meshFloors.begin(), g_meshFloors.end(), this), g_meshFloors.end());
-  } else if(mtype == meshtype::V_WALL) {
-    g_meshVWalls.erase(remove(g_meshVWalls.begin(), g_meshVWalls.end(), this), g_meshVWalls.end());
-  } else if(mtype == meshtype::COLLISION) {
-    g_meshCollisions.erase(remove(g_meshCollisions.begin(), g_meshCollisions.end(), this), g_meshCollisions.end());
-  } else if(mtype == meshtype::OCCLUDER) {
-    g_meshOccluders.erase(remove(g_meshOccluders.begin(), g_meshOccluders.end(), this), g_meshOccluders.end());
-  } else if(mtype == meshtype::DECORATIVE) {
-    g_meshDecorative.erase(remove(g_meshDecorative.begin(), g_meshDecorative.end(), this), g_meshDecorative.end());
+  if(storedInMeshVectors) {
+    if(mtype == meshtype::FLOOR) {
+      g_meshFloors.erase(remove(g_meshFloors.begin(), g_meshFloors.end(), this), g_meshFloors.end());
+    } else if(mtype == meshtype::V_WALL) {
+      g_meshVWalls.erase(remove(g_meshVWalls.begin(), g_meshVWalls.end(), this), g_meshVWalls.end());
+    } else if(mtype == meshtype::COLLISION) {
+      g_meshCollisions.erase(remove(g_meshCollisions.begin(), g_meshCollisions.end(), this), g_meshCollisions.end());
+    } else if(mtype == meshtype::OCCLUDER) {
+      g_meshOccluders.erase(remove(g_meshOccluders.begin(), g_meshOccluders.end(), this), g_meshOccluders.end());
+    } else if(mtype == meshtype::DECORATIVE) {
+      g_meshDecorative.erase(remove(g_meshDecorative.begin(), g_meshDecorative.end(), this), g_meshDecorative.end());
+    }
+  
+    g_meshes.erase(remove(g_meshes.begin(), g_meshes.end(), this), g_meshes.end());
   }
 
-  g_meshes.erase(remove(g_meshes.begin(), g_meshes.end(), this), g_meshes.end());
+  delete[] vertex;
+  delete[] indices;
 
   if(assetSharer == 0 && texture != nullptr) {
     SDL_DestroyTexture(texture);

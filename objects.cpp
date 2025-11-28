@@ -2272,48 +2272,6 @@ attack::~attack() {
 }
 
 
-
-weapon::weapon() {}
-
-//add constructor and field on entity object
-//second param should be 0 for entities
-//that could join the party and 1 otherwise
-weapon::weapon(string fname, bool tryToShareGraphics) {
-  name = fname;
-
-  string line;
-  string address;
-
-  //local
-  address = "resources/static/weapons/" + name + ".wep";
-
-
-  string field = "";
-  string value = "";
-  //file.open(address);
-  istringstream file(loadTextAsString(address));
-
-
-  while(getline(file, line)) {
-    if(line == "&") { break; }
-    field = line.substr(0, line.find(' '));
-    attack* a = new attack(line, tryToShareGraphics);
-
-    //a->faction = faction;
-    attacks.push_back(a);
-  }
-  file >> maxComboResetMS;
-  g_weapons.push_back(this);
-}
-
-weapon::~weapon() {
-  for(auto x: attacks) {
-    delete x;
-  }
-  g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), this), g_weapons.end());
-}
-
-
 //add entities and mapObjects to g_actors with dc
 actor::actor() {
   //M("actor()");
@@ -3940,7 +3898,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   if(canFight) {
     //check if someone else already made the attack
     //bool cached = 0;
-    hisweapon = new weapon(weaponName, this->faction != 0);
+    //hisweapon = new weapon(weaponName, this->faction != 0);
   }
 
 
@@ -4477,7 +4435,6 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
   this->faction = a->faction;
   this->targetFaction = a->targetFaction;
   this->shadowSize = a->shadowSize;
-  this->hisweapon = a->hisweapon;
   this->visible = a->visible;
   this->name = a->name;
   this->tangible = a->tangible;
@@ -4861,7 +4818,6 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 void entity::move_up() {
   if(stunned) {return;}
   forwardsVelocity = (xagil * (100 - statusSlownPercent));
-  if(shooting) { return;}
   up = true;
   down = false;
   hadInput = 1;
@@ -4869,7 +4825,6 @@ void entity::move_up() {
 
 void entity::stop_verti() {
   yaccel = 0;
-  if(shooting) { return;}
   up = false;
   down = false;
 }
@@ -4879,7 +4834,6 @@ void entity::move_down() {
   forwardsVelocity = (xagil * (100 - statusSlownPercent));
   //y+=xagil;
   //yaccel = (xagil * (100 - statusSlownPercent));
-  if(shooting) { return;}
   down = true;
   up = false;
   hadInput = 1;
@@ -4891,7 +4845,6 @@ void entity::move_left() {
   //x-=xagil;
   //xaccel = -1 * (xagil * (100 - statusSlownPercent));
   //x -= 3;
-  if(shooting) { return;}
   left = true;
   right = false;
   hadInput = 1;
@@ -4899,7 +4852,6 @@ void entity::move_left() {
 
 void entity::stop_hori() {
   xaccel = 0;
-  if(shooting) { return;}
   left = false;
   right = false;
 }
@@ -4910,7 +4862,6 @@ void entity::move_right() {
 
   //x+=xagil;
   //xaccel = (xagil * (100 - statusSlownPercent));
-  if(shooting) { return;}
   right = true;
   left = false;
   hadInput = 1;
@@ -4919,7 +4870,6 @@ void entity::move_right() {
 
 void entity::shoot_up() {
   if(stunned) {return;}
-  shooting = 1;
   up = true;
   down = false;
   hadInput = 1;
@@ -4927,7 +4877,6 @@ void entity::shoot_up() {
 
 void entity::shoot_down() {
   if(stunned) {return;}
-  shooting = 1;
   down = true;
   up = false;
   hadInput = 1;
@@ -4935,7 +4884,6 @@ void entity::shoot_down() {
 
 void entity::shoot_left() {
   if(stunned) {return;}
-  shooting = 1;
   left = true;
   right = false;
   hadInput = 1;
@@ -4943,7 +4891,6 @@ void entity::shoot_left() {
 
 void entity::shoot_right() {
   if(stunned) {return;}
-  shooting = 1;
   //xaccel = xagil;
   right = true;
   left = false;
@@ -6744,11 +6691,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
   }
 
 
-  if(shooting) {
-    //spawn shot.
-    shoot();
-  }
-
   //check for everyone, even if they are invincible
 
   if(g_entityBenchmarking) {
@@ -7407,10 +7349,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
       if(g_protagIsWithinBoardable) {
         rangeToUse = 64 * 3;
-      } else {
-        rangeToUse = this->hisweapon->attacks[hisweapon->combo]->range;
       }
-
       if( XYWorldDistance(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY()) > rangeToUse) {
 
         angleToTarget = atan2(target->getOriginX() - getOriginX(), target->getOriginY() - getOriginY()) - M_PI/2;
@@ -8307,96 +8246,6 @@ void writeSaveFieldString(string field, string value) {
   }
 }
 
-void entity::shoot() {
-  //M("shoot()");
-  if(!tangible) {return;}
-  if(this->cooldown <= 0) {
-    //M("pow pow");
-    if(hisweapon->comboResetMS > hisweapon->maxComboResetMS) {
-      //waited too long- restart the combo
-      hisweapon->combo = 0;
-    }
-    for(float i = 0; (i < this->hisweapon->attacks[hisweapon->combo]->numshots); i++) {
-      if(i > 1000) {
-        //M("Handled an infinite loop");
-        quit = 1;
-        return;
-
-      }
-      cooldown = hisweapon->attacks[hisweapon->combo]->maxCooldown;
-      projectile* p = new projectile(hisweapon->attacks[hisweapon->combo]);
-      p->owner = this;
-      p->x = getOriginX() - p->width/2;
-      p->y = getOriginY() - p->height/2;
-      p->z = z + 20;
-      p->zeight = p->width * XtoZ;
-      p->animation = this->animation;
-      p->flip = this->flip;
-
-      //inherit velo from parent
-      p->xvel = xvel/15;
-      p->yvel = yvel/15;
-      //angle
-      if(up) {
-        if(left) {
-          p->angle = 3 * M_PI / 4;
-
-        } else if (right) {
-          p->angle = M_PI / 4;
-        } else {
-          p->angle = M_PI / 2;
-
-        }
-      } else if (down) {
-        if(left) {
-          p->angle = 5 * M_PI / 4;
-
-        } else if (right) {
-          p->angle = 7 * M_PI / 4;
-
-        } else {
-          p->angle = 3 * M_PI / 2;
-
-        }
-      } else {
-        if(left) {
-          p->angle = M_PI;
-
-        } else if (right) {
-          p->angle = 0;
-
-        } else {
-          //default
-          p->angle = 3 * M_PI / 4;
-
-        }
-      }
-
-      //give it an angle based on attack spread
-      if(hisweapon->attacks[hisweapon->combo]->randomspread != 0) {
-        float randnum = (((float) rand()/RAND_MAX) * 2) - 1;
-        p->angle += (randnum * hisweapon->attacks[hisweapon->combo]->randomspread);
-      }
-      if(hisweapon->attacks[hisweapon->combo]->spread != 0) {
-        p->angle += ( (i - ( hisweapon->attacks[hisweapon->combo]->numshots/2) ) * hisweapon->attacks[hisweapon->combo]->spread);
-      }
-
-      //move it out of the shooter and infront
-      p->x += cos(p->angle) * p->bounds.width;
-      p->y += cos(p->angle + M_PI / 2) * p->bounds.height;
-
-
-
-
-    }
-    hisweapon->combo++;
-
-    if(hisweapon->combo > (int)(hisweapon->attacks.size() - 1)) {hisweapon->combo = 0;}
-    hisweapon->comboResetMS = 0;
-  }
-}
-
-
 //returns true if there was no hit
 //visibility is 1 to check for just navblock (very solid) entities
 // LineTrace definition
@@ -8485,8 +8334,9 @@ textbox::textbox(SDL_Renderer* renderer, const char* fcontent, float size, float
   //  }
 
 
-  textsurface = TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
+  SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+  SDL_FreeSurface(textsurface);
 
   int texW = 0;
   int texH = 0;
@@ -8508,7 +8358,6 @@ textbox::~textbox() {
   g_textboxes.erase(remove(g_textboxes.begin(), g_textboxes.end(), this), g_textboxes.end());
   //TTF_CloseFont(font);
   SDL_DestroyTexture(texttexture);
-  SDL_FreeSurface(textsurface);
 }
 
 float getShadowOffset(float fontsize) {
@@ -8614,9 +8463,9 @@ void textbox::updateText(string content, float size, float fwidth, SDL_Color fco
     size = fontsize;
   }
   SDL_DestroyTexture(texttexture);
-  SDL_FreeSurface(textsurface);
-  textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), fcolor, fwidth * WIN_WIDTH);
+  SDL_Surface *textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), fcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+  SDL_FreeSurface(textsurface);
   int texW = 0;
   int texH = 0;
   SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
@@ -9303,9 +9152,6 @@ void clear_map(camera& cameraToReset) {
       D(g_meshFloors.size());
       for(auto &x : g_meshFloors) {
         if(x->visible) {
-          D(x->textureAddress);
-          D(x->ggridPiece);
-          D(x->numVertices); //this is about to crash atm
           SDL_Vertex v[x->numVertices];
           for(int i = 0; i < x->numVertices; i++) {
             v[i] = x->vertex[i];
@@ -10186,54 +10032,6 @@ void clear_map(camera& cameraToReset) {
 
   g_particles.clear();
 
-  //used to delete attacks and then weapons
-  //but that's going to cause a segfault since weapons
-  //delete their own attacks
-  //  size = g_attacks.size();
-  //  bool contflag = 0;
-  //  for(int i = 0; i < size; i++) {
-  //    for(auto x : protag->hisweapon->attacks) {
-  //      if(x == g_attacks[0]) {
-  //        swap(g_attacks[0], g_attacks[g_attacks.size()-1]);
-  //        contflag = 1;
-  //        break;
-  //
-  //
-  //      }
-  //
-  //    }
-  //    if(!contflag) {
-  //      delete g_attacks[0];
-  //    }
-  //  }
-
-  //party is unarmed so this is unneccessary
-  //  vector<weapon*> persistentweapons;
-  //  size = (int)g_weapons.size();
-  //  for(int i = 0; i < size; i++) {
-  //    bool persist = false;
-  //    //check if party members own the weapons
-  //    for(auto x: party) {
-  //      if(x->hisweapon->name == g_weapons[0]->name) {
-  //        persist  = true;
-  //      }
-  //    }
-  //    if(g_weapons[0]->persistent) {
-  //      persist = true;
-  //
-  //    }
-  //    if(persist) {
-  //      persistentweapons.push_back(g_weapons[0]);
-  //      g_weapons.erase(remove(g_weapons.begin(), g_weapons.end(), g_weapons[0]), g_weapons.end());
-  //    } else {
-  //      delete g_weapons[0];
-  //    }
-  //  }
-  //
-  //  for(auto x : persistentweapons) {
-  //    g_weapons.push_back(x);
-  //  }
-
   M("Delete g_ui");
   vector<ui*> persistentui;
   size = (int)g_ui.size();
@@ -10931,7 +10729,6 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
       b->persistent = true;
       b->show = 0;
       kiIcons.push_back(b);
-
       curY+=yinc;
     }
 
@@ -11027,8 +10824,8 @@ void adventureUI::initFullUI() {
   //    tastePicture->priority = -10; //taste is behind everything
   //    tastePicture->show = 1;
 
-  adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
-  adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
+//  adventureUIManager->tungShakeDurationMs = adventureUIManager->maxTungShakeDurationMs;
+//  adventureUIManager->tungShakeIntervalMs = adventureUIManager->maxTungShakeIntervalMs + rand() % adventureUIManager->tungShakeIntervalRandomMs;
 
   //    hungerPicture = new ui(renderer, "resources/static/ui/hunger.qoi", 0.8, 0.6, 0.25, 1, -15);
   //    hungerPicture->persistent = 1;
@@ -11042,8 +10839,8 @@ void adventureUI::initFullUI() {
   //    hungerPicture->priority = -10; //hunger is behind everything
   //    hungerPicture->show = 0;
 
-  adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
-  adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
+//  adventureUIManager->stomachShakeDurationMs = adventureUIManager->maxstomachShakeDurationMs;
+//  adventureUIManager->stomachShakeIntervalMs = adventureUIManager->maxstomachShakeIntervalMs + rand() % adventureUIManager->stomachShakeIntervalRandomMs;
 
   //  healthPicture = new ui(renderer, "resources/static/ui/health.qoi", -0.04, -0.09, 0.25, 1, -15);
   //  healthPicture->persistent = 1;
@@ -11056,34 +10853,60 @@ void adventureUI::initFullUI() {
   //  healthPicture->widthGlideSpeed = 0.1;
   //  healthPicture->priority = -10; //health is behind everything
 
-  emotion = new ui(renderer, "resources/static/ui/emoticons.qoi", 0, 0, 0.05, 0.05, -15);
-  emotion->persistent = 1;
-  emotion->heightFromWidthFactor = 1;
-  emotion->show = 0;
-  emotion->framewidth = 64;
-  emotion->frameheight = 64;
-  emotion->priority = 0;
+//  emotion = new ui(renderer, "resources/static/ui/emoticons.qoi", 0, 0, 0.05, 0.05, -15);
+//  emotion->persistent = 1;
+//  emotion->heightFromWidthFactor = 1;
+//  emotion->show = 0;
+//  emotion->framewidth = 64;
+//  emotion->frameheight = 64;
+//  emotion->priority = 0;
 
 }
 
 adventureUI::~adventureUI()
 {
-  if (this->playersUI)
-  {
-    Mix_FreeChunk(blip);
-    Mix_FreeChunk(confirm_noise);
-  }
-
-  if(!light) {
+  if(!this->light) {
     delete talkingBox;
+    delete dialogProceedIndicator;
     delete talkingText;
-
+    delete responseText;
     delete inventoryA;
     delete inventoryB;
+    delete crosshair;
+    delete b0_element;
+    delete escText;
+    delete inputText;
+    delete amCurrencyPanel;
+    delete amCurrencyText;
+    delete qPanel;
+    delete qHand;
+    for(int i = 0; i < 5; i++) {
+      delete qTextboxes[i];
+    }
     delete amPanel;
     for(int i = 0; i < 6; i++) {
       delete amTextboxes[i];
     }
+    delete amPicker;
+    delete kiPanel;
+    delete kiPicker;
+    delete kiPrecede;
+    delete kiAdvance;
+    for(int i = 0; i < 6; i++) {
+      delete kiTextboxes[i];
+      delete kiIcons[i];
+    }
+    kiTextboxes.clear();
+    kiIcons.clear();
+    delete dialogpointer;
+    delete dialogpointergap;
+    delete stPanel;
+    delete stTextbox;
+    delete stTextbox2;
+    delete stTextbox3;
+    delete stTextbox4;
+    delete displayChar;
+
   }
 
 }

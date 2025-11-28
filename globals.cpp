@@ -70,6 +70,8 @@ vector<impliedSlopeTri *> g_impliedSlopeTris; //same as g_impliedSlopes, but for
 
 vector<textbox *> g_textboxes;
 
+vector<fontmem> g_fontmems;
+
 vector<ui *> g_ui;
 
 vector<actor *> g_actors;
@@ -109,8 +111,6 @@ vector<listener *> g_listeners;
 vector<projectile *> g_projectiles;
 
 vector<attack *> g_attacks;
-
-vector<weapon *> g_weapons;
 
 vector<particle *> g_particles;
 
@@ -191,9 +191,6 @@ bool g_showMeshCollision = 0;
 bool g_collisionResolverOn = 1; //also referred to as "jiggling" ents out of solid collisions
 bool g_showCRMessages = 0; //collisionResolver messages
 
-bool onionmode = 0; // hide custom graphics
-
-
 //I worked to make implied slopes and triangular slopes to work realistically, in 
 //that they would push the player away like walls but if the player jumped they could
 //jump on top of the slope, and that would be best for 3d levels
@@ -207,7 +204,7 @@ const bool g_useSimpleImpliedGeometry = 1;
 bool freecamera = 0;
 bool devMode = 1;
 const bool g_ship = 0; //!!!
-const bool g_linux = 0;
+const bool g_linux = 0; //onionmode
 string g_language = "english";
 string g_secondaryLanguagePack = "";
 bool canSwitchOffDevMode = 0;

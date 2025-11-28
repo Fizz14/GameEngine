@@ -14,7 +14,7 @@ map<string, pair<int, int>> secondaryLanguagePackIndices;
 
 SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
 {
-  if(g_linux) {
+  if(g_linux) { //onionmode
     fileaddress = "resources/static/sprites/common/onion.bmp";
   }
   if(PHYSFS_exists(fileaddress.c_str())) 
@@ -38,6 +38,7 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
     SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
     SDL_Texture* texture = IMG_LoadTextureTyped_RW(renderer, myWop, 1, ".qoi");
     PHYSFS_close(myfile);
+    delete[] buf;
     return texture;
 
   } else {
@@ -73,6 +74,7 @@ SDL_Surface* loadSurface(string fileaddress)
     SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
     SDL_Surface* surface = IMG_LoadTyped_RW(myWop, 1, ".qoi");
     PHYSFS_close(myfile);
+    delete[] buf;
     return surface;
 
   } else {
@@ -106,6 +108,7 @@ Mix_Chunk* loadWav(string fileaddress)
     SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
     Mix_Chunk* myChunk = Mix_LoadWAV_RW(myWop, 1);
     PHYSFS_close(myfile);
+    delete[] buf;
     return myChunk;
 
   } else {
@@ -209,7 +212,7 @@ string loadTextAsString(string fileaddress)
 }
 
 
-TTF_Font* loadFont(string fileaddress, float fontsize)
+fontmem loadFont(string fileaddress, float fontsize)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
@@ -231,11 +234,14 @@ TTF_Font* loadFont(string fileaddress, float fontsize)
     int length_read = PHYSFS_readBytes(myfile, buf, filesize);
 
     PHYSFS_close(myfile);
-    TTF_Font* ret;
+    //TTF_Font* ret;
+    fontmem ret;
     SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
-    ret = TTF_OpenFontRW(myWop, 1, fontsize);
+    ret.font = TTF_OpenFontRW(myWop, 1, fontsize);
+    ret.buf = buf;
 
-    //delete buf; //leak?
+    //Do Not delete the buf here
+    //delete[] buf; <- No
     return ret;
 
   } else {
@@ -271,6 +277,7 @@ Mix_Music* loadMusic(string fileaddress)
     Mix_Music* ret = Mix_LoadMUS_RW(myWop, 1);
 
     PHYSFS_close(myfile);
+    delete[] buf;
     return ret;
 
   } else {
@@ -469,6 +476,7 @@ string getLanguageData(string handle) {
     }
 
     string ret = myString.substr(pos+2, myString.size()-(pos+2));
+    delete[] buf;
     return ret;
 
 

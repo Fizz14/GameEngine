@@ -8,6 +8,7 @@
 #include <string>
 #include "physfs.h"
 #include "globals.h"
+#include "objects.h"
 #include <locale>
 #include <codecvt>
 
@@ -32,7 +33,7 @@ vector<string> loadText(string fileaddress);
 
 string loadTextAsString(string fileaddress);
 
-TTF_Font* loadFont(string fileaddress, float fontsize);
+fontmem loadFont(string fileaddress, float fontsize);
 
 Mix_Music* loadMusic(string fileaddress);
 

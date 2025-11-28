@@ -2340,56 +2340,6 @@ void ExplorationLoop() {
     protag->cooldown = 0;
   }
 
-
-  // cycle right if the current character dies
-//  if ((input[9] && !oldinput[9]) || protag->hp <= 0)
-//  {
-//    // keep switching if we switch to a dead partymember
-//    int i = 0;
-//
-//    if (party.size() > 1 && protag->cooldown <= 0)
-//    {
-//      do
-//      {
-//        M("Cycle party right");
-//        std::rotate(party.begin(), party.begin() + 1, party.end());
-//        protag->tangible = 0;
-//        protag->flashingMS = 0;
-//        party[0]->tangible = 1;
-//        party[0]->x = protag->getOriginX() - party[0]->bounds.x - party[0]->bounds.width / 2;
-//        party[0]->y = protag->getOriginY() - party[0]->bounds.y - party[0]->bounds.height / 2;
-//        party[0]->z = protag->z;
-//        party[0]->xvel = protag->xvel;
-//        party[0]->yvel = protag->yvel;
-//        party[0]->zvel = protag->zvel;
-//
-//        party[0]->animation = protag->animation;
-//        party[0]->flip = protag->flip;
-//        protag->zvel = 0;
-//        protag->xvel = 0;
-//        protag->yvel = 0;
-//        protag->zaccel = 0;
-//        protag->xaccel = 0;
-//        protag->yaccel = 0;
-//        protag = party[0];
-//        protag->shadow->x = protag->x + protag->shadow->xoffset;
-//        protag->shadow->y = protag->y + protag->shadow->yoffset;
-//        g_focus = protag;
-//        protag->curheight = 0;
-//        protag->curwidth = 0;
-//        g_cameraShove = protag->hisweapon->attacks[0]->range / 2;
-//        // prevent infinite loop
-//        i++;
-//        if (i > 600)
-//        {
-//          M("Avoided infinite loop: no living partymembers yet no essential death. (Did the player's party contain at least one essential character?)");
-//          break;
-//          quit = 1;
-//        }
-//      } while (protag->hp <= 0);
-//    }
-//  }
-
   SDL_RenderClear(renderer);
 
   if (g_backgroundLoaded && g_useBackgrounds)
@@ -3700,19 +3650,22 @@ void ExplorationLoop() {
 
  std::map<mesh*, std::vector<SDL_Vertex>> vbuffer;
 
- M("Time for the first pass");
+ //M("Time for the first pass");
 for (auto &x : g_meshFloors) {
     if (x->visible && x->awake) {
         std::vector<SDL_Vertex> v(x->numVertices);
-        M("A");
+        //M("A");
         for (int i = 0; i < x->numVertices; i++) {
             v[i] = x->vertex[i];
             v[i].position.x += x->origin.x - g_camera.x;
             v[i].position.y += x->origin.y - g_camera.y;
             v[i].color.a = x->vertex[i].color.a;
         }
+        SDL_RenderGeometry(renderer, x->texture,
+                           v.data(), x->numVertices,
+                           x->indices, x->numIndices);
 
-        M("B");
+        //M("B");
         // shade pass
         for (int i = 0; i < x->numVertices; i++) {
             v[i].tex_coord.x = x->vertexExtraData[i].first;
@@ -3720,7 +3673,7 @@ for (auto &x : g_meshFloors) {
             v[i].color = {255, 255, 255, 255};
         }
 
-        M("C");
+        //M("C");
         if (x->useTrim) {
             vbuffer[x] = v; // copy into map
         }
@@ -3728,11 +3681,11 @@ for (auto &x : g_meshFloors) {
         SDL_RenderGeometry(renderer, g_floorShadeTexture,
                            v.data(), x->numVertices,
                            x->indices, x->numIndices);
-        M("D");
+        //M("D");
     }
 }
 
-M("Time for the second pass");
+//M("Time for the second pass");
 // second pass
 for (auto &x : g_meshFloors) {
     if (x->visible && x->awake && x->useTrim) {
@@ -3742,7 +3695,7 @@ for (auto &x : g_meshFloors) {
                            x->indices, x->numIndices);
     }
 }
-M("Finished both passes");
+//M("Finished both passes");
 
   //decorative meshes
   for(auto &x : g_meshDecorative) {
@@ -4967,10 +4920,14 @@ int WinMain()
 
   // font
   g_font = "resources/engine/fonts/Rubik-Bold.ttf";
-  g_ttf_fontLarge = loadFont(g_font, 60);
-  g_ttf_fontMedium = loadFont(g_font, 55);
-  g_ttf_fontSmall = loadFont(g_font, 40);
-  g_ttf_fontTiny = loadFont(g_font, 20);
+  g_fontmems.push_back(loadFont(g_font, 60));
+  g_fontmems.push_back(loadFont(g_font, 55));
+  g_fontmems.push_back(loadFont(g_font, 40));
+  g_fontmems.push_back(loadFont(g_font, 20));
+  g_ttf_fontLarge = g_fontmems[0].font;
+  g_ttf_fontMedium = g_fontmems[1].font;
+  g_ttf_fontSmall = g_fontmems[2].font;
+  g_ttf_fontTiny = g_fontmems[3].font;
 
   // setup UI
   adventureUIManager = new adventureUI(renderer);
@@ -5714,6 +5671,13 @@ int WinMain()
 
 
 
+
+    for(auto x : g_meshes) {
+      x->storedInMeshVectors = 0; //when these are deleted don't try to remove them from the lists we use for meshes
+                                  //which are loaded/unloaded for a given map
+    }
+
+
     // Transfer meshes to g_OPMeshes
     g_OPMeshes.insert(g_OPMeshes.end(), g_meshes.begin(), g_meshes.end());
     g_meshes.clear(); // Clear the original mesh vector
@@ -6140,16 +6104,43 @@ int WinMain()
     SDL_DestroyTexture(frame);
     SDL_GL_SetSwapInterval(1);
   }
-  //clear_map(g_camera);
+  g_levelFlashing = 1; //don't do the outwipe again
+  clear_map(g_camera);
   delete adventureUIManager;
+  delete lossUIManager;
   delete combatUIManager;
   delete titleUIManager;
-  delete lossUIManager;
+  delete[] g_wPixels;
+  SDL_FreeSurface(g_wDistort);
+  SDL_DestroyTexture(g_wSpec);
+
+  for(auto x : g_staticSounds) {
+    Mix_FreeChunk(x);
+  }
+  g_staticSounds.clear();
+
+  for(auto x : g_OPChunks) {
+    if(x->floor != 0) delete x->floor;
+    if(x->wall != 0) delete x->wall;
+    if(x->collision != 0) delete x->collision;
+    if(x->occluder != 0) delete x->occluder;
+    if(x->decorative != 0) delete x->decorative;
+    delete x;
+  }
+
+  for(auto x : g_fontmems) {
+    TTF_CloseFont(x.font);
+    delete[] x.buf;
+  }
+
+  SDL_FreeSurface(transitionSurface);
+  SDL_DestroyTexture(background);
+  SDL_DestroyTexture(spotlightTexture);
+  SDL_DestroyTexture(blackbarTexture);
+
   close_map_writing();
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
-  SDL_FreeSurface(transitionSurface);
-  SDL_DestroyTexture(background);
   IMG_Quit();
   Mix_CloseAudio();
   TTF_Quit();
@@ -6545,7 +6536,6 @@ void getExplorationInput(float &elapsed)
   protag_can_move = !protag_is_talking;
   if (protag_can_move)
   {
-    protag->shooting = 0;
     protag->left = 0;
     protag->right = 0;
     protag->up = 0;
@@ -7128,7 +7118,6 @@ void getExplorationInput(float &elapsed)
                                                 //clear all behemoths
           for(auto &x : g_dungeonBehemoths) {
             x.ptr->persistentGeneral = 0;
-            x.ptr->hisweapon->persistent = 0;
             for(auto &y : x.ptr->spawnlist) {
               y->persistentGeneral = 0;
             }
@@ -7635,7 +7624,6 @@ void getExplorationInput(float &elapsed)
           n.ptr->x = 0;
           n.ptr->y = 0;
           n.ptr->persistentGeneral = 1;
-          n.ptr->hisweapon->persistent = 1;
           n.ptr->tangible = 0;
           if(!setFirst) { 
             n.waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor; 
@@ -8133,7 +8121,6 @@ void dungeonFlash() {
     //clear all behemoths
     for(auto &x : g_dungeonBehemoths) {
       x.ptr->persistentGeneral = 0;
-      x.ptr->hisweapon->persistent = 0;
       x.ptr->current = nullptr;
       x.ptr->dest = nullptr;
       x.ptr->Destination = nullptr;

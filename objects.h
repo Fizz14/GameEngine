@@ -500,26 +500,6 @@ class attack {
 };
 
 
-class weapon {
-  public:
-    string name;
-    int combo = 0;
-    float maxComboResetMS = 1000;
-    float comboResetMS = 0;
-    vector<attack*> attacks;
-
-    int persistent = 0;
-
-    weapon();
-
-    //add constructor and field on entity object
-    //second param should be 0 for entities
-    //that could join the party and 1 otherwise
-    weapon(string fname, bool tryToShareGraphics); 
-
-    ~weapon(); 
-};
-
 //anything that exists in the 3d world
 class actor {
   public:
@@ -1479,7 +1459,6 @@ class entity:public actor {
     vector<coord> framespots;
     bool up = 0;bool down = 0; bool left = 0; bool right = 0; //for chusing one of 8 animations for facing
     bool hadInput = 0; //had input this frame;
-    int shooting = 0; //1 if character is shooting
 
     int opacity = 255; //opacity from 0 to 255, used for hiding shaded entities.
     
@@ -1573,7 +1552,6 @@ class entity:public actor {
     string datastr[15] = {""};
 
     //combat
-    weapon* hisweapon = 0;
     bool canFight = 1;
     bool invincible = 0;
     float invincibleMS = 0; //ms before setting invincible to 0
@@ -1806,8 +1784,6 @@ class entity:public actor {
 
     void unsolidify(); 
 
-    void shoot();
-
     //entity render function
     void render(SDL_Renderer * renderer, camera fcamera); 
 
@@ -1932,9 +1908,15 @@ string readSaveStringField(string field);
 
 void writeSaveFieldString(string field, string value); 
 
+class fontmem {
+  public:
+    TTF_Font* font;
+    char* buf;
+};
+
 class textbox {
   public:
-    SDL_Surface* textsurface = 0;
+    //SDL_Surface* textsurface = 0;
     SDL_Texture* texttexture = 0;
     SDL_Color textcolor = { 155, 115, 115 };
     SDL_Color textcolormod = {255, 255, 255}; //for changing color without re-rendering the texture, used in comba

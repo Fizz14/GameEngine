@@ -72,6 +72,7 @@ public:
 
   SDL_Texture* trimTexture = NULL;
 
+  bool storedInMeshVectors = 1;
   vector<SDL_Vertex> vbuffer;
 
   bool useTrim = 0;

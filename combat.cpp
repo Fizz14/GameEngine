@@ -4220,12 +4220,54 @@ combatUI::combatUI(SDL_Renderer* renderer) {
 }
 
 combatUI::~combatUI() {
+  for(int i = 0; i < 4; i++) {
+    delete partyHealthBoxes[i];
+    delete partyNameTextboxes[i];
+    delete partyHealthDescripterTextboxes[i];
+    delete partyHealthTextboxes[i];
+    delete partyManaDescripterTextboxes[i];
+    delete partyManaTextboxes[i];
+  }
+
   delete mainPanel;
   delete dialogProceedIndicator;
   delete mainText;
   delete optionsPanel;
   delete optionsText;
+  delete optionsMiniText;
   delete menuPicker;
+  delete targetPanel;
+  delete targetText;
+  delete inventoryPanel;
+  delete inventoryText;
+  delete spiritPanel;
+  delete spiritText;
+  delete forgetPanel;
+  delete forgetText;
+  delete forgetPicker;
+  delete forgetInfoPanel;
+  delete forgetInfoText;
+  delete spiritInfoPanel;
+  delete spiritInfoText;
+  delete yes;
+  delete no;
+  delete confirmPicker;
+  delete dodgePanel;
+  delete useOrDiscardPanel;
+  delete useOrDiscardUseText;
+  delete useOrDiscardDiscardText;
+  delete udInfoText;
+  delete useOrDiscardMenuPicker;
+  SDL_DestroyTexture(fommDodgerTex);
+  SDL_DestroyTexture(nehetenDodgerTex);
+  SDL_DestroyTexture(blishDodgerTex);
+  SDL_DestroyTexture(dafuaDodgerTex);
+  SDL_DestroyTexture(bulletTexture);
+
+ 
+  SDL_DestroyTexture(rendertarget);
+  SDL_FreeSurface(db1);
+
 }
 
 void drawOptionsPanel() {

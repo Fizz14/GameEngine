@@ -48,7 +48,7 @@ lossUI::lossUI() {
   no->dropshadow = 1;
   no->align = 2;
 
-  handMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", 0.5, 0.65, 0.1, 1, 2);
+  handMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.5, 0.65, 0.1, 1, 2);
   handMarker->persistent = 1;
   handMarker->show = 1;
   handMarker->priority = 3;
@@ -70,9 +70,12 @@ lossUI::lossUI() {
 lossUI::~lossUI() {
   SDL_DestroyTexture(protag);
   SDL_DestroyTexture(floor);
+  SDL_DestroyTexture(shadow);
+
   delete splat;
   delete yes;
   delete no;
+  delete handMarker;
 }
 
 void getLossInput() {
