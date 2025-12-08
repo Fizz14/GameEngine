@@ -7,22 +7,22 @@
 #include <regex>
 
 void loadPalette(SDL_Renderer* renderer, const char* filePath, std::vector<Uint32>& palette) {
-  // Load the image into a surface
-  SDL_Surface* surface = IMG_Load(filePath);
-  if (!surface) {
-    std::cout << "Unable to load image! SDL_image Error: " << IMG_GetError() << std::endl;
-  }
-
-  SDL_PixelFormat* format = SDL_AllocFormat(SDL_PIXELFORMAT_RGBA8888); 
-  for (int x = 0; x < 16; ++x) { 
-    Uint32 pixel = ((Uint32*)surface->pixels)[x]; 
-    Uint8 r, g, b, a; 
-    SDL_GetRGBA(pixel, surface->format, &r, &g, &b, &a); 
-    Uint32 mappedColor = SDL_MapRGBA(format, a, r, g, b); 
-    palette.push_back(mappedColor); 
-  }
-
-  SDL_FreeSurface(surface);
+//  // Load the image into a surface
+//  SDL_Surface* surface = IMG_Load(filePath);
+//  if (!surface) {
+//    //std::cout << "Unable to load image! SDL_image Error: " << IMG_GetError() << std::endl;
+//  }
+//
+//  SDL_PixelFormat* format = SDL_AllocFormat(SDL_PIXELFORMAT_RGBA8888); 
+//  for (int x = 0; x < 16; ++x) { 
+//    Uint32 pixel = ((Uint32*)surface->pixels)[x]; 
+//    Uint8 r, g, b, a; 
+//    SDL_GetRGBA(pixel, surface->format, &r, &g, &b, &a); 
+//    Uint32 mappedColor = SDL_MapRGBA(format, a, r, g, b); 
+//    palette.push_back(mappedColor); 
+//  }
+//
+//  SDL_DestroySurface(surface);
 }
 
 dropInfo::dropInfo() {
@@ -362,7 +362,11 @@ bground::bground(SDL_Renderer* renderer, const char* configFilePath) {
 // Warp effect function implementation
 void applyWarpEffect(SDL_Texture* texture, SDL_Renderer* renderer, float time, bool interleaved, float horizontalWaveIntensity, float horizontalWavePeriod, float verticalWaveIntensity, float verticalWavePeriod, float scrollXMagnitude, float scrollYMagnitude) {
   int width, height;
-  SDL_QueryTexture(texture, NULL, NULL, &width, &height);
+  //SDL_QueryTexture(texture, NULL, NULL, &width, &height);
+
+  SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+  width = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  height = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
 
   SDL_Texture* warpedTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, width, height);
   SDL_SetRenderTarget(renderer, warpedTexture);
@@ -386,19 +390,19 @@ void applyWarpEffect(SDL_Texture* texture, SDL_Renderer* renderer, float time, b
     int srcX = (static_cast<int>(offsetX + scrollX)) % width;
     if (srcX < 0) srcX += width;
 
-    SDL_Rect srcRect1 = {srcX, srcY, width - srcX, 1};
-    SDL_Rect destRect1 = {0, y, width - srcX, 1};
-    SDL_RenderCopy(renderer, texture, &srcRect1, &destRect1);
+    SDL_FRect srcRect1 = {srcX, srcY, width - srcX, 1};
+    SDL_FRect destRect1 = {0, y, width - srcX, 1};
+    SDL_RenderTexture(renderer, texture, &srcRect1, &destRect1);
 
     if (srcX > 0) {
-      SDL_Rect srcRect2 = {0, srcY, srcX, 1};
-      SDL_Rect destRect2 = {width - srcX, y, srcX, 1};
-      SDL_RenderCopy(renderer, texture, &srcRect2, &destRect2);
+      SDL_FRect srcRect2 = {0, srcY, srcX, 1};
+      SDL_FRect destRect2 = {width - srcX, y, srcX, 1};
+      SDL_RenderTexture(renderer, texture, &srcRect2, &destRect2);
     }
   }
 
   SDL_SetRenderTarget(renderer, NULL);
-  SDL_RenderCopy(renderer, warpedTexture, NULL, NULL);
+  SDL_RenderTexture(renderer, warpedTexture, NULL, NULL);
   SDL_DestroyTexture(warpedTexture);
 }
 
@@ -485,7 +489,7 @@ void drawBackground() {
 }
 
 void drawSimpleBackground() {
-  SDL_RenderCopy(renderer, combatUIManager->scene, NULL, NULL);
+  SDL_RenderTexture(renderer, combatUIManager->scene, NULL, NULL);
 }
 
 //careful
@@ -697,7 +701,11 @@ combatant::combatant(string ffilename, int fxp) {
   level = xpToLevel(xp);
 
   int fw, fh;
-  SDL_QueryTexture(texture, NULL, NULL, &fw, &fh);
+  //SDL_QueryTexture(texture, NULL, NULL, &fw, &fh);
+
+  SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+  fw = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  fh = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
 
   width = fw;
   height = fh; 
@@ -4213,7 +4221,8 @@ combatUI::combatUI(SDL_Renderer* renderer) {
 
   rendertarget = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, 1024, 1024);
 
-  db1 = SDL_CreateRGBSurface(0, 512, 512, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+  //db1 = SDL_CreateRGBSurface(0, 512, 512, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+  db1 = SDL_CreateSurface(512, 512, SDL_GetPixelFormatForMasks(32, 10, 10, 10, 255));
 
 
 
@@ -4266,7 +4275,7 @@ combatUI::~combatUI() {
 
  
   SDL_DestroyTexture(rendertarget);
-  SDL_FreeSurface(db1);
+  SDL_DestroySurface(db1);
 
 }
 
@@ -4591,7 +4600,7 @@ void drawCombatants() {
       actual_height += distFromCenter *2;
 
 
-      SDL_Rect renderQuad = { x, y, actual_width, actual_height };
+      SDL_FRect renderQuad = { x, y, actual_width, actual_height };
       combatant->renderQuad = renderQuad;
     }
 
@@ -4603,7 +4612,7 @@ void drawCombatants() {
     }
 
     // Render the combatant
-    SDL_RenderCopy(renderer, combatant->texture, nullptr, &combatant->renderQuad);
+    SDL_RenderTexture(renderer, combatant->texture, nullptr, &combatant->renderQuad);
 
     // Update xCenter for the next combatant
     xCenter += gap;
@@ -4614,13 +4623,13 @@ void drawCombatants() {
     if(x->disappearing && x->opacity-1 > 0) {
       x->opacity-=5;
     }
-    SDL_RenderCopy(renderer, x->texture, nullptr, &x->renderQuad);
+    SDL_RenderTexture(renderer, x->texture, nullptr, &x->renderQuad);
   }
 
   SDL_SetTextureAlphaMod(g_shade, g_dungeonDarkEffect);
 
   if(g_gamemode != gamemode::EXPLORATION) {
-    SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+    SDL_RenderTexture(renderer, g_shade, NULL, NULL);
   }
 
   count = g_partyCombatants.size();
@@ -4826,7 +4835,7 @@ void CombatLoop() {
   drawCombatants();
   B("drawCombatants()");
 
-  SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+  SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
 
   switch (g_submode) {
@@ -4898,11 +4907,11 @@ void CombatLoop() {
         SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
 
         memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-        Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-        SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
-        Uint32 *pixels = (Uint32 *)transitionPixelReference;
-        // int numPixels = transitionImageWidth * transitionImageHeight;
-        Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
+        //Uint32 format = SDL_PIXELFORMAT_ARGB8888;
+        SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+        const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
+        Uint32* pixels = (Uint32*)transitionPixelReference;
+        Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
         // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
         transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
         for (int x = 0; x < transitionImageWidth; x++)
@@ -4926,7 +4935,7 @@ void CombatLoop() {
 //        elapsed = ticks - lastticks;
 
         SDL_UnlockTexture(transitionTexture);
-        SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+        SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
 
         if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
         {
@@ -4979,7 +4988,7 @@ void CombatLoop() {
           }
           drawCombatants();
 
-          SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+          SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
@@ -4990,10 +4999,10 @@ void CombatLoop() {
             SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
 
             memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-            Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-            SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+            SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+            const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
             Uint32* pixels = (Uint32*)pixelReference;
-            Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+            Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
 
             offset += g_transitionSpeed + 0.02 * offset;
 
@@ -5029,7 +5038,7 @@ void CombatLoop() {
 
             SDL_RenderClear(renderer);
             //render last frame
-            //SDL_RenderCopy(renderer, frame, NULL, NULL);
+            //SDL_RenderTexture(renderer, frame, NULL, NULL);
             if(combatUIManager->loadedBackground.scene[0] == '>') {
               drawBackground();
             } else {
@@ -5038,17 +5047,17 @@ void CombatLoop() {
 
             drawCombatants();
 
-            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+            SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
-            SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+            SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
 
             if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
               cont = 1;
             }
           }
-          SDL_FreeSurface(transitionSurface);
+          SDL_DestroySurface(transitionSurface);
           SDL_DestroyTexture(transitionTexture);
           SDL_DestroyTexture(frame);
           SDL_GL_SetSwapInterval(1);
@@ -5125,7 +5134,7 @@ void CombatLoop() {
           }
           drawCombatants();
 
-          SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+          SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
@@ -5136,10 +5145,10 @@ void CombatLoop() {
             SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
 
             memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-            Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-            SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+            SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+            const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
             Uint32* pixels = (Uint32*)pixelReference;
-            Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+            Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
 
             offset += g_transitionSpeed + 0.02 * offset;
 
@@ -5175,7 +5184,7 @@ void CombatLoop() {
 
             SDL_RenderClear(renderer);
             //render last frame
-            //SDL_RenderCopy(renderer, frame, NULL, NULL);
+            //SDL_RenderTexture(renderer, frame, NULL, NULL);
             if(combatUIManager->loadedBackground.scene[0] == '>') {
               drawBackground();
             } else {
@@ -5184,17 +5193,17 @@ void CombatLoop() {
 
             drawCombatants();
 
-            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+            SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
-            SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+            SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
 
             if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
               cont = 1;
             }
           }
-          SDL_FreeSurface(transitionSurface);
+          SDL_DestroySurface(transitionSurface);
           SDL_DestroyTexture(transitionTexture);
           SDL_DestroyTexture(frame);
           SDL_GL_SetSwapInterval(1);
@@ -5256,7 +5265,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -5790,7 +5799,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -6179,7 +6188,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -6355,7 +6364,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -6539,7 +6548,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -6692,7 +6701,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -6764,7 +6773,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -6874,7 +6883,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -6949,7 +6958,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -7071,7 +7080,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -7450,7 +7459,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -7720,7 +7729,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -7835,7 +7844,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -7959,7 +7968,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8036,7 +8045,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8111,7 +8120,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8186,7 +8195,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8260,7 +8269,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8354,7 +8363,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8440,7 +8449,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8548,7 +8557,7 @@ void CombatLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -8674,7 +8683,7 @@ void CombatLoop() {
           }
         }
       }
-      SDL_Rect drect;
+      SDL_FRect drect;
       drect.x = combatUIManager->dodgerX - combatUIManager->dodgerWidth/2;
       drect.y = combatUIManager->dodgerY - combatUIManager->dodgerHeight/2;
       drect.w = combatUIManager->dodgerWidth;
@@ -8694,9 +8703,9 @@ void CombatLoop() {
 
 
         SDL_SetTextureColorMod(combatUIManager->dodgerTexture, 255*0.7, 255*0.7, 255*0.7);
-        //SDL_RenderCopy(renderer, combatUIManager->dodgerTexture, NULL, &drect);
-        SDL_Point center = {drect.w/2,drect.h/2};
-        SDL_RenderCopyEx(renderer, combatUIManager->dodgerTexture, NULL, &drect, combatUIManager->dodgerAngle, &center, SDL_FLIP_NONE);
+        //SDL_RenderTexture(renderer, combatUIManager->dodgerTexture, NULL, &drect);
+        SDL_FPoint center = {drect.w/2,drect.h/2};
+        SDL_RenderTextureRotated(renderer, combatUIManager->dodgerTexture, NULL, &drect, combatUIManager->dodgerAngle, &center, SDL_FLIP_NONE);
         combatUIManager->dodgerAngle += combatUIManager->dodgerAngleDelta * (double)elapsed / 16.0;
 
             
@@ -8706,8 +8715,8 @@ void CombatLoop() {
         drect.w -= 16;
         drect.h -= 16;
         center = {drect.w/2,drect.h/2};
-        //SDL_RenderCopy(renderer, combatUIManager->dodgerTexture, NULL, &drect);
-        SDL_RenderCopyEx(renderer, combatUIManager->dodgerTexture, NULL, &drect, combatUIManager->dodgerAngle, &center, SDL_FLIP_NONE);
+        //SDL_RenderTexture(renderer, combatUIManager->dodgerTexture, NULL, &drect);
+        SDL_RenderTextureRotated(renderer, combatUIManager->dodgerTexture, NULL, &drect, combatUIManager->dodgerAngle, &center, SDL_FLIP_NONE);
       }
 
 
@@ -8723,13 +8732,13 @@ void CombatLoop() {
 
     SDL_SetRenderTarget(renderer, NULL);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-    SDL_Rect dstrect;
+    SDL_FRect dstrect;
     float padding = 0.04;
     dstrect.x = (combatUIManager->dodgePanel->x + padding/2) * WIN_WIDTH;
     dstrect.y = (combatUIManager->dodgePanel->y + (padding*combatUIManager->aspect)/2) * WIN_HEIGHT;
     dstrect.w = (combatUIManager->dodgePanel->width - padding) * WIN_WIDTH;
     dstrect.h = (combatUIManager->dodgePanel->height - (padding*combatUIManager->aspect))* WIN_HEIGHT;
-    SDL_RenderCopy(renderer, combatUIManager->rendertarget, NULL, &dstrect);
+    SDL_RenderTexture(renderer, combatUIManager->rendertarget, NULL, &dstrect);
   }
 
   if(g_submode== submode::FORGET) {
@@ -8869,7 +8878,7 @@ void explorationLevelupLoop() {
 
   //drawCombatants();
 
-  //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+  //SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
   switch (g_submode) {
     case submode::BEFORE:
@@ -8924,11 +8933,10 @@ void explorationLevelupLoop() {
         SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
 
         memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-        Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-        SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
-        Uint32 *pixels = (Uint32 *)transitionPixelReference;
-        // int numPixels = transitionImageWidth * transitionImageHeight;
-        Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
+        SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+        const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
+        Uint32* pixels = (Uint32*)transitionPixelReference;
+        Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
         // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
         transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
         for (int x = 0; x < transitionImageWidth; x++)
@@ -8952,7 +8960,7 @@ void explorationLevelupLoop() {
         elapsed = ticks - lastticks;
 
         SDL_UnlockTexture(transitionTexture);
-        SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+        SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
 
         if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
         {
@@ -9005,7 +9013,7 @@ void explorationLevelupLoop() {
           }
           drawCombatants();
 
-          //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+          //SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
@@ -9016,10 +9024,10 @@ void explorationLevelupLoop() {
             SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
 
             memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-            Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-            SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+            SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+            const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
             Uint32* pixels = (Uint32*)pixelReference;
-            Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+            Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
 
             offset += g_transitionSpeed + 0.02 * offset;
 
@@ -9055,7 +9063,7 @@ void explorationLevelupLoop() {
 
             SDL_RenderClear(renderer);
             //render last frame
-            //SDL_RenderCopy(renderer, frame, NULL, NULL);
+            //SDL_RenderTexture(renderer, frame, NULL, NULL);
             if(combatUIManager->loadedBackground.scene[0] == '>') {
               drawBackground();
             } else {
@@ -9064,17 +9072,17 @@ void explorationLevelupLoop() {
 
             drawCombatants();
 
-            //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+            //SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
-            SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+            SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
 
             if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
               cont = 1;
             }
           }
-          SDL_FreeSurface(transitionSurface);
+          SDL_DestroySurface(transitionSurface);
           SDL_DestroyTexture(transitionTexture);
           SDL_DestroyTexture(frame);
           SDL_GL_SetSwapInterval(1);
@@ -9151,7 +9159,7 @@ void explorationLevelupLoop() {
           }
           drawCombatants();
 
-          //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+          //SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
           SDL_SetRenderTarget(renderer, NULL);
           SDL_RenderClear(renderer);
@@ -9162,10 +9170,10 @@ void explorationLevelupLoop() {
             SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
 
             memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-            Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-            SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+            SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+            const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
             Uint32* pixels = (Uint32*)pixelReference;
-            Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+            Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
 
             offset += g_transitionSpeed + 0.02 * offset;
 
@@ -9201,7 +9209,7 @@ void explorationLevelupLoop() {
 
             SDL_RenderClear(renderer);
             //render last frame
-            //SDL_RenderCopy(renderer, frame, NULL, NULL);
+            //SDL_RenderTexture(renderer, frame, NULL, NULL);
             if(combatUIManager->loadedBackground.scene[0] == '>') {
               drawBackground();
             } else {
@@ -9210,17 +9218,17 @@ void explorationLevelupLoop() {
 
             drawCombatants();
 
-            //SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+            //SDL_RenderTexture(renderer, g_shade, NULL, NULL);
 
             SDL_UnlockTexture(transitionTexture);
-            SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+            SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
 
             if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
               cont = 1;
             }
           }
-          SDL_FreeSurface(transitionSurface);
+          SDL_DestroySurface(transitionSurface);
           SDL_DestroyTexture(transitionTexture);
           SDL_DestroyTexture(frame);
           SDL_GL_SetSwapInterval(1);
@@ -9282,7 +9290,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -9810,7 +9818,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10126,7 +10134,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10254,7 +10262,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10427,7 +10435,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10580,7 +10588,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10653,7 +10661,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10763,7 +10771,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10838,7 +10846,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -10960,7 +10968,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -11313,7 +11321,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -11572,7 +11580,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -11696,7 +11704,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -11773,7 +11781,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -11848,7 +11856,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -11924,7 +11932,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -11998,7 +12006,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -12092,7 +12100,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -12178,7 +12186,7 @@ void explorationLevelupLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -12307,7 +12315,7 @@ void explorationLevelupLoop() {
           }
         }
       }
-      SDL_Rect drect;
+      SDL_FRect drect;
       drect.x = combatUIManager->dodgerX - combatUIManager->dodgerWidth/2;
       drect.y = combatUIManager->dodgerY - combatUIManager->dodgerHeight/2;
       drect.w = combatUIManager->dodgerWidth;
@@ -12324,13 +12332,13 @@ void explorationLevelupLoop() {
 
       if(combatUIManager->drawDodger) {
         SDL_SetTextureColorMod(combatUIManager->dodgerTexture, 255*0.7, 255*0.7, 255*0.7);
-        SDL_RenderCopy(renderer, combatUIManager->dodgerTexture, NULL, &drect);
+        SDL_RenderTexture(renderer, combatUIManager->dodgerTexture, NULL, &drect);
         SDL_SetTextureColorMod(combatUIManager->dodgerTexture, 255, 255, 255);
         drect.x += 10;
         drect.y += 10;
         drect.w -= 20;
         drect.h -= 20;
-        SDL_RenderCopy(renderer, combatUIManager->dodgerTexture, NULL, &drect);
+        SDL_RenderTexture(renderer, combatUIManager->dodgerTexture, NULL, &drect);
       }
 
 
@@ -12346,13 +12354,13 @@ void explorationLevelupLoop() {
 
     SDL_SetRenderTarget(renderer, NULL);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-    SDL_Rect dstrect;
+    SDL_FRect dstrect;
     float padding = 0.04;
     dstrect.x = (combatUIManager->dodgePanel->x + padding/2) * WIN_WIDTH;
     dstrect.y = (combatUIManager->dodgePanel->y + (padding*combatUIManager->aspect)/2) * WIN_HEIGHT;
     dstrect.w = (combatUIManager->dodgePanel->width - padding) * WIN_WIDTH;
     dstrect.h = (combatUIManager->dodgePanel->height - (padding*combatUIManager->aspect))* WIN_HEIGHT;
-    SDL_RenderCopy(renderer, combatUIManager->rendertarget, NULL, &dstrect);
+    SDL_RenderTexture(renderer, combatUIManager->rendertarget, NULL, &dstrect);
   }
 
   if(g_submode== submode::FORGET) {
@@ -12532,7 +12540,7 @@ void learnMoveLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -12623,7 +12631,7 @@ void learnMoveLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -12702,7 +12710,7 @@ void learnMoveLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound(g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -12829,7 +12837,7 @@ void learnMoveLoop() {
               combatUIManager->currentText = combatUIManager->finalText;
             } else {
               combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-              playSound(6, g_ui_voice, 0);
+              playSound( g_ui_voice);
             }
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
 
@@ -13113,7 +13121,7 @@ void miniEnt::update(float elapsed) {
 }
 
 void miniEnt::render(int shadow) {
-  SDL_Rect drect = {
+  SDL_FRect drect = {
     (int)x - w/2,
     (int)y - h/2,
     (int)w,
@@ -13127,14 +13135,14 @@ void miniEnt::render(int shadow) {
   green = 115;
   if(shadow) {
     SDL_SetTextureColorMod(texture, red*0.7, blue*0.7, green*0.7);
-    SDL_RenderCopy(renderer, texture, NULL, &drect);
+    SDL_RenderTexture(renderer, texture, NULL, &drect);
   } else {
     drect.x += 7;
     drect.y += 7;
     drect.w -= 14;
     drect.h -= 14;
     SDL_SetTextureColorMod(texture, red, blue, green);
-    SDL_RenderCopy(renderer, texture, NULL, &drect);
+    SDL_RenderTexture(renderer, texture, NULL, &drect);
   }
 }
 

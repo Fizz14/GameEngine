@@ -1,6 +1,10 @@
 #ifndef mapeditor_h
 #define mapeditor_h
 
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 #include <iostream>
 #include <vector>
 #include <fstream> //loading

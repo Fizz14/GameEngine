@@ -1,8 +1,10 @@
 #ifndef mesh_h
 #define mesh_h
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 #include "globals.h"
 #include "physfs.h"
 #include <iostream>
@@ -37,7 +39,7 @@ public:
   float x = 0;
   float y = 0;
   float z = 0;
-  SDL_Color color = {0,0,0,255};
+  SDL_FColor color = {0,0,0,255};
   float u = 0;
   float v = 0;
 
@@ -75,7 +77,11 @@ public:
   bool storedInMeshVectors = 1;
   vector<SDL_Vertex> vbuffer;
 
-  bool useTrim = 0;
+  bool drawDiffuse = 1;
+  bool drawShading = 1;
+  bool hasTrim = 0;
+
+  int topOrBottomShading = 0; //0 -> top 1 -> bottom 2 -> both 3 -> 3tall, top 4-> 3tall, bot
 
   string textureAddress = "";
   bool assetSharer = 0;
@@ -98,8 +104,6 @@ public:
 //  map<int, tuple<int, int, int, int>> twinMap; //maps the first int of facePairing to twin coordinates for where to draw the rectangle blocking the wall
 
   meshtype mtype = meshtype::FLOOR;
-
-  bool drawDiffuse = 1;
 
   bool edgeInfoSet = 0;
   vector<array<int, 2>> edgeDataStore = {};
@@ -166,7 +170,7 @@ class chunk {
   ~chunk();
 };
 
-chunk* duplicateChunk(const chunk* original, vec3 newOrigin);
+chunk* duplicateChunk(const chunk* original, vec3 newOrigin, vector<bool> whichMeshes);
 
 mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone);
 
@@ -179,9 +183,8 @@ mesh* duplicateMesh(const mesh* original, vec3 origin);
 //
 class ggrid {
   public:
-    int x = 0;
-    int y = 0;
 
+    int layer = 0;
 
     string walltexSTR = "";
     string floortexSTR = "";
@@ -190,11 +193,20 @@ class ggrid {
     SDL_Texture* floortex = 0;
     SDL_Texture* trimtex = 0;
 
-    bool useTrim = 0;
+    bool hasWall = 0;
+    bool hasFloor = 0;
+    bool hasTrim = 0;
+
+    int wallShading = 0; // 0 ->none
+                         // 1 -> upper shading
+                         // 2 -> lower shading
+    bool hasBotShading = 0;
+
 
     //bounds of the grid
     int originX = 0; //in coords
     int originY = 0;
+    int originZ = 0;
     int width = 0; //in blocks
     int height = 0;
 

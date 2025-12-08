@@ -56,11 +56,21 @@ lossUI::lossUI() {
   handMarker->renderOverText = 1;
   handMarker->y = 0.25;
 
-  SDL_QueryTexture(protag, NULL, NULL, &protagW, &protagH);
+  //SDL_QueryTexture(protag, NULL, NULL, &protagW, &protagH);
+
+  SDL_PropertiesID p = SDL_GetTextureProperties(protag);
+  protagW = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  protagH = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
+
   protagW *= 0.52;
   protagH *= 0.52;
 
-  SDL_QueryTexture(shadow, NULL, NULL, &shadowW, &shadowH);
+  //SDL_QueryTexture(shadow, NULL, NULL, &shadowW, &shadowH);
+
+  p = SDL_GetTextureProperties(shadow);
+  shadowW = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  shadowH = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
+
   shadowW *= 0.85;
   shadowH *= 0.85;
 
@@ -182,28 +192,27 @@ void LossLoop() {
     {
       lossUIManager->redness = 255;
       SDL_SetTextureColorMod(lossUIManager->protag, 255, lossUIManager->redness, lossUIManager->redness);
-      SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+      SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
 
       lossUIManager->shadowX = (WIN_WIDTH - lossUIManager->shadowW)/2;
       lossUIManager->shadowY = WIN_HEIGHT * 0.492;
-      SDL_Rect b = {lossUIManager->shadowX, lossUIManager->shadowY, lossUIManager->shadowW, lossUIManager->shadowH};
-      SDL_RenderCopy(renderer, lossUIManager->shadow, NULL, &b);
+      SDL_FRect b = {lossUIManager->shadowX, lossUIManager->shadowY, lossUIManager->shadowW, lossUIManager->shadowH};
+      SDL_RenderTexture(renderer, lossUIManager->shadow, NULL, &b);
 
       lossUIManager->protagX = (WIN_WIDTH - lossUIManager->protagW)/2;
       lossUIManager->protagY = WIN_HEIGHT * 0.45;
-      SDL_Rect d = {lossUIManager->protagX, lossUIManager->protagY, lossUIManager->protagW, lossUIManager->protagH};
-      SDL_RenderCopy(renderer, lossUIManager->protag, NULL, &d);
+      SDL_FRect d = {lossUIManager->protagX, lossUIManager->protagY, lossUIManager->protagW, lossUIManager->protagH};
+      SDL_RenderTexture(renderer, lossUIManager->protag, NULL, &d);
 
 
       SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
 
       memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-      Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-      SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
-      Uint32 *pixels = (Uint32 *)transitionPixelReference;
-      // int numPixels = transitionImageWidth * transitionImageHeight;
-      Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
-      // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+      SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+      const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
+      Uint32* pixels = (Uint32*)transitionPixelReference;
+      Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
+
       transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
       for (int x = 0; x < transitionImageWidth; x++)
       {
@@ -226,7 +235,7 @@ void LossLoop() {
       elapsed = ticks - lastticks;
 
       SDL_UnlockTexture(transitionTexture);
-      SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+      SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
 
       if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
       {
@@ -278,22 +287,22 @@ void LossLoop() {
       }
 
       
-      SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+      SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
 
       lossUIManager->shadowX = (WIN_WIDTH - lossUIManager->shadowW)/2 + lossUIManager->offset;
       lossUIManager->shadowY = WIN_HEIGHT * 0.492;
-      SDL_Rect b = {lossUIManager->shadowX, lossUIManager->shadowY, lossUIManager->shadowW, lossUIManager->shadowH};
-      SDL_RenderCopy(renderer, lossUIManager->shadow, NULL, &b);
+      SDL_FRect b = {lossUIManager->shadowX, lossUIManager->shadowY, lossUIManager->shadowW, lossUIManager->shadowH};
+      SDL_RenderTexture(renderer, lossUIManager->shadow, NULL, &b);
 
       lossUIManager->protagX = (WIN_WIDTH - lossUIManager->protagW)/2 + lossUIManager->offset;
       lossUIManager->protagY = WIN_HEIGHT * 0.45;
-      SDL_Rect d = {lossUIManager->protagX, lossUIManager->protagY, lossUIManager->protagW, lossUIManager->protagH};
-      SDL_RenderCopy(renderer, lossUIManager->protag, NULL, &d);
+      SDL_FRect d = {lossUIManager->protagX, lossUIManager->protagY, lossUIManager->protagW, lossUIManager->protagH};
+      SDL_RenderTexture(renderer, lossUIManager->protag, NULL, &d);
       break;
     }
     case lossSub::SPLAT:
     {
-      SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+      SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
       if(lossUIManager->splat->frame == 12) {
         lossUIManager->splat->msPerFrame = 0;
         lossUIManager->timer = 0;
@@ -308,7 +317,7 @@ void LossLoop() {
     }
     case lossSub::PAUSE:
     {
-      SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+      SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
       lossUIManager->splat->render(renderer, g_camera, elapsed);
       lossUIManager->timer += elapsed;
       if(lossUIManager->timer >= 1500) {
@@ -370,7 +379,7 @@ void LossLoop() {
             combatUIManager->currentText = combatUIManager->finalText;
           } else {
             combatUIManager->currentText += combatUIManager->finalText.at(combatUIManager->currentText.size());
-            playSound(6, g_ui_voice, 0);
+            playSound(g_ui_voice);
           }
           combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
   
@@ -415,7 +424,7 @@ void LossLoop() {
 
 
 
-      SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+      SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
       lossUIManager->splat->render(renderer, g_camera, elapsed);
       combatUIManager->mainPanel->show = 1;
       combatUIManager->mainPanel->render(renderer, g_camera, elapsed);
@@ -426,7 +435,7 @@ void LossLoop() {
     case lossSub::QUESTION:
     {
 
-      SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+      SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
       lossUIManager->splat->render(renderer, g_camera, elapsed);
       combatUIManager->mainPanel->show = 1;
       combatUIManager->mainPanel->render(renderer, g_camera, elapsed);
@@ -467,7 +476,7 @@ void LossLoop() {
           }
           g_levelFlashing = 0;
           loadSave();
-          Mix_FadeOutMusic(1000);
+          //Mix_FadeOutMusic(1000);
           g_zoom_mod = 1; //somehow there was a problem where the cam would be zoomed in after continuing from a gameover
           g_update_zoom = 1;
       
@@ -498,7 +507,7 @@ void LossLoop() {
           SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
           SDL_SetRenderTarget(renderer, frame);
 
-          SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+          SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
           lossUIManager->splat->render(renderer, g_camera, elapsed);
           combatUIManager->mainPanel->show = 1;
           combatUIManager->mainPanel->render(renderer, g_camera, elapsed);
@@ -521,12 +530,10 @@ void LossLoop() {
             SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
       
             memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-            Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-            SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+            SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+            const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
             Uint32* pixels = (Uint32*)pixelReference;
-            //int numPixels = imageWidth * imageHeight;
-            Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
-            //Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+            Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
       
             offset += g_transitionSpeed + 0.02 * offset;
       
@@ -566,16 +573,16 @@ void LossLoop() {
       
             SDL_RenderClear(renderer);
             //render last frame
-            SDL_RenderCopy(renderer, frame, NULL, NULL);
+            SDL_RenderTexture(renderer, frame, NULL, NULL);
             SDL_UnlockTexture(transitionTexture);
-            SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+            SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
       
             if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
               cont = 1;
             }
           }
-          SDL_FreeSurface(transitionSurface);
+          SDL_DestroySurface(transitionSurface);
           SDL_DestroyTexture(transitionTexture);
           SDL_DestroyTexture(frame);
           transition = 1;
@@ -606,7 +613,7 @@ void LossLoop() {
           {
             init_map_writing(renderer);
           }
-          Mix_FadeOutMusic(1000);
+          //Mix_FadeOutMusic(1000);
       
           //SDL_GL_SetSwapInterval(0);
           bool cont = false;
@@ -635,7 +642,7 @@ void LossLoop() {
           SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
           SDL_SetRenderTarget(renderer, frame);
 
-          SDL_RenderCopy(renderer, lossUIManager->floor, NULL, NULL);
+          SDL_RenderTexture(renderer, lossUIManager->floor, NULL, NULL);
           lossUIManager->splat->render(renderer, g_camera, elapsed);
           combatUIManager->mainPanel->show = 1;
           combatUIManager->mainPanel->render(renderer, g_camera, elapsed);
@@ -658,12 +665,10 @@ void LossLoop() {
             SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
       
             memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-            Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-            SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+            SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+            const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
             Uint32* pixels = (Uint32*)pixelReference;
-            //int numPixels = imageWidth * imageHeight;
-            Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
-            //Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+            Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
       
             offset += g_transitionSpeed + 0.02 * offset;
       
@@ -703,16 +708,16 @@ void LossLoop() {
       
             SDL_RenderClear(renderer);
             //render last frame
-            SDL_RenderCopy(renderer, frame, NULL, NULL);
+            SDL_RenderTexture(renderer, frame, NULL, NULL);
             SDL_UnlockTexture(transitionTexture);
-            SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+            SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
       
             if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
               cont = 1;
             }
           }
-          SDL_FreeSurface(transitionSurface);
+          SDL_DestroySurface(transitionSurface);
           SDL_DestroyTexture(transitionTexture);
           SDL_DestroyTexture(frame);
           transition = 1;

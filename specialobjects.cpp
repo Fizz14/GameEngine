@@ -1,7 +1,7 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_mixer.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 
 #include <iostream>
 #include <vector>
@@ -1791,7 +1791,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 //        combatUIManager->loadedBackground = bground(renderer, loadme.c_str());
 //        
 //        if(combatUIManager->sb1 != 0) {
-//          SDL_FreeSurface(combatUIManager->sb1);
+//          SDL_(combatUIManager->sb1);
 //        }
 //        
 //        loadme = "resources/static/backgrounds/textures/" + to_string(combatUIManager->loadedBackground.texture) + ".qoi";
@@ -2514,7 +2514,7 @@ void specialObjectsUpdate(entity* a, float elapsed) {
 //                cont = 1;
 //              }
 //            }
-//            SDL_FreeSurface(transitionSurface);
+//            SDL_(transitionSurface);
 //            SDL_DestroyTexture(transitionTexture);
 //            SDL_DestroyTexture(frame);
 //            transition = 1;

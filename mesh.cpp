@@ -1,5 +1,3 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 #include "utils.h"
 #include "happly.h"
 #include "mesh.h"
@@ -134,6 +132,7 @@ mesh::~mesh() {
 }
 
 chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone) {
+  breakpoint();
   g_chunks.push_back(this);
 
   //look for models to load from fpath
@@ -188,12 +187,12 @@ chunk::chunk() {
 
 chunk::~chunk() {
   g_chunks.erase(remove(g_chunks.begin(), g_chunks.end(), this), g_chunks.end());
-  if(owner != 0) {
+  if(owner != nullptr) {
     owner->chunks.erase(remove(owner->chunks.begin(), owner->chunks.end(), this), owner->chunks.end());
   }
 }
 
-chunk* duplicateChunk(const chunk* original, vec3 newOrigin) {
+chunk* duplicateChunk(const chunk* original, vec3 newOrigin, vector<bool> whichMeshes) {
   if (!original) return nullptr; // Handle null input safely
 
   //chunk* result = new chunk(original->path, original->floortex, original->walltex, newOrigin, original->scale, original->standalone);
@@ -206,148 +205,112 @@ chunk* duplicateChunk(const chunk* original, vec3 newOrigin) {
   //result->value = original->value;
 
   // Duplicate mesh pointers using `duplicateMesh`
-  result->floor = original->floor ? duplicateMesh(original->floor, newOrigin) : nullptr;
-  result->wall = original->wall ? duplicateMesh(original->wall, newOrigin) : nullptr;
-  result->collision = original->collision ? duplicateMesh(original->collision, newOrigin) : nullptr;
-  result->occluder = original->occluder ? duplicateMesh(original->occluder, newOrigin) : nullptr;
-  result->decorative = original->decorative ? duplicateMesh(original->decorative, newOrigin) : nullptr;
-
-  if(result->occluder != 0) {
-    vector<array<int, 2>> edgeData = original->occluder->edgeDataStore;
-    for(array<int,2> n : edgeData) {
-      vertex3d first = result->occluder->vertices[n[0]];
-      vertex3d second = result->occluder->vertices[n[1]];
-
-      SDL_Vertex A;
-
-      A.position.x = ((-first.x) * result->scale);
-      //A.position.y = ((first.y * scale)) * XtoY - ((first.z * scale)) * XtoZ;
-      A.position.y = ((first.y * result->scale)) * XtoY;
-      A.position.x += newOrigin.x;
-      A.position.y += newOrigin.y;
-      A.color.r = 0;
-      A.color.g = 0;
-      A.color.b = 0;
-      A.color.a = 255;
-
-      SDL_Vertex B;
-
-      B.position.x = ((-second.x) * result->scale);
-      //B.position.y = ((second.y * scale)) * XtoY - ((second.z * scale)) * XtoZ;
-      B.position.y = ((second.y * result->scale)) * XtoY;
-
-      B.position.x += newOrigin.x;
-      B.position.y += newOrigin.y;
-      B.color.r = 0;
-      B.color.g = 0;
-      B.color.b = 0;
-      B.color.a = 255;
-
-      edgeInfo ei;
-      ei.first = A;
-      ei.firstZ = ((first.z * result->scale)) * XtoZ; //z is subtracted from y
-      ei.second = B;
-      ei.secondZ = ((second.z * result->scale)) * XtoZ; //z is subtracted from y
-
-      //this was written with the assumption that all occluders have an accompanying wall
-
-      if(g_meshVWalls.size() > 0 && g_meshVWalls[g_meshVWalls.size()-1]->edgeInfoSet == 0) {
-        checkAndSetEdgeInfo(ei, g_meshVWalls[g_meshVWalls.size()-1]);
-      }
-
-      ei.type = 0;
-      g_oEdges.emplace_back(ei);
-    }
+  if(whichMeshes.size() != 5) {E("Check params to duplicateMesh()."); abort();}
+  if(whichMeshes[0]) {
+    result->floor = original->floor ? duplicateMesh(original->floor, newOrigin) : nullptr;
+  }
+  if(whichMeshes[1]) {
+    result->wall = original->wall ? duplicateMesh(original->wall, newOrigin) : nullptr;
+  }
+  if(whichMeshes[2]) {
+    result->collision = original->collision ? duplicateMesh(original->collision, newOrigin) : nullptr;
+  }
+  if(whichMeshes[3]) {
+    result->occluder = original->occluder ? duplicateMesh(original->occluder, newOrigin) : nullptr;
+  }
+  if(whichMeshes[4]) {
+    result->decorative = original->decorative ? duplicateMesh(original->decorative, newOrigin) : nullptr;
   }
 
-
-  if( result->wall != nullptr) {
-    for (const auto& f : result->wall->faces) {
-      if(result->wall->vertices[f.a].color.r < 128 && result->wall->vertices[f.b].color.r < 128) {
-        vertex3d first = original->wall->vertices[f.a];
-        vertex3d second = original->wall->vertices[f.b];
-        SDL_Vertex A;
-  
-        A.position.x = ((-first.x) * result->scale);
-        A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
-        //A.position.y = ((first.y * scale)) * XtoY;
-  
-        SDL_Vertex B;
-  
-        B.position.x = ((-second.x) * result->scale);
-        B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
-        //B.position.y = ((second.y * scale)) * XtoY;
-  
-        A.position.x += newOrigin.x + 64; //adding 64 is a bandaid solution and may cause problems later
-                                          // !!!
-        A.position.y += newOrigin.y;
-        B.position.x += newOrigin.x + 64;
-        B.position.y += newOrigin.y;
-  
-        edgeInfo ei;
-        ei.first = A;
-        ei.firstZ = ((first.z * result->scale)) * XtoZ; //z is subtracted from y
-  
-  
-        ei.second = B;
-        ei.secondZ = ((second.z * result->scale)) * XtoZ; //z is subtracted from y
-  
-  
-        if(ei.first.position.x > ei.second.position.x) {
-          swap(ei.first, ei.second);
+  if(0) {
+    if( result->wall != nullptr) {
+      for (const auto& f : result->wall->faces) {
+        if(result->wall->vertices[f.a].color.r < 128 && result->wall->vertices[f.b].color.r < 128) {
+          vertex3d first = original->wall->vertices[f.a];
+          vertex3d second = original->wall->vertices[f.b];
+          SDL_Vertex A;
+    
+          A.position.x = ((-first.x) * result->scale);
+          A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
+          //A.position.y = ((first.y * scale)) * XtoY;
+    
+          SDL_Vertex B;
+    
+          B.position.x = ((-second.x) * result->scale);
+          B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
+          //B.position.y = ((second.y * scale)) * XtoY;
+    
+          A.position.x += newOrigin.x + 64; //adding 64 is a bandaid solution and may cause problems later
+                                            // !!!
+          A.position.y += newOrigin.y;
+          B.position.x += newOrigin.x + 64;
+          B.position.y += newOrigin.y;
+    
+          edgeInfo ei;
+          ei.first = A;
+          ei.firstZ = ((first.z * result->scale)) * XtoZ; //z is subtracted from y
+    
+    
+          ei.second = B;
+          ei.secondZ = ((second.z * result->scale)) * XtoZ; //z is subtracted from y
+    
+    
+          if(ei.first.position.x > ei.second.position.x) {
+            swap(ei.first, ei.second);
+          }
+    
+          ei.type = 1;
+          g_wEdges.emplace_back(ei);
         }
-  
-        ei.type = 1;
-        g_wEdges.emplace_back(ei);
-      }
-  
-  
-      if(result->wall->vertices[f.a].color.r < 128 && result->wall->vertices[f.c].color.r < 128) {
-        vertex3d first = result->wall->vertices[f.a];
-        vertex3d second = result->wall->vertices[f.c];
-        SDL_Vertex A;
-  
-        A.position.x = ((-first.x) * result->scale);
-        A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
-  
-        SDL_Vertex B;
-  
-        B.position.x = ((-second.x) * result->scale);
-        B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
-  
-        A.position.x += newOrigin.x + 64;
-        A.position.y += newOrigin.y;
-        B.position.x += newOrigin.x + 64;
-        B.position.y += newOrigin.y;
-  
-        edgeInfo ei;
-        ei.first = A;
-        ei.second = B;
-        g_wEdges.emplace_back(ei);
-      }
-  
-      if(result->wall->vertices[f.c].color.r < 128 && result->wall->vertices[f.b].color.r < 128) {
-        vertex3d first = result->wall->vertices[f.c];
-        vertex3d second = result->wall->vertices[f.b];
-        SDL_Vertex A;
-  
-        A.position.x = ((-first.x) * result->scale);
-        A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
-  
-        SDL_Vertex B;
-  
-        B.position.x = ((-second.x) * result->scale);
-        B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
-  
-        A.position.x += newOrigin.x + 64;
-        A.position.y += newOrigin.y;
-        B.position.x += newOrigin.x + 64;
-        B.position.y += newOrigin.y;
-  
-        edgeInfo ei;
-        ei.first = A;
-        ei.second = B;
-        g_wEdges.emplace_back(ei);
+    
+    
+        if(result->wall->vertices[f.a].color.r < 128 && result->wall->vertices[f.c].color.r < 128) {
+          vertex3d first = result->wall->vertices[f.a];
+          vertex3d second = result->wall->vertices[f.c];
+          SDL_Vertex A;
+    
+          A.position.x = ((-first.x) * result->scale);
+          A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
+    
+          SDL_Vertex B;
+    
+          B.position.x = ((-second.x) * result->scale);
+          B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
+    
+          A.position.x += newOrigin.x + 64;
+          A.position.y += newOrigin.y;
+          B.position.x += newOrigin.x + 64;
+          B.position.y += newOrigin.y;
+    
+          edgeInfo ei;
+          ei.first = A;
+          ei.second = B;
+          g_wEdges.emplace_back(ei);
+        }
+    
+        if(result->wall->vertices[f.c].color.r < 128 && result->wall->vertices[f.b].color.r < 128) {
+          vertex3d first = result->wall->vertices[f.c];
+          vertex3d second = result->wall->vertices[f.b];
+          SDL_Vertex A;
+    
+          A.position.x = ((-first.x) * result->scale);
+          A.position.y = ((first.y * result->scale)) * XtoY - ((first.z * result->scale)) * XtoZ;
+    
+          SDL_Vertex B;
+    
+          B.position.x = ((-second.x) * result->scale);
+          B.position.y = ((second.y * result->scale)) * XtoY - ((second.z * result->scale)) * XtoZ;
+    
+          A.position.x += newOrigin.x + 64;
+          A.position.y += newOrigin.y;
+          B.position.x += newOrigin.x + 64;
+          B.position.y += newOrigin.y;
+    
+          edgeInfo ei;
+          ei.first = A;
+          ei.second = B;
+          g_wEdges.emplace_back(ei);
+        }
       }
     }
   }
@@ -594,6 +557,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
         fmtype == meshtype::DECORATIVE
       ) {
       const array<float, 3> lightDir = {0, 0.4472, 0.8944};
+      D(vertices.size());
       setVertexColors(vertices, faces, lightDir, fmtype);
     } else if(fmtype == meshtype::V_WALL) {
       //const array<float, 3> lightDir = {0, 0.707, 0.707};
@@ -924,7 +888,10 @@ ggrid::ggrid() {
 }
 
 ggrid::~ggrid() {
-  SDL_DestroyTexture(walltex);
-  SDL_DestroyTexture(floortex);
+  
+  if(hasWall) SDL_DestroyTexture(walltex);
+  if(hasFloor) SDL_DestroyTexture(floortex);
+  if(hasTrim) SDL_DestroyTexture(trimtex);
+
   g_ggrids.erase(remove(g_ggrids.begin(), g_ggrids.end(), this), g_ggrids.end());
 }

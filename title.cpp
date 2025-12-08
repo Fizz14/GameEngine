@@ -65,7 +65,7 @@ titleUI::titleUI(SDL_Renderer* renderer) {
   creditText->updateText(getLanguageData("AuthorText"), 400 * g_fontsize, 0, {235, 235, 235}, g_font);
   creditText->show = 0;
 
-  handMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.5, 0.65, 0.1, 1, 2);
+  handMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.5, 0.65, 0.05, 1, 2);
   handMarker->persistent = 1;
   handMarker->show = 1;
   handMarker->priority = 3;
@@ -232,21 +232,21 @@ void TitleLoop() {
   }
 
   if(titleUIManager->option == 0) {
-    titleUIManager->handMarker->targety = titleUIManager->newText->boxY + titleUIManager->handYOffset;
+    titleUIManager->handMarker->y = titleUIManager->newText->boxY + titleUIManager->handYOffset;
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->newText->width;
-    titleUIManager->handMarker->targetx = titleUIManager->newText->boxX + (fwidth / ww / 2);
+    titleUIManager->handMarker->x = titleUIManager->newText->boxX + (fwidth / ww / 2);
   } else if(titleUIManager->option == 1) {
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->continueText->width;
-    titleUIManager->handMarker->targetx = titleUIManager->continueText->boxX + (fwidth / ww / 2);
-    titleUIManager->handMarker->targety = titleUIManager->continueText->boxY + titleUIManager->handYOffset;
+    titleUIManager->handMarker->x = titleUIManager->continueText->boxX + (fwidth / ww / 2);
+    titleUIManager->handMarker->y = titleUIManager->continueText->boxY + titleUIManager->handYOffset;
 
   } else if(titleUIManager->option == 2) {
-    titleUIManager->handMarker->targety = titleUIManager->endText->boxY + titleUIManager->handYOffset;
+    titleUIManager->handMarker->y = titleUIManager->endText->boxY + 0;//titleUIManager->handYOffset;
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->endText->width;
-    titleUIManager->handMarker->targetx = titleUIManager->endText->boxX + (fwidth / ww / 2);
+    titleUIManager->handMarker->x = titleUIManager->endText->boxX;// + (fwidth / ww / 2);
 
   }
 
@@ -281,7 +281,7 @@ void TitleLoop() {
         g_gamemode = gamemode::EXPLORATION;
         devMode = 0;
         resetTrivialData();
-        Mix_FadeOutMusic(1000);
+        //Mix_FadeOutMusic(1000);
     
         //SDL_GL_SetSwapInterval(0);
         bool cont = false;
@@ -333,12 +333,10 @@ void TitleLoop() {
           SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
     
           memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-          Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-          SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+          SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+          const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
           Uint32* pixels = (Uint32*)pixelReference;
-          //int numPixels = imageWidth * imageHeight;
-          Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
-          //Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+          Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
     
           offset += g_transitionSpeed + 0.02 * offset;
     
@@ -378,16 +376,16 @@ void TitleLoop() {
     
           SDL_RenderClear(renderer);
           //render last frame
-          SDL_RenderCopy(renderer, frame, NULL, NULL);
+          SDL_RenderTexture(renderer, frame, NULL, NULL);
           SDL_UnlockTexture(transitionTexture);
-          SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+          SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
           SDL_RenderPresent(renderer);
     
           if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
             cont = 1;
           }
         }
-        SDL_FreeSurface(transitionSurface);
+        SDL_DestroySurface(transitionSurface);
         SDL_DestroyTexture(transitionTexture);
         SDL_DestroyTexture(frame);
         titleUIManager->hideAll();
@@ -408,7 +406,7 @@ void TitleLoop() {
         g_gamemode = gamemode::EXPLORATION;
         resetTrivialData();
         loadSave();
-        Mix_FadeOutMusic(1000);
+        //Mix_FadeOutMusic(1000);
     
         //SDL_GL_SetSwapInterval(0);
         bool cont = false;
@@ -460,12 +458,10 @@ void TitleLoop() {
           SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
     
           memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-          Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-          SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+          SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+          const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
           Uint32* pixels = (Uint32*)pixelReference;
-          //int numPixels = imageWidth * imageHeight;
-          Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
-          //Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+          Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
     
           offset += g_transitionSpeed + 0.02 * offset;
     
@@ -505,16 +501,16 @@ void TitleLoop() {
     
           SDL_RenderClear(renderer);
           //render last frame
-          SDL_RenderCopy(renderer, frame, NULL, NULL);
+          SDL_RenderTexture(renderer, frame, NULL, NULL);
           SDL_UnlockTexture(transitionTexture);
-          SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+          SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
           SDL_RenderPresent(renderer);
     
           if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
             cont = 1;
           }
         }
-        SDL_FreeSurface(transitionSurface);
+        SDL_DestroySurface(transitionSurface);
         SDL_DestroyTexture(transitionTexture);
         SDL_DestroyTexture(frame);
         titleUIManager->hideAll();
@@ -534,7 +530,7 @@ void TitleLoop() {
       {
         //quit
         quit = 1;
-        Mix_FadeOutMusic(1000);
+        //Mix_FadeOutMusic(1000);
     
         //SDL_GL_SetSwapInterval(0);
         bool cont = false;
@@ -586,12 +582,10 @@ void TitleLoop() {
           SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
     
           memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-          Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-          SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+          SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+          const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
           Uint32* pixels = (Uint32*)pixelReference;
-          //int numPixels = imageWidth * imageHeight;
-          Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
-          //Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+          Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
     
           offset += g_transitionSpeed + 0.02 * offset;
     
@@ -631,16 +625,16 @@ void TitleLoop() {
     
           SDL_RenderClear(renderer);
           //render last frame
-          SDL_RenderCopy(renderer, frame, NULL, NULL);
+          SDL_RenderTexture(renderer, frame, NULL, NULL);
           SDL_UnlockTexture(transitionTexture);
-          SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+          SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
           SDL_RenderPresent(renderer);
     
           if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
             cont = 1;
           }
         }
-        SDL_FreeSurface(transitionSurface);
+        SDL_DestroySurface(transitionSurface);
         SDL_DestroyTexture(transitionTexture);
         SDL_DestroyTexture(frame);
         transition = 1;
@@ -663,12 +657,11 @@ void TitleLoop() {
       SDL_LockTexture(transitionTexture, NULL, &transitionPixelReference, &transitionPitch);
 
       memcpy(transitionPixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-      Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-      SDL_PixelFormat *mappingFormat = SDL_AllocFormat(format);
-      Uint32 *pixels = (Uint32 *)transitionPixelReference;
-      // int numPixels = transitionImageWidth * transitionImageHeight;
-      Uint32 transparent = SDL_MapRGBA(mappingFormat, 0, 0, 0, 255);
-      // Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
+      SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+      const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
+      Uint32* pixels = (Uint32*)transitionPixelReference;
+      Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
+
       transitionDelta += g_transitionSpeed + 0.02 * transitionDelta;
       for (int x = 0; x < transitionImageWidth; x++)
       {
@@ -691,7 +684,7 @@ void TitleLoop() {
       elapsed = ticks - lastticks;
 
       SDL_UnlockTexture(transitionTexture);
-      SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+      SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
 
       if (transitionDelta > transitionImageHeight + pow(pow(transitionImageWidth / 2, 2) + pow(transitionImageHeight, 2), 0.5))
       {

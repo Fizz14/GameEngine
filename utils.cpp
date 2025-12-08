@@ -1,8 +1,13 @@
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 #include "utils.h"
 #include "globals.h"
 #include <string>
 #include <sstream>
 #include <vector>
+
 
 map<string, string> languagePack;
 
@@ -35,8 +40,8 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress)
     char* buf;
     buf = new char[filesize];
     int length_read = PHYSFS_readBytes(myfile, buf, filesize);
-    SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
-    SDL_Texture* texture = IMG_LoadTextureTyped_RW(renderer, myWop, 1, ".qoi");
+    SDL_IOStream* io = SDL_IOFromMem(buf, filesize);
+    SDL_Texture* texture = IMG_LoadTextureTyped_IO(renderer, io, 1, ".qoi");
     PHYSFS_close(myfile);
     delete[] buf;
     return texture;
@@ -71,8 +76,8 @@ SDL_Surface* loadSurface(string fileaddress)
     char* buf;
     buf = new char[filesize];
     int length_read = PHYSFS_readBytes(myfile, buf, filesize);
-    SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
-    SDL_Surface* surface = IMG_LoadTyped_RW(myWop, 1, ".qoi");
+    SDL_IOStream* io = SDL_IOFromMem(buf, filesize);
+    SDL_Surface* surface = IMG_LoadTyped_IO(io, 1, ".qoi");
     PHYSFS_close(myfile);
     delete[] buf;
     return surface;
@@ -85,7 +90,7 @@ SDL_Surface* loadSurface(string fileaddress)
   }
 }
 
-Mix_Chunk* loadWav(string fileaddress)
+MIX_Audio* loadWav(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
@@ -105,11 +110,12 @@ Mix_Chunk* loadWav(string fileaddress)
     char* buf;
     buf = new char[filesize];
     int length_read = PHYSFS_readBytes(myfile, buf, filesize);
-    SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
-    Mix_Chunk* myChunk = Mix_LoadWAV_RW(myWop, 1);
+    SDL_IOStream* io = SDL_IOFromMem(buf, filesize);
+    //MIX_Audio* myAudio = SDL_LoadWAV_IO(io, 1, nullptr);
+    MIX_Audio* myAudio = MIX_LoadAudio_IO(g_mixer, io, 1, 1);
     PHYSFS_close(myfile);
     delete[] buf;
-    return myChunk;
+    return myAudio;
 
   } else {
     E("FNF: " + fileaddress);
@@ -236,8 +242,12 @@ fontmem loadFont(string fileaddress, float fontsize)
     PHYSFS_close(myfile);
     //TTF_Font* ret;
     fontmem ret;
-    SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
-    ret.font = TTF_OpenFontRW(myWop, 1, fontsize);
+//    SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
+//    ret.font = TTF_OpenFontRW(myWop, 1, fontsize);
+//    ret.buf = buf;
+
+    SDL_IOStream *io = SDL_IOFromMem(buf, filesize);
+    ret.font = TTF_OpenFontIO(io, true, fontsize);
     ret.buf = buf;
 
     //Do Not delete the buf here
@@ -252,7 +262,7 @@ fontmem loadFont(string fileaddress, float fontsize)
   }
 }
 
-Mix_Music* loadMusic(string fileaddress)
+musicmem* loadMusic(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
@@ -272,12 +282,16 @@ Mix_Music* loadMusic(string fileaddress)
     char* buf;
     buf = new char[filesize];
     int length_read = PHYSFS_readBytes(myfile, buf, filesize);
-    SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
+    SDL_IOStream* io = SDL_IOFromMem(buf, filesize);
 
-    Mix_Music* ret = Mix_LoadMUS_RW(myWop, 1);
+    MIX_Audio* mus = MIX_LoadAudio_IO(g_mixer, io, 1, 1);
+
+    musicmem* ret = new musicmem;
+    ret->mus = mus;
+    ret->buf = buf;
 
     PHYSFS_close(myfile);
-    delete[] buf;
+    //delete[] buf;
     return ret;
 
   } else {

@@ -4,10 +4,10 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_mixer.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 #include <algorithm>
 #include <cmath>	 //pow
 #include <math.h>	 //sin()
@@ -62,6 +62,8 @@ class ramp;
 class textbox;
 
 class fontmem;
+
+class musicmem;
 
 class ui;
 
@@ -765,7 +767,6 @@ extern int old_WIN_HEIGHT;
 extern int saved_WIN_WIDTH;
 extern int saved_WIN_HEIGHT;
 extern SDL_Window *window;
-extern SDL_DisplayMode DM;
 extern bool g_fullscreen;
 extern camera g_camera;
 extern entity *protag;
@@ -802,6 +803,7 @@ extern float ticks, lastticks, elapsed, halfsecondtimer;
 extern float camx;
 extern float camy;
 extern SDL_Renderer *renderer;
+extern MIX_Mixer* g_mixer;
 
 extern float g_eu_a;
 extern float g_eu_b;
@@ -835,7 +837,7 @@ extern int g_oldDoorHeight;
 extern string g_mapOfLastSave;
 extern string g_waypointOfLastSave;
 
-extern const Uint8 *keystate;
+extern const bool *keystate;
 extern bool devinput[60];
 extern bool g_ignoreInput;
 
@@ -863,23 +865,23 @@ extern bool g_mute;
 
 extern entity* g_currentMusicPlayingEntity;
 
-extern vector<std::pair<Mix_Chunk*,string>> g_preloadedSounds;
-extern Mix_Chunk *g_ui_voice;
+extern vector<std::pair<MIX_Audio*,string>> g_preloadedSounds;
+extern MIX_Audio *g_ui_voice;
 
-extern Mix_Chunk *g_land;
-extern Mix_Chunk *g_footstep_a;
-extern Mix_Chunk *g_footstep_b;
-extern Mix_Chunk *g_bonk;
+extern MIX_Audio *g_land;
+extern MIX_Audio *g_footstep_a;
+extern MIX_Audio *g_footstep_b;
+extern MIX_Audio *g_bonk;
 
-extern Mix_Chunk *g_deathsound;
+extern MIX_Audio *g_deathsound;
 extern musicNode *g_closestMusicNode;
 extern musicNode *newClosest;
 
-extern Mix_Music* g_loadedMusic;
+extern musicmem* g_loadedMusic;
 extern float g_loadedMusicVolume;
 extern string g_loadedMusicStr;
 extern bool g_mapHasMusic;
-extern Mix_Music* g_deleteMusic;
+extern musicmem* g_deleteMusic;
 
 extern int g_musicSilenceMs;
 extern int g_currentMusicSilenceMs;
@@ -889,9 +891,7 @@ extern int musicFadeTimer;
 extern bool fadeFlag;
 extern bool entFadeFlag;
 extern int musicUpdateTimer;
-extern vector<Mix_Chunk*> g_staticSounds;
-
-extern std::map<string, Mix_Chunk> g_static_sounds;
+extern vector<MIX_Audio*> g_staticSounds;
 
 extern int g_textDropShadowColor;
 extern float g_textDropShadowDist;
@@ -1050,7 +1050,11 @@ extern float mapeditorNavNodeCullRadius;
 extern float mapeditorNavNodeTraceRadius;
 
 extern SDL_Texture* g_floorShadeTexture;
-extern SDL_Texture* g_wallShadeTexture;
+extern SDL_Texture* g_wallShadeTopTexture; //1 block tall
+extern SDL_Texture* g_wallShadeBotTexture; //1 block tall
+extern SDL_Texture* g_wallShadeFullTexture; //3 blocks tall
+extern SDL_Texture* g_wall3ShadeTopTexture; //3 blocks tall
+extern SDL_Texture* g_wall3ShadeBotTexture; //3 blocks tall
 
 extern vector<string> consolehistory;
 extern int consolehistoryindex;
@@ -1158,8 +1162,8 @@ extern bool g_levelFlashing;
 
 extern int g_levelSequenceIndex;
 
-extern Mix_Music* g_dungeonMusic;
-extern Mix_Music* g_dungeonChaseMusic;
+extern MIX_Audio* g_dungeonMusic;
+extern MIX_Audio* g_dungeonChaseMusic;
 extern bool g_dungeonRedo;
 
 extern float g_dungeonMs;
@@ -1169,7 +1173,7 @@ extern SDL_Texture* g_grossup;
 extern int g_grossupLoaded;
 extern int g_grossupShowMs;
 extern int g_maxGrossupShowMs;
-extern vector<pair<int, Mix_Chunk*>> g_loadPlaySounds;
+extern vector<pair<int, MIX_Audio*>> g_loadPlaySounds;
 
 extern int g_menuTalkReset;
 
@@ -1275,7 +1279,7 @@ extern bool g_keyItemFlavorDisplay;
 
 bool fileExists(const std::string &name);
 
-void playSound(int channel, Mix_Chunk *sound, int loops);
+void playSound(MIX_Audio *sound);
 
 SDL_Texture *MaskTexture(SDL_Renderer *renderer, SDL_Texture *mask, SDL_Texture *diffuse);
 

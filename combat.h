@@ -3,10 +3,10 @@
 
 #include <iostream>
 #include <vector>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_mixer.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 #include <string>
 #include <unordered_map>
 
@@ -204,7 +204,7 @@ public:
   float offset = 0; //screen percentage to offset the combat sprite
 
   //for drawing enemies
-  SDL_Rect renderQuad = {-1,-1,-1,-1};
+  SDL_FRect renderQuad = {-1,-1,-1,-1};
 
   turnSerialization serial;
 

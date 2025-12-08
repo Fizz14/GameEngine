@@ -1,8 +1,11 @@
 #ifndef utils_h
 #define utils_h
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_mixer.h>
+#include <SDL3/SDL_ttf.h>
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -27,7 +30,7 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, string fileaddress);
 
 SDL_Surface* loadSurface(string fileaddress);
 
-Mix_Chunk* loadWav(string fileaddress);
+MIX_Audio* loadWav(string fileaddress);
 
 vector<string> loadText(string fileaddress);
 
@@ -35,7 +38,7 @@ string loadTextAsString(string fileaddress);
 
 fontmem loadFont(string fileaddress, float fontsize);
 
-Mix_Music* loadMusic(string fileaddress);
+musicmem* loadMusic(string fileaddress);
 
 void initLanguageIndices();
 

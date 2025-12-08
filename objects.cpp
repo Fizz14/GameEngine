@@ -1,7 +1,7 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_mixer.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 
 #include <iostream>
 #include <vector>
@@ -106,9 +106,9 @@ int doAnimation(entity* a, int elapsed) {
             if(a->footstep_reset && a->grounded) {
               a->footstep_reset = 0;
               if(rng(0,1) == 0) {
-                playSound(-1, g_staticSounds[1], 0);
+                playSound( g_staticSounds[1]);
               } else {
-                playSound(-1, g_staticSounds[2], 0);
+                playSound( g_staticSounds[2]);
               }
       
             }
@@ -349,9 +349,9 @@ int doAnimation(entity* a, int elapsed) {
             if(a->footstep_reset && a->grounded) {
               a->footstep_reset = 0;
               if(rng(0,1) == 0) {
-                playSound(-1, g_staticSounds[1], 0);
+                playSound( g_staticSounds[1]);
               } else {
-                playSound(-1, g_staticSounds[2], 0);
+                playSound( g_staticSounds[2]);
               }
       
             }
@@ -586,11 +586,11 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
     }
 
     // **Render Debugging Info**
-//    SDL_Rect a = {px, py, 60, 20};
+//    SDL_FRect a = {px, py, 60, 20};
 //    SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall, "PXPY", g_goldcolor);
 //    SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
-//    SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
-//    SDL_FreeSurface(renderMe);
+//    SDL_RenderTexture(renderer, renderMeTex, NULL, &a);
+//    SDL_DestroySurface(renderMe);
 //    SDL_DestroyTexture(renderMeTex);
 
     for (int i = 0; i < maxGroups; i++) {
@@ -598,13 +598,13 @@ void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsE
             groupAvgPosX[i] /= groupAvgPosCount[i];
             groupAvgPosY[i] /= groupAvgPosCount[i];
 
-//            SDL_Rect a = {static_cast<int>(groupAvgPosX[i]), static_cast<int>(groupAvgPosY[i]), 60, 20};
+//            SDL_FRect a = {static_cast<int>(groupAvgPosX[i]), static_cast<int>(groupAvgPosY[i]), 60, 20};
 //            SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall,
 //                                                         (std::to_string(i) + " - " + std::to_string(groupWeightedDistance[i])).c_str(),
 //                                                         g_goldcolor);
 //            SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
-//            SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
-//            SDL_FreeSurface(renderMe);
+//            SDL_RenderTexture(renderer, renderMeTex, NULL, &a);
+//            SDL_DestroySurface(renderMe);
 //            SDL_DestroyTexture(renderMeTex);
         }
     }
@@ -1061,70 +1061,73 @@ heightmap::heightmap(string fname, string fbinding, float fmagnitude) {
 }
 
 heightmap::~heightmap() {
-  SDL_FreeSurface(image);
+  SDL_DestroySurface(image);
   g_heightmaps.erase(remove(g_heightmaps.begin(), g_heightmaps.end(), this), g_heightmaps.end());
 }
 
 Uint32 heightmap::getpixel(SDL_Surface *surface, int x, int y) {
-  int bpp = surface->format->BytesPerPixel;
-  /* Here p is the address to the pixel we want to retrieve */
-  Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
-
-  switch (bpp)
-  {
-    case 1:
-      return *p;
-      //break;
-
-    case 2:
-      return *(Uint16 *)p;
-      //break;
-
-    case 3:
-      if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-        return p[0] << 16 | p[1] << 8 | p[2];
-      else
-        return p[0] | p[1] << 8 | p[2] << 16;
-      //break;
-
-    case 4:
-      return *(Uint32 *)p;
-      //break;
-
-    default:
-      return 0;
-  }
+  //who cares
+  return 0;
+//  int bpp = surface->format.BytesPerPixel;
+//  /* Here p is the address to the pixel we want to retrieve */
+//  Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
+//
+//  switch (bpp)
+//  {
+//    case 1:
+//      return *p;
+//      //break;
+//
+//    case 2:
+//      return *(Uint16 *)p;
+//      //break;
+//
+//    case 3:
+//      if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+//        return p[0] << 16 | p[1] << 8 | p[2];
+//      else
+//        return p[0] | p[1] << 8 | p[2] << 16;
+//      //break;
+//
+//    case 4:
+//      return *(Uint32 *)p;
+//      //break;
+//
+//    default:
+//      return 0;
+//  }
 }
 
 Uint32 getpixel(SDL_Surface *surface, int x, int y) {
-  int bpp = surface->format->BytesPerPixel;
-  /* Here p is the address to the pixel we want to retrieve */
-  Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
-
-  switch (bpp)
-  {
-    case 1:
-      return *p;
-      //break;
-
-    case 2:
-      return *(Uint16 *)p;
-      //break;
-
-    case 3:
-      if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-        return p[0] << 16 | p[1] << 8 | p[2];
-      else
-        return p[0] | p[1] << 8 | p[2] << 16;
-      //break;
-
-    case 4:
-      return *(Uint32 *)p;
-      //break;
-
-    default:
-      return 0;
-  }
+  return 0;
+//  int bpp = surface->format->BytesPerPixel;
+//  /* Here p is the address to the pixel we want to retrieve */
+//  Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
+//
+//  switch (bpp)
+//  {
+//    case 1:
+//      return *p;
+//      //break;
+//
+//    case 2:
+//      return *(Uint16 *)p;
+//      //break;
+//
+//    case 3:
+//      if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+//        return p[0] << 16 | p[1] << 8 | p[2];
+//      else
+//        return p[0] | p[1] << 8 | p[2] << 16;
+//      //break;
+//
+//    case 4:
+//      return *(Uint32 *)p;
+//      //break;
+//
+//    default:
+//      return 0;
+//  }
 }
 
 
@@ -1152,9 +1155,9 @@ void navNode::Update_Costs() {
 }
 
 void navNode::Render(int red, int green, int blue) {
-  SDL_Rect obj = {(int)((this->x -g_camera.x - 20)* g_camera.zoom) , (int)(((this->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+  SDL_FRect obj = {(int)((this->x -g_camera.x - 20)* g_camera.zoom) , (int)(((this->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
   SDL_SetTextureColorMod(nodeDebug, red, green, blue);
-  SDL_RenderCopy(renderer, nodeDebug, NULL, &obj);
+  SDL_RenderTexture(renderer, nodeDebug, NULL, &obj);
 }
 
 navNode::~navNode() {
@@ -1262,7 +1265,7 @@ rect::rect(float fx, float fy, float fz, float fw, float fh, float fzh) {
 }
 
 void rect::render(SDL_Renderer * renderer) {
-  SDL_Rect rect = { this->x, this->y, this->width, this->height};
+  SDL_FRect rect = { this->x, this->y, this->width, this->height};
   SDL_RenderFillRect(renderer, &rect);
 }
 
@@ -1353,9 +1356,9 @@ void tri::render(SDL_Renderer* renderer) {
   int ty2 = g_camera.zoom * (y2-g_camera.y)- layer * 38;
 
 
-  SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty2);
-  SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty1);
-  SDL_RenderDrawLine(renderer,  tx2, ty2, tx2, ty1);
+  SDL_RenderLine(renderer,  tx1, ty1, tx2, ty2);
+  SDL_RenderLine(renderer,  tx1, ty1, tx2, ty1);
+  SDL_RenderLine(renderer,  tx2, ty2, tx2, ty1);
 }
 
 //sortingfunction for optimizing fog and triangular walls
@@ -1403,9 +1406,9 @@ void impliedSlopeTri::render(SDL_Renderer* renderer) {
   int ty1 = g_camera.zoom * (y1-g_camera.y)- layer * 38;
   int ty2 = g_camera.zoom * (y2-g_camera.y)- layer * 38;
   SDL_SetRenderDrawColor(renderer, 10, 200, 150, 255);
-  SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty2);
-  SDL_RenderDrawLine(renderer,  tx1, ty1, tx2, ty1);
-  SDL_RenderDrawLine(renderer,  tx2, ty2, tx2, ty1);
+  SDL_RenderLine(renderer,  tx1, ty1, tx2, ty2);
+  SDL_RenderLine(renderer,  tx1, ty1, tx2, ty1);
+  SDL_RenderLine(renderer,  tx2, ty2, tx2, ty1);
 }
 
 ramp::ramp(int fx, int fy, int flayer, int ftype, string fwallt, string fcapt) {
@@ -1537,13 +1540,13 @@ bool CylinderOverlap(rect a, rect b, int skin) {
   return (ElipseOverlap(a, b)) && ( (a.z >= b.z && a.z <= b.z + b.zeight) || (b.z >= a.z && b.z <= a.z + a.zeight));
 }
 
-bool RectOverlap(SDL_Rect a, SDL_Rect b) {
-  if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) {
-    return true;
-  } else {
-    return false;
-  }
-}
+//bool RectOverlap(SDL_FRect a, SDL_FRect b) {
+//  if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) {
+//    return true;
+//  } else {
+//    return false;
+//  }
+//}
 
 bool RectOverlap(SDL_FRect a, SDL_FRect b) {
   if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) {
@@ -1648,14 +1651,14 @@ bool ITriRectOverlap(impliedSlopeTri* a, int x, int y, int width, int height) {
   return 0;
 }
 
-SDL_Rect transformRect(SDL_Rect input) {
-  SDL_Rect obj;
-  obj.x = (input.x -g_camera.x) * g_camera.zoom;
-  obj.y = (input.y - g_camera.y) * g_camera.zoom;
-  obj.w = input.w * g_camera.zoom;
-  obj.h = input.h * g_camera.zoom;
-  return obj;
-}
+//SDL_FRect transformRect(SDL_FRect input) {
+//  SDL_FRect obj;
+//  obj.x = (input.x -g_camera.x) * g_camera.zoom;
+//  obj.y = (input.y - g_camera.y) * g_camera.zoom;
+//  obj.w = input.w * g_camera.zoom;
+//  obj.h = input.h * g_camera.zoom;
+//  return obj;
+//}
 
 SDL_FRect transformRect(SDL_FRect input) {
   SDL_FRect obj;
@@ -1738,8 +1741,8 @@ impliedSlope::~impliedSlope() {
 }
 
 void impliedSlope::render(SDL_Renderer* renderer) {
-  SDL_Rect a = {bounds.x, bounds.y, bounds.width, bounds.height};
-  SDL_RenderDrawRect(renderer, &a);
+  SDL_FRect a = {bounds.x, bounds.y, bounds.width, bounds.height};
+  SDL_RenderRect(renderer, &a);
 }
 
 
@@ -1778,7 +1781,7 @@ void collisionZone::debugRender(SDL_Renderer* renderer) {
   SDL_FRect rend = {(float)bounds.x, (float)bounds.y, (float)bounds.width, (float)bounds.height};
   rend = transformRect(rend);
   SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-  SDL_RenderDrawRectF(renderer, &rend);
+  SDL_RenderRect(renderer, &rend);
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 }
 
@@ -1866,7 +1869,10 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
         //M("sharing a texture" );
         cached = true;
         this->texture = g_tiles[i]->texture;
-        SDL_QueryTexture(g_tiles[i]->texture, NULL, NULL, &texwidth, &texheight);
+        //SDL_QueryTexture(g_tiles[i]->texture, NULL, NULL, &texwidth, &texheight);
+        SDL_PropertiesID p = SDL_GetTextureProperties(g_tiles[i]->texture);
+        texwidth = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+        texheight = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
         this->asset_sharer = 1;
         break;
       }
@@ -1882,7 +1888,10 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
 //      SDL_SetTextureColorMod(texture, -65, -65, -65);
 //    }
 
-    SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
+    //SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
+    SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+    texwidth = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+    texheight = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
     if(fileaddress.find("spec") != std::string::npos) {
       specular = 1;
     }
@@ -1903,7 +1912,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
 
       texture = MaskTexture(renderer, diffuse, mask);
-      SDL_FreeSurface(smask);
+      SDL_DestroySurface(smask);
       SDL_DestroyTexture(mask);
       SDL_DestroyTexture(diffuse);
     }
@@ -1917,7 +1926,7 @@ tile::tile(SDL_Renderer * renderer, const char* filename, const char* mask_filen
   this->xoffset = fmod(this->x, this->texwidth);
   this->yoffset = fmod(this->y, this->texheight);
 
-  SDL_FreeSurface(image);
+  SDL_DestroySurface(image);
   g_tiles.push_back(this);
 
 }
@@ -1943,7 +1952,10 @@ void tile::reloadTexture() {
       //SDL_SetTextureColorMod(texture, -20, -20, -20);
     }
 
-    SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
+    //SDL_QueryTexture(texture, NULL, NULL, &texwidth, &texheight);
+    SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+    texwidth = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+    texheight = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
     if(fileaddress.find("OCCLUSION") != string::npos) {
       //SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
 
@@ -1956,11 +1968,11 @@ void tile::reloadTexture() {
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
 
       texture = MaskTexture(renderer, diffuse, mask);
-      SDL_FreeSurface(smask);
+      SDL_DestroySurface(smask);
       SDL_DestroyTexture(mask);
       SDL_DestroyTexture(diffuse);
     }
-    SDL_FreeSurface(image);
+    SDL_DestroySurface(image);
   }
 }
 
@@ -2080,13 +2092,13 @@ void tile::render(SDL_Renderer * renderer, camera fcamera) {
         dstrect.x = ((dstrect.x - fcamera.x)* fcamera.zoom);
         dstrect.y = ((dstrect.y - fcamera.y)* fcamera.zoom);
 
-        SDL_Rect fsrcrect;
+        SDL_FRect fsrcrect;
         fsrcrect.x = srcrect.x;
         fsrcrect.y = srcrect.y;
         fsrcrect.w = srcrect.w;
         fsrcrect.h = srcrect.h;
 
-        SDL_RenderCopyExF(renderer, texture, &fsrcrect, &dstrect, 0, &nowt, SDL_FLIP_NONE);
+        SDL_RenderTextureRotated(renderer, texture, &fsrcrect, &dstrect, 0, &nowt, SDL_FLIP_NONE);
 
 
 
@@ -2106,7 +2118,7 @@ void tile::render(SDL_Renderer * renderer, camera fcamera) {
       }
     } else {
       SDL_FRect dstrect = { (x -fcamera.x)* fcamera.zoom, (y-fcamera.y) * fcamera.zoom, width * fcamera.zoom, height * fcamera.zoom};
-      SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+      SDL_RenderTexture(renderer, texture, NULL, &dstrect);
     }
 
     // render specular over water
@@ -2115,7 +2127,7 @@ void tile::render(SDL_Renderer * renderer, camera fcamera) {
     }
     if(specular) {
       SDL_FRect dstrect = {0, 0, WIN_WIDTH, WIN_HEIGHT};
-      SDL_Rect srcrect = {0, 0, 256, 220};
+      SDL_FRect srcrect = {0, 0, 256, 220};
       // minimize the shine if it wouldn't be drawn over the
       // tile
       float left, right;
@@ -2171,7 +2183,7 @@ void tile::render(SDL_Renderer * renderer, camera fcamera) {
       //      srcrect.h = width * a;
       //    }
 
-      SDL_RenderCopyF(renderer, g_wSpec, &srcrect, &dstrect);
+      SDL_RenderTexture(renderer, g_wSpec, &srcrect, &dstrect);
     }
 
 
@@ -2383,10 +2395,10 @@ void particle::render(SDL_Renderer* renderer, camera fcamera) {
 
   //need to consider the frame
   if(yframes > 1) {
-    SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
-    SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+    SDL_FRect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
+    SDL_RenderTexture(renderer, texture, &srcrect, &dstrect);
   } else {
-    SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+    SDL_RenderTexture(renderer, texture, NULL, &dstrect);
   }
 
 }
@@ -2431,7 +2443,10 @@ effectIndex::effectIndex(string filename, SDL_Renderer* renderer) {
   int texW = 0;
   int texH = 0;
 
-  SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
+  //SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
+  SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+  texW = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  texH = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
   framewidth = texW / yframes;
   frameheight = texH;
 
@@ -2618,7 +2633,7 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
   SDL_SetTextureAlphaMod(this->texture, alphamod);
 
   SDL_FRect dstrect = { ((this->x)-fcamera.x) *fcamera.zoom, (( (this->y - (XtoZ * z) ) ) -fcamera.y) *fcamera.zoom, (float)(width * size), (float)((height * size)* (637 /640) * 0.9)};
-  //SDL_Rect dstrect = {500, 500, 200, 200 };
+  //SDL_FRect dstrect = {500, 500, 200, 200 };
   //dstrect.y += (owner->height -(height/2)) * fcamera.zoom;
   float temp;
   temp = width;
@@ -2633,7 +2648,7 @@ void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
   rect cam(0, 0, fcamera.width, fcamera.height);
 
   if(RectOverlap(obj, cam)) {
-    SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+    SDL_RenderTexture(renderer, texture, NULL, &dstrect);
   }
 }
 
@@ -2723,14 +2738,14 @@ void projectile::render(SDL_Renderer * renderer, camera fcamera) {
   if(RectOverlap(obj, cam)) {
     if(gun->framespots.size() > 1) {
       frame = animation * gun->xframes + frameInAnimation;
-      SDL_Rect srcrect = {gun->framespots[frame].x, gun->framespots[frame].y, gun->framewidth, gun->frameheight};
+      SDL_FRect srcrect = {gun->framespots[frame].x, gun->framespots[frame].y, gun->framewidth, gun->frameheight};
       const SDL_FPoint center = {0 ,0};
       if(texture != NULL) {
-        SDL_RenderCopyExF(renderer, texture, &srcrect, &obj, 0, &center, flip);
+        SDL_RenderTextureRotated(renderer, texture, &srcrect, &obj, 0, &center, flip);
       }
     } else {
       if(texture != NULL) {
-        SDL_RenderCopyF(renderer, texture, NULL, &obj);
+        SDL_RenderTexture(renderer, texture, NULL, &obj);
       }
     }
   }
@@ -2796,18 +2811,18 @@ mapObject::mapObject(SDL_Renderer * renderer, string imageadress, const char* ma
       //be off.
 
       SDL_DestroyTexture(texture);
-      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+      //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
       SDL_Surface* smask = loadSurface(mask_filename);
       SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
       //SDL_SetTextureColorMod(diffuse, -65, -65, -65);
       texture = MaskTexture(renderer, diffuse, mask);
-      SDL_FreeSurface(smask);
+      SDL_DestroySurface(smask);
       SDL_DestroyTexture(mask);
       SDL_DestroyTexture(diffuse);
-      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+      //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
     }
-    SDL_FreeSurface(image);
+    SDL_DestroySurface(image);
 
     if(fwall) {
       wall = 1;
@@ -2824,7 +2839,10 @@ mapObject::mapObject(SDL_Renderer * renderer, string imageadress, const char* ma
       //SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
       diffuse = 0;
     }
-    SDL_QueryTexture(texture, NULL, NULL, &this->framewidth, &this->frameheight);
+    //SDL_QueryTexture(texture, NULL, NULL, &this->framewidth, &this->frameheight);
+    SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+    this->framewidth = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+    this->frameheight = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
   }
 
 
@@ -2885,18 +2903,18 @@ void mapObject::reloadTexture() {
       //be off.
 
       SDL_DestroyTexture(texture);
-      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+      //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
       SDL_Surface* smask = loadSurface(mask_fileaddress.c_str());
       SDL_Texture* mask = SDL_CreateTextureFromSurface(renderer, smask);
       SDL_Texture* diffuse = SDL_CreateTextureFromSurface(renderer, image);
       //SDL_SetTextureColorMod(diffuse, -65, -65, -65);
       texture = MaskTexture(renderer, diffuse, mask);
-      SDL_FreeSurface(smask);
+      SDL_DestroySurface(smask);
       SDL_DestroyTexture(mask);
       SDL_DestroyTexture(diffuse);
-      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+      //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
     }
-    SDL_FreeSurface(image);
+    SDL_DestroySurface(image);
 
     if(wall) {
       SDL_SetTextureColorMod(texture, -g_walldarkness, -g_walldarkness, -g_walldarkness);
@@ -2969,7 +2987,7 @@ void mapObject::render(SDL_Renderer * renderer, camera fcamera) {
   cam.h = fcamera.height;
 
   if(RectOverlap(obj, cam)) {
-    SDL_Rect srcrect;
+    SDL_FRect srcrect;
     SDL_FRect dstrect;
     float ypos = 0;
     float xpos = 0;
@@ -3021,7 +3039,7 @@ void mapObject::render(SDL_Renderer * renderer, camera fcamera) {
       dstrect.w = (dstrect.w * fcamera.zoom);
       dstrect.h = (dstrect.h * fcamera.zoom);
 
-      SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+      SDL_RenderTexture(renderer, texture, &srcrect, &dstrect);
       xpos += srcrect.w;
       srcrect.x = 0;
 
@@ -3073,11 +3091,11 @@ void fancychar::render(fancyword* parent) {
   SDL_SetTextureColorMod(texture, pow(cc.r,0.8),pow(cc.g,0.8),pow(cc.b,0.8));
   SDL_SetTextureAlphaMod(texture, opacity);
 
-  SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+  SDL_RenderTexture(renderer, texture, NULL, &shadowRect);
 
   SDL_SetTextureColorMod(texture, pow(cc.r,1.0013),pow(cc.g,1.0013),pow(cc.b,1.0013));
 
-  SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+  SDL_RenderTexture(renderer, texture, NULL, &dstrect);
 }
 
 void fancychar::update(float elapsed) {
@@ -3489,9 +3507,9 @@ int fancybox::reveal() {
     if(adventureUIManager->blip == nullptr) {
       adventureUIManager->blip = g_ui_voice;
     }
-    Mix_HaltChannel(6);
-    Mix_VolumeChunk(adventureUIManager->blip, 20);
-    playSound(6, adventureUIManager->blip, 0);
+    //Mix_HaltChannel(6);
+    //Mix_VolumeChunk(adventureUIManager->blip, 20);
+    playSound(adventureUIManager->blip);
   }
 
   if((int)wordProgress < (int)words.size()) {
@@ -3569,7 +3587,7 @@ worldsound::worldsound(string filename, int fx, int fy) {
 
 worldsound::~worldsound() {
   //M("~worldsound()" );
-  Mix_FreeChunk(blip);
+  MIX_DestroyAudio(blip);
   g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), this), g_worldsounds.end());
 }
 
@@ -3587,7 +3605,7 @@ void worldsound::update(float elapsed) {
   if(cur_volume < 0) {
     cur_volume = 0;
   }
-  Mix_VolumeChunk(blip, cur_volume);
+  //Mix_VolumeChunk(blip, cur_volume);
 
   if(cooldown < 0) {
     //change volume
@@ -3936,7 +3954,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     if(!fileExists(musicname)) {
       fileExistsSTR = "resources/static/music/" + musicname + ".ogg";
     }
-    this->theme = Mix_LoadMUS(fileExistsSTR.c_str());
+    //this->theme = Mix_LoadMUS(fileExistsSTR.c_str());
     g_musicalEntities.push_back(this);
   }
   file >> comment;
@@ -4095,9 +4113,9 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   const char* spritefile = spritefilevar.c_str();
   if(!asset_sharer) {
     if(!blurPixelsForScaling) {
-      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+      //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     } else {
-      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+      //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
     }
 
     texture = loadTexture(renderer, spritefile);
@@ -4106,7 +4124,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       D(spritefilevar);
     }
 
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
+    //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
   }
 
 
@@ -4135,8 +4153,11 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   shadow->x = x + shadow->xoffset;
   shadow->y = y + shadow->yoffset;
 
-  int w, h;
-  SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+  //int w, h;
+  //SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+  SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+  int w = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  int h = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
 
   //make entities pop in unless this is a mapload
   if(!transition) {
@@ -4550,7 +4571,7 @@ entity::~entity() {
   }
 
   if(eheightmap != nullptr) {
-    SDL_FreeSurface(eheightmap);
+    SDL_DestroySurface(eheightmap);
     M("Freed eheightmap");
   }
 
@@ -4786,7 +4807,7 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
         framePlusSpinOffset = 0;
       } 
 
-      SDL_Rect srcrect = {framespots[framePlusSpinOffset].x,framespots[framePlusSpinOffset].y, framewidth, frameheight};
+      SDL_FRect srcrect = {framespots[framePlusSpinOffset].x,framespots[framePlusSpinOffset].y, framewidth, frameheight};
       const SDL_FPoint center = {0 ,0};
 
 
@@ -4794,7 +4815,7 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
         if(useTint) {
           SDL_SetTextureColorMod(texture, red, green, blue);
         }
-        SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
+        SDL_RenderTextureRotated(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
       }
     } else {
       if(flashingMS > 0) {
@@ -4805,7 +4826,7 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
         if(useTint) {
           SDL_SetTextureColorMod(texture, red, green, blue);
         }
-        SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+        SDL_RenderTexture(renderer, texture, NULL, &dstrect);
       }
       //      if(flashingMS > 0) {
       //        SDL_SetTextureColorMod(texture, 255, 255, 255);
@@ -6159,7 +6180,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
     SDL_Color rgb = {0, 0, 0};
     heightmap* thismap = g_heightmaps[heightmap_index];
     Uint8 maxred = 0;
-    if(using_heightmap) {
+    if(0 && using_heightmap) { //i dont care about this anymore
       //try each corner;
       //thismap->image->w;
       //code for middle
@@ -6172,7 +6193,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
         data = thismap->getpixel(thismap->image, (int)( ((this->getOriginX() - heighttile->x) /heighttile->width) * thismap->image->w), (int)( ((this->getOriginY() - heighttile->y) /heighttile->height) * thismap->image->h));
       }
-      SDL_GetRGB(data, thismap->image->format, &rgb.r, &rgb.g, &rgb.b);
+      //SDL_GetRGB(data, thismap->image->format, &rgb.r, &rgb.g, &rgb.b);
       if(RectOverlap(tilerect, movedbounds)) {
         maxred = rgb.r;
       }
@@ -6605,7 +6626,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
       //playSound(-1, g_land, 0);
 
       if( abs(zvel) > 120) {
-        playSound(-1, g_staticSounds[3], 0);
+        playSound( g_staticSounds[3]);
       }
 
       if(!storedJump) {
@@ -7754,13 +7775,6 @@ levelNode::~levelNode() {
   g_levelNodes.erase(remove(g_levelNodes.begin(), g_levelNodes.end(), this), g_levelNodes.end());
 }
 
-SDL_Rect levelNode::getEyeRect() {
-  SDL_Rect srect = {0, 0, 196, 196};
-  if(blinkCooldownMS < 120) { srect.x += 196;};
-  if(blinkCooldownMS < 60) { srect.x += 196;};
-  return srect;
-}
-
 
 levelSequence::levelSequence(string filename, SDL_Renderer * renderer){
 }
@@ -8260,10 +8274,10 @@ int LineTrace(int x1, int y1, int x2, int y2, bool display, int size, int layer,
     int xpos = (i/resolution) * x1 + (1 - i/resolution) * x2;
     int ypos = (i/resolution) * y1 + (1 - i/resolution) * y2;
     rect a = rect(xpos - xsize/2, ypos - size/2, xsize, size);
-    SDL_Rect b = {(int)(((xpos- xsize/2) - g_camera.x) * g_camera.zoom), (int)(((ypos- size/2) - g_camera.y) * g_camera.zoom), (int)(xsize), (int)(size)};
+    SDL_FRect b = {(int)(((xpos- xsize/2) - g_camera.x) * g_camera.zoom), (int)(((ypos- size/2) - g_camera.y) * g_camera.zoom), (int)(xsize), (int)(size)};
 
     //    if(display) {
-    //      SDL_RenderDrawRect(renderer, &b);
+    //      SDL_RenderRect(renderer, &b);
     //    }
 
     if(fogOfWar) {
@@ -8334,9 +8348,9 @@ textbox::textbox(SDL_Renderer* renderer, const char* fcontent, float size, float
   //  }
 
 
-  SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(font, content.c_str(), textcolor, fwidth * WIN_WIDTH);
+  SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(font, content.c_str(), content.size(), textcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-  SDL_FreeSurface(textsurface);
+  SDL_DestroySurface(textsurface);
 
   int texW = 0;
   int texH = 0;
@@ -8344,7 +8358,12 @@ textbox::textbox(SDL_Renderer* renderer, const char* fcontent, float size, float
   y = fy;
   boxX = fx;
   boxY = fy;
-  SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+  //SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+  
+  SDL_PropertiesID p = SDL_GetTextureProperties(texttexture);
+  texW = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  texH = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
+
   //SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
   this->width = texW;
   this->height = texH;
@@ -8412,10 +8431,10 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
         shadowRect.x += booshAmount;
         shadowRect.y += booshAmount;
         SDL_SetTextureColorMod(texttexture, textcolormod.r * 0.392,textcolormod.g * 0.392,textcolormod.b * 0.392);
-        SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+        SDL_RenderTexture(renderer, texttexture, NULL, &shadowRect);
         SDL_SetTextureColorMod(texttexture, textcolormod.r,textcolormod.g,textcolormod.b);
       }
-      SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+      SDL_RenderTexture(renderer, texttexture, NULL, &dstrect);
     } else {
       if(align == 0) {
         //left
@@ -8430,11 +8449,11 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
           shadowRect.x += booshAmount;
           shadowRect.y += booshAmount;
           SDL_SetTextureColorMod(texttexture, textcolormod.r * 0.392,textcolormod.g * 0.392,textcolormod.b * 0.392);
-          SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+          SDL_RenderTexture(renderer, texttexture, NULL, &shadowRect);
           SDL_SetTextureColorMod(texttexture, textcolormod.r,textcolormod.g,textcolormod.b);
         }
 
-        SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+        SDL_RenderTexture(renderer, texttexture, NULL, &dstrect);
       } else {
         //center text
         SDL_FRect dstrect = {((boxX + bonusX) * winwidth)-width/2, (boxY+bonusY) * winheight, (float)width,  (float)thisrect.h};
@@ -8448,11 +8467,11 @@ void textbox::render(SDL_Renderer* renderer, int winwidth, int winheight) {
           shadowRect.x += booshAmount;
           shadowRect.y += booshAmount;
           SDL_SetTextureColorMod(texttexture, textcolormod.r * 0.392,textcolormod.g * 0.392,textcolormod.b * 0.392);
-          SDL_RenderCopyF(renderer, texttexture, NULL, &shadowRect);
+          SDL_RenderTexture(renderer, texttexture, NULL, &shadowRect);
           SDL_SetTextureColorMod(texttexture, textcolormod.r,textcolormod.g,textcolormod.b);
         }
 
-        SDL_RenderCopyF(renderer, texttexture, NULL, &dstrect);
+        SDL_RenderTexture(renderer, texttexture, NULL, &dstrect);
       }
     }
   }
@@ -8463,12 +8482,17 @@ void textbox::updateText(string content, float size, float fwidth, SDL_Color fco
     size = fontsize;
   }
   SDL_DestroyTexture(texttexture);
-  SDL_Surface *textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), fcolor, fwidth * WIN_WIDTH);
+  SDL_Surface *textsurface =  TTF_RenderText_Blended_Wrapped(font, content.c_str(), content.size(), fcolor, fwidth * WIN_WIDTH);
   texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-  SDL_FreeSurface(textsurface);
-  int texW = 0;
-  int texH = 0;
-  SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+  SDL_DestroySurface(textsurface);
+//  int texW = 0;
+//  int texH = 0;
+//  SDL_QueryTexture(texttexture, NULL, NULL, &texW, &texH);
+
+  SDL_PropertiesID p = SDL_GetTextureProperties(texttexture);
+  int texW = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  int texH = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
+
   //SDL_SetTextureBlendMode(texttexture, SDL_BLENDMODE_ADD);
   width = texW;
   thisrect = { (float)x, (float)y, (float)texW, (float)texH };
@@ -8560,7 +8584,7 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
         int j = 0;
         while (j < jbound) {
           SDL_FRect dstrect = {i + (tempx * WIN_WIDTH), j + (tempy * WIN_HEIGHT), (float)scaledpatchwidth, (float)scaledpatchwidth}; //change patchwidth in this declaration for sprite scale
-          SDL_Rect srcrect;
+          SDL_FRect srcrect;
           srcrect.h = patchwidth;
           srcrect.w = patchwidth;
           if(i==0) {
@@ -8599,7 +8623,7 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
 
           //done to fix occasional 1px gap. not a good fix
           dstrect.h += 1;
-          SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+          SDL_RenderTexture(renderer, texture, &srcrect, &dstrect);
         }
         //increment i based on last shrink
         int newwidth = ibound - (i + scaledpatchwidth);
@@ -8626,10 +8650,10 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
           shadowRect.x += booshAmount;
           shadowRect.y += booshAmount;
           SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
-          SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+          SDL_RenderTexture(renderer, texture, NULL, &shadowRect);
           SDL_SetTextureColorMod(texture, 255,255,255);
         }
-        SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+        SDL_RenderTexture(renderer, texture, NULL, &dstrect);
       } else {
         if(heightFromWidthFactor != 0) {
           SDL_FRect dstrect = {(x + bonusX) * WIN_WIDTH + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), (y+bonusY) * WIN_HEIGHT + (shrinkPixels / scalex) + (shrinkPercent * WIN_WIDTH), width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2,  heightFromWidthFactor * (width * WIN_WIDTH - (shrinkPixels / scalex) * 2 - (shrinkPercent * WIN_WIDTH) * 2) };
@@ -8643,7 +8667,7 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
             shadowRect.x += booshAmount;
             shadowRect.y += booshAmount;
             SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
-            SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+            SDL_RenderTexture(renderer, texture, NULL, &shadowRect);
             SDL_SetTextureColorMod(texture, 255,255,255);
           }
 
@@ -8660,14 +8684,14 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
                 }
               }
             }
-            SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
-            SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+            SDL_FRect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
+            SDL_RenderTexture(renderer, texture, &srcrect, &dstrect);
           } else if(frameCropX != -1) {
-            SDL_Rect srcrect = {frameCropX , frameCropY,  framewidth, frameheight};
-            SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+            SDL_FRect srcrect = {frameCropX , frameCropY,  framewidth, frameheight};
+            SDL_RenderTexture(renderer, texture, &srcrect, &dstrect);
 
           } else {
-            SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+            SDL_RenderTexture(renderer, texture, NULL, &dstrect);
           }
 
         } else {
@@ -8678,7 +8702,7 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
             shadowRect.x += booshAmount;
             shadowRect.y += booshAmount;
             SDL_SetTextureColorMod(texture, g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
-            SDL_RenderCopyF(renderer, texture, NULL, &shadowRect);
+            SDL_RenderTexture(renderer, texture, NULL, &shadowRect);
             SDL_SetTextureColorMod(texture, 255,255,255);
           }
 
@@ -8698,14 +8722,14 @@ void ui::render(SDL_Renderer * renderer, camera fcamera, float elapsed) {
                 }
               }
             }
-            SDL_Rect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
-            SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+            SDL_FRect srcrect = {0 + frame * framewidth , 0,  framewidth, frameheight};
+            SDL_RenderTexture(renderer, texture, &srcrect, &dstrect);
           } else if(frameCropX != -1) {
-            SDL_Rect srcrect = {frameCropX , frameCropY,  framewidth, frameheight};
-            SDL_RenderCopyF(renderer, texture, &srcrect, &dstrect);
+            SDL_FRect srcrect = {frameCropX , frameCropY,  framewidth, frameheight};
+            SDL_RenderTexture(renderer, texture, &srcrect, &dstrect);
 
           } else {
-            SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+            SDL_RenderTexture(renderer, texture, NULL, &dstrect);
           }
         }
       }
@@ -8720,14 +8744,14 @@ musicNode::musicNode(string fileaddress, int fx, int fy) {
   string temp = "resources/static/music/" + fileaddress + ".ogg";
 
   //blip = Mix_LoadMUS(temp.c_str());
-  blip = loadMusic(temp);
+  //blip = loadMusic(temp);
   x = fx;
   y = fy;
   g_musicNodes.push_back(this);
 }
 
 musicNode::~musicNode() {
-  Mix_FreeMusic(blip);
+  //Mix_FreeMusic(blip);
   g_musicNodes.erase(remove(g_musicNodes.begin(), g_musicNodes.end(), this), g_musicNodes.end());
 }
 
@@ -8744,14 +8768,14 @@ cueSound::cueSound(string fileaddress, int fx, int fy, int fradius) {
 }
 
 cueSound::~cueSound() {
-  Mix_FreeChunk(blip);
+  MIX_DestroyAudio(blip);
   g_cueSounds.erase(remove(g_cueSounds.begin(), g_cueSounds.end(), this), g_cueSounds.end());
 }
 
 
 //play a sound by name at a position
 void playSoundByName(string fname, float xpos, float ypos) {
-  Mix_Chunk* sound = 0;
+  MIX_Audio* sound = 0;
   for (auto s : g_cueSounds) {
     if (s->name == fname) {
       sound = s->blip;
@@ -8772,15 +8796,15 @@ void playSoundByName(string fname, float xpos, float ypos) {
   float cur_volume = (maxDistance - dist)/maxDistance * 128;
   if(cur_volume < 0) {cur_volume = 0;}
   //M(cur_volume);
-  Mix_VolumeChunk(sound, cur_volume);
+  //Mix_VolumeChunk(sound, cur_volume);
   if(!g_mute && sound != NULL) {
-    Mix_PlayChannel(0, sound,0);
+    //Mix_PlayChannel(0, sound,0);
   }
 }
 
 //play a sound given a string of its name. just make sure there's a cue with the same name
 void playSoundByName(string fname) {
-  Mix_Chunk* sound = 0;
+  MIX_Audio* sound = 0;
   for (auto s : g_cueSounds) {
     if (s->name == fname) {
       sound = s->blip;
@@ -8792,11 +8816,11 @@ void playSoundByName(string fname) {
   }
 
   if(!g_mute && sound != NULL) {
-    Mix_PlayChannel(0, sound,0);
+    //Mix_PlayChannel(0, sound,0);
   }
 }
 
-void playSoundAtPosition(int channel, Mix_Chunk *sound, int loops, int xpos, int ypos, float volume)
+void playSoundAtPosition(int channel, MIX_Audio *sound, int loops, int xpos, int ypos, float volume)
 {
   // M("play sound");
   if (!g_mute && sound != NULL)
@@ -8807,9 +8831,9 @@ void playSoundAtPosition(int channel, Mix_Chunk *sound, int loops, int xpos, int
     float cur_volume = (maxDistance - dist)/maxDistance * 128;
     cur_volume *= volume;
     if(cur_volume < 0) {cur_volume = 0;}
-    Mix_VolumeChunk(sound, cur_volume);
+    //Mix_VolumeChunk(sound, cur_volume);
     if(!g_mute && sound != NULL) {
-      Mix_PlayChannel(channel, sound,loops);
+      //Mix_PlayChannel(channel, sound,loops);
     }
   }
 }
@@ -9086,7 +9110,7 @@ void clear_map(camera& cameraToReset) {
   if(g_waterAllocated) {
     g_waterTexture = 0;
     g_waterAllocated = 0;
-    SDL_FreeSurface(g_waterSurface);
+    SDL_DestroySurface(g_waterSurface);
   }
 
   adventureUIManager->crosshair->show = 0;
@@ -9148,7 +9172,6 @@ void clear_map(camera& cameraToReset) {
 
       //meshes
 
-      breakpoint();
       D(g_meshFloors.size());
       for(auto &x : g_meshFloors) {
         if(x->visible) {
@@ -9156,7 +9179,8 @@ void clear_map(camera& cameraToReset) {
           for(int i = 0; i < x->numVertices; i++) {
             v[i] = x->vertex[i];
             v[i].position.x += x->origin.x - g_camera.x;
-            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].position.y += x->origin.y - g_camera.y
+                             -(x->origin.z * XtoZ);
             v[i].color.a = x->vertex[i].color.a;
           }
 
@@ -9184,7 +9208,8 @@ void clear_map(camera& cameraToReset) {
           for(int i = 0; i < x->numVertices; i++) {
             v[i] = x->vertex[i];
             v[i].position.x += x->origin.x - g_camera.x;
-            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].position.y += x->origin.y - g_camera.y
+                              -x->origin.z * XtoZ;
             v[i].color.a = x->vertex[i].color.a;
           }
 
@@ -9205,382 +9230,60 @@ void clear_map(camera& cameraToReset) {
       }
 
 
-      g_wsEdges.clear();
-      g_osEdges.clear();
-      {
-        updateEdges(g_wEdges, g_wsEdges);
-        updateEdges(g_oEdges, g_osEdges);
-      }
-
-      float px = protag->getOriginX() - g_camera.x;
-      float py = protag->getOriginY() - g_camera.y;
-      //float py = protag->getOriginY() - g_camera.y - protag->z * XtoZ;
-
-
-      //remove any entries on g_wEdges which are facing away from the player
-      //(kinda like backface-culling)
       
-      //needs to be improved
-      
-      removeBackfacingEdges(g_wsEdges, protag->getOriginX(), protag->getOriginY());
-      /*
-         g_wsEdges.erase(
-         std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [px, py](const edgeInfo& edge) {
-         float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ) ) / (edge.second.position.x - edge.first.position.x);
-         float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
-         return py < y_at_px;
-         }), 
-         g_wsEdges.end()
-         );
-         */
-      
-
-      g_wsEdges.erase(
-          std::remove_if(g_wsEdges.begin(), g_wsEdges.end(), [&](const edgeInfo& edge) {
-            float m = ((edge.second.position.y + edge.secondZ) - (edge.first.position.y + edge.firstZ)) /
-            (edge.second.position.x - edge.first.position.x);
-            float y_at_px = m * (px - edge.first.position.x) + edge.first.position.y;
-
-            if (py < y_at_px) {
-            // Edge is below the player and will be removed
-            auto it = std::find_if(g_osEdges.begin(), g_osEdges.end(), [&](const edgeInfo& occluder) {
-                return segmentsInSamePlace(edge, occluder, 1);
-                });
-
-            if (it != g_osEdges.end()) {
-            g_osEdges.erase(it); // Remove matching occluder edge
-            }
-            return true; // Remove this wall edge
-            }
-            return false;
-            }),
-          g_wsEdges.end()
-          );
-
-
-
-      //use g_wsEdges and g_osEdges to render floor occlusion
-      if(devMode == 0){
-        std::vector<SDL_Vertex> vertices;
-        const float EXTEND_DISTANCE = 2 * WIN_WIDTH;
-
-        for (auto edge : g_osEdges) {
-          float dx = edge.first.position.x - px;
-          float dy = edge.first.position.y - py;
-          float len = pow(dx*dx + dy*dy, 0.5);
-          if(len > 0) {
-            float nx = dx/len * WIN_WIDTH;
-            float ny = dy/len * WIN_WIDTH;
-            nx += px;
-            ny += py;
-
-            dx = edge.second.position.x - px;
-            dy = edge.second.position.y - py;
-            len = pow(dx*dx + dy*dy, 0.5);
-            if(len > 0) {
-              float nx2 = dx/len * WIN_WIDTH;
-              float ny2 = dy/len * WIN_WIDTH;
-              nx2 += px;
-              ny2 += py;
-
-              SDL_Vertex newA = {{nx, ny}, {255,255,255,255}, {0,0}};
-              SDL_Vertex newB = {{nx2, ny2}, {255,255,255,255}, {0,0}};
-
-              newA.position.y -= edge.firstZ;
-              newB.position.y -= edge.secondZ;
-              edge.first.position.y -= edge.firstZ;
-              edge.second.position.y -= edge.secondZ;
-
-
-              //push quad back to draw
-              vertices.push_back(edge.first);
-              vertices.push_back(edge.second);
-              vertices.push_back(newA);
-
-              vertices.push_back(newB);
-              vertices.push_back(edge.second);
-              vertices.push_back(newA);
-
-
-              // Calculate the perpendicular direction
-              float pdx = ny2 - ny;
-              float pdy = nx - nx2;
-              len = pow(pdx*pdx + pdy*pdy, 0.5);
-              pdx = pdx / len * WIN_WIDTH;
-              pdy = pdy / len * WIN_WIDTH;
-
-              // Check which side of the line px, py is on and flip if needed
-              float side = (px - nx) * (ny2 - ny) - (py - ny) * (nx2 - nx);
-              if (side > 0) {
-                pdx = -pdx;
-                pdy = -pdy;
-              }
-
-              SDL_Vertex newC = {{nx + pdx, ny + pdy}, {255,255,255,255}, {0,0}};
-              SDL_Vertex newD = {{nx2 + pdx, ny2 + pdy}, {255,255,255,255}, {0,0}};
-
-              newC.position.y -= edge.firstZ;
-              newD.position.y -= edge.secondZ;
-
-              vertices.push_back(newA);
-              vertices.push_back(newB);
-              vertices.push_back(newC);
-
-              vertices.push_back(newD);
-              vertices.push_back(newB);
-              vertices.push_back(newC);
-            }
-          }
-        }
-
-        SDL_RenderGeometry(renderer, blackbarTexture, vertices.data(), vertices.size(), nullptr, 0);
-      }
-
-      //sort g_wsEdges and g_osEdges
-      sortEdges(g_wsEdges, px, py);
-      sortEdges(g_osEdges, px, py);
-
       //visual walls
       //most of these will be drawn later so :S
       if(1) {
-        for(auto &x : g_meshVWalls) {
-          if(x->visible) {
-            SDL_Vertex v[x->numVertices];
-            for(int i = 0; i < x->numVertices; i++) {
-              v[i] = x->vertex[i];
-              v[i].position.x += x->origin.x - g_camera.x;
-              v[i].position.y += x->origin.y - g_camera.y;
-              v[i].color.r = v[i].color.g;
-            }
+    for(auto &x : g_meshVWalls) {
+      if(x->visible && x->awake) {
+        SDL_Vertex v[x->numVertices];
+        for(int i = 0; i < x->numVertices; i++) {
+          v[i] = x->vertex[i];
+          v[i].position.x += x->origin.x - g_camera.x;
+          v[i].position.y += x->origin.y - g_camera.y
+                            -x->origin.z * XtoZ;
+          v[i].color.r = v[i].color.g;
+          //          SDL_FRect a = {v[i].position.x, v[i].position.y, 10, 10};
+          //          SDL_RenderTexture(renderer, ggridIcon->texture, NULL, &a);
+        }
 
-            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
 
-            //render shade
-            for(int i = 0; i < x->numVertices; i++) {
-              v[i].tex_coord.x = x->vertexExtraData[i].first;
-              v[i].tex_coord.y = x->vertexExtraData[i].second;
-            }
-
-            SDL_RenderGeometry(renderer, g_wallShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+        if(x->drawShading) {
+          //render shade
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
           }
+  
+                  switch(x->topOrBottomShading) {
+                    case 0:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 1:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 2:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                      }
+                    case 3:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                      }
+                    case 4:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                      }
+                  }
         }
       }
-
-      /*
-         g_osEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
-         That segment represents an occluder, which casts a shadow. g_wsEdges is a vector<pair<SDL_Vertex, SDL_Vertex>>. Each pair is a segment of vertices with position.x and position.y in screen coordinates. 
-         That segment represents an wall, which catches a shadow. Let's walk through drawing a shadow. 
-         Say we have a pair from g_osEdges, and we call that pair Opair. Let's call the two vertices of Opair A and B. 
-         We will find point A2 from point A and point B2 from B. 
-         We'll do this by using std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) to find an intersection on the segment from A to a point WIN_WIDTH away in the direction of the vector from (px,py) to point A. 
-         Do the same to find B2. These are intersections with any element of g_wsEdges There might not be an intersection, and in that case, put A2 and B2 at the end of the raycast, WIN_WIDTH away from A and B, respectively. 
-         If both lines intersect a wall segment, prepare to draw the quad A B A2 B2 (B2 or A2 maybe be at the end of the raycast, offscreen in that case). 
-         If A's raycast intersected a wall, AND A2's y coordinate is lower than py we need to find the point A3 which is at y=0 and A2's x. 
-         That's also true for B's raycast and a point B3. If we found A3 and B3, draw a quad A2 B2 A3 B3. If not, draw the traingle A2 B2 A3 or A2 B2 B3. Good?
-         */
-
-      //for(auto&x : g_osEdges) {
-      //  x.group = 1;
-      //}
-      //
-      //for(auto &x : g_wsEdges) {
-      //  x.group = 1;
-      //}
-
-      processEdges(g_osEdges, g_wsEdges, WIN_WIDTH/2, WIN_HEIGHT/2);
-
-      //render occluding on visual walls
-      if (devMode == 0){
-        int cGroup = 0;
-        int maxGroups = 20;
-
-        map<int, vector<edgeInfo>> oGroups;
-
-        //for some reason making oGroups and wGroups breaks ftlo ;_;
-        for(const auto& edge : g_osEdges) {
-          oGroups[edge.group].push_back(edge);
-        }
-
-        map<int, vector<edgeInfo>> wGroups;
-
-        for(const auto& edge : g_wsEdges) {
-          wGroups[edge.group].push_back(edge);
-        }
-
-
-        for(int cGroup = 0; cGroup < maxGroups; cGroup++) {
-
-          for (auto edge : oGroups[cGroup]) {
-            std::vector<SDL_Vertex> vertices;
-            SDL_Vertex A = edge.first;
-            SDL_Vertex B = edge.second;
-
-            float dx = A.position.x - px;
-            float dy = A.position.y - py;
-            float len = sqrt(dx * dx + dy * dy);
-            A.position.y -= edge.firstZ;
-            B.position.y -= edge.secondZ;
-
-            float Ax2 = A.position.x + dx / len * WIN_WIDTH;
-            float Ay2 = A.position.y + dy / len * WIN_WIDTH;
-
-            std::tuple<bool, float, float> AIntersect = std::make_tuple(false, Ax2, Ay2);
-
-            for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
-              for (const auto& wall : wGroups[wGroup]) {
-                if(wGroup == cGroup) {continue;} //don't use walls with that same group
-                                                 //of occluders
-                auto [intersects, ix, iy] = getIntersection(A.position.x, A.position.y, Ax2, Ay2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
-                if (intersects && iy < A.position.y) {
-                  AIntersect = std::make_tuple(true, ix, iy);
-                  break;
-                }
-              }
-            }
-
-            // Repeat for B
-            dx = B.position.x - px;
-            dy = B.position.y - py;
-            len = sqrt(dx * dx + dy * dy);
-
-            float Bx2 = B.position.x + dx / len * WIN_WIDTH;
-            float By2 = B.position.y + dy / len * WIN_WIDTH;
-
-            std::tuple<bool, float, float> BIntersect = std::make_tuple(false, Bx2, By2);
-            for(int wGroup = 0; wGroup < maxGroups; wGroup++) {
-              for (const auto& wall : wGroups[wGroup]) {
-                if(wGroup == cGroup) {continue;}
-                auto [intersects, ix, iy] = getIntersection(B.position.x, B.position.y, Bx2, By2, wall.first.position.x, wall.first.position.y, wall.second.position.x, wall.second.position.y);
-                if (intersects && iy < B.position.y) {
-                  BIntersect = std::make_tuple(true, ix, iy);
-                  break;
-                }
-              }
-            }
-
-            auto [AIntersects, Ax3, Ay3] = AIntersect;
-            auto [BIntersects, Bx3, By3] = BIntersect;
-
-            SDL_Vertex A2 = {{Ax3, Ay3}, {0, 0, 0, 255}, {0, 0}};
-            SDL_Vertex B2 = {{Bx3, By3}, {0, 0, 0, 255}, {0, 0}};
-
-            // Handle case where there's no intersection
-            if (!AIntersects) {
-              A2 = {{Ax2, Ay2}, {0, 0, 0, 255}, {0, 0}};
-            }
-            if (!BIntersects) {
-              B2 = {{Bx2, By2}, {0, 0, 0, 255}, {0, 0}};
-            }
-
-
-            // Create A3
-            SDL_Vertex A3;
-            if (AIntersects && Ay3 < py) {
-              A3 = {{Ax3, 0}, {0, 0, 0, 255}, {0, 0}};
-            } else {
-              float p_dx = B2.position.y - A2.position.y;
-              float p_dy = A2.position.x - B2.position.x;
-              len = sqrt(p_dx * p_dx + p_dy * p_dy);
-              p_dx = p_dx / len * WIN_WIDTH;
-              p_dy = p_dy / len * WIN_WIDTH;
-
-              float side = (px - A2.position.x) * (B2.position.y - A2.position.y) - (py - A2.position.y) * (B2.position.x - A2.position.x);
-              if (side > 0) { //does this need to be flipped?
-                p_dx = -p_dx;
-                p_dy = -p_dy;
-              }
-
-              A3 = {{A2.position.x + p_dx, A2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
-            }
-
-            // Create B3
-            SDL_Vertex B3;
-            if (BIntersects && By3 < py) {
-              B3 = {{Bx3, 0}, {0, 0, 0, 255}, {0, 0}};
-            } else {
-              float p_dx = B2.position.y - A2.position.y;
-              float p_dy = A2.position.x - B2.position.x;
-              len = sqrt(p_dx * p_dx + p_dy * p_dy);
-              p_dx = p_dx / len * WIN_WIDTH;
-              p_dy = p_dy / len * WIN_WIDTH;
-
-              float side = (px - B2.position.x) * (A2.position.y - B2.position.y) - (py - B2.position.y) * (A2.position.x - B2.position.x);
-              if (side < 0) {
-                p_dx = -p_dx;
-                p_dy = -p_dy;
-              }
-
-              B3 = {{B2.position.x + p_dx, B2.position.y + p_dy}, {0, 0, 0, 255}, {0, 0}};
-            }
-
-
-            vertices.push_back(A);
-            vertices.push_back(B);
-            vertices.push_back(A2);
-            vertices.push_back(A2);
-            vertices.push_back(B);
-            vertices.push_back(B2);
-
-
-            //these are temporarily commented out
-            vertices.push_back(B2);
-            vertices.push_back(B3);
-            vertices.push_back(A2);
-            vertices.push_back(A2);
-            vertices.push_back(B3);
-            vertices.push_back(A3);
-            SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
-
-          }
-
-          for (auto edge : oGroups[cGroup]) {
-            if(edge.wallMesh != nullptr) {
-              SDL_Vertex v[4];
-              int index = 0;
-              for(auto x : edge.indices) {
-                v[index] = edge.wallMesh->vertex[x];
-                v[index].position.x += edge.wallMesh->origin.x - g_camera.x;
-                v[index].position.y += edge.wallMesh->origin.y - g_camera.y;
-                v[index].color.r = v[index].color.g;
-                index++;
-              }
-
-              vector<int> indices = {0, 1, 2, 0, 2, 3};
-
-              SDL_RenderGeometry(renderer, edge.wallMesh->texture, v, 4, indices.data(), 6);
-
-              index = 0;
-              for(auto x : edge.indices) {
-                v[index].tex_coord.x = edge.wallMesh->vertexExtraData[x].first;
-                v[index].tex_coord.y = edge.wallMesh->vertexExtraData[x].second;
-                v[index].color.r = 255;
-                v[index].color.g = 255;
-                v[index].color.b = 255;
-                index++;
-              }
-
-              SDL_RenderGeometry(renderer, g_wallShadeTexture, v, 4, indices.data(), 6);
-            }
-          }
-        }
-
-        //SDL_RenderGeometry(renderer, nullptr, vertices.data(), vertices.size(), nullptr, 0);
+    }
       }
-
-
-      ////debugging
-      //if(0){
-      //SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-      //D(g_wsEdges.size());
-      //for(auto x : g_wsEdges) {
-      //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y-8, x.second.position.x, x.second.position.y - 8);
-      //}
-      //
-      //SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-      //for(auto x : g_osEdges) {
-      //  SDL_RenderDrawLine(renderer, x.first.position.x, x.first.position.y, x.second.position.x, x.second.position.y);
-      //}
-      //}
 
       if(drawhitboxes) {
         for(auto &x : g_meshCollisions) {
@@ -9590,6 +9293,7 @@ void clear_map(camera& cameraToReset) {
               v[i] = x->vertex[i];
               v[i].position.x += x->origin.x - g_camera.x;
               v[i].position.y += x->origin.y - g_camera.y;
+                                -x->origin.z * XtoZ;
             }
 
             SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
@@ -9609,7 +9313,7 @@ void clear_map(camera& cameraToReset) {
       if(!devMode && g_spotlightEnabled) {
         //occluders
 
-        SDL_Rect blackrect;
+        SDL_FRect blackrect;
 
         blackrect = {
           g_camera.desiredX - g_camera.width,
@@ -9621,7 +9325,7 @@ void clear_map(camera& cameraToReset) {
 
         blackrect = transformRect(blackrect);
 
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
 
         blackrect = {
           g_camera.desiredX + g_camera.width,
@@ -9633,7 +9337,7 @@ void clear_map(camera& cameraToReset) {
 
         blackrect = transformRect(blackrect);
 
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
 
         blackrect = {
           g_camera.desiredX,
@@ -9644,7 +9348,7 @@ void clear_map(camera& cameraToReset) {
 
         blackrect = transformRect(blackrect);
 
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
 
         blackrect = {
           g_camera.desiredX,
@@ -9655,7 +9359,7 @@ void clear_map(camera& cameraToReset) {
 
         blackrect = transformRect(blackrect);
 
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
 
         blackrect = {
           g_camera.desiredX,
@@ -9665,7 +9369,7 @@ void clear_map(camera& cameraToReset) {
         };
 
         blackrect = transformRect(blackrect);
-        SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, spotlightTexture, NULL, &blackrect);
       }
 
       for (long long unsigned int i = 0; i < g_tiles.size(); i++)
@@ -9678,12 +9382,12 @@ void clear_map(camera& cameraToReset) {
     }
 
     SDL_SetTextureAlphaMod(g_shade, g_dungeonDarkEffect);
-    SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+    SDL_RenderTexture(renderer, g_shade, NULL, NULL);
     SDL_SetRenderTarget(renderer, NULL);
 
 
     SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, frame, NULL, NULL);
+    SDL_RenderTexture(renderer, frame, NULL, NULL);
     SDL_RenderPresent(renderer);
 
 
@@ -9693,11 +9397,11 @@ void clear_map(camera& cameraToReset) {
       SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
 
       memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-      Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-      SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+      SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+      const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
       Uint32* pixels = (Uint32*)pixelReference;
       //int numPixels = imageWidth * imageHeight;
-      Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+      Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
       //Uint32 halftone = SDL_MapRGBA( mappingFormat, 50, 50, 50, 128);
 
       offset += g_transitionSpeed + 0.02 * offset;
@@ -9740,16 +9444,16 @@ void clear_map(camera& cameraToReset) {
 
       SDL_RenderClear(renderer);
       //render last frame
-      SDL_RenderCopy(renderer, frame, NULL, NULL);
+      SDL_RenderTexture(renderer, frame, NULL, NULL);
       SDL_UnlockTexture(transitionTexture);
-      SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+      SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
       SDL_RenderPresent(renderer);
 
       if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
         cont = 1;
       }
     }
-    SDL_FreeSurface(transitionSurface);
+    SDL_DestroySurface(transitionSurface);
     SDL_DestroyTexture(transitionTexture);
     transition = 1;
     SDL_GL_SetSwapInterval(1);
@@ -10398,6 +10102,8 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
 {
   this->light = plight;
   if(!light) {
+    blip = loadWav("resources/static/sounds/voice-normal.wav");
+
     talkingBox = new ui(renderer, "resources/static/ui/menu9patchblack.qoi", 0, 0.65, 1, 0.35, 0);
     talkingBox->renderOverText = 1;
     talkingBox->patchwidth = 213;
@@ -11062,9 +10768,12 @@ void adventureUI::updateText()
 //    responseText->show = 1;
     response = responses[response_index];
     if(response_index < 5) {
-      int texW = 0;
-      int texH = 0;
-      SDL_QueryTexture(qTextboxes[response_index]->texttexture, NULL, NULL, &texW, &texH);
+//      int texW = 0;
+//      int texH = 0;
+//      SDL_QueryTexture(qTextboxes[response_index]->texttexture, NULL, NULL, &texW, &texH);
+      SDL_PropertiesID p = SDL_GetTextureProperties(qTextboxes[response_index]->texttexture);
+      int texW = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+      int texH = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
       qHand->y = qTextboxes[response_index]->boxY + 0.01;
       float w = texW;
       //qHand->x = qTextboxes[response_index]->boxX + w/(WIN_WIDTH*2) + 0;
@@ -11090,9 +10799,9 @@ void adventureUI::updateText()
     // Play a clank
     if (blip != NULL)
     {
-      Mix_HaltChannel(6);
-      Mix_VolumeChunk(blip, 20);
-      playSound(6, blip, 0);
+//      Mix_HaltChannel(6);
+//      Mix_VolumeChunk(blip, 20);
+      playSound(blip);
     }
   }
   else
@@ -11117,13 +10826,13 @@ void adventureUI::skipText() {
     g_fancybox->revealAll();
     if(pushedText != "") {
       curText = pushedText;
-      Mix_HaltChannel(6);
+      //Mix_HaltChannel(6);
       if(adventureUIManager->blip == nullptr) {
         adventureUIManager->blip = g_ui_voice;
       }
-      Mix_VolumeChunk(blip, 20);
+      //Mix_VolumeChunk(blip, 20);
     }
-    playSound(6, blip, 0);
+    playSound(blip);
   }
 }
 
@@ -11325,9 +11034,12 @@ void adventureUI::continueDialogue()
     qPanel->height = 0.65 - qPanel->y;
 
     //arrange hand so it doesn't glide in
-    int texW = 0;
-    int texH = 0;
-    SDL_QueryTexture(qTextboxes[response_index]->texttexture, NULL, NULL, &texW, &texH);
+//    int texW = 0;
+//    int texH = 0;
+//    SDL_QueryTexture(qTextboxes[response_index]->texttexture, NULL, NULL, &texW, &texH);
+    SDL_PropertiesID p = SDL_GetTextureProperties(qTextboxes[response_index]->texttexture);
+    int texW = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+    int texH = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
     qHand->y = qTextboxes[response_index]->boxY + 0.03;
     float w = texW;
     qHand->x = qTextboxes[response_index]->boxX + w/(WIN_WIDTH*2) + 0;
@@ -11579,7 +11291,7 @@ void adventureUI::continueDialogue()
     combatUIManager->loadedBackground = bground(renderer, loadme.c_str());
 
     if(combatUIManager->sb1 != 0) {
-      SDL_FreeSurface(combatUIManager->sb1);
+      SDL_DestroySurface(combatUIManager->sb1);
     }
 
     loadme = "resources/static/backgrounds/textures/" + to_string(combatUIManager->loadedBackground.texture) + ".qoi";
@@ -11669,7 +11381,8 @@ void adventureUI::continueDialogue()
           for(int i = 0; i < x->numVertices; i++) {
             v[i] = x->vertex[i];
             v[i].position.x += x->origin.x - g_camera.x;
-            v[i].position.y += x->origin.y - g_camera.y;
+            v[i].position.y += x->origin.y - g_camera.y
+                             -(x->origin.z * XtoZ);
             v[i].color.a = x->vertex[i].color.a;
           }
 
@@ -11715,24 +11428,51 @@ void adventureUI::continueDialogue()
 
       if(1) {
         for(auto &x : g_meshVWalls) {
-          if(x->visible) {
+          if(x->visible && x->awake) {
             SDL_Vertex v[x->numVertices];
             for(int i = 0; i < x->numVertices; i++) {
               v[i] = x->vertex[i];
               v[i].position.x += x->origin.x - g_camera.x;
               v[i].position.y += x->origin.y - g_camera.y;
               v[i].color.r = v[i].color.g;
+              //          SDL_FRect a = {v[i].position.x, v[i].position.y, 10, 10};
+              //          SDL_RenderTexture(renderer, ggridIcon->texture, NULL, &a);
             }
-
+    
             SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-
-            //render shade
-            for(int i = 0; i < x->numVertices; i++) {
-              v[i].tex_coord.x = x->vertexExtraData[i].first;
-              v[i].tex_coord.y = x->vertexExtraData[i].second;
+    
+            if(x->drawShading) {
+              //render shade
+              for(int i = 0; i < x->numVertices; i++) {
+                v[i].tex_coord.x = x->vertexExtraData[i].first;
+                v[i].tex_coord.y = x->vertexExtraData[i].second;
+              }
+      
+                  switch(x->topOrBottomShading) {
+                    case 0:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 1:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 2:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                      }
+                    case 3:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                      }
+                    case 4:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                      }
+                  }
             }
-
-            SDL_RenderGeometry(renderer, g_wallShadeTexture, v, x->numVertices, x->indices, x->numIndices);
           }
         }
       }
@@ -11757,7 +11497,7 @@ void adventureUI::continueDialogue()
       if(!devMode && g_spotlightEnabled) {
         //occluders
     
-        SDL_Rect blackrect;
+        SDL_FRect blackrect;
     
         blackrect = {
           g_camera.desiredX - g_camera.width,
@@ -11769,7 +11509,7 @@ void adventureUI::continueDialogue()
     
         blackrect = transformRect(blackrect);
     
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
     
         blackrect = {
           g_camera.desiredX + g_camera.width,
@@ -11781,7 +11521,7 @@ void adventureUI::continueDialogue()
     
         blackrect = transformRect(blackrect);
     
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
     
         blackrect = {
           g_camera.desiredX,
@@ -11792,7 +11532,7 @@ void adventureUI::continueDialogue()
     
         blackrect = transformRect(blackrect);
     
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
     
         blackrect = {
           g_camera.desiredX,
@@ -11803,7 +11543,7 @@ void adventureUI::continueDialogue()
     
         blackrect = transformRect(blackrect);
     
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, blackbarTexture, NULL, &blackrect);
     
         blackrect = {
           g_camera.desiredX,
@@ -11813,10 +11553,10 @@ void adventureUI::continueDialogue()
         };
     
         blackrect = transformRect(blackrect);
-        SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+        SDL_RenderTexture(renderer, spotlightTexture, NULL, &blackrect);
       }
 
-      SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+      SDL_RenderTexture(renderer, g_shade, NULL, NULL);
       SDL_SetRenderTarget(renderer, NULL);
       while (!cont) {
 
@@ -11824,10 +11564,10 @@ void adventureUI::continueDialogue()
         SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
 
         memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
-        Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-        SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+        SDL_PixelFormat format = SDL_PIXELFORMAT_ARGB8888;
+        const SDL_PixelFormatDetails* mappingFormat = SDL_GetPixelFormatDetails( format );
         Uint32* pixels = (Uint32*)pixelReference;
-        Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+        Uint32 transparent = SDL_MapRGBA( mappingFormat, nullptr, 0, 0, 0, 255);
 
         offset += g_transitionSpeed + 0.02 * offset;
 
@@ -11863,16 +11603,16 @@ void adventureUI::continueDialogue()
 
         SDL_RenderClear(renderer);
         //render last frame
-        SDL_RenderCopy(renderer, frame, NULL, NULL);
+        SDL_RenderTexture(renderer, frame, NULL, NULL);
         SDL_UnlockTexture(transitionTexture);
-        SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+        SDL_RenderTexture(renderer, transitionTexture, NULL, NULL);
         SDL_RenderPresent(renderer);
 
         if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
           cont = 1;
         }
       }
-      SDL_FreeSurface(transitionSurface);
+      SDL_DestroySurface(transitionSurface);
       SDL_DestroyTexture(transitionTexture);
       SDL_DestroyTexture(frame);
       transition = 1;
@@ -14049,7 +13789,7 @@ void adventureUI::continueDialogue()
     float musicVol = stof(x[2]);
     if(g_loadedMusicStr != musicStr) {
       //must change music
-      Mix_FadeOutMusic(1000);
+      //Mix_FadeOutMusic(1000);
       g_loadedMusicVolume = musicVol;
       g_loadedMusicStr = musicStr;
       if(g_loadedMusic != 0) {
@@ -14065,11 +13805,11 @@ void adventureUI::continueDialogue()
       // it's deleted after it fades out
       
       //M("      ALLOCATED MUSIC");
-      if(Mix_PlayingMusic()) {
-        Mix_HookMusicFinished(playNextMusic);
-      } else {
-        playNextMusic();
-      }
+//      if(Mix_PlayingMusic()) {
+//        Mix_HookMusicFinished(playNextMusic);
+//      } else {
+//        playNextMusic();
+//      }
     }
 
     dialogue_index++;
@@ -14084,7 +13824,7 @@ void adventureUI::continueDialogue()
     if(x.size() > 0) {
       g_musicSilenceMs = stoi(x[1]);
     }
-    Mix_FadeOutMusic(200);
+    //Mix_FadeOutMusic(200);
 
     dialogue_index++;
     this->continueDialogue();
@@ -14101,7 +13841,7 @@ void adventureUI::continueDialogue()
 
     float volume = stof(split[2]);
 
-    Mix_Chunk *a = nullptr;
+    MIX_Audio *a = nullptr;
 
     if(a == nullptr) {
       a = loadWav(loadstring.c_str());
@@ -14109,13 +13849,13 @@ void adventureUI::continueDialogue()
 
     if (!g_mute && a != nullptr)
     {
-      Mix_Volume(0, volume * g_sfx_volume * 128);
-      Mix_PlayChannel(0, a, 0);
-      Mix_Volume(0, g_sfx_volume * 128);
+      //Mix_Volume(0, volume * g_sfx_volume * 128);
+      //Mix_PlayChannel(0, a, 0);
+      //Mix_Volume(0, g_sfx_volume * 128);
     }
 
     //if the sound is longer than 15 seconds, just place it in the level and call it from the script
-    g_loadPlaySounds.push_back(pair<int,Mix_Chunk*>(15000,a));
+    g_loadPlaySounds.push_back(pair<int,MIX_Audio*>(15000,a));
 
     dialogue_index++;
     this->continueDialogue();
@@ -14473,7 +14213,10 @@ ribbon::~ribbon() {
 void ribbon::render(SDL_Renderer* renderer, camera fcamera) {
   if(!visible) {return;}
   if(r_length == 0) {
-    SDL_QueryTexture(texture, NULL, NULL, &r_length, &r_thickness);
+    //SDL_QueryTexture(texture, NULL, NULL, &r_length, &r_thickness);
+    SDL_PropertiesID p = SDL_GetTextureProperties(texture);
+    r_length = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+    r_thickness = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
   }
 
   float u1; float v1;
@@ -14490,7 +14233,7 @@ void ribbon::render(SDL_Renderer* renderer, camera fcamera) {
 
   float dist = Distance(u1, v1, u2, v2);
 
-  SDL_Rect drect;
+  SDL_FRect drect;
   if(screenspace) {
     drect = {u2, v2 -r_thickness/2, dist, r_thickness};
   } else {
@@ -14499,11 +14242,11 @@ void ribbon::render(SDL_Renderer* renderer, camera fcamera) {
 
   float angle = atan2( (v1 - v2) , (u1 - u2) ) * (180 / M_PI);
 
-  SDL_Point center;
+  SDL_FPoint center;
   center.x = 0;
   center.y = (r_thickness)/2;
 
-  SDL_RenderCopyEx(renderer, texture, NULL, &drect, angle, &center, SDL_FLIP_NONE);
+  SDL_RenderTextureRotated(renderer, texture, NULL, &drect, angle, &center, SDL_FLIP_NONE);
 }
 
 tallGrass::tallGrass() {
@@ -14542,7 +14285,7 @@ void gradient::render(SDL_Renderer* renderer, camera fcamera) {
   rect cam(0, 0, fcamera.width, fcamera.height);
   if(RectOverlap(obj, cam)) {
     SDL_FRect dstrect = { (float)obj.x, (float)obj.y, (float)obj.width, (float)obj.height};
-    SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+    SDL_RenderTexture(renderer, texture, NULL, &dstrect);
   }
 }
 

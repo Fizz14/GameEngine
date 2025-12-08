@@ -1,10 +1,10 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_mixer.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 #include <algorithm>
 #include <cmath>	 //pow
 #include <math.h>	 //sin()
@@ -677,6 +677,7 @@ float ticks, lastticks, elapsed = 0, halfsecondtimer;
 float camx = 0;
 float camy = 0;
 SDL_Renderer *renderer;
+MIX_Mixer* g_mixer;
 
 //for benchmarking the Entity Update function
 // (EU)
@@ -715,7 +716,7 @@ string g_mapOfLastSave = "sp-title";
 string g_waypointOfLastSave = "a";
 
 // input
-const Uint8 *keystate = SDL_GetKeyboardState(NULL);
+const bool *keystate = SDL_GetKeyboardState(NULL);
 bool devinput[60] = {false};
 bool g_ignoreInput = 1;
 
@@ -750,16 +751,16 @@ float g_sfx_volume = 1;
 bool g_mute = 0;
 entity *g_currentMusicPlayingEntity = 0;
 
-vector<std::pair<Mix_Chunk*,string>> g_preloadedSounds;
-Mix_Chunk *g_ui_voice;
+vector<std::pair<MIX_Audio*,string>> g_preloadedSounds;
+MIX_Audio *g_ui_voice;
 musicNode *g_closestMusicNode;
 musicNode *newClosest;
 
-Mix_Music* g_loadedMusic = 0;
+musicmem* g_loadedMusic = 0;
 float g_loadedMusicVolume = 0;
 string g_loadedMusicStr = "3";
 bool g_mapHasMusic = 0;
-Mix_Music* g_deleteMusic = 0;
+musicmem* g_deleteMusic = 0;
 
 int g_musicSilenceMs = 0; //this is set by scripts to fade music out for x ms
 int g_currentMusicSilenceMs = 0;
@@ -769,9 +770,7 @@ int musicFadeTimer = 0;
 bool fadeFlag = 0; // for waiting between fading music in and out
 bool entFadeFlag = 0;
 int musicUpdateTimer = 0;
-vector<Mix_Chunk*> g_staticSounds;
-
-std::map<string, Mix_Chunk> g_static_sounds = {};
+vector<MIX_Audio*> g_staticSounds;
 
 // ui
 int g_textDropShadowColor = 100;
@@ -943,7 +942,11 @@ float mapeditorNavNodeTraceRadius = 150;        // for choosing the radius of th
 // in the level, so that he does not get stuck on corners
 
 SDL_Texture* g_floorShadeTexture = 0;
-SDL_Texture* g_wallShadeTexture = 0;
+SDL_Texture* g_wallShadeTopTexture = 0;
+SDL_Texture* g_wallShadeBotTexture = 0;
+SDL_Texture* g_wallShadeFullTexture = 0;
+SDL_Texture* g_wall3ShadeTopTexture = 0;
+SDL_Texture* g_wall3ShadeBotTexture = 0;
 
 // for checking old console commands
 vector<string> consolehistory;
@@ -1061,8 +1064,6 @@ bool g_levelFlashing;
 
 int g_levelSequenceIndex;
 
-Mix_Music* g_dungeonMusic = nullptr;
-Mix_Music* g_dungeonChaseMusic = nullptr;
 bool g_dungeonRedo = 0;
 
 float g_dungeonMs = 0;
@@ -1073,7 +1074,7 @@ int g_grossupLoaded = 0;
 int g_grossupShowMs = 0;
 int g_maxGrossupShowMs = 1000;
 
-vector<pair<int, Mix_Chunk*>> g_loadPlaySounds;
+vector<pair<int, MIX_Audio*>> g_loadPlaySounds;
 
 //for preventing the player from begining dialog after closing a menu
 int g_menuTalkReset = 0;
@@ -1181,21 +1182,25 @@ bool fileExists(const std::string &name)
 }
 
 
-void playSound(int channel, Mix_Chunk *sound, int loops)
+void playSound(MIX_Audio *sound)
 {
   // M("play sound");
   if (!g_mute && sound != NULL)
   {
-    Mix_Volume(channel, g_sfx_volume * 128);
-    Mix_PlayChannel(channel, sound, loops);
+    // TODO add soundeffects
+//    MIX_SetTrackGain(channel, g_sfx_volume * 128);
+//    MIX_PlayAudio(channel, sound, loops);
   }
 }
 
 
 SDL_Texture *MaskTexture(SDL_Renderer *renderer, SDL_Texture *mask, SDL_Texture *diffuse)
 {
-  int w, h;
-  SDL_QueryTexture(diffuse, NULL, NULL, &w, &h);
+  SDL_PropertiesID p = SDL_GetTextureProperties(diffuse);
+  int w = SDL_GetNumberProperty(p, "SDL.texture.width", 0);
+  int h = SDL_GetNumberProperty(p, "SDL.texture.height", 0);
+  //int w, h;
+  //SDL_QueryTexture(diffuse, NULL, NULL, &w, &h);
 
   SDL_Texture *result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
 
@@ -1208,8 +1213,8 @@ SDL_Texture *MaskTexture(SDL_Renderer *renderer, SDL_Texture *mask, SDL_Texture 
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   SDL_RenderClear(renderer);
 
-  SDL_RenderCopy(renderer, diffuse, NULL, NULL);
-  SDL_RenderCopy(renderer, mask, NULL, NULL);
+  SDL_RenderTexture(renderer, diffuse, NULL, NULL);
+  SDL_RenderTexture(renderer, mask, NULL, NULL);
 
   SDL_SetRenderTarget(renderer, NULL);
   return result;
@@ -1567,7 +1572,7 @@ void hurtProtag(int dmg) {
   }
 
   if(validParty.size() == 0) {   
-    Mix_FadeOutMusic(1000);
+    //Mix_FadeOutMusic(1000);
     clear_map(g_camera);
     g_lossSub = lossSub::INWIPE;
     transitionDelta = transitionImageHeight;

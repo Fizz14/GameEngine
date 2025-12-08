@@ -1,10 +1,10 @@
 #ifndef objects_h
 #define objects_h
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_mixer.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
+#include <SDL3/SDL_mixer.h>
 
 #include <iostream>
 #include <vector>
@@ -55,7 +55,7 @@ void cyclePalette(SDL_Surface* source, SDL_Surface* destination, std::vector<Uin
 navNode* getNodeByPos(vector<navNode*> array, int x, int y);
 entity* searchEntities(string fname, entity* caller);
 entity* searchEntities(string fname);
-void playSoundAtPosition(int channel, Mix_Chunk *sound, int loops, int xpos, int ypos, float volume);
+void playSoundAtPosition(int channel, MIX_Audio *sound, int loops, int xpos, int ypos, float volume);
 void debugUI();
 
 /*
@@ -280,7 +280,7 @@ bool ElipseOverlap(rect a, rect b);
 
 bool CylinderOverlap(rect a, rect b, int skin = 0); 
 
-bool RectOverlap(SDL_Rect a, SDL_Rect b); 
+//bool RectOverlap(SDL_Rect a, SDL_Rect b); 
 
 bool RectOverlap(SDL_FRect a, SDL_FRect b); 
 
@@ -294,7 +294,7 @@ bool TriRectOverlap(tri* a, rect r);
 //for impliedSlopeTris
 bool ITriRectOverlap(impliedSlopeTri* a, int x, int y, int width, int height); 
 
-SDL_Rect transformRect(SDL_Rect input); 
+//SDL_Rect transformRect(SDL_Rect input); 
 
 SDL_FRect transformRect(SDL_FRect input); 
 
@@ -699,7 +699,7 @@ class projectile : public actor {
     int animation = 0;
     int xframes = 0;
     int frameInAnimation = 0;
-    SDL_RendererFlip flip = SDL_FLIP_NONE;
+    SDL_FlipMode flip = SDL_FLIP_NONE;
 
     int curheight = 0;
     int curwidth = 0;
@@ -1017,15 +1017,15 @@ class adventureUI {
     string pushedText; //holds what will be the total contents of the messagebox.
     string curText; //holds what the user currently sees; e.g. half of the message because it hasnt been typed out yet
     bool typing = false; //true if text is currently being typed out to the window.
-    Mix_Chunk* blip =  Mix_LoadWAV( "sounds/voice-bogged.wav" );
-    Mix_Chunk* confirm_noise = Mix_LoadWAV( "sounds/peg.wav" );
+    MIX_Audio* blip; // =  MIX_LoadAudio( "sounds/voice-bogged.wav" );
+    MIX_Audio* confirm_noise;// = MIX_LoadAudio( "sounds/peg.wav" );
     //vector<string>* sayings;
     vector<string>* scriptToUse;
     entity* talker = 0;
     entity* dPointToMe = 0;
     entity* selected = nullptr; //this is used for setting selfdata, instead of just using the talker pointer (that was limited)
     bool askingQuestion = false; //set if current cue is a question
-    string response = "tired"; //contains the last response the player gave to a question
+    string response = ""; //contains the last response the player gave to a question
     vector<string> responses; //contains each possible response to a question
     long long unsigned int response_index = 0; //number of response from array responses
     int sleepingMS = 0; //MS to sleep cutscene/script
@@ -1203,7 +1203,7 @@ class adventureUI {
 class worldsound {
   public:
     //a playable sound in the world, with a position
-    Mix_Chunk* blip;
+    MIX_Audio* blip;
     float volumeFactor = 1;
     float maxDistance = 1200; //distance at which you can no longer hear the sound
     float minWait = 1;
@@ -1320,15 +1320,15 @@ class entity:public actor {
     bool cachedOriginValsAreGood = 0;
 
     //sounds
-    Mix_Chunk* footstep;
-    Mix_Chunk* footstep2;
-    Mix_Chunk* voice;
+    MIX_Audio* footstep;
+    MIX_Audio* footstep2;
+    MIX_Audio* voice;
 
     //a set of sounds that are attached to this entity
     vector<worldsound*> mobilesounds;
 
     //for musical entities
-    Mix_Music* theme = 0;
+    MIX_Audio* theme = 0;
     float musicRadius = 50;
 
     int footstep_reset = 0; //used for playing footsteps accurately with anim
@@ -1431,7 +1431,7 @@ class entity:public actor {
     int originalDirection = 0; //turn back
     bool useAnimForWalking = 0;
     int animWalkFrames = 0; //how long is his walk animation?
-    SDL_RendererFlip flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
+    SDL_FlipMode flip = SDL_FLIP_NONE; //SDL_FLIP_HORIZONTAL; // SDL_FLIP_NONE
     int animationconfig = 0;
 
     float floatheight = 0; //how far up to float, worlditems use this to bounce
@@ -1878,7 +1878,6 @@ public:
 
   ~levelNode(); 
 
-  SDL_Rect getEyeRect();
 };
 
 
@@ -1911,6 +1910,12 @@ void writeSaveFieldString(string field, string value);
 class fontmem {
   public:
     TTF_Font* font;
+    char* buf;
+};
+
+class musicmem {
+  public:
+    MIX_Audio* mus;
     char* buf;
 };
 
@@ -2035,7 +2040,7 @@ class ui {
 
 class musicNode {
   public:
-    Mix_Music* blip;
+    MIX_Audio* blip;
     string name = "empty";
     int x = 0;
     int y = 0;
@@ -2049,7 +2054,7 @@ class musicNode {
 
 class cueSound {
   public:
-    Mix_Chunk* blip;
+    MIX_Audio* blip;
     string name = "empty";
     int x = 0;
     int y = 0;
@@ -2067,7 +2072,7 @@ void playSoundByName(string fname, float xpos, float ypos);
 //play a sound given a string of its name. just make sure there's a cue with the same name
 void playSoundByName(string fname);
 
-void playSoundAtPosition(int channel, Mix_Chunk *sound, int loops, int xpos, int ypos, float volume);
+void playSoundAtPosition(int channel, MIX_Audio *sound, int loops, int xpos, int ypos, float volume);
 
 class waypoint {
   public:
