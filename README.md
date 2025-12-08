@@ -1,6 +1,4 @@
-A game-engine written in C++ with SDL2 and Autofs.
-
-Features a robust AI system, a scripting system, dialog system, save system, baked lighting, tile-based fog and other stuff.
+A game-engine written in C++ with SDL3 and Autofs.
 
 
 64b Win 11, powershell build with:
