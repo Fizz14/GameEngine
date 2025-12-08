@@ -16,10 +16,6 @@ To port to linux:
 
 -change WinMain() to main()
 
--change getCurrentDir() in globals.cpp
-
--change .qoi to .png
-
--add lines to convert .qoi to .png on-the-fly for level tiles.
+-initialize g_linux to 1 in globals.cpp
 
 -change line endings for saves/configs
