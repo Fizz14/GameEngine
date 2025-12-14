@@ -460,6 +460,8 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
 
     delete[] buf;
 
+
+
     // Get vertex data
     vector<array<double, 3>> vertexData = plyIn.getVertexPositions();
     vector<array<unsigned char, 3>> vertexColors;
@@ -479,12 +481,15 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
       vertexLUVs = plyIn.getVertexLUVs();
     }
 
+
     // Convert to vertex3d
     for (size_t i = 0; i < vertexData.size(); ++i) {
+      M("Lets make a vertex3d");
       vertex3d v;
       v.x = static_cast<float>(vertexData[i][0]);
       v.y = static_cast<float>(vertexData[i][1]);
       v.z = static_cast<float>(vertexData[i][2]);
+      D(v.x);
 
       if (i < vertexUVs.size()) {
         v.u = static_cast<float>(vertexUVs[i][0]);
@@ -502,7 +507,9 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
       }
 
       vertices.push_back(v);
+      M("Pushed back a vertex");
     }
+
 
 
     // Get face data
@@ -558,6 +565,19 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
       ) {
       const array<float, 3> lightDir = {0, 0.4472, 0.8944};
       D(vertices.size());
+      for(auto v : vertices) {
+        D(v.x);
+        D(v.y);
+        D(v.z);
+        D(v.u);
+        D(v.v);
+        D(v.lu);
+        D(v.lv);
+        D(v.color.r);
+        D(v.color.g);
+        D(v.color.b);
+        M("");
+      }
       setVertexColors(vertices, faces, lightDir, fmtype);
     } else if(fmtype == meshtype::V_WALL) {
       //const array<float, 3> lightDir = {0, 0.707, 0.707};
