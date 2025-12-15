@@ -63,6 +63,8 @@ class textbox;
 
 class fontmem;
 
+class musicmem;
+
 class ui;
 
 class fancychar;
@@ -875,11 +877,11 @@ extern Mix_Chunk *g_deathsound;
 extern musicNode *g_closestMusicNode;
 extern musicNode *newClosest;
 
-extern Mix_Music* g_loadedMusic;
+extern musicmem* g_loadedMusic;
 extern float g_loadedMusicVolume;
 extern string g_loadedMusicStr;
 extern bool g_mapHasMusic;
-extern Mix_Music* g_deleteMusic;
+extern musicmem* g_deleteMusic;
 
 extern int g_musicSilenceMs;
 extern int g_currentMusicSilenceMs;
@@ -1050,7 +1052,11 @@ extern float mapeditorNavNodeCullRadius;
 extern float mapeditorNavNodeTraceRadius;
 
 extern SDL_Texture* g_floorShadeTexture;
-extern SDL_Texture* g_wallShadeTexture;
+extern SDL_Texture* g_wallShadeTopTexture; //1 block tall
+extern SDL_Texture* g_wallShadeBotTexture; //1 block tall
+extern SDL_Texture* g_wallShadeFullTexture; //3 blocks tall
+extern SDL_Texture* g_wall3ShadeTopTexture; //3 blocks tall
+extern SDL_Texture* g_wall3ShadeBotTexture; //3 blocks tall
 
 extern vector<string> consolehistory;
 extern int consolehistoryindex;
@@ -1180,6 +1186,13 @@ extern int g_holddelete;
 extern chunk* moveThisChunk;
 
 extern ggrid* g_activeGgrid;
+extern size_t g_activeGgridIndex;
+
+extern int g_activeGgridFlickerMs;
+
+extern int g_activeGgridFlicker;
+
+extern int g_activeGgridFlickerProlongMs;
 
 extern unsigned int g_lastGgridBlockPlaced;
 

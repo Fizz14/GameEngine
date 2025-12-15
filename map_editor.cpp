@@ -82,15 +82,18 @@ void populateMapWithEntities()
 }
 
 void playNextMusic() {
+  breakpoint();
   if(g_deleteMusic != 0) {
     //M("Lets delete music");
-    Mix_FreeMusic(g_deleteMusic);
+    Mix_FreeMusic(g_deleteMusic->mus);
+    delete[] g_deleteMusic->buf;
+    delete g_deleteMusic;
     g_deleteMusic = 0;
     //M("      DELETED MUSIC");
   }
   float realVolume = 128 * g_loadedMusicVolume * g_music_volume;
   Mix_VolumeMusic(realVolume);
-  Mix_FadeInMusic(g_loadedMusic, -1, 1000);
+  Mix_FadeInMusic(g_loadedMusic->mus, -1, 1000);
 }
 
 void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
@@ -148,7 +151,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   while (index < strings.size())
   {
     line = strings[index];
-    //M("Parsing line: " + line); //got a crash after leaving the desert cylindrical structure
+    M("Parsing line: " + line); //got a crash after leaving the desert cylindrical structure
     index++;
     istringstream iss(line);
     word = line.substr(0, line.find(" "));
@@ -187,21 +190,16 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         for(int i = 0; i < width; i++) {
           int value = 0;
           iss >> value;
-          //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55 + 40, 0};
-          //vec3 origin = {g_activeGgrid->originX*64 + i*64, g_activeGgrid->originY*64 + j*55.424 + 0, 0};
           float jval = j * 55;
           jval = round(jval);
-          vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, 0};
-//          if(i==0 && j ==0) {
-//            M("I and J are both zero!");
-//            D(origin.y);
-//          }
-          // this is still wrong
-//          D(g_activeGgrid->originX);
-//          D(origin.x);
-//          D(origin.y);
+          vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, g_activeGgrid->originZ};
           if(value != 0) {
-            chunk* c = duplicateChunk(g_OPChunks[value-1], origin);
+            
+            vector<bool> whichMeshes = {0,0,0,0,0};
+            if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
+            if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
+
+            chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
             c->owner = g_activeGgrid;
             c->standalone = 0;
             c->value = value;
@@ -209,9 +207,14 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   
             if(c->floor != 0) {
               c->floor->texture = g_activeGgrid->floortex;
-              if(g_activeGgrid->useTrim) {
-                c->floor->useTrim = g_activeGgrid->useTrim;
+              c->floor->drawShading = g_activeGgrid->hasBotShading;
+              c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+
+              if(g_activeGgrid->hasTrim) {
+                c->floor->hasTrim = 1;
                 c->floor->trimTexture = g_activeGgrid->trimtex;
+              } else {
+                c->floor->hasTrim = 0;
               }
 
               for(int i = 0; i < c->floor->numVertices; i++) {
@@ -259,6 +262,26 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   
             if(c->wall != 0) {
               c->wall->texture = g_activeGgrid->walltex;
+              c->wall->drawDiffuse = g_activeGgrid->hasWall;
+
+            if(g_activeGgrid->wallShading == 1) {
+              if(value >= 34) {
+                c->wall->topOrBottomShading = 0;
+              } else {
+                c->wall->topOrBottomShading = 3;
+              }
+            } else if(g_activeGgrid->wallShading == 2) {
+              if(value >= 34) {
+                c->wall->topOrBottomShading = 1;
+              } else {
+                c->wall->topOrBottomShading = 4;
+              }
+            } else if(g_activeGgrid->wallShading == 3){
+              c->wall->topOrBottomShading = 2; //both, 3 tall
+            } else {
+              c->wall->drawShading = 0;
+            }
+
               //set texcoords of wall
               //bottom verts have 0 red
               for(int i = 0; i < c->wall->numVertices; i++) {
@@ -269,14 +292,66 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
                   //this is the horizontal edge case
                   if(abs(xpos - 0) < 0.001) {xpos = 1;}
                 }
-  
-                c->wall->vertex[i].tex_coord.x = xpos;
-                if(c->wall->vertex[i].color.r > 128) {
-                  c->wall->vertex[i].tex_coord.y = 0;
+
+                /*
+                //you can pretty easily make this adaptable, just query the hieght
+                //and use that instead of 384
+                //also change the 0.16667 (384/64 = 6, 1/6 = 0.16667
+                
+                if(value >= 34) {
+                  //float offset = g_activeGgrid->originZ % 384; // 64 * (6, max height of wall textures-1)
+                  float offset = fmodf(g_activeGgrid->originZ, 384);
+                  if(offset < 0) offset += 384;
+                  offset /= 384;
+    
+                  c->wall->vertex[i].tex_coord.x = xpos;
+                  if(c->wall->vertex[i].color.r > 128) {
+                    c->wall->vertex[i].tex_coord.y = offset;
+                  } else {
+                    c->wall->vertex[i].tex_coord.y = offset + 0.16666667;
+                  } 
                 } else {
-                  c->wall->vertex[i].tex_coord.y = 1;
-  
+                  //3-block-high wall
+                  float offset = g_activeGgrid->originZ % 384; // 64 * (6, max height of wall textures-1)
+                  offset /= 384;
+    
+                  c->wall->vertex[i].tex_coord.x = xpos;
+                  if(c->wall->vertex[i].color.r > 128) {
+                    c->wall->vertex[i].tex_coord.y = offset;
+                  } else {
+                    c->wall->vertex[i].tex_coord.y = offset + 0.5;
+                  } 
                 }
+                */
+
+float offset = fmodf(g_activeGgrid->originZ, 384.0f);
+if(offset < 0) offset += 384.0f;
+offset /= 384.0f;   // now in [0,1)
+
+c->wall->vertex[i].tex_coord.x = xpos;
+
+float regionOffset;
+
+if(value >= 34) {
+    // 6-block-high wall
+    regionOffset = (c->wall->vertex[i].color.r > 128)
+        ? 0.0f
+        : 0.16666667f;
+} else {
+    // 3-block-high wall
+    regionOffset = (c->wall->vertex[i].color.r > 128)
+        ? 0.0f
+        : 0.5f;
+}
+
+// final wrapped texture coordinate
+float ty = offset + regionOffset;
+ty = fmodf(ty, 1.0f);
+if(ty < 0) ty += 1.0f;
+
+c->wall->vertex[i].tex_coord.y = ty;
+
+
               }
   
             }
@@ -581,18 +656,18 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       // if an entity has been set to navblock, disable overlapping nodes now that the position has been set
       if (e->navblock)
       {
-        M("Running code for navblock");
-        auto r = e->getMovedBounds();
-        for (auto x : g_navNodes)
-        {
-          // !!! this also isn't 3d-safe
-          rect nodespot = {x->x - 32, x->y - 22, 64, 45};
-          if (RectOverlap(r, nodespot))
-          {
-            e->overlappedNodes.push_back(x);
-            x->enabled = 0;
-          }
-        }
+//        M("Running code for navblock");
+//        auto r = e->getMovedBounds();
+//        for (auto x : g_navNodes)
+//        {
+//          // !!! this also isn't 3d-safe
+//          rect nodespot = {x->x - 32, x->y - 22, 64, 45};
+//          if (RectOverlap(r, nodespot))
+//          {
+//            e->overlappedNodes.push_back(x);
+//            x->enabled = 0;
+//          }
+//        }
       }
 
     }
@@ -620,40 +695,72 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     }
     if(word == "ggrid") {
       iss >> s0
-          >> p0
-          >> p1
           >> s0
           >> s1
           >> s2
-          >> p2
-          >> p3
-          >> p4
-          >> p5
-          >> p6;
+          >> s3
+          >> s4
+          >> p0 //x 
+          >> p1 //y
+          >> p2 //z
+          >> p3 //width
+          >> p4; //height
       ggrid* g = new ggrid();
-
-      g->x = p0;
-      g->y = p1;
 
       g->floortexSTR = s0;
       g->walltexSTR = s1;
       g->trimtexSTR = s2;
+      string topShadeStr = s3;
+      string botShadeStr = s4;
 
-      g->floortex = loadTexture(renderer, "resources/static/diffuse/" + g->floortexSTR + ".qoi");
-      g->walltex = loadTexture(renderer, "resources/static/diffuse/" + g->walltexSTR + ".qoi");
-      g->trimtex = loadTexture(renderer, "resources/static/diffuse/" + g->trimtexSTR + ".qoi");
-      if(g->trimtexSTR != "notrim") {
-        g->useTrim = 1;
+      if(g->floortexSTR != "nofloor") {
+        g->hasFloor = 1;
+        g->floortex = loadTexture(renderer, "resources/static/diffuse/" + g->floortexSTR + ".qoi");
       }
 
-      g->originX = p2;
-      g->originY = p3;
+      if(g->walltexSTR != "nowall") {
+        g->hasWall = 1;
+        g->walltex = loadTexture(renderer, "resources/static/diffuse/" + g->walltexSTR + ".qoi");
+      }
 
-      g->width = p4;
-      g->height = p5;
+      if(g->trimtexSTR != "notrim") {
+        g->hasTrim = 1;
+        g->trimtex = loadTexture(renderer, "resources/static/diffuse/" + g->trimtexSTR + ".qoi");
+      }
+
+      if(botShadeStr == "nofloorshade") {
+        g->hasBotShading = 0;
+      } else {
+        g->hasBotShading = 1;
+      }
+
+      if(topShadeStr == "nowallshade") {
+        g->wallShading = 0;
+      } else if(topShadeStr == "walltopshade"){
+        g->wallShading = 1;
+      } else if(topShadeStr == "wallbotshade"){
+        g->wallShading = 2;
+      } else {
+        g->wallShading = 3; //both, if the wall is three blocks tall and meets the ceiling and floor
+      }
+
+      g->originX = p0;
+      g->originY = p1;
+      g->originZ = p2;
+
+      g->width = p3;
+      g->height = p4;
       g_activeGgrid = g;
 
     }
+    if (word == "layerdata")
+    {
+      iss >> s0
+          >> p0;
+
+      g_activeGgrid->layer = p0;
+    }
+
     if (word == "tile")
     {
       // M("loading tile" << endl;
@@ -729,11 +836,14 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
         g_loadedMusicVolume = p0;
         g_loadedMusicStr = s1;
         if(g_loadedMusic != 0) {
+          M("set g_deleteMusic");
           g_deleteMusic = g_loadedMusic;
           
         } else {
+          M("There's no music to delete rn");
           g_deleteMusic = 0;
         }
+        D("resources/static/music/" + s1 + ".ogg");
         g_loadedMusic = loadMusic("resources/static/music/" + s1 + ".ogg");
 
         // Keep in mind, there's a bit of a complicated way
@@ -979,8 +1089,6 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 
   g_loadingATM = 0;
 
-  transition = 0;
-
   //set up the party to follow each other
   if(party.size() > 1) { //protag is party[0]
     party[1]->agrod = 1;
@@ -1017,7 +1125,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
 //      D(x->x);
 //    }
 //  }
-  //M("load_map() done");
+  M("load_map() done");
 }
 
 void changeTheme(string str)
@@ -1370,13 +1478,22 @@ bool mapeditor_save_map(string word)
 
 
   for(auto x : g_ggrids) {
-    ofile << "ggrid " << x->x << " "
-                      << x->y << " "
-                      << x->floortexSTR << " "
+    string wallShadeTopStr = "notopshade";
+    if(x->wallShading == 0) wallShadeTopStr = "nowallshade";
+    if(x->wallShading == 1) wallShadeTopStr = "walltopshade";
+    if(x->wallShading == 2) wallShadeTopStr = "wallbotshade";
+    if(x->wallShading == 3) wallShadeTopStr = "wallfullshade";
+
+    string wallShadeBotStr = "nofloorshade";
+    if(x->hasBotShading) wallShadeBotStr = "floorshade";
+    ofile << "ggrid " << x->floortexSTR << " "
                       << x->walltexSTR << " "
                       << x->trimtexSTR << " "
+                      << wallShadeTopStr << " "
+                      << wallShadeBotStr << " "
                       << x->originX << " "
                       << x->originY << " "
+                      << x->originZ << " "
                       << x->width << " "
                       << x->height << endl;
     
@@ -1943,7 +2060,7 @@ void write_map(entity *mapent)
     if(skip == 0) {
       //try to select ggrid
       for(auto x : g_ggrids) {
-        rect blah = {x->x-20,x->y-20, 40,40};
+        rect blah = {x->originX-20,x->originY-20, 40,40};
         if (RectOverlap(blah, marker->getMovedBounds())) {
           g_activeGgrid = x;
           M("Active ggrid changed");
@@ -3073,7 +3190,11 @@ void write_map(entity *mapent)
           vec3 origin = {marker->x, marker->y, 0};
   
           //chunk* c = new chunk(path, "", "", origin, 1, 0);
-          chunk* c = duplicateChunk(g_OPChunks[n-1], origin);
+          vector<bool> whichMeshes = {0,0,0,0,0};
+          if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1; M("Setting whichMeshes[0] to 1");}
+          if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
+
+          chunk* c = duplicateChunk(g_OPChunks[n-1], origin, whichMeshes);
           c->owner = g_activeGgrid;
           c->standalone = 0;
 
@@ -3081,6 +3202,12 @@ void write_map(entity *mapent)
           g_activeGgrid->chunks.push_back(c);
           if(c->floor != 0) {
             c->floor->texture = g_activeGgrid->floortex;
+            c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+            c->floor->drawShading = g_activeGgrid->hasBotShading;
+            if(g_activeGgrid->hasTrim) {
+              c->floor->hasTrim = 1;
+              c->floor->trimTexture = g_activeGgrid->trimtex;
+            }
             for(int i = 0; i < c->floor->numVertices; i++) {
               float xpos = c->floor->vertex[i].position.x + c->origin.x;
               float ypos = c->floor->vertex[i].position.y + c->origin.y;
@@ -3126,6 +3253,18 @@ void write_map(entity *mapent)
 
           if(c->wall != 0) {
             c->wall->texture = g_activeGgrid->walltex;
+            c->wall->drawDiffuse = g_activeGgrid->hasWall;
+
+            if(g_activeGgrid->wallShading == 1) {
+              c->wall->topOrBottomShading = 0;
+            } else if(g_activeGgrid->wallShading == 2) {
+              c->wall->topOrBottomShading = 1;
+            } else if(g_activeGgrid->wallShading == 3){
+              c->wall->topOrBottomShading = 2; //both
+            } else {
+              c->wall->drawShading = 0;
+            }
+
             //set texcoords of wall
             //bottom verts have 0 red
             for(int i = 0; i < c->wall->numVertices; i++) {
@@ -3165,8 +3304,9 @@ void write_map(entity *mapent)
         //g->trimtexSTR = "notrim";
         g->floortex = loadTexture(renderer, "resources/static/diffuse/mapeditor/floor.qoi");
         g->walltex = loadTexture(renderer, "resources/static/diffuse/mapeditor/wall.qoi");
-        g->x = marker->x + marker->width/2;
-        g->y = marker->y + marker->height/2;
+        g->originX = marker->x + marker->width/2;
+        g->originY = marker->y + marker->height/2;
+        g->originZ = wallstart;
         g_activeGgrid = g;
 
         break;
@@ -6048,10 +6188,13 @@ void write_map(entity *mapent)
     //hotkey for repeat last g command
     
     if(g_activeGgrid) {
-      vec3 origin = {marker->x, marker->y, 0};
+      vec3 origin = {marker->x, marker->y, g_activeGgrid->originZ};
   
-      //chunk* c = new chunk(path, "", "", origin, 1, 0);
-      chunk* c = duplicateChunk(g_OPChunks[g_lastGgridBlockPlaced-1], origin);
+      vector<bool> whichMeshes = {0,0,0,0,0};
+      if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
+      if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
+      chunk* c = duplicateChunk(g_OPChunks[g_lastGgridBlockPlaced-1], origin, whichMeshes);
+
       c->owner = g_activeGgrid;
       c->standalone = 0;
 
@@ -6059,6 +6202,12 @@ void write_map(entity *mapent)
       g_activeGgrid->chunks.push_back(c);
       if(c->floor != 0) {
         c->floor->texture = g_activeGgrid->floortex;
+        c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+        c->floor->drawShading = g_activeGgrid->hasBotShading;
+        if(g_activeGgrid->hasTrim) {
+          c->floor->hasTrim = 1;
+          c->floor->trimTexture = g_activeGgrid->trimtex;
+        }
         for(int i = 0; i < c->floor->numVertices; i++) {
           float xpos = c->floor->vertex[i].position.x + c->origin.x;
           float ypos = c->floor->vertex[i].position.y + c->origin.y;
@@ -6104,6 +6253,17 @@ void write_map(entity *mapent)
 
       if(c->wall != 0) {
         c->wall->texture = g_activeGgrid->walltex;
+        c->wall->drawDiffuse = g_activeGgrid->hasWall;
+
+            if(g_activeGgrid->wallShading == 1) {
+              c->wall->topOrBottomShading = 0;
+            } else if(g_activeGgrid->wallShading == 2) {
+              c->wall->topOrBottomShading = 1;
+            } else if(g_activeGgrid->wallShading == 3){
+              c->wall->topOrBottomShading = 2; //both
+            } else {
+              c->wall->drawShading = 0;
+            }
         //set texcoords of wall
         //bottom verts have 0 red
         for(int i = 0; i < c->wall->numVertices; i++) {
@@ -6133,6 +6293,16 @@ void write_map(entity *mapent)
       M("No active Ggrid for g command");
     }
 
+  }
+
+  if(devinput[43] && !olddevinput[43]) {
+    //cycle activeGgrid
+    g_activeGgridIndex++;
+    if(g_activeGgridIndex >= g_ggrids.size()) {
+      g_activeGgridIndex = 0;
+    }
+    g_activeGgrid = g_ggrids.at(g_activeGgridIndex);
+    g_activeGgridFlickerProlongMs = 1200;
   }
 
   // change wall, cap, and floor textures

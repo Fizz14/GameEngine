@@ -1914,6 +1914,12 @@ class fontmem {
     char* buf;
 };
 
+class musicmem {
+  public:
+    Mix_Music* mus;
+    char* buf;
+};
+
 class textbox {
   public:
     //SDL_Surface* textsurface = 0;

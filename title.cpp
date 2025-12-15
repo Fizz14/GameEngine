@@ -65,7 +65,7 @@ titleUI::titleUI(SDL_Renderer* renderer) {
   creditText->updateText(getLanguageData("AuthorText"), 400 * g_fontsize, 0, {235, 235, 235}, g_font);
   creditText->show = 0;
 
-  handMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.5, 0.65, 0.1, 1, 2);
+  handMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", 0.5, 0.65, 0.05, 1, 2);
   handMarker->persistent = 1;
   handMarker->show = 1;
   handMarker->priority = 3;
@@ -232,21 +232,21 @@ void TitleLoop() {
   }
 
   if(titleUIManager->option == 0) {
-    titleUIManager->handMarker->targety = titleUIManager->newText->boxY + titleUIManager->handYOffset;
+    titleUIManager->handMarker->y = titleUIManager->newText->boxY + titleUIManager->handYOffset;
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->newText->width;
-    titleUIManager->handMarker->targetx = titleUIManager->newText->boxX + (fwidth / ww / 2);
+    titleUIManager->handMarker->x = titleUIManager->newText->boxX + (fwidth / ww / 2);
   } else if(titleUIManager->option == 1) {
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->continueText->width;
-    titleUIManager->handMarker->targetx = titleUIManager->continueText->boxX + (fwidth / ww / 2);
-    titleUIManager->handMarker->targety = titleUIManager->continueText->boxY + titleUIManager->handYOffset;
+    titleUIManager->handMarker->x = titleUIManager->continueText->boxX + (fwidth / ww / 2);
+    titleUIManager->handMarker->y = titleUIManager->continueText->boxY + titleUIManager->handYOffset;
 
   } else if(titleUIManager->option == 2) {
-    titleUIManager->handMarker->targety = titleUIManager->endText->boxY + titleUIManager->handYOffset;
+    titleUIManager->handMarker->y = titleUIManager->endText->boxY + 0;//titleUIManager->handYOffset;
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->endText->width;
-    titleUIManager->handMarker->targetx = titleUIManager->endText->boxX + (fwidth / ww / 2);
+    titleUIManager->handMarker->x = titleUIManager->endText->boxX;// + (fwidth / ww / 2);
 
   }
 

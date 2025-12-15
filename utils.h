@@ -35,7 +35,7 @@ string loadTextAsString(string fileaddress);
 
 fontmem loadFont(string fileaddress, float fontsize);
 
-Mix_Music* loadMusic(string fileaddress);
+musicmem* loadMusic(string fileaddress);
 
 void initLanguageIndices();
 

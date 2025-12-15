@@ -252,7 +252,7 @@ fontmem loadFont(string fileaddress, float fontsize)
   }
 }
 
-Mix_Music* loadMusic(string fileaddress)
+musicmem* loadMusic(string fileaddress)
 {
   if(PHYSFS_exists(fileaddress.c_str())) 
   {
@@ -274,10 +274,14 @@ Mix_Music* loadMusic(string fileaddress)
     int length_read = PHYSFS_readBytes(myfile, buf, filesize);
     SDL_RWops* myWop = SDL_RWFromMem(buf, filesize);
 
-    Mix_Music* ret = Mix_LoadMUS_RW(myWop, 1);
+    Mix_Music* mus = Mix_LoadMUS_RW(myWop, 1);
+
+    musicmem* ret = new musicmem;
+    ret->mus = mus;
+    ret->buf = buf;
 
     PHYSFS_close(myfile);
-    delete[] buf;
+    //delete[] buf;
     return ret;
 
   } else {

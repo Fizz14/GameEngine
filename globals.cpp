@@ -755,11 +755,11 @@ Mix_Chunk *g_ui_voice;
 musicNode *g_closestMusicNode;
 musicNode *newClosest;
 
-Mix_Music* g_loadedMusic = 0;
+musicmem* g_loadedMusic = 0;
 float g_loadedMusicVolume = 0;
 string g_loadedMusicStr = "3";
 bool g_mapHasMusic = 0;
-Mix_Music* g_deleteMusic = 0;
+musicmem* g_deleteMusic = 0;
 
 int g_musicSilenceMs = 0; //this is set by scripts to fade music out for x ms
 int g_currentMusicSilenceMs = 0;
@@ -943,7 +943,11 @@ float mapeditorNavNodeTraceRadius = 150;        // for choosing the radius of th
 // in the level, so that he does not get stuck on corners
 
 SDL_Texture* g_floorShadeTexture = 0;
-SDL_Texture* g_wallShadeTexture = 0;
+SDL_Texture* g_wallShadeTopTexture = 0;
+SDL_Texture* g_wallShadeBotTexture = 0;
+SDL_Texture* g_wallShadeFullTexture = 0;
+SDL_Texture* g_wall3ShadeTopTexture = 0;
+SDL_Texture* g_wall3ShadeBotTexture = 0;
 
 // for checking old console commands
 vector<string> consolehistory;
@@ -1061,8 +1065,6 @@ bool g_levelFlashing;
 
 int g_levelSequenceIndex;
 
-Mix_Music* g_dungeonMusic = nullptr;
-Mix_Music* g_dungeonChaseMusic = nullptr;
 bool g_dungeonRedo = 0;
 
 float g_dungeonMs = 0;
@@ -1085,6 +1087,11 @@ int g_holddelete = 0;
 chunk* moveThisChunk = 0;
 
 ggrid* g_activeGgrid = 0;
+size_t g_activeGgridIndex = 0;
+
+int g_activeGgridFlickerMs = 0;
+int g_activeGgridFlicker = 0;
+int g_activeGgridFlickerProlongMs = 0;
 
 unsigned int g_lastGgridBlockPlaced = 3;
 
