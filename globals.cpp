@@ -1095,7 +1095,7 @@ int g_activeGgridFlickerProlongMs = 0;
 
 unsigned int g_lastGgridBlockPlaced = 3;
 
-const bool g_useOccluding = 0;
+const bool g_useOccluding = 1;
 
 int g_globalAccumulator = 0;
 int g_tempAccumulator = 0;
