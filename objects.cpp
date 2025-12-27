@@ -126,6 +126,19 @@ int doAnimation(entity* a, int elapsed) {
       }
     case 2:
       {
+
+        if(a->animate && !transition && a->animlimit != 0) {
+          a->curwidth = (a->curwidth * 0.8 + a->width * 0.2) * ((sin(a->animtime*a->animspeed))   + (1/a->animlimit)) * (a->animlimit);
+          a->curheight = (a->curheight * 0.8 + a->height* 0.2) * ((sin(a->animtime*a->animspeed + PI))+ (1/a->animlimit)) * (a->animlimit);
+          a->animtime += elapsed;
+          if(a == protag && ( pow( pow(a->xvel,2) + pow(a->yvel, 2), 0.5) > 30 ) && (1 - sin(a->animtime * a->animspeed) < 0.01)) {
+          }
+        } else {
+          a->animtime = 0;
+          a->curwidth = a->curwidth * 0.8 + a->width * 0.2;
+          a->curheight = a->curheight * 0.8 + a->height* 0.2;
+        }
+
         if(a->msPerFrame != 0) {
           if(a->frameLoopTimeLimit > 0 && a->frameLoopTimeLimit - elapsed <= 0) {
             a->loopAnimation = 0;
@@ -365,6 +378,24 @@ int doAnimation(entity* a, int elapsed) {
           a->curheight = a->curheight * 0.8 + a->height* 0.2;
         }
 
+
+        break;
+      }
+    case 6:
+      {
+        //used for collectible items
+
+        if(a->animate && !transition && a->animlimit != 0) {
+          a->curwidth = (a->curwidth * 0.8 + a->width * 0.2) * ((sin(a->animtime*a->animspeed))   + (1/a->animlimit)) * (a->animlimit);
+          a->curheight = (a->curheight * 0.8 + a->height* 0.2) * ((sin(a->animtime*a->animspeed + PI))+ (1/a->animlimit)) * (a->animlimit);
+          a->animtime += elapsed;
+          if(a == protag && ( pow( pow(a->xvel,2) + pow(a->yvel, 2), 0.5) > 30 ) && (1 - sin(a->animtime * a->animspeed) < 0.01)) {
+          }
+        } else {
+          a->animtime = 0;
+          a->curwidth = a->curwidth * 0.8 + a->width * 0.2;
+          a->curheight = a->curheight * 0.8 + a->height* 0.2;
+        }
 
         break;
       }
@@ -4080,9 +4111,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   }
 
   if(identity == 35) {
-    spritefilevar = "resources/static/key-items/" + to_string(faction) + ".qoi";
-    string hook = "KeyItem" + to_string(faction) + "Name";
-    displayName = getLanguageData(hook);
+    spritefilevar = "notexture";
   }
 
   for (auto x : g_entities) {
@@ -4100,7 +4129,11 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
       SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
     }
 
-    texture = loadTexture(renderer, spritefile);
+    if(spritefilevar != "notexture") {
+      texture = loadTexture(renderer, spritefile);
+    } else {
+      M("This entity has no texture");
+    }
     if(texture == nullptr) {
       E("Error loading texture for entity " + name);
       D(spritefilevar);
@@ -4514,6 +4547,11 @@ entity::~entity() {
     shadow = nullptr;
   }
 
+  if(secondaryTexture != 0) {
+    SDL_DestroyTexture(secondaryTexture);
+    secondaryTexture = 0;
+  }
+
   if(!asset_sharer) {
     SDL_DestroyTexture(texture);
   }
@@ -4700,6 +4738,7 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 
   rect cam(0, 0, fcamera.width, fcamera.height);
 
+  if(identity == 44) { cam.height += 30;} //this is for the draw element on pedastals
 
   if(RectOverlap(obj, cam)) {
 
@@ -4806,6 +4845,7 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
           SDL_SetTextureColorMod(texture, red, green, blue);
         }
         SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+        specialObjectsRender(this, dstrect);
       }
       //      if(flashingMS > 0) {
       //        SDL_SetTextureColorMod(texture, 255, 255, 255);
@@ -4916,7 +4956,8 @@ T* entity::Get_Closest_Node(vector<T*> array, int useVelocity) {
   if(array.size() == 0) {return nullptr;}
   for (long long unsigned int i = 0; i < array.size(); i++) {
     float dist = XYWorldDistanceSquared(cacheX, cacheY, array[i]->x, array[i]->y);
-    if( (dist < min_dist || flag) && array[i]->enabled) {
+    bool canSee = LineTrace(array[i]->x, array[i]->y, getOriginX(), getOriginY(), 0);
+    if( (dist < min_dist || flag) && array[i]->enabled && canSee) {
       min_dist = dist;
       ret = array[i];
       flag = 0;
@@ -7383,7 +7424,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
     {
       if(( (LineTrace(this->getOriginX(), this->getOriginY(), target->getOriginX(), target->getOriginY(), false, 64 + 32, this->layer, 10, true) )  || (distToTarget < 180) ) ) {
         //just walk towards the target, need to use range to stop walking if we are at target (for friendly npcs)
-        targetSteeringAngle = angleToTarget;
         blindrun = 1;
 
         int rangeToUse = 0;
@@ -7397,10 +7437,11 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
         if( distToTarget > rangeToUse) {
           forwardsVelocity = xagil;
+          targetSteeringAngle = angleToTarget;
         } else {
           //stop if in range
           forwardsVelocity = 0;
-          forceAngularUpdate = 1;
+          //forceAngularUpdate = 1; //turn this on to make the chaser face the target, i want it off for neheten
         }
 
         int xval = getOriginX();
@@ -7434,7 +7475,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
       if(stuckTime > maxStuckTime) {
         stuckTime = 0;
         current = Get_Closest_Node(g_navNodes);
-        if(current != nullptr) {
+        if(current != nullptr && current->friends.size() > 0) {
           int c = rand() % current->friends.size();
           Destination = target->Get_Closest_Node(g_navNodes);
           dest = current->friends[c];
@@ -8081,12 +8122,12 @@ int loadSave() {
   //load keyitems
   while(getline(file, line)) {
     if(line[0] == '&') { break;}
-    keyItemInfo* k = new keyItemInfo(stoi(line));
+    vector<string> x = splitString(line, ' ');
+    keyItemInfo* k = new keyItemInfo(stoi(x[0]),x[1]);
   }
 
   getline(file,line);
   g_currency = stoi(line);
-  D(g_currency);
 
 
 
@@ -8197,7 +8238,7 @@ int writeSave() {
   file << "&" << endl; //token to stop writing combat items
 
   for(auto x : g_keyItems) {
-    file << x->index << endl;
+    file << x->index << " " << x->level << endl;
   }
   file << "&" << endl; //token to stop writing key items
 
@@ -9050,6 +9091,7 @@ void escapeUI::uiSelecting() {
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
   g_numPresentsLoaded = 0;
+  g_numPedastalsLoaded = 0;
   g_numMoneybagsLoaded = 0;
   g_worldEnemies.clear();
   resetTrivialData();
@@ -9116,6 +9158,7 @@ void clear_map(camera& cameraToReset) {
 
     SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
     SDL_SetRenderTarget(renderer, frame);
+    SDL_RenderClear(renderer);
 
     {
       // tiles
@@ -9144,33 +9187,62 @@ void clear_map(camera& cameraToReset) {
       }
 
       //meshes
-
-      D(g_meshFloors.size());
-      for(auto &x : g_meshFloors) {
-        if(x->visible) {
-          SDL_Vertex v[x->numVertices];
-          for(int i = 0; i < x->numVertices; i++) {
-            v[i] = x->vertex[i];
-            v[i].position.x += x->origin.x - g_camera.x;
-            v[i].position.y += x->origin.y - g_camera.y
-                             -(x->origin.z * XtoZ);
-            v[i].color.a = x->vertex[i].color.a;
+      std::map<mesh*, std::vector<SDL_Vertex>> vbuffer;
+      for (auto &x : g_meshFloors) {
+          if (x->visible && x->awake) {
+              std::vector<SDL_Vertex> v(x->numVertices);
+    
+              if(x->drawDiffuse) {
+                
+                //M("A");
+                for (int i = 0; i < x->numVertices; i++) {
+                    v[i] = x->vertex[i];
+                    v[i].position.x += x->origin.x - g_camera.x;
+                    v[i].position.y += x->origin.y - g_camera.y
+                                       -(x->origin.z * XtoZ);
+                    v[i].color.a = x->vertex[i].color.a;
+                }
+                SDL_RenderGeometry(renderer, x->texture,
+                                   v.data(), x->numVertices,
+                                   x->indices, x->numIndices);
+              }
+      
+            // shade pass
+              if(x->drawShading || x->hasTrim) {
+                for (int i = 0; i < x->numVertices; i++) {
+                    v[i].tex_coord.x = x->vertexExtraData[i].first;
+                    v[i].tex_coord.y = x->vertexExtraData[i].second;
+                    v[i].color = {255, 255, 255, 255};
+                }
+              }
+      
+              //M("C");
+              if (x->hasTrim) {
+                  vbuffer[x] = v; // copy into map
+              } else {
+                if(x->drawShading) {
+                  SDL_RenderGeometry(renderer, g_floorShadeTexture,
+                                     v.data(), x->numVertices,
+                                     x->indices, x->numIndices);
+                }
+              }
+      
           }
-
-          if(x->drawDiffuse == 1) {
-            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+      }
+      
+      // second pass
+      for (auto &x : g_meshFloors) {
+          if (x->visible && x->awake && x->hasTrim) {
+              auto &v = vbuffer[x];
+              SDL_RenderGeometry(renderer, x->trimTexture,
+                                 v.data(), x->numVertices,
+                                 x->indices, x->numIndices);
+              if(x->drawShading) {
+                SDL_RenderGeometry(renderer, g_floorShadeTexture,
+                                   v.data(), x->numVertices,
+                                   x->indices, x->numIndices);
+              }
           }
-
-          //render shade
-          for(int i = 0; i < x->numVertices; i++) {
-            v[i].tex_coord.x = x->vertexExtraData[i].first;
-            v[i].tex_coord.y = x->vertexExtraData[i].second;
-            v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
-          }
-
-          SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-
-        }
       }
 
       //decorative meshes
@@ -9206,29 +9278,31 @@ void clear_map(camera& cameraToReset) {
       
       //visual walls
       //most of these will be drawn later so :S
-      if(1) {
-    for(auto &x : g_meshVWalls) {
-      if(x->visible && x->awake) {
-        SDL_Vertex v[x->numVertices];
-        for(int i = 0; i < x->numVertices; i++) {
-          v[i] = x->vertex[i];
-          v[i].position.x += x->origin.x - g_camera.x;
-          v[i].position.y += x->origin.y - g_camera.y
-                            -x->origin.z * XtoZ;
-          v[i].color.r = v[i].color.g;
-          //          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
-          //          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
-        }
+            //visual walls
+            //these will be drawn again later IF they have an occluder
+            if(1) { //!!! change to 1 asap, this should not be zero
+            for(auto &x : g_meshVWalls) {
+              if(x->visible && x->awake) {
+                SDL_Vertex v[x->numVertices];
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i] = x->vertex[i];
+                  v[i].position.x += x->origin.x - g_camera.x;
+                  v[i].position.y += x->origin.y - g_camera.y
+                                     -(x->origin.z *XtoZ);
+                  v[i].color.r = v[i].color.g;
+                  //          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
+                  //          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
+                }
+        
+                SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+        
+                if(x->drawShading) {
+                  //render shade
+                  for(int i = 0; i < x->numVertices; i++) {
+                    v[i].tex_coord.x = x->vertexExtraData[i].first;
+                    v[i].tex_coord.y = x->vertexExtraData[i].second;
+                  }
 
-        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-
-        if(x->drawShading) {
-          //render shade
-          for(int i = 0; i < x->numVertices; i++) {
-            v[i].tex_coord.x = x->vertexExtraData[i].first;
-            v[i].tex_coord.y = x->vertexExtraData[i].second;
-          }
-  
                   switch(x->topOrBottomShading) {
                     case 0:
                       {
@@ -9243,20 +9317,24 @@ void clear_map(camera& cameraToReset) {
                     case 2:
                       {
                         SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                     case 3:
                       {
                         SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                     case 4:
                       {
                         SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                   }
-        }
-      }
-    }
-      }
+          
+                }
+              }
+            }
+            }
 
       if(drawhitboxes) {
         for(auto &x : g_meshCollisions) {
@@ -9957,7 +10035,8 @@ void adventureUI::showTalkingUI()
   talkingText->updateText("", -1, 34);
   responseText->show = 1;
   responseText->updateText("", -1, 34);
-  if(talker != nullptr && talker->turnToFacePlayer) {
+  if(talker != nullptr && talker->turnToFacePlayer && talker->useDialogPointer) {
+    M("shown from showTalkingUI");
     dialogpointer->visible = 1;
     dialogpointergap->show = 1;
   }
@@ -10594,7 +10673,7 @@ void adventureUI::pushFancyText(entity * ftalker)
   talkingText->show = 0;
   adventureUIManager->hideInventoryUI();
   talkingBox->show = 1;
-  if(talker->turnToFacePlayer) {
+  if(talker->turnToFacePlayer && talker->useDialogPointer) {
     dialogpointer->visible = 1;
     dialogpointergap->show = 1;
   }
@@ -10605,7 +10684,10 @@ void adventureUI::pushFancyText(entity * ftalker)
   string arrangeText = scriptToUse->at(dialogue_index);
 
   if(arrangeText.substr(0,10) == "/keyprompt") {
-    arrangeText = arrangeText.substr(10);
+    arrangeText = arrangeText.substr(11);
+  }
+  if(arrangeText.substr(0,13) == "/anykeyprompt") {
+    arrangeText = arrangeText.substr(14);
   }
 
 
@@ -10635,7 +10717,7 @@ void adventureUI::pushText(entity *ftalker)
   adventureUIManager->hideInventoryUI();
   talker = ftalker;
   g_talker = ftalker;
-  if(talker->turnToFacePlayer) {
+  if(talker->turnToFacePlayer && talker->useDialogPointer) {
     dialogpointer->visible = 1;
     dialogpointergap->show = 1;
   }
@@ -10880,11 +10962,40 @@ void adventureUI::continueDialogue()
     //just finished a keyprompt
     //given item is in value of response_index
     //-1 for nothing (canceled prompt or had no item)
-    for(auto x : keyPromptMap) {
-      if(x.first == response_index) {
-        dialogue_index = x.second - 3;
+    if(keyPromptType == 0) {
+      for(auto x : keyPromptMap) {
+        if(x.first == response_index) {
+          dialogue_index = x.second - 3;
+        }
       }
+    } else {
+      //put an item on a pedastal
+      dialogue_index++;
+      D(response_index);
+      if(response_index > -1) {
+        talker->data[1] = response_index;
+        
+        if(talker->secondaryTexture != 0) {
+          SDL_DestroyTexture(talker->secondaryTexture);
+          talker->secondaryTexture = 0;
+        }
+        talker->secondaryTexture = loadTexture(renderer, "resources/static/key-items/" + to_string(response_index) + ".qoi");
+  
+        //take the item from the player
+        for(auto x : g_keyItemsRelevant) {
+          if(x->index == response_index) {
+            delete x;
+          }
+        }
+  
+        string sfh = "pedastal-" + g_mapdir + "/" + g_map + "-" + to_string(talker->data[2]);
+        writeSaveField(sfh, talker->data[1]);
+      } else {
+        M("response index must be -1");
+      } 
+
     }
+    
     keyPromptCancelForceReset = 30;
     keyPrompting = 0;
   }
@@ -11043,8 +11154,6 @@ void adventureUI::continueDialogue()
     adventureUIManager->kiIndex = 0;
     oldinput[11] = 1;
     oldinput[8] = 1;
-    M("Time to build the Keypromptmap");
-    D(res);
     while (res.find('*') != std::string::npos)
     {
       pair<int, int> keyPromptEntry;
@@ -11056,6 +11165,28 @@ void adventureUI::continueDialogue()
       j++;
       res = scriptToUse->at(dialogue_index + j);
     }
+    keyPromptType = 0; // SPECIFIC
+
+    keyPrompting = true;
+    return;
+  }
+
+
+  //similar to a keyprompt, the player can choose any item to put on a pedastal
+  if(scriptToUse->at(dialogue_index + 1).substr(0,13) == "/anykeyprompt") {
+
+    dialogue_index++;
+    g_fancybox->show = 1;
+    g_fancybox->clear();
+    pushFancyText(talker);
+    int j = 1;
+    string res = scriptToUse->at(dialogue_index + j);
+    keyPromptMap.clear();
+    g_amState = amState::KEYITEM;
+    adventureUIManager->kiIndex = 0;
+    oldinput[11] = 1;
+    oldinput[8] = 1;
+    keyPromptType = 1; //ANY
 
     keyPrompting = true;
     return;
@@ -11087,7 +11218,7 @@ void adventureUI::continueDialogue()
       for(auto x : keysToCheckFor) {
         //D(x);
         int good = 0;
-        for(auto y : g_keyItems) {
+        for(auto y : g_keyItemsRelevant) {
 //          D(y->index);
 //          D(x);
           if(x == y->index) {
@@ -11146,9 +11277,9 @@ void adventureUI::continueDialogue()
     vector<string> x = splitString(s, ' ');
 
     int removeIndex = stoi(x[1]);
-    for(int i = 0; i < g_keyItems.size(); i++) {
-      if(g_keyItems[i]->index == removeIndex) {
-        delete g_keyItems[i];
+    for(int i = 0; i < g_keyItemsRelevant.size(); i++) {
+      if(g_keyItemsRelevant[i]->index == removeIndex) {
+        delete g_keyItemsRelevant[i];
         break;
       }
     }
@@ -11202,13 +11333,15 @@ void adventureUI::continueDialogue()
 
   //give key-item to player
   // 
-  // /givekey 0
+  // /givekey 0 bank
   if(scriptToUse->at(dialogue_index + 1).substr(0,8) == "/givekey") {
     string s = scriptToUse->at(dialogue_index + 1);
     vector<string> x = splitString(s, ' ');
 
     int giveIndex = stoi(x[1]);
-    keyItemInfo* k = new keyItemInfo(giveIndex);
+    string level = x[2];
+    keyItemInfo* k = new keyItemInfo(giveIndex, level);
+    g_keyItemsRelevant.push_back(k);
 
     dialogue_index++;
     this->continueDialogue();
@@ -11427,14 +11560,17 @@ void adventureUI::continueDialogue()
                     case 2:
                       {
                         SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                     case 3:
                       {
                         SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                     case 4:
                       {
                         SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                   }
             }
@@ -14251,8 +14387,9 @@ void gradient::render(SDL_Renderer* renderer, camera fcamera) {
   }
 }
 
-keyItemInfo::keyItemInfo(int findex) {
+keyItemInfo::keyItemInfo(int findex, string flevel) {
   index = findex;
+  level = flevel;
   string addr = "resources/static/key-items/"+to_string(findex) + ".qoi";
   if(PHYSFS_exists(addr.c_str())) {
     texture = loadTexture(renderer, addr);
@@ -14269,4 +14406,6 @@ keyItemInfo::~keyItemInfo() {
     SDL_DestroyTexture(texture);
   }
   g_keyItems.erase(remove(g_keyItems.begin(), g_keyItems.end(), this), g_keyItems.end());
+
+  g_keyItemsRelevant.erase(remove(g_keyItemsRelevant.begin(), g_keyItemsRelevant.end(), this), g_keyItemsRelevant.end());
 }

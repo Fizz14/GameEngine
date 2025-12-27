@@ -603,14 +603,17 @@ void ExplorationLoop() {
                     case 2:
                       {
                         SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                     case 3:
                       {
                         SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                     case 4:
                       {
                         SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
                       }
                   }
           
@@ -1070,8 +1073,8 @@ void ExplorationLoop() {
           if(input[11] && !oldinput[11] && !g_keyItemFlavorDisplay) {
             if(adventureUIManager->keyPrompting) {
               if(adventureUIManager->typing == 0) {
-                if(adventureUIManager->kiIndex >= 0 && adventureUIManager->kiIndex < (int)g_keyItems.size()) {
-                  adventureUIManager->response_index = g_keyItems[adventureUIManager->kiIndex]->index;
+                if(adventureUIManager->kiIndex >= 0 && adventureUIManager->kiIndex < (int)g_keyItemsRelevant.size()) {
+                  adventureUIManager->response_index = g_keyItemsRelevant[adventureUIManager->kiIndex]->index;
                   adventureUIManager->keyPrompting = 2;
                   g_amState = amState::CLOSED;
                   adventureUIManager->hideKi();
@@ -1089,12 +1092,12 @@ void ExplorationLoop() {
                 }
               }
             } else {
-              if(adventureUIManager->kiIndex < g_keyItems.size()) {
+              if(adventureUIManager->kiIndex < g_keyItemsRelevant.size()) {
                 //show flavortext
                 adventureUIManager->talker = narrarator;
                 adventureUIManager->dPointToMe = 0;
                 vector<string> flavorScript = {};
-                flavorScript.push_back(getLanguageData("KeyItem" + to_string(g_keyItems[adventureUIManager->kiIndex]->index) + "Flavor"));
+                flavorScript.push_back(getLanguageData("KeyItem" + to_string(g_keyItemsRelevant[adventureUIManager->kiIndex]->index) + "Flavor"));
                 flavorScript.push_back("#");
                 adventureUIManager->ownScript = flavorScript;
                 adventureUIManager->dialogue_index = -1;
@@ -1128,7 +1131,7 @@ void ExplorationLoop() {
 
           if(input[1] && !g_keyItemFlavorDisplay) {
             if(SoldUIDown <= 0) {
-              if(adventureUIManager->kiIndex + 1< g_keyItems.size()) {
+              if(adventureUIManager->kiIndex + 1< g_keyItemsRelevant.size()) {
                 adventureUIManager->kiIndex++;
               }
               SoldUIDown = (oldUIDown) ? g_inputDelayRepeatFrames : g_inputDelayFrames;
@@ -1153,7 +1156,7 @@ void ExplorationLoop() {
             adventureUIManager->kiPrecede->show = 0;
           }
 
-          int a = g_keyItems.size();
+          int a = g_keyItemsRelevant.size();
           int b = 6 + adventureUIManager->kiOffset;
           if(a > b) {
             adventureUIManager->kiAdvance->show = 1;
@@ -1164,12 +1167,12 @@ void ExplorationLoop() {
           for(int i = 0; i < 6; i++) {
             if(i < adventureUIManager->kiTextboxes.size()) {
               int j = i + adventureUIManager->kiOffset;
-              if(j < g_keyItems.size()) {
+              if(j < g_keyItemsRelevant.size()) {
                 if(j == adventureUIManager->kiIndex) {
                   adventureUIManager->kiPicker->y = adventureUIManager->kiTextboxes[i]->boxY + 0.0075;
                 }
-                adventureUIManager->kiTextboxes[i]->updateText(g_keyItems[j]->name);
-                adventureUIManager->kiIcons[i]->texture = g_keyItems[j]->texture;
+                adventureUIManager->kiTextboxes[i]->updateText(g_keyItemsRelevant[j]->name);
+                adventureUIManager->kiIcons[i]->texture = g_keyItemsRelevant[j]->texture;
                 if(adventureUIManager->kiIcons[i]->texture == 0) {
                   adventureUIManager->kiIcons[i]->show = 0;
                 }
@@ -1182,7 +1185,7 @@ void ExplorationLoop() {
             }
           }
 
-          if(g_keyItems.size() == 0) {
+          if(g_keyItemsRelevant.size() == 0) {
             adventureUIManager->kiPicker->show = 0;
           }
 
@@ -1835,7 +1838,7 @@ void ExplorationLoop() {
         adventureUIManager->dialogpointer->visible = 0;
         adventureUIManager->dialogpointergap->show = 0;
       } else {
-        if(!g_learningMove && adventureUIManager->sleepflag == 0 && !g_gainingXPInExplorationMode) {
+        if(!g_learningMove && adventureUIManager->sleepflag == 0 && !g_gainingXPInExplorationMode && adventureUIManager->talker->useDialogPointer == 1) {
           adventureUIManager->dialogpointer->visible = 1;
           adventureUIManager->dialogpointergap->show = 1;
         }
@@ -2424,8 +2427,24 @@ void ExplorationLoop() {
 
     //could foreseeably cause issues if ents try pathfinding around
     //layer 1 blocks and don't "see" layer 0 blocks
+//    if(g_focus->stableLayer+1 < g_boxs.size()) {
+//      for(auto x : g_boxs[g_focus->stableLayer+1]) {
+//        SDL_FRect obj;
+//        obj.x = (x->bounds.x -g_camera.x)* g_camera.zoom;
+//        obj.y = (x->bounds.y -g_camera.y - height) * g_camera.zoom;
+//        obj.w = x->bounds.width * g_camera.zoom;
+//        obj.h = x->bounds.height * g_camera.zoom;
+//
+//        if(RectOverlap(obj, cam))
+//        {
+//          g_lt_collisions.push_back(x);
+//        }
+//
+//      }
+//    }
+    
     if(g_focus->stableLayer+1 < g_boxs.size()) {
-      for(auto x : g_boxs[g_focus->stableLayer+1]) {
+      for(auto x : g_impliedSlopes) {
         SDL_FRect obj;
         obj.x = (x->bounds.x -g_camera.x)* g_camera.zoom;
         obj.y = (x->bounds.y -g_camera.y - height) * g_camera.zoom;
@@ -2717,7 +2736,6 @@ void ExplorationLoop() {
         if(0){ //change this to re-enable way offsets, I don't wanna bother with it
           g_wayOffsetX = 0;
           g_wayOffsetY = 0;
-          M("Set old door vals");
           g_oldDoorWidth = taken->width;
           g_oldDoorHeight = taken->height;
 
@@ -2765,7 +2783,6 @@ void ExplorationLoop() {
             }
 
           } else {
-
             g_entities[i]->height = 0;
             g_entities[i]->width = 0;
 
@@ -4196,6 +4213,7 @@ int WinMain()
     generateIndicesFile("trial");
     generateIndicesFile("desert");
     generateIndicesFile("moln");
+    generateIndicesFile("bank");
   }
 
   //language pack
@@ -4455,10 +4473,10 @@ int WinMain()
   SDL_SetTextureBlendMode(g_wSpec, SDL_BLENDMODE_ADD);
 
   // init static resources
-  string txtfilename = "resources/static/scripts/builtin/warp.txt";
-  g_warpScript = loadText(txtfilename);
-  parseScriptForLabels(g_warpScript);
-  parseScriptForDialogHooks(g_warpScript);
+//  string txtfilename = "resources/static/scripts/builtin/warp.txt";
+//  g_warpScript = loadText(txtfilename);
+//  parseScriptForLabels(g_warpScript);
+//  parseScriptForDialogHooks(g_warpScript);
 
 
   { //init static sounds
@@ -5759,8 +5777,13 @@ int interact(float elapsed, entity *protag)
         adventureUIManager->blip = g_ui_voice;
         //adventureUIManager->sayings = &g_entities[i]->sayings;
         adventureUIManager->talker = g_entities[i];
+        adventureUIManager->dPointToMe = g_entities[i];
         if(g_entities[i]->useDialogPointer) {
-          adventureUIManager->dPointToMe = g_entities[i];
+          adventureUIManager->dialogpointer->visible = 1;
+          adventureUIManager->dialogpointergap->show = 1;
+        } else {
+          adventureUIManager->dialogpointer->visible = 0;
+          adventureUIManager->dialogpointergap->show = 0;
         }
 
         adventureUIManager->dialogue_index = -1;
@@ -6546,6 +6569,7 @@ void getExplorationInput(float &elapsed)
           g_levelFlashing = 0;
           inPauseMenu = 0;
           Mix_FadeOutMusic(1000);
+          writeSave();
           clear_map(g_camera);
           transition = 1;
           g_gamemode = gamemode::TITLE;
@@ -7533,7 +7557,6 @@ void dungeonFlash() {
     for(auto x: beatenScript) {
       D(x);
     }
-    M("Better do the beaten script");
 
     adventureUIManager->talker = narrarator;
     adventureUIManager->ownScript = beatenScript;
@@ -7579,7 +7602,6 @@ void dungeonFlash() {
 
       }
     } else {
-      //M("Redo floor, not affecting behemoths");
     }
 
     for(auto x : g_dungeonBehemoths) {
@@ -7599,7 +7621,6 @@ void dungeonFlash() {
       bool randomCheck = rng(1,20) > 18;
       D(randomCheck);
       if(g_dungeonSpecialFloors.size() > 0 && numberOfActiveBehemoths == 0 && randomCheck && g_dungeonIndex < g_dungeon.size()-1 && !g_dungeonRedo) {
-        M("Replace the floor with a special floor");
         D(g_dungeonSpecialFloors.size());
         int randomIndex = rng(0, g_dungeonSpecialFloors.size() - 1);
         string replacestr = "resources/maps/" + g_mapdir + "/" + g_dungeonSpecialFloors[randomIndex];

@@ -1027,13 +1027,14 @@ class adventureUI {
     bool askingQuestion = false; //set if current cue is a question
     string response = "tired"; //contains the last response the player gave to a question
     vector<string> responses; //contains each possible response to a question
-    long long unsigned int response_index = 0; //number of response from array responses
+    int response_index = 0; //number of response from array responses
     int sleepingMS = 0; //MS to sleep cutscene/script
     bool sleepflag = 0; //true for one frame after starting a sleep
     bool mobilize = 0; //used to allow the player to move during /sleep calls
 
     int keyPrompting = 0;
     int keyPromptCancelForceReset = 0;
+    int keyPromptType = 0; //used to distinguish between anykeyprompt and keyprompt (quests vs pedastals)
     vector<pair<int, int>> keyPromptMap; //map of where to jump after a keyprompt, if at all
 
     ui* emotion = 0;
@@ -1286,8 +1287,9 @@ public:
   int index;
   SDL_Texture* texture;
   string name;
+  string level; //set this to "all" to be used anywhere in the game
 
-  keyItemInfo(int findex);
+  keyItemInfo(int findex, string flevel);
 
   ~keyItemInfo();
 
@@ -1298,6 +1300,7 @@ class entity:public actor {
     bool disableInteraction = 0;
     float inRangeSlowdownFactor = 0;
     combatant* hisCombatant = nullptr;
+    SDL_Texture* secondaryTexture = 0; //used for pedastal
     SDL_Surface* eheightmap = nullptr;
     string displayName = "";
     int ignoreSolids = 0;
@@ -1548,7 +1551,7 @@ class entity:public actor {
     bool asset_sharer = 0;
 
     //self-data
-    int data[15] = {0};
+    int data[15] = {-1};
     string datastr[15] = {""};
 
     //combat

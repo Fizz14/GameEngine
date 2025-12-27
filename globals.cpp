@@ -372,6 +372,7 @@ int g_currency = 0;
 int g_numPresentsLoaded = 0;
 int g_numMoneybagsLoaded = 0;
 int g_numDispensersLoaded = 0;
+int g_numPedastalsLoaded = 0;
 
 // inventory - we're switching things up. This will be the picnic-box, the inventory for consumables
 float use_cooldown = 0; // misleading, its not for attacks at all
@@ -934,7 +935,7 @@ int wallheight = 128;
 int wallstart = 0;
 bool showMarker = 1;
 int lastAction = 0;                             // for saving the user's last action to be easily repeated
-float navMeshDensity = 2;                       // navnodes every two blocks
+float navMeshDensity = 5;                       // 2 -> navnodes every two blocks
 int limits[4] = {0};
 int m_enemyPoints = 0;                          // points the map has to spend on enemies when spawned and every x seconds afterwards
 string textureDirectory = "mapeditor";          // for choosing a file to load textures from, i.e. keep textures for a desert style level, a laboratory level, and a forest level separa
@@ -1095,7 +1096,7 @@ int g_activeGgridFlickerProlongMs = 0;
 
 unsigned int g_lastGgridBlockPlaced = 3;
 
-const bool g_useOccluding = 1;
+const bool g_useOccluding = 0;
 
 int g_globalAccumulator = 0;
 int g_tempAccumulator = 0;
@@ -1170,6 +1171,7 @@ lossSub g_lossSub = lossSub::INWIPE;
 lossUI* lossUIManager = 0;
 
 vector<keyItemInfo*> g_keyItems;
+vector<keyItemInfo*> g_keyItemsRelevant; //this should be updated on mapload
 
 bool g_keyItemFlavorDisplay = 0;
 

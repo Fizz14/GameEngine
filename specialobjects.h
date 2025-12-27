@@ -22,6 +22,8 @@ void specialObjectsOncePerFrame(float elapsed);
 
 void specialObjectsMapWrite(entity* a, ofstream & ofile); //any entity which writes it's entitydata to the map needs a branch here
 
+void specialObjectsRender(entity* a, SDL_FRect dstrect);
+
 float exponentialCurve(int max, int exponent);
 
 #endif

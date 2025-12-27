@@ -113,6 +113,8 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   // parse name from fileaddress
   auto x = splitString(mapname, '/');
 
+  string oldmapdir = g_mapdir;
+
   if(x.size() > 3) {
     g_mapdir = x.at(2);
     g_map = x.at(3);
@@ -121,6 +123,24 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
     g_map.pop_back();
     g_map.pop_back();
     g_waypoint = destWaypointName;
+  }
+
+
+  D(oldmapdir);
+  D(g_mapdir);
+  { //if the mapdirectory is different from our past one, reload g_keyItemsRelevant
+    if(g_mapdir != oldmapdir) {
+      M("Time to update g_keyItemsRelevant");
+      g_keyItemsRelevant.clear();
+      for(auto x : g_keyItems) {
+        D(x->level);
+        D(g_mapdir);
+        if(x->level == "" || x->level == g_mapdir) {
+          M("Lets push this one back");
+          g_keyItemsRelevant.push_back(x);
+        }
+      }
+    }
   }
 
   if(g_secondaryLanguagePack != g_mapdir) {
@@ -172,7 +192,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       a->bounds.height = p3;
     }
 
-    if(word == "chunkdata") {
+    else if(word == "chunkdata") {
       line = strings[index];
       index++;
       iss = istringstream(line);
@@ -369,7 +389,7 @@ c->wall->vertex[i].tex_coord.y = ty;
        
     }
 
-    if (word == "camblocker") {
+else if (word == "camblocker") {
       iss >> s0 >> p0 >> p1 >> p2 >> p3 >> p4;
       camBlocker* a = new camBlocker();
       a->bounds.x = p0;
@@ -379,7 +399,7 @@ c->wall->vertex[i].tex_coord.y = ty;
       a->direction = p4;
     }
 
-    if(word == "gradient") {
+else if(word == "gradient") {
       iss >> s0 >> p0 >> p1 >> p2 >> p3 >> p4;
       gradient* a = new gradient();
       a->x = p0;
@@ -414,19 +434,19 @@ c->wall->vertex[i].tex_coord.y = ty;
 //      limits[3] = p4;
 //      g_camera.enforceLimits = 1;
 //    }
-    if (word == "bg" && g_useBackgrounds)
+else if (word == "bg" && g_useBackgrounds)
     {
       iss >> s0 >> backgroundstr;
       background = loadTexture(renderer, "resources/static/backgrounds/" + backgroundstr + ".qoi");
       g_backgroundLoaded = 1;
       SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
     }
-    if (word == "dark")
+else if (word == "dark")
     {
       iss >> s0 >> p1;
       g_spotlightEnabled = p1;
     }
-    if(word == "darkness") {
+else if(word == "darkness") {
       iss >> s0 >> p1;
       g_dungeonDarkness = p1;
     }
@@ -434,11 +454,11 @@ c->wall->vertex[i].tex_coord.y = ty;
 //      iss >> s0 >> p0;
 //      g_encounterChance = p0;
 //    }
-    if(word == "cbg") { //combat background
+else if(word == "cbg") { //combat background
       iss >> s0 >> s1;
       loadedBackgrounds.push_back(s1);
     }
-    if (word == "encounters") {
+else if (word == "encounters") {
       iss >> s0 >> s1;
       g_encountersFile = s1;
 
@@ -488,19 +508,19 @@ c->wall->vertex[i].tex_coord.y = ty;
 //      box *c = new box(p1, p2, p3, p4, p5, s1, s2, p6, p7, p8, s3.c_str());
 //      (void)c;
 //    }
-    if (word == "boxcollision")
+else if (word == "boxcollision")
     {
       iss >> s0 >> p1 >> p2 >> p3 >> p4;
       impliedSlope *i = new impliedSlope(p1, p2, p3, p4, 0, 0, 0, 0);
       (void)i;
     }
-    if (word == "tricollision")
+else if (word == "tricollision")
     {
       iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p6;
       impliedSlopeTri *i = new impliedSlopeTri(p1, p2, p3, p4, 0, p6);
       (void)i;
     }
-    if (word == "entity")
+else if (word == "entity")
     {
       //this code can segfault when leaving the cylindrical structure in desert/1
       // M("loading entity" << endl;
@@ -671,7 +691,7 @@ c->wall->vertex[i].tex_coord.y = ty;
       }
 
     }
-    if(word == "entitydata") {
+else if(word == "entitydata") {
       int value;
       int i = 0;
       iss >> s0;
@@ -679,8 +699,53 @@ c->wall->vertex[i].tex_coord.y = ty;
         g_entities[g_entities.size() - 1]->data[i] = value;
         i++;
       }
+
+      M("    FOUND ENTITYDATA");
+      D(g_entities[g_entities.size() - 1]->identity);
+
+      {
+        entity* a = g_entities[g_entities.size() - 1];
+        //this is for key items
+        if(a->identity == 35) {
+          M("");
+          M("Let's set the image of the keyitem");
+          M("");
+  
+          //has the player already picked this item up?
+          string sfh =  "key-" + to_string(a->data[0]);
+          D(sfh);
+          //M("Use safefield " + sfh);
+          int res = checkSaveField(sfh);
+          if(res == -1) {
+            //item should be there
+            a->tangible = 1;
+          } else {
+            a->tangible = 0;
+          }
+
+          if(!a->asset_sharer) {
+            SDL_DestroyTexture(a->texture);
+          }
+  
+          string spritefilevar = "resources/static/key-items/" + to_string(a->data[0]) + ".qoi";
+          const char* spritefile = spritefilevar.c_str();
+          string hook = "KeyItem" + to_string(a->data[0]) + "Name";
+          a->displayName = getLanguageData(hook);
+
+          a->texture = loadTexture(renderer, spritefile);
+          a->asset_sharer = 0;
+        }
+      }
     }
-    if(word == "entitydatastr") {
+    else if(word == "entitytint") {
+      iss >> s0 >> s0 >> s1 >> s2;
+      g_entities[g_entities.size() - 1]->red = stoi(s0);
+      g_entities[g_entities.size() - 1]->green = stoi(s1);
+      g_entities[g_entities.size() - 1]->blue = stoi(s2);
+      g_entities[g_entities.size() - 1]->useTint = 1;
+    }
+
+else if(word == "entitydatastr") {
       string value;
       int i = 0;
       iss >> s0;
@@ -689,11 +754,11 @@ c->wall->vertex[i].tex_coord.y = ty;
         i++;
       }
     }
-    if(word == "chunk") {
+else if(word == "chunk") {
       iss >> s0 >> s1 >> s2 >> s3 >> p0 >> p1 >> p2 >> p3;
       chunk* c = new chunk(s1, s2, s3, {p0, p1, p2}, p3, 1);
     }
-    if(word == "ggrid") {
+else if(word == "ggrid") {
       iss >> s0
           >> s0
           >> s1
@@ -753,7 +818,7 @@ c->wall->vertex[i].tex_coord.y = ty;
       g_activeGgrid = g;
 
     }
-    if (word == "layerdata")
+else if (word == "layerdata")
     {
       iss >> s0
           >> p0;
@@ -761,7 +826,7 @@ c->wall->vertex[i].tex_coord.y = ty;
       g_activeGgrid->layer = p0;
     }
 
-    if (word == "tile")
+else if (word == "tile")
     {
       // M("loading tile" << endl;
       iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p6 >> p7 >> p8 >> p9;
@@ -770,14 +835,14 @@ c->wall->vertex[i].tex_coord.y = ty;
       tile *t = new tile(renderer, plik1, plik2, p1, p2, p3, p4, 0, p6, p7, p8, p9);
       (void)t;
     }
-    if(word == "tilelayer")
+else if(word == "tilelayer")
     {
       M("Found tilelayer");
       iss >> s0 >> p1;
       D(p1);
       g_tiles[g_tiles.size()-1]->z = p1;
     }
-    if (word == "triangle")
+else if (word == "triangle")
     {
       // M("loading triangle" << endl;
       iss >> s0 >> p1 >> p2 >> p3 >> p4 >> p5 >> s1 >> s2 >> p6 >> p7 >> p8;
@@ -790,20 +855,20 @@ c->wall->vertex[i].tex_coord.y = ty;
 //      ramp *r = new ramp(p0, p1, p2, p3, s1, s2);
 //      (void)r;
 //    }
-    if (word == "mapObject")
+else if (word == "mapObject")
     {
       iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> p7;
       mapObject *e = new mapObject(renderer, s1, s2.c_str(), p1, p2, p3, p4, p5, p6, p7);
       (void)e;
     }
-    if (word == "door")
+else if (word == "door")
     {
       iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6;
       const char *map = s1.c_str();
       door *d = new door(renderer, map, s2, p1, p2, p3, p4, p5, p6);
       (void)d;
     }
-    if(word == "ddoor")
+else if(word == "ddoor")
     {
       M("Loaded a ddoor");
       iss >> s0 >> p1 >> p2 >> p3 >> p4;
@@ -811,21 +876,21 @@ c->wall->vertex[i].tex_coord.y = ty;
       (void)d;
     }
 
-    if (word == "trigger")
+else if (word == "trigger")
     {
       iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4 >> p5 >> p6 >> s2 >> p7;
       const char *binding = s1.c_str();
       trigger *t = new trigger(binding, p1, p2, p3, p4, p5, p6, s2, p7);
       (void)t;
     }
-    if (word == "worldsound")
+else if (word == "worldsound")
     {
       iss >> s0 >> s1 >> p1 >> p2;
       const char *sprite = s1.c_str();
       worldsound *w = new worldsound(sprite, p1, p2);
       (void)w;
     }
-    if(word == "music")
+else if(word == "music")
     {
       g_mapHasMusic = 1;
       //static map music
@@ -858,14 +923,14 @@ c->wall->vertex[i].tex_coord.y = ty;
         }
       }
     }
-    if (word == "musicnode")
+else if (word == "musicnode")
     {
       iss >> s0 >> s1 >> p1 >> p2;
       const char *sprite = s1.c_str();
       musicNode *m = new musicNode(sprite, p1, p2);
       (void)m;
     }
-    if (word == "cuesound")
+else if (word == "cuesound")
     {
 
       iss >> s0 >> s1 >> p1 >> p2 >> p3;
@@ -873,21 +938,21 @@ c->wall->vertex[i].tex_coord.y = ty;
       cueSound *c = new cueSound(sprite, p1, p2, p3);
       (void)c;
     }
-    if (word == "waypoint")
+else if (word == "waypoint")
     {
       iss >> s0 >> s1 >> p1 >> p2 >> p3 >> p4;
       waypoint *w = new waypoint(s1, p1, p2, p3, p4);
       (void)w;
     }
 
-    if (word == "poi")
+else if (word == "poi")
     {
       iss >> s0 >> p1 >> p2 >> p3;
       pointOfInterest *p = new pointOfInterest(p1, p2, p3);
       (void)p;
     }
 
-    if (word == "ui")
+else if (word == "ui")
     {
       iss >> s0 >> s1 >> p0 >> p1 >> p2 >> p3 >> p4;
       const char *plik = s1.c_str();
@@ -895,19 +960,19 @@ c->wall->vertex[i].tex_coord.y = ty;
       u->mapSpecific = 1;
     }
 
-    if (word == "heightmap")
+else if (word == "heightmap")
     {
       iss >> s0 >> s1 >> s2 >> p0;
       heightmap *h = new heightmap(s2.c_str(), s1.c_str(), p0);
       (void)h;
     }
-    if (word == "navNode")
+else if (word == "navNode")
     {
       iss >> s0 >> p1 >> p2 >> p3;
       navNode *n = new navNode(p1, p2, p3);
       (void)n;
     }
-    if (word == "navNodeEdge")
+else if (word == "navNodeEdge")
     {
       iss >> s0 >> p1 >> p2;
       g_navNodes[p1]->Add_Friend(g_navNodes[p2]);
@@ -916,7 +981,7 @@ c->wall->vertex[i].tex_coord.y = ty;
         g_navNodes[p1]->Add_Friend(g_navNodes[p2]);
       }
     }
-    if (word == "listener")
+else if (word == "listener")
     {
       iss >> s0 >> s1 >> p1 >> p2 >> s2 >> p3 >> p4;
       listener *l = new listener(s1, p1, p2, s2, p3, p4);
@@ -1115,6 +1180,7 @@ c->wall->vertex[i].tex_coord.y = ty;
 
   }
 
+
   //make sure children are with their parents
   //bandaid solution
   //try to remove this !!!
@@ -1125,6 +1191,17 @@ c->wall->vertex[i].tex_coord.y = ty;
 //      D(x->x);
 //    }
 //  }
+  
+  protag->cachedOriginValsAreGood = 0;
+  for(auto e : party) {
+    if(e==protag) {continue;}
+    e->animation = protag->animation;
+    e->steeringAngle = protag->steeringAngle;
+    e->targetSteeringAngle = protag->steeringAngle;
+    e->setOriginX(protag->getOriginX());
+    e->setOriginY(protag->getOriginY());
+  }
+
   M("load_map() done");
 }
 
@@ -1411,9 +1488,31 @@ bool mapeditor_save_map(string word)
         }
 
         ofile << "entity " << g_entities[i]->name << " " << to_string((int)g_entities[i]->x) << " " << to_string((int)g_entities[i]->y) << " " << to_string((int)g_entities[i]->z) << " " << g_entities[i]->animation << " " << (g_entities[i]->flip == SDL_FLIP_HORIZONTAL) << endl;
+        
+        if(g_entities[i]->useTint) {
+          entity* b = g_entities[i];
+          ofile << "entitytint " << b->red << " " << b->green << " " << b->blue << endl;
+        }
 
+        entity* a = g_entities[i];
+        if(a->data[0] != -1) {
+          ofile << "entitydata ";
+          for(int i = 0; i < 15; i++) {
+            ofile << a->data[i] << " ";
+            if(a->data[i] == -1) {break;}
+          }
+          ofile << endl;
+        }
+        if(a->datastr[0] != "") {
+          ofile << "entitydatastr ";
+          for(int i = 0; i < 15; i++) {
+            ofile << a->datastr[i] << " ";
+            if(a->datastr[i] == "") {break;}
+          }
+          ofile << endl;
+        }
 
-        specialObjectsMapWrite(g_entities[i], ofile);
+        //specialObjectsMapWrite(g_entities[i], ofile);
       }
     }
   }
@@ -2222,22 +2321,23 @@ void write_map(entity *mapent)
         {
           rect noderect = {(int)(g_navNodes[i]->x - (cullingdiameter / 2)), (int)(g_navNodes[i]->y - (cullingdiameter / 2)), (int)(cullingdiameter), (int)(cullingdiameter * XtoY)};
           bool breakflag = 0;
-          for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++)
-          {
-            //    M(g_boxs[layer][j]->bounds.x);
-            //    M(noderect.x);
-            //    M( (layer ) * 64);
-            //    M(g_navNodes[i]->x);
-            //    M(g_navNodes[i]->z);
-            if (RectOverlap(g_boxs[layer][j]->bounds, noderect))
-            {
-              delete g_navNodes[i];
-              i--;
-              breakflag = 1;
-              break;
-            }
-          }
-          if(breakflag) {continue;}
+//          for (long long unsigned int j = 0; j < g_boxs[layer].size(); j++)
+//          {
+//            //    M(g_boxs[layer][j]->bounds.x);
+//            //    M(noderect.x);
+//            //    M( (layer ) * 64);
+//            //    M(g_navNodes[i]->x);
+//            //    M(g_navNodes[i]->z);
+//
+//            if (RectOverlap(g_impliedSlopes[j]->bounds, noderect))
+//            {
+//              delete g_navNodes[i];
+//              i--;
+//              breakflag = 1;
+//              break;
+//            }
+//          }
+          //if(breakflag) {continue;}
           //do the same for implied geometry
           for (long long unsigned int j = 0; j < g_impliedSlopes.size(); j++) {
             if(RectOverlap(noderect, g_impliedSlopes[j]->bounds)) {
@@ -2261,7 +2361,7 @@ void write_map(entity *mapent)
             float gwt = max(g_navNodes[i]->z, g_navNodes[j]->z);
             gwt /= 64;
 
-            if (XYDistance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) < 181+1 /*&& (LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt))*/ && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40))
+            if (XYDistance(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y) <= 64*6 && (LineTrace(g_navNodes[i]->x, g_navNodes[i]->y, g_navNodes[j]->x, g_navNodes[j]->y, 0, mapeditorNavNodeTraceRadius, gwt)) && (abs(g_navNodes[i]->z - g_navNodes[j]->z) < 40))
             {
 
               // dont add a friend we already have

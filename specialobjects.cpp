@@ -424,15 +424,15 @@ void specialObjectsInit(entity* a) {
       //use faction parameter to represent which key item it is
       a->bounceindex = rand() % 8;
 
-      //has the player already picked this item up?
-      string sfh =  "key-" + to_string(a->faction);
-      //M("Use safefield " + sfh);
-      int res = checkSaveField(sfh);
-      if(res == -1) {
-        //item should be there
-      } else {
-        a->tangible = 0;
-      }
+//      //has the player already picked this item up?
+//      string sfh =  "key-" + to_string(a->faction);
+//      //M("Use safefield " + sfh);
+//      int res = checkSaveField(sfh);
+//      if(res == -1) {
+//        //item should be there
+//      } else {
+//        a->tangible = 0;
+//      }
 
 
       break;
@@ -560,6 +560,26 @@ void specialObjectsInit(entity* a) {
       //travel
       //the other map and the waypoint it takes you to are stored in entitydatastr fields in the mapfile
 
+      break;
+    }
+    case 44:
+    {
+      //pedastal
+      string sfh = "pedastal-" + g_mapdir + "/" + g_map + "-" + to_string(g_numPedastalsLoaded);
+      a->data[2] = g_numPedastalsLoaded;
+      int res = checkSaveField(sfh);
+      if(res == -1) {
+        //pedastal should be empty
+        a->data[1] = -1;
+      } else {
+        a->data[1] = res;
+        if(a->secondaryTexture != 0) {
+          SDL_DestroyTexture(a->secondaryTexture);
+          a->secondaryTexture = 0;
+        }
+        a->secondaryTexture = loadTexture(renderer, "resources/static/key-items/" + to_string(res) + ".qoi");
+      }
+      g_numPedastalsLoaded++;
       break;
     }
 
@@ -2532,8 +2552,9 @@ void specialObjectsUpdate(entity* a, float elapsed) {
     {
       if(RectOverlap(protag->getMovedBounds(), a->getMovedBounds())) {
         if(a->faction >= 0) {
-          keyItemInfo* k = new keyItemInfo(a->faction); //automatically pushed back
-          string sfh = "key-" + to_string(a->faction);
+          keyItemInfo* k = new keyItemInfo(a->data[0], a->datastr[0]); //automatically pushed back
+          g_keyItemsRelevant.push_back(k);
+          string sfh = "key-" + to_string(a->data[0]);
           //M("Use safefield " + sfh);
           writeSaveField(sfh, 1);
           a->faction = -1;
@@ -3523,9 +3544,6 @@ int specialObjectsInteract(entity* a) {
       
       const string toMap = "resources/maps/" + a->datastr[0] + ".map";
       const string wayp = a->datastr[1];
-      M("Clearing map from specialobjects.cpp");
-      D(g_meshFloors.size());
-      D(g_meshFloors[0]->textureAddress);
       clear_map(g_camera);
       load_map(renderer, toMap, wayp);
       if (canSwitchOffDevMode)
@@ -3536,6 +3554,65 @@ int specialObjectsInteract(entity* a) {
       protag_can_move = 1;
       transition = 1;
       return 1;
+      break;
+    }
+    case 44:
+    {
+      //pedastal
+ 
+      if(a->data[1] == -1) {
+        M("Pedastal is empty");
+        //pedastal is empty
+        if(g_keyItemsRelevant.size() > 0) {
+          string txtfilename = "resources/static/scripts/builtin/pedastal.txt";
+          vector<string> s = loadText(txtfilename);
+          parseScriptForLabels(s);
+          parseScriptForDialogHooks(s);
+  
+          for(auto x : s) {
+            D(x);
+          }
+  
+          adventureUIManager->talker = a;
+          adventureUIManager->dPointToMe = narrarator;
+    
+          adventureUIManager->ownScript = s;
+          adventureUIManager->dialogue_index = -1;
+          adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+          adventureUIManager->sleepingMS = 0;
+          protag_is_talking = 1;
+          g_forceEndDialogue = 0;
+          adventureUIManager->continueDialogue();
+        } else {
+          vector<string> s;
+          s.push_back(getLanguageData("PedastalYouHaveNothing"));
+          s.push_back("#");
+          parseScriptForLabels(s);
+          parseScriptForDialogHooks(s);
+
+          adventureUIManager->talker = a;
+          adventureUIManager->dPointToMe = narrarator;
+    
+          adventureUIManager->ownScript = s;
+          adventureUIManager->dialogue_index = -1;
+          adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+          adventureUIManager->sleepingMS = 0;
+          protag_is_talking = 1;
+          g_forceEndDialogue = 0;
+          adventureUIManager->continueDialogue();
+        }
+        
+      } else {
+        //take item from pedastal
+        M("Take item from pedastal");
+        keyItemInfo* k = new keyItemInfo(a->data[1], g_mapdir);
+        g_keyItemsRelevant.push_back(k);
+        a->data[1] = -1;
+
+        string sfh = "pedastal-" + g_mapdir + "/" + g_map + "-" + to_string(a->data[2]);
+        writeSaveField(sfh, -1);
+      }
+
       break;
     }
   }
@@ -3597,14 +3674,14 @@ void specialObjectsMapWrite(entity* a, ofstream& ofile) {
     case 34:
       {
         //overworld enemy 
-        ofile << "entitydata " << a->data[0] << endl;
+        //ofile << "entitydata " << a->data[0] << endl;
         break;
       }
     case 37:
       {
         //present
         //store which item it gives in data[1]
-        ofile << "entitydata " << a->data[0] << endl;
+        //ofile << "entitydata " << a->data[0] << endl;
         break;
       }
     case 41:
@@ -3612,18 +3689,40 @@ void specialObjectsMapWrite(entity* a, ofstream& ofile) {
         //2disp
         //data[0] is the first item offered
         //data[1] is the second item offered
-        ofile << "entitydata " << a->data[0] << " " << a->data[1] << endl;
+        //ofile << "entitydata " << a->data[0] << " " << a->data[1] << endl;
         break;
       }
     case 42:
       {
         //3disp
-        ofile << "entitydata " << a->data[0] << " " << a->data[1] <<  " " << a->data[2] << endl;
+        //ofile << "entitydata " << a->data[0] << " " << a->data[1] <<  " " << a->data[2] << endl;
         break;
       }
     case 43:
       {
-        ofile << "entitydatastr " << a->datastr[0] << " " << a->datastr[1] << endl;
+        //ofile << "entitydatastr " << a->datastr[0] << " " << a->datastr[1] << endl;
+        break;
+      }
+  }
+}
+
+void specialObjectsRender(entity* a, SDL_FRect dstrect) {
+  switch (a->identity){
+    case 44:
+      {
+
+        if(a->secondaryTexture != 0 && a->data[1] != -1) {
+          SDL_FRect d = dstrect;
+          d.x += 4;
+          d.w -= 8;
+          d.y -= 0;
+          d.h -= 26;
+
+          SDL_RenderCopyF(renderer, g_shadowTexture, NULL, &d);
+          dstrect.y -=30;
+          SDL_RenderCopyF(renderer, a->secondaryTexture, NULL, &dstrect);
+
+        }
         break;
       }
   }

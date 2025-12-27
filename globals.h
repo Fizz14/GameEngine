@@ -664,6 +664,7 @@ extern int g_currency;
 extern int g_numPresentsLoaded;
 extern int g_numMoneybagsLoaded;
 extern int g_numDispensersLoaded;
+extern int g_numPedastalsLoaded;
 
 extern int inPauseMenu;
 extern bool g_firstFrameOfPauseMenu;
@@ -1283,6 +1284,7 @@ extern lossSub g_lossSub;
 extern lossUI* lossUIManager;
 
 extern vector<keyItemInfo*> g_keyItems;
+extern vector<keyItemInfo*> g_keyItemsRelevant;
 
 extern bool g_keyItemFlavorDisplay;
 
