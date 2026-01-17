@@ -280,6 +280,7 @@ void ExplorationLoop() {
 
   // cooldowns
   if(g_dungeonSystemOn) {g_dungeonMs += elapsed;}
+  g_msSinceLastEncounter += elapsed;
   halfsecondtimer += elapsed;
   musicFadeTimer += elapsed;
   musicUpdateTimer += elapsed;
@@ -326,12 +327,6 @@ void ExplorationLoop() {
 
         if(loadedBackgrounds.size() == 0) {E("No loaded combat backgrounds for map " + g_mapdir + "/" + g_map); abort();}
         bgstr = loadedBackgrounds[rng(0,loadedBackgrounds.size()-1)];
-
-//        if(loadedBackgrounds.size() > g_combatWorldEnts[0]->faction) {
-//          bgstr = loadedBackgrounds[g_combatWorldEnts[0]->faction];
-//        } else {
-//          bgstr = loadedBackgrounds[0];
-//        }
 
         string loadme = "resources/static/backgrounds/json/" + bgstr + ".json";
         combatUIManager->loadedBackground = bground(renderer, loadme.c_str());
@@ -471,8 +466,12 @@ void ExplorationLoop() {
             SDL_SetRenderTarget(renderer, frame);
 
             //draw a black box
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
+            setBarColor();
+            
+            //draw the bg
+            SDL_RenderCopy(renderer, background, NULL, NULL);
         
             // tiles
             for (long long unsigned int i = 0; i < g_tiles.size(); i++)
@@ -613,6 +612,11 @@ void ExplorationLoop() {
                     case 4:
                       {
                         SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 5:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
                         break;
                       }
                   }
@@ -772,6 +776,11 @@ void ExplorationLoop() {
               lastticks = ticks;
           
               SDL_RenderClear(renderer);
+              setBarColor();
+              
+              //draw the bg
+              SDL_RenderCopy(renderer, background, NULL, NULL);
+
               //render last frame
               SDL_RenderCopy(renderer, frame, NULL, NULL);
               SDL_UnlockTexture(transitionTexture);
@@ -1981,10 +1990,15 @@ void ExplorationLoop() {
   }
 
   SDL_RenderClear(renderer);
+  setBarColor();
+  
+  //draw the bg
+  SDL_RenderCopy(renderer, background, NULL, NULL);
+
 
   if (g_backgroundLoaded && g_useBackgrounds)
   { // if the level has a background and the user would like to see it
-    SDL_RenderCopy(renderer, background, NULL, NULL);
+    //SDL_RenderCopy(renderer, background, NULL, NULL);
   }
 
   for (auto n : g_entities)
@@ -2311,10 +2325,10 @@ void ExplorationLoop() {
   }
 
   //should we show the visionDetectable?
-//  adventureUIManager->seeingDetectable->show = 0;
-//  if(g_protagIsBeingDetectedBySight) {
-//    adventureUIManager->seeingDetectable->show = 1;
-//  }
+  adventureUIManager->seeingDetectable->show = 0;
+  if(g_protagIsBeingDetectedBySight) {
+    adventureUIManager->seeingDetectable->show = 1;
+  }
 
 
   // SDL_Rect FoWrect;
@@ -2630,6 +2644,533 @@ void ExplorationLoop() {
     g_dungeonDarkEffectDelta = 16;
     elapsed = 0;
 
+  }
+
+  {
+    int inGrass = 0;
+    rect mb = protag->getMovedBounds();
+    for(auto x : g_tallGrasses) {
+      if(RectOverlap(x->bounds, mb)) {
+        inGrass = 1; 
+        break;
+      }
+    }
+
+
+    adventureUIManager->seeingDetectable->show = (inGrass && g_amState == amState::CLOSED && !g_inEscapeMenu && !g_inSettingsMenu);
+
+    if(!devMode && inGrass && protag->xvel + protag->yvel > 0 && g_msSinceLastEncounter > 3000 && !g_inEscapeMenu && !g_inSettingsMenu && g_amState == amState::CLOSED) {
+      if(rng(0, 100) < g_encounterChance *(elapsed / 1000)) {
+        g_msSinceLastEncounter = 0;
+        //start combat encounter
+        int encounterNumber = rng(0,loadedEncounters.size()-1);
+
+        for(auto x : loadedEncounters[encounterNumber]) {
+          combatant* c = new combatant(x.first, x.second);
+          c->level = x.second;
+          c->baseStrength = c->l0Strength + (c->strengthGain * c->level);
+          c->baseMind = c->l0Mind + (c->mindGain * c->level);
+          c->baseAttack = c->l0Attack + (c->attackGain * c->level);
+          c->baseDefense = c->l0Defense + (c->defenseGain * c->level);
+          c->baseSoul = c->l0Soul + (c->soulGain * c->level);
+          c->baseSkill = c->l0Skill + (c->skillGain * c->level);
+          c->baseCritical = c->l0Critical + (c->criticalGain * c->level);
+          c->baseRecovery = c->l0Recovery + (c->recoveryGain * c->level);
+          
+          c->health = c->baseStrength;
+          c->curStrength = c->baseStrength;
+          c->curMind = c->baseMind;
+          c->curAttack = c->baseAttack;
+          c->curDefense = c->baseDefense;
+          c->curSoul = c->baseSoul;
+          c->curSkill = c->baseSkill;
+          c->curRecovery = c->baseSoul;
+    
+    
+          g_enemyCombatants.push_back(c);
+
+        }
+
+
+        string bgstr;
+        if(loadedBackgrounds.size() == 0) {E("No loaded combat backgrounds for map " + g_mapdir + "/" + g_map); abort();}
+        bgstr = loadedBackgrounds[rng(0,loadedBackgrounds.size()-1)];
+
+        string loadme = "resources/static/backgrounds/json/" + bgstr + ".json";
+        combatUIManager->loadedBackground = bground(renderer, loadme.c_str());
+        
+        if(combatUIManager->sb1 != 0) {
+          SDL_FreeSurface(combatUIManager->sb1);
+        }
+        
+        loadme = "resources/static/backgrounds/textures/" + to_string(combatUIManager->loadedBackground.texture) + ".qoi";
+        combatUIManager->sb1 = IMG_Load(loadme.c_str());
+
+        if(combatUIManager->scene !=0) {
+          SDL_DestroyTexture(combatUIManager->scene);
+        }
+        loadme = "resources/static/backgrounds/scenes/" + combatUIManager->loadedBackground.scene + ".qoi";
+        combatUIManager->scene = loadTexture(renderer, loadme);
+
+        
+        //cyclePalette(combatUIManager->sb1, combatUIManager->db1, combatUIManager->loadedBackground.palette);
+
+        {
+          g_gamemode = gamemode::COMBAT;
+          combatUIManager->turnCounter = 0;
+          g_submode = submode::BEFORE;
+          writeSave();
+          transitionDelta = transitionImageHeight;
+          g_combatEntryType = 1;
+        
+
+
+          
+          if(g_enemyCombatants.size() == 1) {
+            string message = getLanguageData("BattleStartNaturalTextOne");
+            string name = g_enemyCombatants[0]->name;
+            string article = getLanguageData("Article" + to_string(g_enemyCombatants[0]->article)
+                );
+
+            if(article.size() > 0) {
+              std::transform(article.begin(), article.begin()+1, article.begin(), ::toupper);
+            }
+
+
+            message = stringMultiInject(message, {article, name});
+            combatUIManager->finalText = message;
+            
+          } else if(g_enemyCombatants.size() == 2) {
+            string message = getLanguageData("BattleStartNaturalTextTwo");
+            string name = g_enemyCombatants[0]->name;
+            string article = getLanguageData("Article" + to_string(g_enemyCombatants[0]->article)
+                );
+
+            if(article.size() > 0) {
+              std::transform(article.begin(), article.begin()+1, article.begin(), ::toupper);
+            }
+
+            string name2 = g_enemyCombatants[1]->name;
+            string article2 = getLanguageData("Article"+to_string(g_enemyCombatants[0]->article));
+
+            if(name == name2) {
+              article2 = getLanguageData("Article4");
+              message = getLanguageData("BattleStartNaturalTextTwin");
+              message = stringMultiInject(message, {name});
+            } else {
+              message = stringMultiInject(message, {article, name, article2, name2});
+            }
+
+            combatUIManager->finalText = message;
+
+          } else if(g_enemyCombatants.size() >2) {
+            string message = getLanguageData("BattleStartNaturalTextThree");
+            string name = g_enemyCombatants[0]->name;
+            string article = getLanguageData("Article" + to_string(g_enemyCombatants[0]->article)
+                );
+
+            if(article.size() > 0) {
+              std::transform(article.begin(), article.begin()+1, article.begin(), ::toupper);
+            }
+
+            string possessive = getLanguageData("PossessivePronoun" + to_string(g_enemyCombatants[0]->gender));
+
+               
+            message = stringMultiInject(message, {article, name, possessive});
+
+            combatUIManager->finalText = message;
+
+          } else {
+            combatUIManager->finalText = getLanguageData("BattleStartText");
+          }
+
+          //give the enemies letters to distinguish them
+          std::unordered_map<string, int> nameCount;
+          for(auto x : g_enemyCombatants) {
+            nameCount[x->name]++;
+          }
+          std::unordered_map<string, int> nameIndex;
+
+          vector<string> repeatedNames = {};
+          for(auto x : g_enemyCombatants) {
+            if(nameCount[x->name] > 1) {
+              char suffix = 'A' + nameIndex[x->name]++;
+              x->name = x->name + "-" + suffix;
+            }
+          }
+
+
+
+
+          combatUIManager->currentText = "";
+          combatUIManager->dialogProceedIndicator->y = 0.25;
+        
+          {
+            //SDL_GL_SetSwapInterval(0);
+            bool cont = false;
+            float ticks = 0;
+            float lastticks = 0;
+            float transitionElapsed = 5;
+            float mframes = 60;
+            float transitionMinFrametime = 5;
+            transitionMinFrametime = 1/mframes * 1000;
+          
+          
+            SDL_Surface* transitionSurface = loadSurface("resources/engine/transition.qoi");
+          
+            int imageWidth = transitionSurface->w;
+            int imageHeight = transitionSurface->h;
+          
+            SDL_Texture* transitionTexture = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, transitionSurface->w, transitionSurface->h );
+            SDL_SetTextureBlendMode(transitionTexture, SDL_BLENDMODE_BLEND);
+          
+          
+            void* pixelReference;
+            int pitch;
+          
+            float offset = imageHeight;
+          
+            SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
+            SDL_SetRenderTarget(renderer, frame);
+
+            //draw a black box
+            //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            setBarColor();
+            
+            //draw the bg
+            SDL_RenderCopy(renderer, background, NULL, NULL);
+        
+            // tiles
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->z == 0)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+          
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->z == 1)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+          
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->z == 2)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+          
+            //meshes
+            for(auto &x : g_meshFloors) {
+              if(x->visible) {
+                SDL_Vertex v[x->numVertices];
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i] = x->vertex[i];
+                  v[i].position.x += x->origin.x - g_camera.x;
+                  v[i].position.y += x->origin.y - g_camera.y
+                                     -(x->origin.z * XtoZ);
+                  v[i].color.a = x->vertex[i].color.a;
+                }
+          
+                if(x->drawDiffuse == 1) {
+                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+          //        SDL_Rect a = {0,0.2, 0.2, 0.2};
+          //        SDL_RenderCopy(renderer, x->texture, NULL, &a);
+                }
+          
+          
+                //render shade
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i].tex_coord.x = x->vertexExtraData[i].first;
+                  v[i].tex_coord.y = x->vertexExtraData[i].second;
+                  v[i].color.r = 255;
+                  v[i].color.g = 255;
+                  v[i].color.b = 255;
+                  v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
+                }
+          
+                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+          
+              }
+            }
+          
+          
+            //decorative meshes
+            for(auto &x : g_meshDecorative) {
+              //D("There is an decorative mesh");
+              if(x->visible) {
+                SDL_Vertex v[x->numVertices];
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i] = x->vertex[i];
+                  v[i].position.x += x->origin.x - g_camera.x;
+                  v[i].position.y += x->origin.y - g_camera.y
+                                     -(x->origin.z * XtoZ);
+                  v[i].color.a = x->vertex[i].color.a;
+                }
+          
+                if(x->drawDiffuse == 1) {
+                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+                }
+          
+                //render shade
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i].tex_coord.x = x->vertexExtraData[i].first;
+                  v[i].tex_coord.y = x->vertexExtraData[i].second;
+                  v[i].color.a = 255; //alpha is done in the texture for this
+                }
+          
+                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+          
+              }
+            }
+          
+          
+            //visual walls
+            //these will be drawn again later IF they have an occluder
+            if(1) { //!!! change to 1 asap, this should not be zero
+            for(auto &x : g_meshVWalls) {
+              if(x->visible && x->awake) {
+                SDL_Vertex v[x->numVertices];
+                for(int i = 0; i < x->numVertices; i++) {
+                  v[i] = x->vertex[i];
+                  v[i].position.x += x->origin.x - g_camera.x;
+                  v[i].position.y += x->origin.y - g_camera.y
+                                     -(x->origin.z *XtoZ);
+                  v[i].color.r = v[i].color.g;
+                  //          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
+                  //          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
+                }
+        
+                SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+        
+                if(x->drawShading) {
+                  //render shade
+                  for(int i = 0; i < x->numVertices; i++) {
+                    v[i].tex_coord.x = x->vertexExtraData[i].first;
+                    v[i].tex_coord.y = x->vertexExtraData[i].second;
+                  }
+
+                  switch(x->topOrBottomShading) {
+                    case 0:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 1:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 2:
+                      {
+                        SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 3:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 4:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                    case 5:
+                      {
+                        SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                        break;
+                      }
+                  }
+          
+                }
+              }
+            }
+            }
+          
+          
+          
+            if(drawhitboxes) {
+              for(auto &x : g_meshCollisions) {
+                if(x->visible) {
+                  SDL_Vertex v[x->numVertices];
+                  for(int i = 0; i < x->numVertices; i++) {
+                    v[i] = x->vertex[i];
+                    v[i].position.x += x->origin.x - g_camera.x;
+                    v[i].position.y += x->origin.y - g_camera.y
+                                     -(x->origin.z *XtoZ);
+                  }
+          
+                  //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
+                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+          
+                }
+              }
+            }
+          
+            // sort
+            sort_by_y(g_actors);
+            for (long long unsigned int i = 0; i < g_actors.size(); i++)
+            {
+              g_actors[i]->render(renderer, g_camera);
+            }
+          
+            //render black bars
+            if(!devMode && g_spotlightEnabled) {
+              //occluders
+          
+              SDL_Rect blackrect;
+          
+              blackrect = {
+                g_camera.desiredX - g_camera.width,
+                g_camera.desiredY - g_camera.height,
+                g_camera.width,
+                g_camera.height*3
+              };
+          
+          
+              blackrect = transformRect(blackrect);
+          
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+          
+              blackrect = {
+                g_camera.desiredX + g_camera.width,
+                g_camera.desiredY - g_camera.height,
+                g_camera.width,
+                g_camera.height*3
+              };
+          
+          
+              blackrect = transformRect(blackrect);
+          
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+          
+              blackrect = {
+                g_camera.desiredX,
+                g_camera.desiredY - g_camera.height,
+                g_camera.width,
+                g_camera.height
+              };
+          
+              blackrect = transformRect(blackrect);
+          
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+          
+              blackrect = {
+                g_camera.desiredX,
+                g_camera.desiredY + g_camera.height,
+                g_camera.width,
+                g_camera.height
+              };
+          
+              blackrect = transformRect(blackrect);
+          
+              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+          
+              blackrect = {
+                g_camera.desiredX,
+                g_camera.desiredY,
+                g_camera.width,
+                g_camera.height
+              };
+          
+              blackrect = transformRect(blackrect);
+              SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+            }
+          
+            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+            {
+              if (g_tiles[i]->software == 1)
+              {
+                g_tiles[i]->render(renderer, g_camera);
+              }
+            }
+          
+            //shade
+            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+
+            //drawUI();
+          
+            SDL_SetRenderTarget(renderer, NULL);
+            while (!cont) {
+          
+              //onframe things
+              SDL_LockTexture(transitionTexture, NULL, &pixelReference, &pitch);
+          
+              memcpy( pixelReference, transitionSurface->pixels, transitionSurface->pitch * transitionSurface->h);
+              Uint32 format = SDL_PIXELFORMAT_ARGB8888;
+              SDL_PixelFormat* mappingFormat = SDL_AllocFormat( format );
+              Uint32* pixels = (Uint32*)pixelReference;
+              Uint32 transparent = SDL_MapRGBA( mappingFormat, 0, 0, 0, 255);
+          
+              offset += g_transitionSpeed + 0.02 * offset;
+          
+              for(int x = 0;  x < imageWidth; x++) {
+                for(int y = 0; y < imageHeight; y++) {
+          
+          
+                  int dest = (y * imageWidth) + x;
+                  //int src =  (y * imageWidth) + x;
+          
+                  if(pow(pow(imageWidth/2 - x,2) + pow(imageHeight + y,2),0.5) < offset) {
+                    pixels[dest] = transparent;
+                  } else {
+                    pixels[dest] = 0;
+                  }
+          
+                }
+              }
+          
+          
+          
+          
+          
+              ticks = SDL_GetTicks();
+              transitionElapsed = ticks - lastticks;
+              
+
+              //lock framerate
+              if(transitionElapsed < transitionMinFrametime) {
+                SDL_Delay(transitionMinFrametime - transitionElapsed);
+                ticks = SDL_GetTicks();
+                transitionElapsed = ticks - lastticks;
+              }
+              lastticks = ticks;
+          
+              SDL_RenderClear(renderer);
+              setBarColor();
+              
+              //draw the bg
+              SDL_RenderCopy(renderer, background, NULL, NULL);
+
+              //render last frame
+              SDL_RenderCopy(renderer, frame, NULL, NULL);
+              SDL_UnlockTexture(transitionTexture);
+              SDL_RenderCopy(renderer, transitionTexture, NULL, NULL);
+              SDL_RenderPresent(renderer);
+          
+              if(offset > imageHeight + pow(pow(imageWidth/2,2) + pow(imageHeight,2),0.5)) {
+                cont = 1;
+              }
+            }
+            SDL_FreeSurface(transitionSurface);
+            SDL_DestroyTexture(transitionTexture);
+            SDL_DestroyTexture(frame);
+            transition = 1;
+            titleUIManager->hideAll();
+            SDL_GL_SetSwapInterval(1);
+          }
+        
+        }
+
+      }
+    }
   }
 
   B("Tall grass update");
@@ -3489,6 +4030,11 @@ void ExplorationLoop() {
               SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
               break;
             }
+          case 5:
+            {
+              SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+              break;
+            }
         }
       }
     }
@@ -4174,7 +4720,9 @@ int WinMain()
 
   //SDL_SetRenderTextureAddressMode(renderer, SDL_TEXTURE_ADDRESS_AUTO, SDL_TEXTURE_ADDRESS_AUTO);
   //SDL_RenderSetLogicalSize(renderer, WIN_WIDTH, WIN_WIDTH * (9.0f/16.0f));
+  
   SDL_RenderSetLogicalSize(renderer, 16, 10);
+
   SDL_SetWindowMinimumSize(window, 100, 100);
 
   SDL_SetWindowPosition(window, 1280, 800);
@@ -4183,7 +4731,6 @@ int WinMain()
   SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
   SDL_RenderSetScale(renderer, scalex * g_zoom_mod, scalex * g_zoom_mod);
 
@@ -4226,6 +4773,11 @@ int WinMain()
 
   g_affirmStr = getLanguageData("Affirmative");
   g_negStr = getLanguageData("Negative");
+
+  background = loadTexture(renderer, "resources/engine/background.qoi");
+
+  //set color of bars
+  setBarColor();
 
   // for brightness
   // reuse texture for transition, cuz why not
@@ -4398,6 +4950,7 @@ int WinMain()
   g_wallShadeBotTexture = loadTexture(renderer, "resources/engine/wall-botshade.qoi");
   g_wallShadeFullTexture = loadTexture(renderer, "resources/engine/wall-shade.qoi");
   g_wall3ShadeTopTexture = loadTexture(renderer, "resources/engine/wall-3topshade.qoi");
+  g_wall5ShadeFullTexture = loadTexture(renderer, "resources/engine/wall-5fullshade.qoi");
   g_wall3ShadeBotTexture = loadTexture(renderer, "resources/engine/wall-3botshade.qoi");
 
   switch (g_graphicsquality)
@@ -4747,7 +5300,7 @@ int WinMain()
 
     vec3 origin = {0,0,0};
 
-    chunk* c = new chunk("ggrid/1", "", "", origin, 1, 0);
+    chunk* c = new chunk("ggrid/1", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4755,7 +5308,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/2", "", "", origin, 1, 0);
+    c = new chunk("ggrid/2", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4763,7 +5316,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/3", "", "", origin, 1, 0);
+    c = new chunk("ggrid/3", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4771,7 +5324,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/4", "", "", origin, 1, 0);
+    c = new chunk("ggrid/4", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4779,7 +5332,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/5", "", "", origin, 1, 0);
+    c = new chunk("ggrid/5", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4788,7 +5341,7 @@ int WinMain()
       c->floor->vertex[i].color.b = 255;
     }
 
-    c = new chunk("ggrid/6", "", "", origin, 1, 0);
+    c = new chunk("ggrid/6", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4796,7 +5349,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/7", "", "", origin, 1, 0);
+    c = new chunk("ggrid/7", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4804,7 +5357,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/8", "", "", origin, 1, 0);
+    c = new chunk("ggrid/8", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4812,7 +5365,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/9", "", "", origin, 1, 0);
+    c = new chunk("ggrid/9", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4820,7 +5373,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/10", "", "", origin, 1, 0);
+    c = new chunk("ggrid/10", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4828,7 +5381,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/11", "", "", origin, 1, 0);
+    c = new chunk("ggrid/11", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4836,7 +5389,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/12", "", "", origin, 1, 0);
+    c = new chunk("ggrid/12", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4844,7 +5397,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/13", "", "", origin, 1, 0);
+    c = new chunk("ggrid/13", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4852,7 +5405,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/14", "", "", origin, 1, 0);
+    c = new chunk("ggrid/14", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4860,7 +5413,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/15", "", "", origin, 1, 0);
+    c = new chunk("ggrid/15", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4868,7 +5421,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/16", "", "", origin, 1, 0);
+    c = new chunk("ggrid/16", "", "", origin, 1, 0, 1.8);
     //c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4876,7 +5429,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/17", "", "", origin, 1, 0);
+    c = new chunk("ggrid/17", "", "", origin, 1, 0, 1.8);
     //c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4884,7 +5437,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/18", "", "", origin, 1, 0);
+    c = new chunk("ggrid/18", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4892,7 +5445,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/19", "", "", origin, 1, 0);
+    c = new chunk("ggrid/19", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4900,7 +5453,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/20", "", "", origin, 1, 0);
+    c = new chunk("ggrid/20", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4908,7 +5461,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/21", "", "", origin, 1, 0);
+    c = new chunk("ggrid/21", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 1;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4916,7 +5469,7 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/22", "", "", origin, 1, 0);
+    c = new chunk("ggrid/22", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 0;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4925,7 +5478,7 @@ int WinMain()
       c->floor->vertex[i].color.b = 255;
     }
 
-    c = new chunk("ggrid/23", "", "", origin, 1, 0);
+    c = new chunk("ggrid/23", "", "", origin, 1, 0, 1.8);
     c->floor->drawDiffuse = 0;
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
@@ -4934,7 +5487,7 @@ int WinMain()
       c->floor->vertex[i].color.b = 255;
     }
 
-    c = new chunk("ggrid/24", "", "", origin, 1, 0);
+    c = new chunk("ggrid/24", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
@@ -4942,7 +5495,7 @@ int WinMain()
       c->floor->vertex[i].color.b = 255;
     }
     //c->decorative->drawDiffuse = 0; //was 0
-    c = new chunk("ggrid/25", "", "", origin, 1, 0);
+    c = new chunk("ggrid/25", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
@@ -4950,119 +5503,62 @@ int WinMain()
       c->floor->vertex[i].color.b = 255;
     }
     //c->decorative->drawDiffuse = 0; //was 0
-    c = new chunk("ggrid/26", "", "", origin, 1, 0);
+    c = new chunk("ggrid/26", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/27", "", "", origin, 1, 0);
+    c = new chunk("ggrid/27", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/28", "", "", origin, 1, 0);
+    c = new chunk("ggrid/28", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/29", "", "", origin, 1, 0);
+    c = new chunk("ggrid/29", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/30", "", "", origin, 1, 0);
+    c = new chunk("ggrid/30", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/31", "", "", origin, 1, 0);
+    c = new chunk("ggrid/31", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/32", "", "", origin, 1, 0);
+    c = new chunk("ggrid/32", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/33", "", "", origin, 1, 0);
+    c = new chunk("ggrid/33", "", "", origin, 1, 0, 1.8);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/34", "", "", origin, 1, 0);
-    c->floor->ggridPiece = 1;
-    for(int i = 0; i <c->floor->numVertices; i++) {
-      c->floor->vertex[i].color.r = 255;
-      c->floor->vertex[i].color.g = 255;
-      c->floor->vertex[i].color.b = 255;
-    }
-//    c = new chunk("ggrid/35", "", "", origin, 1, 0);
-//    c->floor->ggridPiece = 1;
-//    for(int i = 0; i <c->floor->numVertices; i++) {
-//      c->floor->vertex[i].color.r = 255;
-//      c->floor->vertex[i].color.g = 255;
-//      c->floor->vertex[i].color.b = 255;
-//    }
-//    c = new chunk("ggrid/36", "", "", origin, 1, 0);
-//    c->floor->ggridPiece = 1;
-//    for(int i = 0; i <c->floor->numVertices; i++) {
-//      c->floor->vertex[i].color.r = 255;
-//      c->floor->vertex[i].color.g = 255;
-//      c->floor->vertex[i].color.b = 255;
-//    }
-//    c = new chunk("ggrid/37", "", "", origin, 1, 0);
-//    c->floor->ggridPiece = 1;
-//    for(int i = 0; i <c->floor->numVertices; i++) {
-//      c->floor->vertex[i].color.r = 255;
-//      c->floor->vertex[i].color.g = 255;
-//      c->floor->vertex[i].color.b = 255;
-//    }
-//    c = new chunk("ggrid/38", "", "", origin, 1, 0);
-//    c->floor->ggridPiece = 1;
-//    for(int i = 0; i <c->floor->numVertices; i++) {
-//      c->floor->vertex[i].color.r = 255;
-//      c->floor->vertex[i].color.g = 255;
-//      c->floor->vertex[i].color.b = 255;
-//    }
-//    c = new chunk("ggrid/39", "", "", origin, 1, 0);
-//    c->floor->ggridPiece = 1;
-//    for(int i = 0; i <c->floor->numVertices; i++) {
-//      c->floor->vertex[i].color.r = 255;
-//      c->floor->vertex[i].color.g = 255;
-//      c->floor->vertex[i].color.b = 255;
-//    }
-//    c = new chunk("ggrid/40", "", "", origin, 1, 0);
-//    c->floor->ggridPiece = 1;
-//    for(int i = 0; i <c->floor->numVertices; i++) {
-//      c->floor->vertex[i].color.r = 255;
-//      c->floor->vertex[i].color.g = 255;
-//      c->floor->vertex[i].color.b = 255;
-//    }
-//    c = new chunk("ggrid/41", "", "", origin, 1, 0);
-//    c->floor->ggridPiece = 1;
-//    for(int i = 0; i <c->floor->numVertices; i++) {
-//      c->floor->vertex[i].color.r = 255;
-//      c->floor->vertex[i].color.g = 255;
-//      c->floor->vertex[i].color.b = 255;
-//    }
-
 
     //continue here
     //...
@@ -5134,7 +5630,6 @@ int WinMain()
   sparksEffect = new effectIndex("sparks", renderer);
   sparksEffect->persistent = 1;
 
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
   //SDL_RenderPresent(renderer);
   SDL_GL_SetSwapInterval(1);
 
@@ -5565,6 +6060,11 @@ int WinMain()
   PHYSFS_deinit();
 
   return 0;
+}
+
+void setBarColor() {
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  //SDL_SetRenderDrawColor(renderer, 2, 14, 2, 255);
 }
 
 int interact(float elapsed, entity *protag)

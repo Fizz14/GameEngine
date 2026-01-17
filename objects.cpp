@@ -195,114 +195,10 @@ int doAnimation(entity* a, int elapsed) {
       }
     case 3:
       {
-        if(a->msPerFrame != 0) {
-          if(a->frameLoopTimeLimit > 0 && a->frameLoopTimeLimit - elapsed <= 0) {
-            a->loopAnimation = 0;
-          }
-          if(a->frameLoopTimeLimit > 0) {
-            a->frameLoopTimeLimit -= elapsed;
-          }
-      
-          a->msTilNextFrame += elapsed;
-          if(a->msTilNextFrame > a->msPerFrame && a->xframes > 1) {
-            a->msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
-      
-            if(a->reverseAnimation) {
-              a->frameInAnimation--;
-              if(a->frameInAnimation < a->firstFrameInScriptedAnimation) {
-                if(a->loopAnimation) {
-                  if(a->scriptedAnimation) {
-                    a->frameInAnimation = a->xframes - 1;
-                  } else {
-                    a->frameInAnimation = 0;
-                  }
-                } else {
-                  a->frameInAnimation = 0;
-                  a->msPerFrame = 0;
-      //            if(name == "trial/eden-crank") {
-      //              M("D");
-      //            }
-                  //!!! slightly ambiguous. open to review later
-                  a->scriptedAnimation = 0;
-                }
-              }
-            } else {
-              a->frameInAnimation++;
-              if(a->frameInAnimation == a->xframes || (a->useAnimForWalking && a->frameInAnimation == a->animWalkFrames + 1 && !a->scriptedAnimation)) {
-                if(a->loopAnimation) {
-                  if(a->scriptedAnimation) {
-                    a->frameInAnimation = a->firstFrameInScriptedAnimation;
-                  } else {
-                    a->frameInAnimation = 1;
-                  }
-                } else {
-                  a->frameInAnimation = a->xframes - 1;
-                  a->msPerFrame = 0;
-        //          if(name == "trial/eden-crank") {
-        //            M("C");
-        //          }
-                  a->scriptedAnimation = 0;
-                }
-              }
-            }
-          }
-        }
         break;
       }
     case 4:
       {
-        if(a->msPerFrame != 0) {
-          if(a->frameLoopTimeLimit > 0 && a->frameLoopTimeLimit - elapsed <= 0) {
-            a->loopAnimation = 0;
-          }
-          if(a->frameLoopTimeLimit > 0) {
-            a->frameLoopTimeLimit -= elapsed;
-          }
-      
-          a->msTilNextFrame += elapsed;
-          if(a->msTilNextFrame > a->msPerFrame && a->xframes > 1) {
-            a->msTilNextFrame = 0; //should be msTilNextFrame - msPerFrame
-      
-            if(a->reverseAnimation) {
-              a->frameInAnimation--;
-              if(a->frameInAnimation < a->firstFrameInScriptedAnimation) {
-                if(a->loopAnimation) {
-                  if(a->scriptedAnimation) {
-                    a->frameInAnimation = a->xframes - 1;
-                  } else {
-                    a->frameInAnimation = 0;
-                  }
-                } else {
-                  a->frameInAnimation = 0;
-                  a->msPerFrame = 0;
-      //            if(name == "trial/eden-crank") {
-      //              M("D");
-      //            }
-                  //!!! slightly ambiguous. open to review later
-                  a->scriptedAnimation = 0;
-                }
-              }
-            } else {
-              a->frameInAnimation++;
-              if(a->frameInAnimation == a->xframes || (a->useAnimForWalking && a->frameInAnimation == a->animWalkFrames + 1 && !a->scriptedAnimation)) {
-                if(a->loopAnimation) {
-                  if(a->scriptedAnimation) {
-                    a->frameInAnimation = a->firstFrameInScriptedAnimation;
-                  } else {
-                    a->frameInAnimation = 1;
-                  }
-                } else {
-                  a->frameInAnimation = a->xframes - 1;
-                  a->msPerFrame = 0;
-        //          if(name == "trial/eden-crank") {
-        //            M("C");
-        //          }
-                  a->scriptedAnimation = 0;
-                }
-              }
-            }
-          }
-        }
         break;
       }
     case 5:
@@ -1810,7 +1706,7 @@ void collisionZone::debugRender(SDL_Renderer* renderer) {
   rend = transformRect(rend);
   SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
   SDL_RenderDrawRectF(renderer, &rend);
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  setBarColor();
 }
 
 
@@ -4524,7 +4420,6 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
     scriptedAnimation = 1;
     msPerFrame = walkAnimMsPerFrame;
     animation = 0;
-    animationconfig = 0;
   } else if(animationconfig == 3) {
     //M("Entity copy constructor -animconfig 3");
     //set frame to walkFrames
@@ -4533,7 +4428,6 @@ entity::entity(SDL_Renderer* renderer, entity* a) {
     msPerFrame = 0;
     animation = 0;
     frameInAnimation = animWalkFrames;
-    animationconfig = 0;
   }
 
 
@@ -4809,11 +4703,14 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
       frame = animation * xframes + frameInAnimation;
     }
     SDL_FRect dstrect = { (float)obj.x, (float)obj.y, (float)obj.width, (float)obj.height};
-    if(animationconfig == 2) {
+
+    if(animationconfig == 3) {
+      //this is used to share a texture between multiple sprites who really just use one frame of the texture, e.g. collectible familiars
+      frame = animWalkFrames;
+    } else if(animationconfig == 4) {
       //this is used to share a texture between multiple sprites who really just use one frame of the texture, e.g. collectible familiars
       frame = animation * xframes + animWalkFrames;
     }
-
 
 
     if(framespots.size() > 1) {
@@ -8993,7 +8890,7 @@ escapeUI::escapeUI() {
   handMarker->y =  0.25;
   handMarker->layer0 = 1;
 
-  fingerMarker = new ui(renderer, "resources/static/ui/finger_selector_angled.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
+  fingerMarker = new ui(renderer, "resources/static/ui/menu_picker.qoi", markerFingerX, 0.1, markerWidth, 1, 2);
   fingerMarker->persistent = 1;
   fingerMarker->show = 1;
   fingerMarker->priority = 3;
@@ -9159,6 +9056,11 @@ void clear_map(camera& cameraToReset) {
     SDL_Texture* frame = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WIN_WIDTH, WIN_HEIGHT);
     SDL_SetRenderTarget(renderer, frame);
     SDL_RenderClear(renderer);
+
+    setBarColor();
+    
+    //draw the bg
+    SDL_RenderCopy(renderer, background, NULL, NULL);
 
     {
       // tiles
@@ -9329,7 +9231,12 @@ void clear_map(camera& cameraToReset) {
                         SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
                         break;
                       }
-                  }
+                   case 5:
+                     {
+                       SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                       break;
+                     }
+                   }
           
                 }
               }
@@ -10288,15 +10195,15 @@ adventureUI::adventureUI(SDL_Renderer *renderer, bool plight) //a bit strange, b
     //    hearingDetectable->show = 1;
     //    hearingDetectable->priority = -3;
 
-//    seeingDetectable = new ui(renderer, "resources/static/ui/detection-seeing.qoi", 0.85, 0.075, 0.1, 1, -10);
-//    seeingDetectable->persistent = 1;
-//    seeingDetectable->heightFromWidthFactor = 1;
-//    seeingDetectable->xframes = 8;
-//    seeingDetectable->msPerFrame = 100;
-//    seeingDetectable->framewidth = 256;
-//    seeingDetectable->frameheight = 256;
-//    seeingDetectable->show = 1;
-//    seeingDetectable->priority = -2;
+    seeingDetectable = new ui(renderer, "resources/static/ui/detection-seeing.qoi", 0.85, 0.075, 0.1, 1, -10);
+    seeingDetectable->persistent = 1;
+    seeingDetectable->heightFromWidthFactor = 1;
+    seeingDetectable->xframes = 8;
+    seeingDetectable->msPerFrame = 100;
+    seeingDetectable->framewidth = 256;
+    seeingDetectable->frameheight = 256;
+    seeingDetectable->show = 1;
+    seeingDetectable->priority = -2;
 
     //    healthText = new textbox(renderer, "", 1700 * g_fontsize, 0, 0, 0.9);
     //    healthText->boxWidth = 0.95;
@@ -11572,6 +11479,11 @@ void adventureUI::continueDialogue()
                         SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
                         break;
                       }
+                   case 5:
+                     {
+                       SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                       break;
+                     }
                   }
             }
           }
@@ -12695,11 +12607,19 @@ void adventureUI::continueDialogue()
     string s = scriptToUse->at(dialogue_index + 1);
     s.erase(0, 8);
 
+    
     if(selected != nullptr) {
-      selected->banished = 1;
-      selected->zaccel = 220;
-      selected->shadow->enabled = 0;
-      selected->navblock = 0;
+      if(g_loadingATM) {
+        selected->banished = 1;
+        selected->z += 150;
+        selected->shadow->enabled = 0;
+        selected->navblock = 0;
+      } else {
+        selected->banished = 1;
+        selected->zaccel = 220;
+        selected->shadow->enabled = 0;
+        selected->navblock = 0;
+      }
     }
 
     dialogue_index++;

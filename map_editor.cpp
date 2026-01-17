@@ -16,6 +16,7 @@
 #include "objects.h"
 #include "globals.h"
 #include "utils.h"
+#include "main.h"
 #include "specialobjects.h"
 
 void dungeonFlash();
@@ -153,11 +154,9 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   }
 
   string line;
-  string word, s0, s1, s2, s3, s4;
+  string word, s0, s1, s2, s3, s4, s5;
   float p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10;
   (void)p10;
-
-  background = 0;
 
   g_budget = 0;
   g_budget = strtol(word.c_str(), NULL, 10);
@@ -285,19 +284,13 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
               c->wall->drawDiffuse = g_activeGgrid->hasWall;
 
             if(g_activeGgrid->wallShading == 1) {
-              if(value >= 34) {
-                c->wall->topOrBottomShading = 0;
-              } else {
                 c->wall->topOrBottomShading = 3;
-              }
             } else if(g_activeGgrid->wallShading == 2) {
-              if(value >= 34) {
-                c->wall->topOrBottomShading = 1;
-              } else {
                 c->wall->topOrBottomShading = 4;
-              }
             } else if(g_activeGgrid->wallShading == 3){
               c->wall->topOrBottomShading = 2; //both, 3 tall
+            } else if(g_activeGgrid->wallShading == 4) {
+              c->wall->topOrBottomShading =5;
             } else {
               c->wall->drawShading = 0;
             }
@@ -436,10 +429,10 @@ else if(word == "gradient") {
 //    }
 else if (word == "bg" && g_useBackgrounds)
     {
-      iss >> s0 >> backgroundstr;
-      background = loadTexture(renderer, "resources/static/backgrounds/" + backgroundstr + ".qoi");
-      g_backgroundLoaded = 1;
-      SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
+//      iss >> s0 >> backgroundstr;
+//      background = loadTexture(renderer, "resources/static/backgrounds/" + backgroundstr + ".qoi");
+//      g_backgroundLoaded = 1;
+//      SDL_SetTextureColorMod(background, 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness), 255 * (1 - g_background_darkness));
     }
 else if (word == "dark")
     {
@@ -450,10 +443,10 @@ else if(word == "darkness") {
       iss >> s0 >> p1;
       g_dungeonDarkness = p1;
     }
-//    if(word == "grasschance") {
-//      iss >> s0 >> p0;
-//      g_encounterChance = p0;
-//    }
+    if(word == "encounterchance" || word == "grasschance") {
+      iss >> s0 >> p0;
+      g_encounterChance = p0;
+    }
 else if(word == "cbg") { //combat background
       iss >> s0 >> s1;
       loadedBackgrounds.push_back(s1);
@@ -756,7 +749,7 @@ else if(word == "entitydatastr") {
     }
 else if(word == "chunk") {
       iss >> s0 >> s1 >> s2 >> s3 >> p0 >> p1 >> p2 >> p3;
-      chunk* c = new chunk(s1, s2, s3, {p0, p1, p2}, p3, 1);
+      chunk* c = new chunk(s1, s2, s3, {p0, p1, p2}, p3, 1, 1);
     }
 else if(word == "ggrid") {
       iss >> s0
@@ -769,7 +762,8 @@ else if(word == "ggrid") {
           >> p1 //y
           >> p2 //z
           >> p3 //width
-          >> p4; //height
+          >> p4 //height
+          >> s5; //z scale
       ggrid* g = new ggrid();
 
       g->floortexSTR = s0;
@@ -805,6 +799,9 @@ else if(word == "ggrid") {
         g->wallShading = 1;
       } else if(topShadeStr == "wallbotshade"){
         g->wallShading = 2;
+      } else if(topShadeStr == "wallfullshade5") {
+        g->wallShading = 4;
+        M("Time to use the 5 shade texture");
       } else {
         g->wallShading = 3; //both, if the wall is three blocks tall and meets the ceiling and floor
       }
@@ -816,6 +813,7 @@ else if(word == "ggrid") {
       g->width = p3;
       g->height = p4;
       g_activeGgrid = g;
+      g->doublez = (s5 == "double");
 
     }
 else if (word == "layerdata")
@@ -1343,7 +1341,7 @@ bool mapeditor_save_map(string word)
 
   ofile << "darkness " << g_dungeonDarkness << endl;
 
-  //ofile << "grasschance " << g_encounterChance << endl;
+  ofile << "grasschance " << g_encounterChance << endl;
   
   if(g_encountersFile != "") {
     ofile << "encounters " << g_encountersFile << endl;
@@ -1582,6 +1580,7 @@ bool mapeditor_save_map(string word)
     if(x->wallShading == 1) wallShadeTopStr = "walltopshade";
     if(x->wallShading == 2) wallShadeTopStr = "wallbotshade";
     if(x->wallShading == 3) wallShadeTopStr = "wallfullshade";
+    if(x->wallShading == 4) wallShadeTopStr = "wallfullshade5";
 
     string wallShadeBotStr = "nofloorshade";
     if(x->hasBotShading) wallShadeBotStr = "floorshade";
@@ -1953,7 +1952,7 @@ void write_map(entity *mapent)
             }
           }
         }
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        setBarColor();
       }
     }
   }
@@ -2003,7 +2002,7 @@ void write_map(entity *mapent)
     }
   }
   
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  setBarColor();
 
   // draw rectangle to visualize the selection
   if (makingbox || makingtile || makingdoor)
@@ -3172,8 +3171,7 @@ void write_map(entity *mapent)
         string renderinput = ">" + input;
         SDL_Rect rect = {consoleDisplay->x, consoleDisplay->y, WIN_WIDTH, consoleDisplay->height};
         consoleDisplay->updateText(renderinput, -1, WIN_WIDTH);
-
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        setBarColor();
         SDL_RenderFillRect(renderer, &rect);
         consoleDisplay->render(renderer, 1, 1);
         SDL_RenderPresent(renderer);
@@ -3414,7 +3412,7 @@ void write_map(entity *mapent)
 
       if(word == "chunk" || word == "c") {
         line >> word;
-        chunk* c = new chunk(word, "mapeditor/floor", "mapeditor/wall", {marker->x + marker->width/2, marker->y + marker->height/2, marker->z}, 1, 1);
+        chunk* c = new chunk(word, "mapeditor/floor", "mapeditor/wall", {marker->x + marker->width/2, marker->y + marker->height/2, marker->z}, 1, 1, 1);
         break;
       }
       if(word == "scalechunk" || word == "scale") {
@@ -3442,7 +3440,7 @@ void write_map(entity *mapent)
               delete c->occluder;
             }
             delete c;
-            chunk* c = new chunk(path, floor, wall, origin, scale, 1);
+            chunk* c = new chunk(path, floor, wall, origin, scale, 1, 1);
             break;
           }
         }
@@ -3497,12 +3495,10 @@ void write_map(entity *mapent)
         line >> word;
         loadedBackgrounds.push_back(word);
       }
-//      if(word == "grasschance" || word == "chance" || word == "encounterchance") {
-//        line >> word;
-//        g_encounterChance = stof(word);
-//        D(g_encounterChance);
-//
-//      }
+      if(word == "grasschance" || word == "chance" || word == "encounterchance") {
+        line >> word;
+        g_encounterChance = stof(word);
+      }
 
       //set encounters by typing "enc [a file in resources/static/encounters/ without the folders]"
       if(word == "encounters" || word == "enc") {
@@ -4745,14 +4741,14 @@ void write_map(entity *mapent)
           {
             backgroundstr = str;
           }
-          if (g_backgroundLoaded)
-          {
-            SDL_DestroyTexture(background);
-          }
-          SDL_Surface *bs = IMG_Load(("resources/static/backgrounds/" + backgroundstr + ".qoi").c_str());
-          background = SDL_CreateTextureFromSurface(renderer, bs);
-          g_backgroundLoaded = 1;
-          SDL_FreeSurface(bs);
+//          if (g_backgroundLoaded)
+//          {
+//            SDL_DestroyTexture(background);
+//          }
+//          SDL_Surface *bs = IMG_Load(("resources/static/backgrounds/" + backgroundstr + ".qoi").c_str());
+//          background = SDL_CreateTextureFromSurface(renderer, bs);
+//          g_backgroundLoaded = 1;
+//          SDL_FreeSurface(bs);
           break;
         }
         if (word == "texturedirectory" || word == "td" || word == "theme")
@@ -6361,6 +6357,8 @@ void write_map(entity *mapent)
               c->wall->topOrBottomShading = 1;
             } else if(g_activeGgrid->wallShading == 3){
               c->wall->topOrBottomShading = 2; //both
+            } else if(g_activeGgrid->wallShading == 4) {
+              c->wall->topOrBottomShading = 5;
             } else {
               c->wall->drawShading = 0;
             }

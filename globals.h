@@ -1058,6 +1058,7 @@ extern SDL_Texture* g_wallShadeBotTexture; //1 block tall
 extern SDL_Texture* g_wallShadeFullTexture; //3 blocks tall
 extern SDL_Texture* g_wall3ShadeTopTexture; //3 blocks tall
 extern SDL_Texture* g_wall3ShadeBotTexture; //3 blocks tall
+extern SDL_Texture* g_wall5ShadeFullTexture;
 
 extern vector<string> consolehistory;
 extern int consolehistoryindex;
@@ -1252,6 +1253,8 @@ extern int g_lastGrassX;
 extern int g_lastGrassY;
 
 extern float g_encounterChance;
+
+extern int g_msSinceLastEncounter;
 
 extern vector<string> loadedBackgrounds;
 

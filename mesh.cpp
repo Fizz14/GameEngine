@@ -133,7 +133,7 @@ mesh::~mesh() {
 
 }
 
-chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone) {
+chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone, float fzscale) {
   g_chunks.push_back(this);
 
   //look for models to load from fpath
@@ -155,11 +155,11 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
   string decorAddr = baseAddr + "-d.ply";
 
   if(PHYSFS_exists(floorAddr.c_str())) {
-    floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR, standalone);
+    floor = loadMeshFromPly(floorAddr, floortex, origin, scale, meshtype::FLOOR, standalone, fzscale);
     //M("Loaded floor " + floorAddr);
   }
   if(PHYSFS_exists(wallAddr.c_str())) {
-    wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL, standalone);
+    wall = loadMeshFromPly(wallAddr, walltex, origin, scale, meshtype::V_WALL, standalone, fzscale);
     //M("Loaded wall " + wallAddr);
   }
   if(PHYSFS_exists(collisionAddr.c_str())) {
@@ -168,15 +168,15 @@ chunk::chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, floa
      *
      */
      
-    collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION, standalone);
+    collision = loadMeshFromPly(collisionAddr, "", origin, scale, meshtype::COLLISION, standalone, fzscale);
     //M("Loaded collision " + collisionAddr);
   }
   if(g_useOccluding && PHYSFS_exists(occluAddr.c_str())) {
-    occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER, standalone);
+    occluder = loadMeshFromPly(occluAddr, "", origin, scale, meshtype::OCCLUDER, standalone, fzscale);
     //M("Loaded occluder " + occluAddr);
   }
   if(PHYSFS_exists(decorAddr.c_str())) {
-    decorative = loadMeshFromPly(decorAddr, floortex, origin, scale, meshtype::DECORATIVE, standalone);
+    decorative = loadMeshFromPly(decorAddr, floortex, origin, scale, meshtype::DECORATIVE, standalone, fzscale);
     //M("Loaded decoration " + decorAddr);
   }
 
@@ -400,7 +400,7 @@ void setVertexColors(vector<vertex3d>& vertices, const vector<face>& faces, cons
 
 
 //I think this has issues
-mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone) {
+mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone, float fzscale) {
   string address = faddress;
   vector<vertex3d> vertices;
   vector<face> faces;
@@ -485,7 +485,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
       vertex3d v;
       v.x = static_cast<float>(vertexData[i][0]);
       v.y = static_cast<float>(vertexData[i][1]);
-      v.z = static_cast<float>(vertexData[i][2]);
+      v.z = static_cast<float>(vertexData[i][2]) * fzscale;
 
       if (i < vertexUVs.size()) {
         v.u = static_cast<float>(vertexUVs[i][0]);
@@ -538,19 +538,6 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
         E("");
       }
     }
-
-    {
-      //now is the time to set texture coords procedurally and add loopcuts to reset the tex coords if needed
-
-      //make sure that the first uv map for floors and walls
-      //starts in the top-left corner, as-in, no uv coords less than 0 (either axis)
-      //but greater than 1 is okay
-      //Also, no face can have it's individual unwrap span larger than the distance from 0->1
-      //subdivide in that case
-
-    }
-
-
 
     if(
         fmtype == meshtype::COLLISION ||
@@ -796,7 +783,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
 
 
 
-    result->sleepRadius = maxDistanceFromOrigin * scale;
+    result->sleepRadius = maxDistanceFromOrigin * scale * fzscale;
     result->faces = faces;
     for(auto& x : vertices) {
       x.x *= -scale;

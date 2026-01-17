@@ -1055,7 +1055,7 @@ class adventureUI {
     //ui* hearingDetectable = 0;
     
     //shown when a behemoth is finding the player by sight
-    //ui* seeingDetectable = 0;
+    ui* seeingDetectable = 0;
 
     textbox* healthText = 0;
     textbox* hungerText = 0;

@@ -3,6 +3,8 @@
 
 void updateWindowResolution();
 
+void setBarColor();
+
 void TitleLoop();
 
 void ExplorationLoop();

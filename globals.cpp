@@ -949,6 +949,7 @@ SDL_Texture* g_wallShadeBotTexture = 0;
 SDL_Texture* g_wallShadeFullTexture = 0;
 SDL_Texture* g_wall3ShadeTopTexture = 0;
 SDL_Texture* g_wall3ShadeBotTexture = 0;
+SDL_Texture* g_wall5ShadeFullTexture = 0;
 
 // for checking old console commands
 vector<string> consolehistory;
@@ -1148,6 +1149,7 @@ vector<vector<pair<string, int>>> loadedEncounters = {};
 int g_lastGrassX = 0;
 int g_lastGrassY = 0;
 float g_encounterChance = 0;
+int g_msSinceLastEncounter = 0;
 vector<string> loadedBackgrounds={};
 int g_combatEntryType = 0;
 

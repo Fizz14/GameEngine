@@ -160,7 +160,7 @@ class chunk {
   vec3 origin = {0,0,0};
   float scale;
 
-  chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone);
+  chunk(string fpath, string ffloortex, string fwalltex, vec3 forigin, float fscale, int fstandalone, float fzscale);
 
   chunk(const chunk &a);
   chunk();
@@ -170,7 +170,7 @@ class chunk {
 
 chunk* duplicateChunk(const chunk* original, vec3 newOrigin, vector<bool> whichMeshes);
 
-mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone);
+mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scale, meshtype fmtype, int standalone, float fzscale);
 
 mesh* duplicateMesh(const mesh* original, vec3 origin);
 
@@ -211,6 +211,8 @@ class ggrid {
     vector<vector<unsigned char>> chunkdata;
 
     vector<chunk*> chunks;
+
+    int doublez = 0; //make it rougly twice so tall
 
     ggrid();
 

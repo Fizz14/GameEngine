@@ -38,6 +38,14 @@ struct dropInfo {
 
 void runCombatScript(vector<string> combatScript, int turn, combatant* c, string& targeting, vector<int>& patterns, float& damage);
 
+
+//enum type {
+//  NONE,
+//  HEAVY,
+//  NIMBLE,
+//  ARMORED
+//};
+
 enum type {
   NONE,
   ANIMAL,
