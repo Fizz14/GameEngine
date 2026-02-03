@@ -582,6 +582,17 @@ void specialObjectsInit(entity* a) {
       g_numPedastalsLoaded++;
       break;
     }
+    case 45:
+    {
+      doorData d;
+      d.entity = a;
+      a->lozdoorNumber = g_Lozdoors.size();
+      g_Lozdoors.push_back(d);
+      //LoZ-style door, which changes g_inThisGgrid
+      //and does a camera transition to another part of the level, without clearing the map or loading a new one.
+      
+      break;
+    }
 
     case 100:
     {
@@ -2992,6 +3003,45 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       }
 
     }
+    case 45:
+    {
+      //if all of fomm's points are inside a's bounds, 
+      //change the room
+      rect doorrect = a->getMovedBounds();
+      if(sin(a->steeringAngle) > cos(a->steeringAngle)) {
+        //make door wider
+        doorrect.x -=10; doorrect.width += 20;
+      } else {
+        //make door taller
+        doorrect.y -=10; doorrect.height += 20;
+      }
+
+      if(rectInRect(protag->getMovedBounds(), doorrect)) {
+        //M("Time to move the player");
+          doorData dd = g_Lozdoors[a->lozdoorNumber];
+//          D(a->lozdoorNumber);
+//          D(dd.toCoords.x);
+//          D(dd.toCoords.y);
+          if(dd.enabled) {
+            if(dd.toCoords.x >= 0 && dd.toCoords.x < g_floorplan.size() && dd.toCoords.y >= 0 && dd.toCoords.y < g_floorplan[0].size()) {
+              g_floorPos.x = dd.toCoords.x;
+              g_floorPos.y = dd.toCoords.y;
+              float angle = a->steeringAngle + M_PI;
+              protag->setOriginX(protag->getOriginX() + cos(angle) * 64 * 4);
+              protag->setOriginY(protag->getOriginY() + -sin(angle) * 64 * 4);
+              g_camera.lag = 4;
+              for(auto x : party) {
+                x->setOriginX(protag->getOriginX());
+                x->setOriginY(protag->getOriginY());
+                x->steeringAngle = protag->steeringAngle;
+                x->targetSteeringAngle = protag->steeringAngle;
+                x->forceAngularUpdate = 1;
+              }
+            }
+          }
+        }
+      break;
+    }
   }
 }
 
@@ -3545,7 +3595,8 @@ int specialObjectsInteract(entity* a) {
       const string toMap = "resources/maps/" + a->datastr[0] + ".map";
       const string wayp = a->datastr[1];
       clear_map(g_camera);
-      load_map(renderer, toMap, wayp);
+
+      load_map(renderer, toMap, wayp, 0, 0);
       if (canSwitchOffDevMode)
       {
         init_map_writing(renderer);

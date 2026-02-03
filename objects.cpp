@@ -30,6 +30,7 @@
 #include "utils.h"
 #include "combat.h"
 #include "main.h"
+#include "mesh.h"
 #include "utils.h"
 
 #include <utility>
@@ -275,6 +276,48 @@ int doAnimation(entity* a, int elapsed) {
         }
 
 
+    if(a->directionUpdateCooldownMs < 0) {
+
+      //set visual direction
+      if(
+          (a->forwardsVelocity + a->forwardsPushVelocity > 0 && !a->wasPellet)
+          ||
+          a->forceAngularUpdate
+        ) {
+        a->animation = convertAngleToFrame(a->steeringAngle);
+        a->flip = SDL_FLIP_NONE;
+        if(a->yframes < 8) {
+          if(a->animation == 5) {
+            a->animation = 3;
+            a->flip = SDL_FLIP_HORIZONTAL;
+          } else if(a->animation == 6) {
+            a->animation = 2;
+            a->flip = SDL_FLIP_HORIZONTAL;
+          } else if(a->animation == 7) {
+            a->animation = 1;
+            a->flip = SDL_FLIP_HORIZONTAL;
+          }
+
+          if(a->animation > 5 || a->animation < 0) {
+            a->animation = 0;
+          }
+        }
+
+        if(a->yframes < 2) {
+          a->animation = 0;
+        }
+
+
+      }
+      if(a->lastDirection != a->animation) {
+        a->directionUpdateCooldownMs = a->maxDirectionUpdateCooldownMs;
+      }
+      a->lastDirection = a->animation;
+    } else {
+      a->directionUpdateCooldownMs -= elapsed;
+    }
+
+
         break;
       }
     case 6:
@@ -295,67 +338,76 @@ int doAnimation(entity* a, int elapsed) {
 
         break;
       }
+    case 7:
+      {
+        //objects for which the sprite is simply rotated, e.g., LoZ-style doors
+        float newAngle = atan2(-sin(a->steeringAngle), cos(a->steeringAngle));
+        a->spriteAngle = newAngle * (180 / M_PI);
+        a->flip = SDL_FLIP_NONE;
+
+        break;
+      }
   }
 
   return 0;
 }
 
-void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py) {
-    edges.erase(
-        std::remove_if(edges.begin(), edges.end(), [px, py](const edgeInfo& edge) {
-            // Vector from player to first vertex
-            float dx1 = edge.first.position.x - px;
-            float dy1 = edge.first.position.y - py;
+//void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py) {
+//    edges.erase(
+//        std::remove_if(edges.begin(), edges.end(), [px, py](const edgeInfo& edge) {
+//            // Vector from player to first vertex
+//            float dx1 = edge.first.position.x - px;
+//            float dy1 = edge.first.position.y - py;
+//
+//            // Vector from player to second vertex
+//            float dx2 = edge.second.position.x - px;
+//            float dy2 = edge.second.position.y - py;
+//
+//            // Compute cross product (2D determinant) to check facing direction
+//            float crossProduct = dx1 * dy2 - dy1 * dx2;
+//
+//            // If cross product is negative, it's backfacing
+//            return crossProduct < 0;
+//        }),
+//        edges.end()
+//    );
+//}
 
-            // Vector from player to second vertex
-            float dx2 = edge.second.position.x - px;
-            float dy2 = edge.second.position.y - py;
-
-            // Compute cross product (2D determinant) to check facing direction
-            float crossProduct = dx1 * dy2 - dy1 * dx2;
-
-            // If cross product is negative, it's backfacing
-            return crossProduct < 0;
-        }),
-        edges.end()
-    );
-}
-
-void removeBackfacingWEdges(std::vector<edgeInfo>& edges, float px, float py) {
-    edges.erase(
-        std::remove_if(edges.begin(), edges.end(), [px, py](const edgeInfo& edge) {
-            float dx1 = edge.first.position.x - px;
-            float dy1 = edge.first.position.y - py;
-
-            float dx2 = edge.second.position.x - px;
-            float dy2 = edge.second.position.y - py;
-
-
-            // blender's coord system
-            // 
-            // ^
-            // |
-            // y
-            //  x - >
-            //
-            //  my coord system
-            //
-            //
-            //  x - >
-            // y
-            // |
-            // v
-
-            //the y values here are reversed because blender's coord system has the yvals flipped
-            //if this is failing for your mesh try flipping the normals instead of changing it here for everyone
-            float crossProduct = dx1 * dy1 - dy2 * dx2;
-
-            // If cross product is negative, it's backfacing
-            return crossProduct < 0;
-        }),
-        edges.end()
-    );
-}
+//void removeBackfacingWEdges(std::vector<edgeInfo>& edges, float px, float py) {
+//    edges.erase(
+//        std::remove_if(edges.begin(), edges.end(), [px, py](const edgeInfo& edge) {
+//            float dx1 = edge.first.position.x - px;
+//            float dy1 = edge.first.position.y - py;
+//
+//            float dx2 = edge.second.position.x - px;
+//            float dy2 = edge.second.position.y - py;
+//
+//
+//            // blender's coord system
+//            // 
+//            // ^
+//            // |
+//            // y
+//            //  x - >
+//            //
+//            //  my coord system
+//            //
+//            //
+//            //  x - >
+//            // y
+//            // |
+//            // v
+//
+//            //the y values here are reversed because blender's coord system has the yvals flipped
+//            //if this is failing for your mesh try flipping the normals instead of changing it here for everyone
+//            float crossProduct = dx1 * dy1 - dy2 * dx2;
+//
+//            // If cross product is negative, it's backfacing
+//            return crossProduct < 0;
+//        }),
+//        edges.end()
+//    );
+//}
 
 void resetTrivialData() {
   for(auto &x : party) {
@@ -428,135 +480,135 @@ auto areConnectedAndFacingSimilarDirection = [](const edgeInfo& e1, const edgeIn
 };
 
 
-void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups) {
-    std::vector<edgeInfo> allEdges = g_osEdges;
-    allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
-
-    int currentGroup = 0;
-    std::unordered_map<int, std::unordered_set<int>> adjacency;
-    std::vector<bool> visited(allEdges.size(), false);
-
-    // Build adjacency list
-    for (size_t i = 0; i < allEdges.size(); ++i) {
-        for (size_t j = i + 1; j < allEdges.size(); ++j) {
-            if (areConnectedAndFacingSimilarDirection(allEdges[i], allEdges[j])) {
-                adjacency[i].insert(j);
-                adjacency[j].insert(i);
-            }
-        }
-    }
-
-    // Depth-first search for group assignment
-    auto dfs = [&](int index, auto&& dfsRef) -> void {
-        visited[index] = true;
-        allEdges[index].group = currentGroup;
-
-        for (int neighbor : adjacency[index]) {
-            if (!visited[neighbor]) {
-                dfsRef(neighbor, dfsRef);
-            }
-        }
-    };
-
-    for (size_t i = 0; i < allEdges.size(); ++i) {
-        if (!visited[i]) {
-            dfs(i, dfs);
-            ++currentGroup;
-            if (currentGroup >= maxGroups) {
-                currentGroup = maxGroups;
-            }
-        }
-    }
-
-    // Compute weighted distances
-    std::unordered_map<int, float> groupWeightedDistance;
-    std::unordered_map<int, float> groupAvgPosX;
-    std::unordered_map<int, float> groupAvgPosY;
-    std::unordered_map<int, float> groupAvgPosCount;
-
-    for (int i = 0; i < maxGroups; i++) {
-        groupWeightedDistance[i] = 10000;
-        groupAvgPosX[i] = 0;
-        groupAvgPosY[i] = 0;
-        groupAvgPosCount[i] = 0;
-    }
-
-    for (const auto& edge : allEdges) {
-        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
-        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
-        float distance = std::abs(midY - py) + std::abs(midX - px);
-
-        groupAvgPosX[edge.group] += midX;
-        groupAvgPosY[edge.group] += midY;
-        groupAvgPosCount[edge.group]++;
-
-        if (groupWeightedDistance[edge.group] > distance) {
-            groupWeightedDistance[edge.group] = distance;
-        }
-    }
-
-    // **NEW STEP: Reassign groups based on sorted weighted distances**
-    std::vector<int> sortedGroups(maxGroups);
-    std::iota(sortedGroups.begin(), sortedGroups.end(), 0); // Initialize indices
-
-    std::sort(sortedGroups.begin(), sortedGroups.end(), [&](int a, int b) {
-        return groupWeightedDistance[a] > groupWeightedDistance[b];
-    });
-
-    std::unordered_map<int, int> groupRemap;
-    for (size_t i = 0; i < sortedGroups.size(); ++i) {
-        groupRemap[sortedGroups[i]] = static_cast<int>(i); // Reassign group IDs in order
-    }
-
-    for (auto& edge : allEdges) {
-        edge.group = groupRemap[edge.group];
-    }
-
-    // **Render Debugging Info**
-//    SDL_Rect a = {px, py, 60, 20};
-//    SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall, "PXPY", g_goldcolor);
-//    SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
-//    SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
-//    SDL_FreeSurface(renderMe);
-//    SDL_DestroyTexture(renderMeTex);
-
-    for (int i = 0; i < maxGroups; i++) {
-        if (groupWeightedDistance[i] != 10000) {
-            groupAvgPosX[i] /= groupAvgPosCount[i];
-            groupAvgPosY[i] /= groupAvgPosCount[i];
-
-//            SDL_Rect a = {static_cast<int>(groupAvgPosX[i]), static_cast<int>(groupAvgPosY[i]), 60, 20};
-//            SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall,
-//                                                         (std::to_string(i) + " - " + std::to_string(groupWeightedDistance[i])).c_str(),
-//                                                         g_goldcolor);
-//            SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
-//            SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
-//            SDL_FreeSurface(renderMe);
-//            SDL_DestroyTexture(renderMeTex);
-        }
-    }
-
-    // Split back into g_osEdges and g_wsEdges
-    g_osEdges.clear();
-    g_wsEdges.clear();
-    for (const auto& edge : allEdges) {
-        if (edge.type == 0) {
-            g_osEdges.push_back(edge);
-        } else if (edge.type == 1) {
-            g_wsEdges.push_back(edge);
-        }
-    }
-}
+//void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups) {
+//    std::vector<edgeInfo> allEdges = g_osEdges;
+//    allEdges.insert(allEdges.end(), g_wsEdges.begin(), g_wsEdges.end());
+//
+//    int currentGroup = 0;
+//    std::unordered_map<int, std::unordered_set<int>> adjacency;
+//    std::vector<bool> visited(allEdges.size(), false);
+//
+//    // Build adjacency list
+//    for (size_t i = 0; i < allEdges.size(); ++i) {
+//        for (size_t j = i + 1; j < allEdges.size(); ++j) {
+//            if (areConnectedAndFacingSimilarDirection(allEdges[i], allEdges[j])) {
+//                adjacency[i].insert(j);
+//                adjacency[j].insert(i);
+//            }
+//        }
+//    }
+//
+//    // Depth-first search for group assignment
+//    auto dfs = [&](int index, auto&& dfsRef) -> void {
+//        visited[index] = true;
+//        allEdges[index].group = currentGroup;
+//
+//        for (int neighbor : adjacency[index]) {
+//            if (!visited[neighbor]) {
+//                dfsRef(neighbor, dfsRef);
+//            }
+//        }
+//    };
+//
+//    for (size_t i = 0; i < allEdges.size(); ++i) {
+//        if (!visited[i]) {
+//            dfs(i, dfs);
+//            ++currentGroup;
+//            if (currentGroup >= maxGroups) {
+//                currentGroup = maxGroups;
+//            }
+//        }
+//    }
+//
+//    // Compute weighted distances
+//    std::unordered_map<int, float> groupWeightedDistance;
+//    std::unordered_map<int, float> groupAvgPosX;
+//    std::unordered_map<int, float> groupAvgPosY;
+//    std::unordered_map<int, float> groupAvgPosCount;
+//
+//    for (int i = 0; i < maxGroups; i++) {
+//        groupWeightedDistance[i] = 10000;
+//        groupAvgPosX[i] = 0;
+//        groupAvgPosY[i] = 0;
+//        groupAvgPosCount[i] = 0;
+//    }
+//
+//    for (const auto& edge : allEdges) {
+//        float midX = (edge.first.position.x + edge.second.position.x) / 2.0;
+//        float midY = (edge.first.position.y + edge.second.position.y) / 2.0;
+//        float distance = std::abs(midY - py) + std::abs(midX - px);
+//
+//        groupAvgPosX[edge.group] += midX;
+//        groupAvgPosY[edge.group] += midY;
+//        groupAvgPosCount[edge.group]++;
+//
+//        if (groupWeightedDistance[edge.group] > distance) {
+//            groupWeightedDistance[edge.group] = distance;
+//        }
+//    }
+//
+//    // **NEW STEP: Reassign groups based on sorted weighted distances**
+//    std::vector<int> sortedGroups(maxGroups);
+//    std::iota(sortedGroups.begin(), sortedGroups.end(), 0); // Initialize indices
+//
+//    std::sort(sortedGroups.begin(), sortedGroups.end(), [&](int a, int b) {
+//        return groupWeightedDistance[a] > groupWeightedDistance[b];
+//    });
+//
+//    std::unordered_map<int, int> groupRemap;
+//    for (size_t i = 0; i < sortedGroups.size(); ++i) {
+//        groupRemap[sortedGroups[i]] = static_cast<int>(i); // Reassign group IDs in order
+//    }
+//
+//    for (auto& edge : allEdges) {
+//        edge.group = groupRemap[edge.group];
+//    }
+//
+//    // **Render Debugging Info**
+////    SDL_Rect a = {px, py, 60, 20};
+////    SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall, "PXPY", g_goldcolor);
+////    SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
+////    SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
+////    SDL_FreeSurface(renderMe);
+////    SDL_DestroyTexture(renderMeTex);
+//
+//    for (int i = 0; i < maxGroups; i++) {
+//        if (groupWeightedDistance[i] != 10000) {
+//            groupAvgPosX[i] /= groupAvgPosCount[i];
+//            groupAvgPosY[i] /= groupAvgPosCount[i];
+//
+////            SDL_Rect a = {static_cast<int>(groupAvgPosX[i]), static_cast<int>(groupAvgPosY[i]), 60, 20};
+////            SDL_Surface* renderMe = TTF_RenderText_Solid(g_ttf_fontSmall,
+////                                                         (std::to_string(i) + " - " + std::to_string(groupWeightedDistance[i])).c_str(),
+////                                                         g_goldcolor);
+////            SDL_Texture* renderMeTex = SDL_CreateTextureFromSurface(renderer, renderMe);
+////            SDL_RenderCopy(renderer, renderMeTex, NULL, &a);
+////            SDL_FreeSurface(renderMe);
+////            SDL_DestroyTexture(renderMeTex);
+//        }
+//    }
+//
+//    // Split back into g_osEdges and g_wsEdges
+//    g_osEdges.clear();
+//    g_wsEdges.clear();
+//    for (const auto& edge : allEdges) {
+//        if (edge.type == 0) {
+//            g_osEdges.push_back(edge);
+//        } else if (edge.type == 1) {
+//            g_wsEdges.push_back(edge);
+//        }
+//    }
+//}
 
 
 // for checking if lines are colliear
-int orientation(float px, float py, float qx, float qy, float rx, float ry) {
-  float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
-  //5 might be too big
-  if (abs(val) < 10) return 0;  // collinear
-  D(abs(val));
-  return (val > 0) ? 1 : 2; // clock or counterclockwise
-}
+//int orientation(float px, float py, float qx, float qy, float rx, float ry) {
+//  float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+//  //5 might be too big
+//  if (abs(val) < 10) return 0;  // collinear
+//  D(abs(val));
+//  return (val > 0) ? 1 : 2; // clock or counterclockwise
+//}
 
 std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) {
   // Helper function to determine the orientation of ordered triplet (px, py), (qx, qy), (rx, ry)
@@ -592,61 +644,61 @@ std::tuple<bool, float, float> getIntersection(float startX, float startY, float
   return {false, 0, 0};
 }
 
-bool isSegmentIntersecting(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) {
-  // Helper function to determine the orientation of ordered triplet (px, py), (qx, qy), (rx, ry)
-  auto orientation = [](float px, float py, float qx, float qy, float rx, float ry) -> int {
-    float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
-    return (val > 0) ? 1 : 2; // 1 -> Clockwise, 2 -> Counterclockwise
-  };
+//bool isSegmentIntersecting(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2) {
+//  // Helper function to determine the orientation of ordered triplet (px, py), (qx, qy), (rx, ry)
+//  auto orientation = [](float px, float py, float qx, float qy, float rx, float ry) -> int {
+//    float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+//    return (val > 0) ? 1 : 2; // 1 -> Clockwise, 2 -> Counterclockwise
+//  };
+//
+//  int o1 = orientation(startX, startY, endX, endY, x1, y1);
+//  int o2 = orientation(startX, startY, endX, endY, x2, y2);
+//  int o3 = orientation(x1, y1, x2, y2, startX, startY);
+//  int o4 = orientation(x1, y1, x2, y2, endX, endY);
+//
+//  // General case: if the orientations are different, the segments intersect
+//  return (o1 != o2 && o3 != o4);
+//}
 
-  int o1 = orientation(startX, startY, endX, endY, x1, y1);
-  int o2 = orientation(startX, startY, endX, endY, x2, y2);
-  int o3 = orientation(x1, y1, x2, y2, startX, startY);
-  int o4 = orientation(x1, y1, x2, y2, endX, endY);
-
-  // General case: if the orientations are different, the segments intersect
-  return (o1 != o2 && o3 != o4);
-}
-
-void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targetEdges) {
-  auto isPointVisible = [](const SDL_Vertex& v) {
-    return (0 < v.position.x && v.position.x  < WIN_WIDTH) && (0 < v.position.y  && v.position.y  < WIN_HEIGHT);
-  };
-
-  for (const auto& edge : sourceEdges) {
-    extern camera g_camera;
-
-    SDL_Vertex v1 = edge.first;
-    v1.position.x -= g_camera.x;
-    v1.position.y -= g_camera.y;
-
-    SDL_Vertex v2 = edge.second;
-    v2.position.x -= g_camera.x;
-    v2.position.y -= g_camera.y;
-
-    edgeInfo newV;
-    newV.first = v1;
-    newV.firstZ = edge.firstZ;
-    newV.second = v2;
-    newV.secondZ = edge.secondZ;
-
-    newV.wallMesh = edge.wallMesh;
-    newV.indices = edge.indices;
-
-
-    newV.type = edge.type;
-
-
-    // Check if either vertex is visible
-    if (isPointVisible(v1) || isPointVisible(v2) || 
-        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, WIN_WIDTH, 0) ||       // Top boundary
-        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, 0, WIN_HEIGHT) ||     // Left boundary
-        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , WIN_WIDTH, 0, WIN_WIDTH, WIN_HEIGHT) || // Right boundary
-        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, WIN_HEIGHT, WIN_WIDTH, WIN_HEIGHT)) {  // Bottom boundary
-      targetEdges.push_back(newV);
-    }
-  }
-}
+//void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targetEdges) {
+//  auto isPointVisible = [](const SDL_Vertex& v) {
+//    return (0 < v.position.x && v.position.x  < WIN_WIDTH) && (0 < v.position.y  && v.position.y  < WIN_HEIGHT);
+//  };
+//
+//  for (const auto& edge : sourceEdges) {
+//    extern camera g_camera;
+//
+//    SDL_Vertex v1 = edge.first;
+//    v1.position.x -= g_camera.x;
+//    v1.position.y -= g_camera.y;
+//
+//    SDL_Vertex v2 = edge.second;
+//    v2.position.x -= g_camera.x;
+//    v2.position.y -= g_camera.y;
+//
+//    edgeInfo newV;
+//    newV.first = v1;
+//    newV.firstZ = edge.firstZ;
+//    newV.second = v2;
+//    newV.secondZ = edge.secondZ;
+//
+//    newV.wallMesh = edge.wallMesh;
+//    newV.indices = edge.indices;
+//
+//
+//    newV.type = edge.type;
+//
+//
+//    // Check if either vertex is visible
+//    if (isPointVisible(v1) || isPointVisible(v2) || 
+//        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, WIN_WIDTH, 0) ||       // Top boundary
+//        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, 0, 0, WIN_HEIGHT) ||     // Left boundary
+//        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , WIN_WIDTH, 0, WIN_WIDTH, WIN_HEIGHT) || // Right boundary
+//        isSegmentIntersecting(v1.position.x , v1.position.y , v2.position.x , v2.position.y , 0, WIN_HEIGHT, WIN_WIDTH, WIN_HEIGHT)) {  // Bottom boundary
+//      targetEdges.push_back(newV);
+//    }
+//  }
+//}
 
 // Function to check if an occluder is between the start and end points with debug lines
 bool isOccluderBetween(float startX, float startY, float endX, float endY) {
@@ -1080,6 +1132,7 @@ void navNode::Update_Costs() {
 
 void navNode::Render(int red, int green, int blue) {
   SDL_Rect obj = {(int)((this->x -g_camera.x - 20)* g_camera.zoom) , (int)(((this->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+  D("navNode::render()");
   SDL_SetTextureColorMod(nodeDebug, red, green, blue);
   SDL_RenderCopy(renderer, nodeDebug, NULL, &obj);
 }
@@ -1432,6 +1485,15 @@ bool RectOverlap(rect a, rect b) {
   } else {
     return false;
   }
+}
+
+bool rectInRect(rect a, rect b) {
+  return (a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height);
+//  if(a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height) {
+//    return true;
+//  } else {
+//    return false;
+//  }
 }
 
 bool RectOverlap3d(rect a, rect b) {
@@ -2769,7 +2831,7 @@ mapObject::mapObject(SDL_Renderer * renderer, string imageadress, const char* ma
   //crappy solution for porting to windows
   if(this->framewidth == 0) { this->framewidth = 64;}
   this->xoffset = int(this->x) % int(this->framewidth);
-  this->bounds.y = -55; //added after the ORIGIN was used for ent sorting rather than the FOOT.
+  this->bounds.y = -64; //added after the ORIGIN was used for ent sorting rather than the FOOT.
                         //this essentially just gives the blocks an invisible hitbox starting from their "head" so that their origin is in the middle
                         //of the box
 
@@ -3645,7 +3707,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
   file >> theight;
   file >> tzeight;
   bounds.width = twidth * 64;
-  bounds.height = theight * 55;
+  bounds.height = theight * 64;
   bounds.zeight = tzeight * 64;
 
 
@@ -4028,11 +4090,7 @@ entity::entity(SDL_Renderer * renderer, string filename, float sizeForDefaults) 
     if(spritefilevar != "notexture") {
       texture = loadTexture(renderer, spritefile);
     } else {
-      M("This entity has no texture");
-    }
-    if(texture == nullptr) {
-      E("Error loading texture for entity " + name);
-      D(spritefilevar);
+      //M("This entity has no texture");
     }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "3");
@@ -4635,61 +4693,6 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
   if(identity == 44) { cam.height += 30;} //this is for the draw element on pedastals
 
   if(RectOverlap(obj, cam)) {
-
-//    if(this != protag) {
-//      //optimize this with g_osEdges
-//      if(isOccluderBetween(protag->getOriginX() -g_camera.x, protag->getOriginY() - g_camera.y /*- protag->z * XtoZ*/, getOriginX() - g_camera.x, getOriginY() - g_camera.y/* - z * XtoZ*/)) {
-//        opacity -= 40;
-//        if(opacity < 0) {opacity = 0;}
-//      } else {
-//        opacity += 40;
-//        if(opacity > 255) {opacity = 255;}
-//      }
-//      shadow->alphamod = opacity;
-//    }
-    //SDL_SetTextureColorMod(texture, darkenValue, darkenValue, darkenValue);
-
-    if(directionUpdateCooldownMs < 0) {
-
-      //set visual direction
-      if(
-          (forwardsVelocity + forwardsPushVelocity > 0 && !this->wasPellet)
-          ||
-          this->forceAngularUpdate
-        ) {
-        animation = convertAngleToFrame(steeringAngle);
-        flip = SDL_FLIP_NONE;
-        if(yframes < 8) {
-          if(animation == 5) {
-            animation = 3;
-            flip = SDL_FLIP_HORIZONTAL;
-          } else if(animation == 6) {
-            animation = 2;
-            flip = SDL_FLIP_HORIZONTAL;
-          } else if(animation == 7) {
-            animation = 1;
-            flip = SDL_FLIP_HORIZONTAL;
-          }
-
-          if(animation > 5 || animation < 0) {
-            animation = 0;
-          }
-        }
-
-        if(yframes < 2) {
-          animation = 0;
-        }
-
-
-      }
-      if(lastDirection != animation) {
-        directionUpdateCooldownMs = maxDirectionUpdateCooldownMs;
-      }
-      lastDirection = animation;
-    } else {
-      directionUpdateCooldownMs -= elapsed;
-    }
-
     hadInput = 0;
 
 
@@ -4723,14 +4726,14 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
       } 
 
       SDL_Rect srcrect = {framespots[framePlusSpinOffset].x,framespots[framePlusSpinOffset].y, framewidth, frameheight};
-      const SDL_FPoint center = {0 ,0};
+      const SDL_FPoint center = {framewidth/2 ,frameheight/2};
 
 
       if(texture != NULL) {
         if(useTint) {
           SDL_SetTextureColorMod(texture, red, green, blue);
         }
-        SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, 0, &center, flip);
+        SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, this->spriteAngle, &center, flip);
       }
     } else {
       if(flashingMS > 0) {
@@ -4741,7 +4744,8 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
         if(useTint) {
           SDL_SetTextureColorMod(texture, red, green, blue);
         }
-        SDL_RenderCopyF(renderer, texture, NULL, &dstrect);
+        const SDL_FPoint center = {framewidth/2 ,frameheight/2};
+        SDL_RenderCopyExF(renderer, texture, NULL, &dstrect, this->spriteAngle, &center, flip);
         specialObjectsRender(this, dstrect);
       }
       //      if(flashingMS > 0) {
@@ -4925,126 +4929,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
     t->y = getOriginY();
   }
 
-  if(isOrbital) {
-    if(!orbitalIgnoreZ) {
-      this->z = parent->z -10 - (parent->height - parent->curheight);
-    }
-
-
-    float angle = convertFrameToAngle(parent->animation, parent->flip == SDL_FLIP_HORIZONTAL);
-
-
-    //orbitoffset is the number of frames, counter-clockwise from facing straight down
-    float fangle = angle;
-    fangle += (float)orbitOffset * (M_PI/4);
-    fangle = fmod(fangle , (2* M_PI));
-
-    if(identity == 35) {
-      float x1 = parent->getOriginX();
-      float y1 = parent->getOriginY();
-      float x2 = getOriginX();
-      float y2 = getOriginY();
-      float factor = 2500 - timeToLiveMs;
-      factor /= 600;
-      if(factor > 1) factor = 1;
-
-      float xpos = (x1*factor + x2*(1-factor));
-      float ypos = (y1*factor + y2*(1-factor));
-      this->setOriginX(xpos);
-      this->setOriginY(ypos);
-    } else {
-      this->setOriginX(parent->getOriginX() - cos(fangle) * orbitRange);
-      this->setOriginY(parent->getOriginY() - sin(fangle) * orbitRange);
-    }
-
-    if(this->dynamic && this->identity != 35) {
-      this->sortingOffset = baseSortingOffset + sin(fangle) * 21 + 10 + (parent->height - parent->curheight);
-    }
-
-    if(yframes == 8) {
-      this->animation = convertAngleToFrame(fangle);
-      this->flip = SDL_FLIP_NONE;
-    } else {
-      this->flip = parent->flip;
-      this->animation = parent->animation;
-      if(yframes == 1) {
-        this->animation = 0;
-      }
-    }
-
-    //I think I added this check for the ent's floor to let the protag walk up
-    //slopes, but i'll disable it since i don't really use slopes (Nov 2023)
-    //There's another one 1000 lines later
-
-    //          //update shadow
-    //          float heightfloor = 0;
-    //          layer = max(z /64, 0.0f);
-    //          layer = min(layer, (int)g_boxs.size() - 1);
-    //
-    //          //should we fall?
-    //          //bool should_fall = 1;
-    //          float floor = 0;
-    //          if(layer > 0) {
-    //            //!!!
-    //            rect thisMovedBounds = rect(bounds.x + x + xvel * ((double) elapsed / 256.0), bounds.y + y + yvel * ((double) elapsed / 256.0), bounds.width, bounds.height);
-    //            //rect thisMovedBounds = rect(bounds.x + x, bounds.y + y, bounds.width, bounds.height);
-    //            for (auto n : g_boxs[layer - 1]) {
-    //              if(RectOverlap(n->bounds, thisMovedBounds)) {
-    //                floor = 64 * (layer);
-    //                break;
-    //              }
-    //            }
-    //            for (auto n : g_triangles[layer - 1]) {
-    //              if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
-    //                floor = 64 * (layer);
-    //                break;
-    //              }
-    //
-    //            }
-    //
-    //
-    //            float shadowFloor = floor;
-    //            floor = max(floor, heightfloor);
-    //
-    //            bool breakflag = 0;
-    //            for(int i = layer - 1; i >= 0; i--) {
-    //              for (auto n : g_boxs[i]) {
-    //                if(RectOverlap(n->bounds, thisMovedBounds)) {
-    //                  shadowFloor = 64 * (i + 1);
-    //                  breakflag = 1;
-    //                  break;
-    //                }
-    //              }
-    //              if(breakflag) {break;}
-    //              for (auto n : g_triangles[i]) {
-    //                if(TriRectOverlap(n, thisMovedBounds.x, thisMovedBounds.y, thisMovedBounds.width, thisMovedBounds.height)) {
-    //                  shadowFloor = 64 * (i + 1);
-    //                  breakflag = 1;
-    //                  break;
-    //                }
-    //
-    //              }
-    //              if(breakflag) {break;}
-    //            }
-    //            if(breakflag == 0) {
-    //              //just use heightmap
-    //              shadowFloor = floor;
-    //            }
-    //            this->shadow->z = shadowFloor;
-    //          } else {
-    //            this->shadow->z = heightfloor;
-    //            floor = heightfloor;
-    //          }
-    shadow->x = x + shadow->xoffset;
-    shadow->y = y + shadow->yoffset;
-
-
-
-    //return nullptr; 
-    //i commented this out
-    //to make biting work
-  }
-  
   doAnimation(this, elapsed);
 
   if(g_entityBenchmarking) {
@@ -7419,7 +7303,7 @@ void entity::BasicNavigate(navNode* ultimateTargetNode) {
     if(abs(dest->y - getOriginY() ) < 64) {
       prog ++;
     }
-    if(abs(dest->x - getOriginX()) < 55) {
+    if(abs(dest->x - getOriginX()) < 64) {
       prog ++;
     }
   }
@@ -7900,20 +7784,23 @@ int loadSave() {
     b->baseSkill = skill;
     b->baseCritical = critical;
     b->baseRecovery = recovery;
-    if(b->xp == 0) {
-      b->baseStrength = b->l0Strength;
-      b->health = floor(b->baseStrength);
-      b->baseMind = b->l0Mind;
-      b->sp = floor(b->baseMind);
-      b->baseAttack = b->l0Attack;
-      b->baseDefense = b->l0Defense;
-      b->baseSoul = b->l0Soul;
-      b->baseSkill = b->l0Skill;
-      b->baseCritical = b->l0Critical;
-      b->baseRecovery = b->l0Recovery;
-    } else {
-      //D(b->level);
-    }
+
+    //this is handy if you're making a long-format
+    //game like earthbound
+//    if(b->xp == 0) {
+//      b->baseStrength = b->l0Strength;
+//      b->health = floor(b->baseStrength);
+//      b->baseMind = b->l0Mind;
+//      b->sp = floor(b->baseMind);
+//      b->baseAttack = b->l0Attack;
+//      b->baseDefense = b->l0Defense;
+//      b->baseSoul = b->l0Soul;
+//      b->baseSkill = b->l0Skill;
+//      b->baseCritical = b->l0Critical;
+//      b->baseRecovery = b->l0Recovery;
+//    } else {
+//      //D(b->level);
+//    }
 
     if(b->health > b->baseStrength) {
       b->health = floor(b->baseStrength);
@@ -8423,7 +8310,6 @@ ui::ui(SDL_Renderer * renderer, const char* ffilename, float fx, float fy, float
   bool dontShare = 0;
 
   if(this == floortexDisplay ||
-      this == captexDisplay ||
       this == walltexDisplay) {
     dontShare = 1;
   }
@@ -8987,6 +8873,12 @@ void escapeUI::uiSelecting() {
 //clear map
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
+  //M("clear_map()");
+
+  g_usingFloorplan = 0;
+  g_floorplan.clear();
+  g_Lozdoors.clear();
+
   g_numPresentsLoaded = 0;
   g_numPedastalsLoaded = 0;
   g_numMoneybagsLoaded = 0;
@@ -9546,7 +9438,6 @@ void clear_map(camera& cameraToReset) {
     delete g_ribbons[0];
   }
 
-  M("Push back any entities that were in the party");
   //push back any entities that were in the party
   for (long long unsigned int i = 0; i < party.size(); i++) {
     g_entities.push_back(party[i]);
@@ -12452,7 +12343,7 @@ void adventureUI::continueDialogue()
 
     D(g_map);
     clear_map(g_camera);
-    load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_map + ".map", "a");
+    load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_map + ".map", "a", 0, 0);
 
 
     for(auto x : party) {
@@ -12509,7 +12400,7 @@ void adventureUI::continueDialogue()
     clear_map(g_camera);
     g_map = name;
     const string toMap = "resources/maps/" + g_mapdir + "/" + g_map + ".map";
-    load_map(renderer, toMap, dest_waypoint);
+    load_map(renderer, toMap, dest_waypoint, 0, 0);
 
     // //clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
     if (canSwitchOffDevMode)
@@ -13338,7 +13229,7 @@ void adventureUI::continueDialogue()
     //load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
 
     string filename = g_levelSequence->levelNodes[0]->mapfilename;
-    load_map(renderer, filename,"a");
+    load_map(renderer, filename,"a", 0, 0);
 
     // clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
     if (canSwitchOffDevMode)

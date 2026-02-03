@@ -22,7 +22,7 @@
 #include "combat.h"
 #include "title.h"
 #include "loss.h"
-#include "mesh.h"
+//#include "mesh.h"
 //#include <stacktrace>
 
 // this is unique to the windowsport
@@ -30,6 +30,8 @@
 
 #undef M_PI
 #define M_PI 3.14159265358979323846
+
+//#error globals.h included
 
 using namespace std;
 
@@ -145,9 +147,15 @@ class keyItemInfo;
 
 class mesh;
 
+class vertex3d;
+
 class chunk;
 
 class ggrid;
+
+class roomData;
+
+class doorData;
 
 class camera
 {
@@ -170,8 +178,9 @@ class camera
     int width = 640;
     int height = 480;
     float lag = 0;
-    const float DEFAULTLAGACCEL = 0.01;
-    float lagaccel = 0.01; // how much faster the camera gets while lagging
+    float lagSeconds = 0; //this is used when passing thru a lozdoor
+    const float DEFAULTLAGACCEL = 0; //0.01;
+    float lagaccel = 0; //0.01; // how much faster the camera gets while lagging
     float zoom = 1;
     float zoommod = 1;
     int lowerLimitX = 0;
@@ -321,6 +330,13 @@ extern vector<chunk*> g_chunks;
 
 extern vector<ggrid*> g_ggrids;
 
+extern vector<vector<roomData>> g_floorplan; //contains a grid of pointers to ggrids,
+                                           //if the ggrids take up more than a gridspace
+                                           //they will be pointed to by each gridspace 
+                                           //they take up
+
+extern vector<doorData> g_Lozdoors;
+
 struct edgeInfo {
   SDL_Vertex first;
   float firstZ;
@@ -369,6 +385,8 @@ extern SDL_Texture* g_gradient_h;
 extern SDL_Texture* g_gradient_i;
 extern SDL_Texture* g_gradient_j;
 
+extern SDL_Texture* g_axesTexture;
+
 struct cmpCoord
 {
   bool operator()(const pair<int, int> a, const pair<int, int> b) const;
@@ -379,29 +397,29 @@ struct cmpCoord
 #define D(a)                                \
   if (canSwitchOffDevMode && showDevMessages)           \
 {                                         \
-  std::cout << #a << ": " << (a) << endl; \
+  std::cout << "     " <<  #a << ": " << (a) << endl; \
 }
 
 #define M(a)                                \
   if (canSwitchOffDevMode && showDevMessages)           \
 {                                         \
-  std::cout << (a) << endl; \
+  std::cout << "     " <<  (a) << endl; \
 }
 
 #define I(a)                                \
 {                                         \
-  std::cout << (a) << endl; \
+  std::cout << "     " <<  (a) << endl; \
 }
 
 #define E(a)                              \
 {                                         \
   breakpoint();                     \
-  std::cout << "ERROR: " << (a) << endl;\
+  std::cout << "     " <<  "ERROR: " << (a) << endl;\
 }
 
 #define W(a)                                \
 {                                         \
-  std::cout << "Warning: " << (a) << endl; \
+  std::cout << "     " <<  "Warning: " << (a) << endl; \
 }
 
 extern int g_globalAccumulator;
@@ -1063,15 +1081,12 @@ extern SDL_Texture* g_wall5ShadeFullTexture;
 extern vector<string> consolehistory;
 extern int consolehistoryindex;
 
-extern string captex;
 extern string walltex;
 extern string floortex;
 extern string masktex;
 extern vector<string> texstrs;
-extern int captexIndex;
 extern int walltexIndex;
 extern int floortexIndex;
-extern ui *captexDisplay;
 extern ui *walltexDisplay;
 extern ui *floortexDisplay;
 
@@ -1187,7 +1202,18 @@ extern int g_holddelete;
 
 extern chunk* moveThisChunk;
 
-extern ggrid* g_activeGgrid;
+extern ggrid* g_activeGgrid; //for the devloper
+                             
+extern const int g_roomGridW;
+
+extern const int g_roomGridH;
+
+//extern ggrid* g_inThisGgrid; //for the player
+
+extern coord g_floorPos;
+
+extern bool g_usingFloorplan;
+
 extern size_t g_activeGgridIndex;
 
 extern int g_activeGgridFlickerMs;

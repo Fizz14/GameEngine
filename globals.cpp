@@ -21,6 +21,7 @@
 #include "stdio.h"
 #include "title.h"
 #include "globals.h"
+#include "mesh.h"
 
 #include "objects.h"
 #include "utils.h"
@@ -158,6 +159,14 @@ vector<chunk*> g_chunks;
 
 vector<ggrid*> g_ggrids;
 
+vector<entity*> g_LoZDoors;
+
+vector<vector<roomData>> g_floorplan;
+
+vector<doorData> g_Lozdoors;
+
+coord g_floorplanLocation;
+
 vector<edgeInfo> g_wEdges;
 vector<edgeInfo> g_oEdges;
 
@@ -181,6 +190,8 @@ SDL_Texture* g_gradient_g = 0;
 SDL_Texture* g_gradient_h = 0;
 SDL_Texture* g_gradient_i = 0;
 SDL_Texture* g_gradient_j = 0;
+
+SDL_Texture* g_axesTexture = 0;
 
 map<string, int> enemiesMap; // stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0;						 // how many points this map can spend on enemies;
@@ -239,7 +250,8 @@ bool g_useBackgrounds = 1; // a user setting, if the user wishes to see black sc
 int g_brightness = 100; // brightness of map
 // x length times x_z_ratio is proper screen length in z
 float XtoZ = 0.496; // 4/2.31, arctan (4/ 3.21) = 60 deg
-float XtoY = 0.866; //sin 60 deg
+//float XtoY = 0.866; //sin 60 deg
+float XtoY = 1; //the end of an era
 float YtoX = 1/XtoY;
 float g_ratio = 1.618;
 bool transition = 0;
@@ -468,62 +480,119 @@ void camera::update_movement(float elapsed, float targetx, float targety) {
         return;
     }
 
-    desiredX = targetx;
-    desiredY = targety;
-
-    if (lag == 0) {
-        x = targetx;
-        y = targety;
-    } else {
-        x += (targetx - oldx) * (elapsed / 256) * lag;
-        y += (targety - oldy) * (elapsed / 256) * lag;
-
-        oldx = x;
-        oldy = y;
-        // if we're there, within a pixel, set the lagResetTimer to nothing
-        if (abs(targetx - x) < 1.4 && abs(targety - y) < 1.4) {
-            lag = 0;
-        } else {
-            // if not, consider increasing lag to catch up
-            lag += lagaccel;
-        }
-    }
 
     if (devMode == 0) {
       g_camera.free = 1;
 
         // Check for collisions with camBlockers and adjust camera position
-        for (const auto& blocker : g_camBlockers) {
-            intersectsX = (x < blocker->bounds.x + blocker->bounds.width) && (x + width > blocker->bounds.x);
-            intersectsY = (y < blocker->bounds.y + blocker->bounds.height) && (y + height > blocker->bounds.y);
-            int cameraIsFree = 1;
-            if(intersectsX && intersectsY) {
-              cameraIsFree = 0;
-            }
-            if(!cameraIsFree) {
-              g_camera.free = 0;
-            }
-
-            if (intersectsX && intersectsY) {
-              if (blocker->direction == 0 || blocker->direction == 2) {
-                  // Adjust X axis
-                  if (blocker->direction == 2) {
-                      x = blocker->bounds.x - width;
-                  } else {
-                      x = blocker->bounds.x + blocker->bounds.width;
-                  }
+        vector<camBlocker*>* set;
+        if(g_usingFloorplan) {
+          set = &g_floorplan[g_floorPos.x][g_floorPos.y].camBlockers;
+        } else {
+          set = &g_camBlockers;
+        }
+        vector<camBlocker*> obx; //overlapping blockers facing left and right
+        vector<camBlocker*> oby; //overlapping blockers facing up and down
+        
+        for (const auto& blocker : *set) {
+          intersectsX = (targetx < blocker->bounds.x + blocker->bounds.width) && (targetx + width > blocker->bounds.x);
+          intersectsY = (targety < blocker->bounds.y + blocker->bounds.height) && (targety + height > blocker->bounds.y);
+          int cameraIsFree = 1;
+          if(intersectsX && intersectsY) {
+            cameraIsFree = 0;
+          }
+          if(!cameraIsFree) {
+            free = 0;
+            if (blocker->direction == 0 || blocker->direction == 2) {
+              obx.push_back(blocker);
+              if (blocker->direction == 2) {
+                targetx = blocker->bounds.x - width;
               } else {
-                  // Adjust Y axis
-                  if (blocker->direction == 3) {
-                      y = blocker->bounds.y - height;
-                  } else {
-                      y = blocker->bounds.y + blocker->bounds.height;
-                  }
+                targetx = blocker->bounds.x + blocker->bounds.width;
+              }
+              //need to start over with new position and see if we intersect with two 
+              //horizontal blockers
+              
+            } else {
+              oby.push_back(blocker);
+              if (blocker->direction == 3) {
+                targety = blocker->bounds.y - height;
+              } else {
+                targety = blocker->bounds.y + blocker->bounds.height;
               }
             }
+          }
         }
-        if(g_camera.free) {
 
+        //now again with the new position
+        for (const auto& blocker : *set) {
+          intersectsX = (targetx < blocker->bounds.x + blocker->bounds.width) && (targetx + width > blocker->bounds.x);
+          intersectsY = (targety < blocker->bounds.y + blocker->bounds.height) && (targety + height > blocker->bounds.y);
+          if(intersectsX && intersectsY) {
+            if (blocker->direction == 0 || blocker->direction == 2) {
+              if(find(obx.begin(), obx.end(), blocker) == obx.end()) {
+                obx.push_back(blocker);
+              }
+            } else {
+              if(find(oby.begin(), oby.end(), blocker) == oby.end()) {
+                oby.push_back(blocker);
+              }
+            }
+          }
+        }
+
+        for(int i = 0; i < obx.size(); i++) {
+          camBlocker* blocker = obx[i];
+          // Adjust X axis
+          if (blocker->direction == 2) {
+            targetx = blocker->bounds.x - width;
+          } else {
+            targetx = blocker->bounds.x + blocker->bounds.width;
+          }
+        }
+        if(obx.size() == 2 && obx[0]->direction != obx[1]->direction) {
+          //put the camera in the middle of the two opposing camblockers
+          camBlocker* r;
+          camBlocker* l;
+          if(obx[0]->direction == 2) {
+            r = obx[0];
+            l = obx[1];
+
+          } else {
+            r = obx[1];
+            l = obx[0];
+          }
+          targetx = ( (r->bounds.x - width) + (l->bounds.x + l->bounds.width) )/ 2;
+        }
+
+        for(int i = 0; i < oby.size(); i++) {
+          camBlocker* blocker = oby[i];
+          // Adjust Y axis
+          if (blocker->direction == 3) {
+            targety = blocker->bounds.y - height;
+          } else {
+            targety = blocker->bounds.y + blocker->bounds.height;
+          }
+        }
+
+
+        if(oby.size() == 2 && oby[0]->direction != oby[1]->direction) {
+          //put the camera in the middle of the two opposing camblockers
+          camBlocker* r;
+          camBlocker* l;
+          if(oby[0]->direction == 1) {
+            r = oby[0];
+            l = oby[1];
+
+          } else {
+            r = oby[1];
+            l = oby[0];
+          }
+          targety = ( (r->bounds.y - height) + (l->bounds.y + l->bounds.height) )/ 2;
+        }
+
+
+        if(g_camera.free) { //this is for smoothly lerping the camera when the player walks horizontally past the edge of a vertical camblocker, or vice-versa
           repoAccu += elapsed;
           if(repoAccu > 200) {
             repoMag++;
@@ -612,6 +681,26 @@ void camera::update_movement(float elapsed, float targetx, float targety) {
 
 
     }
+    
+    if (lag == 0) {
+        x = targetx;
+        y = targety;
+        oldx = x;
+        oldy = y;
+    } else {
+        x += (targetx - oldx) * (elapsed / 256) * lag;
+        y += (targety - oldy) * (elapsed / 256) * lag;
+
+        oldx = x;
+        oldy = y;
+        // if we're there, within a pixel, set the lagResetTimer to nothing
+        if (abs(targetx - x) < 1.4 && abs(targety - y) < 1.4) {
+            lag = 0;
+        } else {
+            // if not, consider increasing lag to catch up
+            lag += lagaccel;
+        }
+    }
 }
 
 
@@ -631,8 +720,7 @@ void camera::resetCamera()
 int WIN_WIDTH = 640;
 int WIN_HEIGHT = 400;
 int WIN_DIAG = 377 + 25;
-// theres some warping if STANDARD_SCREENWIDTH < WIN_WIDTH but that shouldn't ever happen
-// if in the future kids have screens with 10 million pixels across feel free to mod the game
+// if in the future screens have 10 million pixels across feel free to mod the game
 const int STANDARD_SCREENWIDTH = 1080;
 //int WIN_WIDTH = 1280; int WIN_HEIGHT = 720;
 // int WIN_WIDTH = 640; int WIN_HEIGHT = 360;
@@ -1089,6 +1177,17 @@ int g_holddelete = 0;
 chunk* moveThisChunk = 0;
 
 ggrid* g_activeGgrid = 0;
+
+const int g_roomGridW = 17; //21, 17;
+
+const int g_roomGridH = 9; //13, 9;
+
+//ggrid* g_inThisGgrid = 0;
+
+coord g_floorPos;
+
+bool g_usingFloorplan = 0;
+
 size_t g_activeGgridIndex = 0;
 
 int g_activeGgridFlickerMs = 0;

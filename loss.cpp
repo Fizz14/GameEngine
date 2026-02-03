@@ -592,7 +592,7 @@ void LossLoop() {
             init_map_writing(renderer);
           }
 
-          load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+          load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave, 0, 0);
           g_fancybox->words.clear();
           transition = 1;
           transitionDelta = transitionImageHeight;

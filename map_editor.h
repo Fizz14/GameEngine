@@ -25,12 +25,12 @@ void sort_ui(vector<ui *> &g_ui);
 
 void populateMapWithEntities();
 
-void load_map(SDL_Renderer *renderer, string filename, string destWaypointName);
+void load_map(SDL_Renderer *renderer, string filename, string destWaypointName, int offsetx, int offsety);
 
 void changeTheme(string str);
 
 //add support to save effectIndexes to maps
-//that way we don't have to load textures in 3 ms
+//that way I don't have to load textures in 3 ms
 bool mapeditor_save_map(string word);
 
 // called on init if map_editing is true
@@ -41,5 +41,20 @@ void init_map_writing(SDL_Renderer *renderer);
 void write_map(entity *mapent);
 
 void close_map_writing();
+
+void setFloorSize(int width, int height);
+
+void placeRoom(string dir, int roomNum, coord pos);
+
+void placeProtag(coord pos);
+
+//take the coords to two adjacent rooms and enable their doors, if possible.
+void connectRooms(coord r1, coord r2);
+
+//configure doors, hide them if they're not really there
+void configureDoors();
+
+//used to set up rooms which take up more than one gridspace
+void extendRoom(coord room, coord position);
 
 #endif

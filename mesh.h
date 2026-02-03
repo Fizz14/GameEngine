@@ -5,6 +5,7 @@
 #include <SDL2/SDL_image.h>
 #include "globals.h"
 #include "physfs.h"
+#include "objects.h"
 #include <iostream>
 #include <vector>
 #include <stdexcept>
@@ -191,6 +192,11 @@ class ggrid {
     SDL_Texture* floortex = 0;
     SDL_Texture* trimtex = 0;
 
+    //1 if the ggrid is using another ggrid's texture
+    bool borrowingWallTex = 0;
+    bool borrowingFloorTex = 0;
+    bool borrowingTrimTex = 0;
+
     bool hasWall = 0;
     bool hasFloor = 0;
     bool hasTrim = 0;
@@ -211,8 +217,6 @@ class ggrid {
     vector<vector<unsigned char>> chunkdata;
 
     vector<chunk*> chunks;
-
-    int doublez = 0; //make it rougly twice so tall
 
     ggrid();
 

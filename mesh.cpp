@@ -522,7 +522,7 @@ mesh* loadMeshFromPly(string faddress, string taddress, vec3 forigin, float scal
     for (const auto& f : faceIndices) {
       if (f.size() == 4) {
         faces.push_back({f[0], f[1], f[2], f[3]});
-      } else if (f.size() == 3 && (fmtype == meshtype::FLOOR || fmtype == meshtype::DECORATIVE)) {
+      } else if (f.size() == 3 && (fmtype == meshtype::V_WALL || fmtype == meshtype::FLOOR || fmtype == meshtype::DECORATIVE)) {
         face n;
         n.a = f[0];
         n.b = f[1];
@@ -875,10 +875,9 @@ ggrid::ggrid() {
 }
 
 ggrid::~ggrid() {
-  
-  if(hasWall) SDL_DestroyTexture(walltex);
-  if(hasFloor) SDL_DestroyTexture(floortex);
-  if(hasTrim) SDL_DestroyTexture(trimtex);
+  if(hasWall && !borrowingWallTex) SDL_DestroyTexture(walltex);
+  if(hasFloor && !borrowingFloorTex) SDL_DestroyTexture(floortex);
+  if(hasTrim && !borrowingTrimTex) SDL_DestroyTexture(trimtex);
 
   g_ggrids.erase(remove(g_ggrids.begin(), g_ggrids.end(), this), g_ggrids.end());
 }

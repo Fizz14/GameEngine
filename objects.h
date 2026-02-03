@@ -30,23 +30,19 @@
 
 using namespace std;
 
-int doAnimation(entity* a);
 
-void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py);
-
-void removeBackfacingWEdges(std::vector<edgeInfo>& edges, float px, float py);
 
 void resetTrivialData();
 
-void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups = 20);
+//void processEdges(std::vector<edgeInfo>& g_osEdges, std::vector<edgeInfo>& g_wsEdges, float px, float py, int maxGroups = 20);
 
-int orientation(float px, float py, float qx, float qy, float rx, float ry);
+//int orientation(float px, float py, float qx, float qy, float rx, float ry);
 
 std::tuple<bool, float, float> getIntersection(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2);
 
-bool isSegmentIntersecting(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2);
+//bool isSegmentIntersecting(float startX, float startY, float endX, float endY, float x1, float y1, float x2, float y2);
 
-void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targetEdges);
+//void updateEdges(std::vector<edgeInfo>& sourceEdges, std::vector<edgeInfo>& targetEdges);
 
 bool isOccluderBetween(float startX, float startY, float endX, float endY);
 
@@ -133,8 +129,8 @@ void Update_NavNode_Costs(vector<navNode*> fnodes);
 
 class coord {
   public:
-    int x;
-    int y;
+    int x = 0;
+    int y = 0;
 };
 
 class rect {
@@ -273,6 +269,8 @@ bool PointInsideRightTriangle(tri* t, int px, int py);
 bool IPointInsideRightTriangle(impliedSlopeTri* t, int px, int py); 
 
 bool RectOverlap(rect a, rect b); 
+
+bool rectInRect(rect a, rect b); 
 
 bool RectOverlap3d(rect a, rect b); 
 
@@ -1306,6 +1304,10 @@ class entity:public actor {
     int ignoreSolids = 0;
     float widthmodifier;
     float heightmodifier;
+
+    int lozdoorNumber = 0; //the index of the entry on g_Lozdoors which points to this entry, if this is a lozdoor
+
+    float spriteAngle = 0; //used for LoZ-style doors
  
     vector<entity*> spawnlist;
     vector<actor*> actorlist;
@@ -2359,5 +2361,51 @@ public:
   ~gradient();
   void render(SDL_Renderer * renderer, camera fcamera);
 };
+
+
+//these are elements of the grid g_floorplan, used for generating floors
+//and traversing them
+enum roomCode {
+  ENTRANCE,
+  CLIMAX,
+  SECRET,
+  ENCOUNTER,
+  SHOP,
+  ITEM, //has a pedastal item
+  MYSTERY, //has the mysterious stranger or sometimes the inventor, who summons fnomunon
+  SURVEILENCE, //a bizzare room with a desk, computerscreen, and notes. Shows to the player the room adjacent to some hidden room
+  SHOWER, //a damp, tiled room with a unique boss and small unique item-pool
+  DREAM, //a hazy lightblue room which contains dreamstuff
+  NIGHTMARE, //a hazy darkpurple room which turns the player's dreamstuff into dark dreamstuff
+  LIBRARY, //contains books which have a chance to grant dreamstuff
+  MADNESS, //yellow and black twisting machine theme, industrial. Fight a fiend who drops dreamstuff
+  MUSIC //features the musicians who can take a dreamstuff to provide one of various rewards
+};
+
+class roomData {
+public:
+  int identity = 0;
+  int roomNum = 0;
+  int isLarge = 0;
+  ggrid* mesh;
+
+  vector<camBlocker*> camBlockers = {};
+  vector<impliedSlope*> impliedSlopes = {};
+};
+
+class doorData {
+public:
+  entity* entity;
+  coord toCoords;
+  int enabled = 0;
+
+  //perhaps much else
+};
+
+int doAnimation(entity* a);
+
+void removeBackfacingEdges(std::vector<edgeInfo>& edges, float px, float py);
+
+void removeBackfacingWEdges(std::vector<edgeInfo>& edges, float px, float py);
 
 #endif

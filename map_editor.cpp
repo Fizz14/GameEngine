@@ -1,6 +1,3 @@
-#ifndef mapeditor_h
-#define mapeditor_h
-
 #include <iostream>
 #include <vector>
 #include <fstream> //loading
@@ -15,11 +12,12 @@
 #include "map_editor.h"
 #include "objects.h"
 #include "globals.h"
+#include "mesh.h"
 #include "utils.h"
 #include "main.h"
 #include "specialobjects.h"
 
-void dungeonFlash();
+//void dungeonFlash();
 
 using namespace std;
 
@@ -32,6 +30,150 @@ int compare_ui(ui *a, ui *b)
 void sort_ui(vector<ui *> &g_ui)
 {
   stable_sort(g_ui.begin(), g_ui.end(), compare_ui);
+}
+
+void setFloorSize(int width, int height) {
+  g_floorplan.clear();
+  g_floorplan.resize(width);
+  for(auto &row : g_floorplan) {
+    row.resize(height);
+  }
+}
+
+void placeRoom(string dir, int roomNum, coord pos) {
+  if(pos.x >= g_floorplan.size() || pos.y >= g_floorplan[0].size()) {
+    E("Tried placing a room out-of-bounds");
+    abort();
+    return;
+  }
+
+  g_floorPos = pos;
+  string ls = "resources/maps/" + dir + "/r" + to_string(roomNum) + ".map";
+
+  //the rooms are stored in maps where the walkable, open part of the room is
+  //128 units from the x axis and 128 units from the y axis
+  float offsetx = -128; float offsety = -128;
+
+  load_map(renderer, ls, "a", pos.x*64*g_roomGridW + offsetx, pos.y * 64* g_roomGridH + offsety);
+  //load_map(renderer, ls, "a", pos.x*64*21, pos.y * 64* 13);
+  g_floorplan[pos.x][pos.y].mesh = g_activeGgrid;
+}
+
+void placeProtag(coord pos) {
+  g_floorPos = pos;
+  ggrid* g = g_floorplan[pos.x][pos.y].mesh;
+  protag->setOriginX(g->originX + g->width*64/2);
+  protag->setOriginY(g->originY + g->height*64/2);
+}
+
+void connectRooms(coord r1, coord r2) {
+
+  rect r;  { 
+    coord fc, sc;
+    float xcenter = 0.5*64*g_roomGridW;
+    float ycenter = 0.5*64*g_roomGridH;
+  
+    fc.x = (r1.x * 64 * g_roomGridW) + xcenter;
+    fc.y = (r1.y * 64 * g_roomGridH) + ycenter;
+  
+    sc.x = (r2.x * 64 * g_roomGridW) + xcenter;
+    sc.y = (r2.y * 64 * g_roomGridH) + ycenter;
+
+    int padding = 64;
+
+    if(abs(fc.x - sc.x) < 5) {
+      M("X's are equal");
+      int xcoord = fc.x;
+      int smallerY = min(fc.y, sc.y);
+      int largerY = max(fc.y, sc.y);
+      r.x = xcoord - padding;
+      r.width = padding*2;
+      r.y = smallerY - padding;
+      r.height = (largerY + padding) - r.y;
+    } else if(abs(fc.y - sc.y) < 5) {
+      //M("Y's are equal");
+      int ycoord = fc.y;
+      int smallerX = min(fc.x, sc.x);
+      int largerX = max(fc.x, sc.x);
+      r.x = smallerX - padding;
+      r.width = (largerX + padding) - r.x;
+      r.y = ycoord - padding;
+      r.height = padding*2;
+    } else {
+      E("Doesn't make sense to join rooms here");
+      D(fc.x);
+      D(fc.y);
+      D(sc.x);
+      D(sc.y);
+      abort();
+    }
+  }
+
+  
+  {
+    int foundDoors = 0;
+    D(r.x);
+    D(r.y);
+    D(r.width);
+    D(r.height);
+    for(auto &x : g_Lozdoors) {
+      D(x.entity->x);
+      D(x.entity->y);
+      if(RectOverlap(r, x.entity->getMovedBounds())) {
+        x.entity->visible = 1;
+        x.entity->unsolidify();
+        x.enabled = 1;
+        foundDoors++;
+      }
+    }
+
+    if(foundDoors != 2) {
+      E("Found more or less than two doors when joinging rooms");
+      D(foundDoors);
+      abort();
+    }
+  }
+
+
+}
+
+void configureDoors() {
+  //set up the doors to take the player to the proper room
+  for(auto &x : g_Lozdoors) {
+    if(x.enabled) { 
+      x.entity->frameInAnimation = 1; //use "open" sprite
+      float xpos = x.entity->getOriginX()-128;
+      float ypos = x.entity->getOriginY()-128;
+      float forwardX = 64*10.5*cos(x.entity->steeringAngle + M_PI);
+      float forwardY = 64*6.5*-1*sin(x.entity->steeringAngle + M_PI);
+
+      xpos += forwardX; ypos += forwardY;
+
+      xpos /= 64*21; ypos /= 64*13;
+
+      x.toCoords.x = round(xpos);
+      x.toCoords.y = round(ypos);
+
+      if(x.toCoords.x >= g_floorplan.size() || x.toCoords.y >= g_floorplan[0].size()) {
+        E("Door is set up to take the player out of the map.");
+        D(x.toCoords.x);
+        D(x.toCoords.y);
+        D(g_floorplan.size());
+        D(x.entity->getOriginX());
+        D(x.entity->getOriginY());
+      } 
+
+
+    } else {
+      x.entity->visible = 0;
+    }
+  }
+}
+
+void extendRoom(coord r, coord p) {
+  g_floorplan[p.x][p.y].mesh = g_floorplan[r.x][r.y].mesh;
+  g_floorplan[p.x][p.y].camBlockers = g_floorplan[r.x][r.y].camBlockers;
+  g_floorplan[p.x][p.y].impliedSlopes = g_floorplan[r.x][r.y].impliedSlopes;
 }
 
 void populateMapWithEntities()
@@ -83,7 +225,6 @@ void populateMapWithEntities()
 }
 
 void playNextMusic() {
-  breakpoint();
   if(g_deleteMusic != 0) {
     //M("Lets delete music");
     Mix_FreeMusic(g_deleteMusic->mus);
@@ -97,7 +238,151 @@ void playNextMusic() {
   Mix_FadeInMusic(g_loadedMusic->mus, -1, 1000);
 }
 
-void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
+
+void loadDataIntoGgrid(ggrid* g, vector<vector<int>> cd, int x, int y, int width, int height) {
+  for(int j = y; j < height + y; j++) {
+    for(int i = x; i < width + x; i++) {
+      int value = cd[i][j];
+      float jval = j * 64;
+      jval = round(jval);
+      vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, g_activeGgrid->originZ};
+      if(value != 0) {
+
+        vector<bool> whichMeshes = {0,0,0,0,0};
+        if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
+        if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
+
+        chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
+        c->owner = g_activeGgrid;
+        c->standalone = 0;
+        c->value = value;
+        g_activeGgrid->chunks.push_back(c);
+
+        if(c->floor != 0) {
+          c->floor->texture = g_activeGgrid->floortex;
+          c->floor->drawShading = g_activeGgrid->hasBotShading;
+          c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+          //c->floor->drawDiffuse = 0;
+
+          if(g_activeGgrid->hasTrim) {
+            c->floor->hasTrim = 1;
+            c->floor->trimTexture = g_activeGgrid->trimtex;
+          } else {
+            c->floor->hasTrim = 0;
+          }
+
+          for(int i = 0; i < c->floor->numVertices; i++) {
+            float xpos = c->floor->vertex[i].position.x + c->origin.x;
+            float ypos = c->floor->vertex[i].position.y + c->origin.y;
+            xpos = fmod(xpos, 256);
+            ypos = fmod(ypos, 256);
+            xpos /= 256.0;
+            ypos /= 256.0;
+            if(fmod(c->origin.x,256) == 192) {
+              //this is the horizontal edge case
+              if(abs(xpos - 0) < 0.001) {xpos = 1;}
+            }
+            if(fmod(c->origin.y,256) == 192) {
+              //this is the vertical edge case
+              if(abs(ypos - 0) < 0.001) {ypos = 1;}
+            }
+
+            c->floor->vertex[i].tex_coord.x = xpos;
+            c->floor->vertex[i].tex_coord.y = ypos;
+          }
+        }
+        if(c->decorative != 0) {
+          c->decorative->texture = g_activeGgrid->floortex;
+          for(int i = 0; i < c->decorative->numVertices; i++) {
+            float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+            float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+            xpos = fmod(xpos, 1024);
+            ypos = fmod(ypos, 880);
+            xpos /= 1024.0;
+            ypos /= 880.0;
+            if(fmod(c->origin.x,1024) == 960) {
+              //this is the horizontal edge case
+              if(abs(xpos - 0) < 0.001) {xpos = 1;}
+            }
+            if(fmod(c->origin.y,880) == 825) {
+              //this is the vertical edge case
+              if(abs(ypos - 0) < 0.001) {ypos = 1;}
+            }
+
+            c->decorative->vertex[i].tex_coord.x = xpos;
+            c->decorative->vertex[i].tex_coord.y = ypos;
+          }
+        }
+
+        if(c->wall != 0) {
+          c->wall->texture = g_activeGgrid->walltex;
+          c->wall->drawDiffuse = g_activeGgrid->hasWall;
+
+          if(g_activeGgrid->wallShading == 1) {
+            c->wall->topOrBottomShading = 3;
+          } else if(g_activeGgrid->wallShading == 2) {
+            c->wall->topOrBottomShading = 4;
+          } else if(g_activeGgrid->wallShading == 3){
+            c->wall->topOrBottomShading = 2; //both, 3 tall
+          } else if(g_activeGgrid->wallShading == 4) {
+            c->wall->topOrBottomShading =5;
+          } else {
+            c->wall->drawShading = 0;
+          }
+
+          if(value > 33) {
+          } else {
+
+            //set texcoords of wall
+            //bottom verts have 0 red
+            for(int i = 0; i < c->wall->numVertices; i++) {
+              float xpos = c->wall->vertex[i].position.x + c->origin.x;
+              xpos = fmod(xpos, 1024);
+              xpos /= 1024.0;
+              if(fmod(c->origin.x,1024) == 960) {
+                //this is the horizontal edge case
+                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+              }
+
+
+              float offset = fmodf(g_activeGgrid->originZ, 384.0f);
+              if(offset < 0) offset += 384.0f;
+              offset /= 384.0f;   // now in [0,1)
+
+              c->wall->vertex[i].tex_coord.x = xpos;
+
+              float regionOffset;
+
+              if(value >= 34) {
+                // 6-block-high wall
+                regionOffset = (c->wall->vertex[i].color.r > 128)
+                  ? 0.0f
+                  : 0.16666667f;
+              } else {
+                // 3-block-high wall
+                regionOffset = (c->wall->vertex[i].color.r > 128)
+                  ? 0.0f
+                  : 0.5f;
+              }
+
+              // final wrapped texture coordinate
+              float ty = offset + regionOffset;
+              ty = fmodf(ty, 1.0f);
+              if(ty < 0) ty += 1.0f;
+
+              c->wall->vertex[i].tex_coord.y = ty;
+
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+void load_map(SDL_Renderer *renderer, string filename, string destWaypointName, int offsetx, int offsety)
 {
   M("Loading map: " + filename);
   g_mapHasMusic = 0;
@@ -127,17 +412,17 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   }
 
 
-  D(oldmapdir);
-  D(g_mapdir);
+//  D(oldmapdir);
+//  D(g_mapdir);
   { //if the mapdirectory is different from our past one, reload g_keyItemsRelevant
     if(g_mapdir != oldmapdir) {
-      M("Time to update g_keyItemsRelevant");
+      //M("Time to update g_keyItemsRelevant");
       g_keyItemsRelevant.clear();
       for(auto x : g_keyItems) {
-        D(x->level);
-        D(g_mapdir);
+//        D(x->level);
+//        D(g_mapdir);
         if(x->level == "" || x->level == g_mapdir) {
-          M("Lets push this one back");
+          //M("Lets push this one back");
           g_keyItemsRelevant.push_back(x);
         }
       }
@@ -170,7 +455,7 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
   while (index < strings.size())
   {
     line = strings[index];
-    M("Parsing line: " + line); //got a crash after leaving the desert cylindrical structure
+    //M("Parsing line: " + line);
     index++;
     istringstream iss(line);
     word = line.substr(0, line.find(" "));
@@ -191,202 +476,42 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName)
       a->bounds.height = p3;
     }
 
+
     else if(word == "chunkdata") {
       line = strings[index];
       index++;
       iss = istringstream(line);
-      //D(line);
-      
-      if(g_activeGgrid != 0) {
-      }
      
       int width = g_activeGgrid->width;
       int height = g_activeGgrid->height;
-//      D(width);
-//      D(height);
+
+      vector<vector<int>> cd(width, vector<int>(height));
 
       for(int j = 0; j < height; j++) {
         for(int i = 0; i < width; i++) {
           int value = 0;
           iss >> value;
-          float jval = j * 55;
-          jval = round(jval);
-          vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, g_activeGgrid->originZ};
-          if(value != 0) {
-            
-            vector<bool> whichMeshes = {0,0,0,0,0};
-            if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
-            if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
-
-            chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
-            c->owner = g_activeGgrid;
-            c->standalone = 0;
-            c->value = value;
-            g_activeGgrid->chunks.push_back(c);
-  
-            if(c->floor != 0) {
-              c->floor->texture = g_activeGgrid->floortex;
-              c->floor->drawShading = g_activeGgrid->hasBotShading;
-              c->floor->drawDiffuse = g_activeGgrid->hasFloor;
-
-              if(g_activeGgrid->hasTrim) {
-                c->floor->hasTrim = 1;
-                c->floor->trimTexture = g_activeGgrid->trimtex;
-              } else {
-                c->floor->hasTrim = 0;
-              }
-
-              for(int i = 0; i < c->floor->numVertices; i++) {
-                float xpos = c->floor->vertex[i].position.x + c->origin.x;
-                float ypos = c->floor->vertex[i].position.y + c->origin.y;
-                xpos = fmod(xpos, 1024);
-                ypos = fmod(ypos, 880);
-                xpos /= 1024.0;
-                ypos /= 880.0;
-                if(fmod(c->origin.x,1024) == 960) {
-                  //this is the horizontal edge case
-                  if(abs(xpos - 0) < 0.001) {xpos = 1;}
-                }
-                if(fmod(c->origin.y,880) == 825) {
-                  //this is the vertical edge case
-                  if(abs(ypos - 0) < 0.001) {ypos = 1;}
-                }
-  
-                c->floor->vertex[i].tex_coord.x = xpos;
-                c->floor->vertex[i].tex_coord.y = ypos;
-              }
-            }
-            if(c->decorative != 0) {
-              c->decorative->texture = g_activeGgrid->floortex;
-              for(int i = 0; i < c->decorative->numVertices; i++) {
-                float xpos = c->decorative->vertex[i].position.x + c->origin.x;
-                float ypos = c->decorative->vertex[i].position.y + c->origin.y;
-                xpos = fmod(xpos, 1024);
-                ypos = fmod(ypos, 880);
-                xpos /= 1024.0;
-                ypos /= 880.0;
-                if(fmod(c->origin.x,1024) == 960) {
-                  //this is the horizontal edge case
-                  if(abs(xpos - 0) < 0.001) {xpos = 1;}
-                }
-                if(fmod(c->origin.y,880) == 825) {
-                  //this is the vertical edge case
-                  if(abs(ypos - 0) < 0.001) {ypos = 1;}
-                }
-  
-                c->decorative->vertex[i].tex_coord.x = xpos;
-                c->decorative->vertex[i].tex_coord.y = ypos;
-              }
-            }
-  
-            if(c->wall != 0) {
-              c->wall->texture = g_activeGgrid->walltex;
-              c->wall->drawDiffuse = g_activeGgrid->hasWall;
-
-            if(g_activeGgrid->wallShading == 1) {
-                c->wall->topOrBottomShading = 3;
-            } else if(g_activeGgrid->wallShading == 2) {
-                c->wall->topOrBottomShading = 4;
-            } else if(g_activeGgrid->wallShading == 3){
-              c->wall->topOrBottomShading = 2; //both, 3 tall
-            } else if(g_activeGgrid->wallShading == 4) {
-              c->wall->topOrBottomShading =5;
-            } else {
-              c->wall->drawShading = 0;
-            }
-
-              //set texcoords of wall
-              //bottom verts have 0 red
-              for(int i = 0; i < c->wall->numVertices; i++) {
-                float xpos = c->wall->vertex[i].position.x + c->origin.x;
-                xpos = fmod(xpos, 1024);
-                xpos /= 1024.0;
-                if(fmod(c->origin.x,1024) == 960) {
-                  //this is the horizontal edge case
-                  if(abs(xpos - 0) < 0.001) {xpos = 1;}
-                }
-
-                /*
-                //you can pretty easily make this adaptable, just query the hieght
-                //and use that instead of 384
-                //also change the 0.16667 (384/64 = 6, 1/6 = 0.16667
-                
-                if(value >= 34) {
-                  //float offset = g_activeGgrid->originZ % 384; // 64 * (6, max height of wall textures-1)
-                  float offset = fmodf(g_activeGgrid->originZ, 384);
-                  if(offset < 0) offset += 384;
-                  offset /= 384;
-    
-                  c->wall->vertex[i].tex_coord.x = xpos;
-                  if(c->wall->vertex[i].color.r > 128) {
-                    c->wall->vertex[i].tex_coord.y = offset;
-                  } else {
-                    c->wall->vertex[i].tex_coord.y = offset + 0.16666667;
-                  } 
-                } else {
-                  //3-block-high wall
-                  float offset = g_activeGgrid->originZ % 384; // 64 * (6, max height of wall textures-1)
-                  offset /= 384;
-    
-                  c->wall->vertex[i].tex_coord.x = xpos;
-                  if(c->wall->vertex[i].color.r > 128) {
-                    c->wall->vertex[i].tex_coord.y = offset;
-                  } else {
-                    c->wall->vertex[i].tex_coord.y = offset + 0.5;
-                  } 
-                }
-                */
-
-float offset = fmodf(g_activeGgrid->originZ, 384.0f);
-if(offset < 0) offset += 384.0f;
-offset /= 384.0f;   // now in [0,1)
-
-c->wall->vertex[i].tex_coord.x = xpos;
-
-float regionOffset;
-
-if(value >= 34) {
-    // 6-block-high wall
-    regionOffset = (c->wall->vertex[i].color.r > 128)
-        ? 0.0f
-        : 0.16666667f;
-} else {
-    // 3-block-high wall
-    regionOffset = (c->wall->vertex[i].color.r > 128)
-        ? 0.0f
-        : 0.5f;
-}
-
-// final wrapped texture coordinate
-float ty = offset + regionOffset;
-ty = fmodf(ty, 1.0f);
-if(ty < 0) ty += 1.0f;
-
-c->wall->vertex[i].tex_coord.y = ty;
-
-
-              }
-  
-            }
-          }
-          
+          cd[i][j] = value;
         }
         line = strings[index];
         index++;
         iss = istringstream(line);
       }
- 
 
-
-      
-       
+      loadDataIntoGgrid(g_activeGgrid, cd, 0, 0, width, height);
     }
 
 else if (word == "camblocker") {
       iss >> s0 >> p0 >> p1 >> p2 >> p3 >> p4;
       camBlocker* a = new camBlocker();
-      a->bounds.x = p0;
-      a->bounds.y = p1;
+
+      if(g_usingFloorplan) {
+        //M("cb pushed to floorplan at " + to_string(g_floorPos.x) + " " + to_string(g_floorPos.y));
+        g_floorplan[g_floorPos.x][g_floorPos.y].camBlockers.push_back(a);
+      }
+
+      a->bounds.x = p0 + offsetx;
+      a->bounds.y = p1 + offsety;
       a->bounds.width = p2;
       a->bounds.height = p3;
       a->direction = p4;
@@ -504,7 +629,12 @@ else if (word == "encounters") {
 else if (word == "boxcollision")
     {
       iss >> s0 >> p1 >> p2 >> p3 >> p4;
-      impliedSlope *i = new impliedSlope(p1, p2, p3, p4, 0, 0, 0, 0);
+      impliedSlope *i = new impliedSlope(p1 +offsetx, p2 +offsety, p3, p4, 0, 0, 0, 0);
+      if(g_usingFloorplan && g_floorplan.size() > 0 && g_floorPos.x < g_floorplan.size() && g_floorPos.y < g_floorplan[0].size()) {
+        g_floorplan[g_floorPos.x][g_floorPos.y].impliedSlopes.push_back(i);
+
+        //g_activeGgrid->impliedSlopes.push_back(i);
+      }
       (void)i;
     }
 else if (word == "tricollision")
@@ -541,9 +671,9 @@ else if (word == "entity")
       }
 
       //M("About to set data of e");
-      e->x = p0;
+      e->x = p0 + offsetx;
       //M("Did it crash?");
-      e->y = p1;
+      e->y = p1 + offsety;
       e->z = p2;
       e->shadow->x = e->x + e->shadow->xoffset;
       e->shadow->y = e->y + e->shadow->yoffset;
@@ -693,20 +823,20 @@ else if(word == "entitydata") {
         i++;
       }
 
-      M("    FOUND ENTITYDATA");
-      D(g_entities[g_entities.size() - 1]->identity);
+//      M("    FOUND ENTITYDATA");
+//      D(g_entities[g_entities.size() - 1]->identity);
 
       {
         entity* a = g_entities[g_entities.size() - 1];
         //this is for key items
         if(a->identity == 35) {
-          M("");
-          M("Let's set the image of the keyitem");
-          M("");
+//          M("");
+//          M("Let's set the image of the keyitem");
+//          M("");
   
           //has the player already picked this item up?
           string sfh =  "key-" + to_string(a->data[0]);
-          D(sfh);
+          //D(sfh);
           //M("Use safefield " + sfh);
           int res = checkSaveField(sfh);
           if(res == -1) {
@@ -774,17 +904,52 @@ else if(word == "ggrid") {
 
       if(g->floortexSTR != "nofloor") {
         g->hasFloor = 1;
-        g->floortex = loadTexture(renderer, "resources/static/diffuse/" + g->floortexSTR + ".qoi");
+
+        g->borrowingFloorTex = 0;
+        for(auto x : g_ggrids) {
+          if(x == g) {continue;}
+          if(x->floortexSTR == g->floortexSTR) {
+            g->borrowingFloorTex = 1;
+            g->floortex = x->floortex;
+          }
+        }
+        if(!g->borrowingFloorTex) {
+          g->floortex = loadTexture(renderer, "resources/static/diffuse/" + g->floortexSTR + ".qoi");
+        }
       }
 
       if(g->walltexSTR != "nowall") {
         g->hasWall = 1;
-        g->walltex = loadTexture(renderer, "resources/static/diffuse/" + g->walltexSTR + ".qoi");
+
+        g->borrowingWallTex = 0;
+        for(auto x : g_ggrids) {
+          if(x == g) {continue;}
+          if(x->walltexSTR == g->walltexSTR) {
+            g->borrowingWallTex = 1;
+            g->walltex = x->walltex;
+          }
+        }
+        if(!g->borrowingWallTex) {
+//          M("Cant' borrow walltex time to load it");
+//          D("resources/static/diffuse/" + g->walltexSTR + ".qoi");
+          g->walltex = loadTexture(renderer, "resources/static/diffuse/" + g->walltexSTR + ".qoi");
+        }
       }
 
       if(g->trimtexSTR != "notrim") {
         g->hasTrim = 1;
-        g->trimtex = loadTexture(renderer, "resources/static/diffuse/" + g->trimtexSTR + ".qoi");
+
+        g->borrowingTrimTex = 0;
+        for(auto x : g_ggrids) {
+          if(x == g) {continue;}
+          if(x->trimtexSTR == g->trimtexSTR) {
+            g->borrowingTrimTex = 1;
+            g->trimtex = x->trimtex;
+          }
+        }
+        if(!g->borrowingTrimTex) {
+          g->trimtex = loadTexture(renderer, "resources/static/diffuse/" + g->trimtexSTR + ".qoi");
+        }
       }
 
       if(botShadeStr == "nofloorshade") {
@@ -806,15 +971,13 @@ else if(word == "ggrid") {
         g->wallShading = 3; //both, if the wall is three blocks tall and meets the ceiling and floor
       }
 
-      g->originX = p0;
-      g->originY = p1;
+      g->originX = p0 + offsetx;
+      g->originY = p1 + offsety;
       g->originZ = p2;
 
       g->width = p3;
       g->height = p4;
       g_activeGgrid = g;
-      g->doublez = (s5 == "double");
-
     }
 else if (word == "layerdata")
     {
@@ -830,14 +993,12 @@ else if (word == "tile")
       iss >> s0 >> s1 >> s2 >> p1 >> p2 >> p3 >> p4 >> p6 >> p7 >> p8 >> p9;
       const char *plik1 = s1.c_str();
       const char *plik2 = s2.c_str();
-      tile *t = new tile(renderer, plik1, plik2, p1, p2, p3, p4, 0, p6, p7, p8, p9);
+      tile *t = new tile(renderer, plik1, plik2, p1 + offsetx, p2 + offsety, p3, p4, 0, p6, p7, p8, p9);
       (void)t;
     }
 else if(word == "tilelayer")
     {
-      M("Found tilelayer");
       iss >> s0 >> p1;
-      D(p1);
       g_tiles[g_tiles.size()-1]->z = p1;
     }
 else if (word == "triangle")
@@ -899,14 +1060,14 @@ else if(word == "music")
         g_loadedMusicVolume = p0;
         g_loadedMusicStr = s1;
         if(g_loadedMusic != 0) {
-          M("set g_deleteMusic");
+          //M("set g_deleteMusic");
           g_deleteMusic = g_loadedMusic;
           
         } else {
-          M("There's no music to delete rn");
+          //M("There's no music to delete rn");
           g_deleteMusic = 0;
         }
-        D("resources/static/music/" + s1 + ".ogg");
+        //D("resources/static/music/" + s1 + ".ogg");
         g_loadedMusic = loadMusic("resources/static/music/" + s1 + ".ogg");
 
         // Keep in mind, there's a bit of a complicated way
@@ -991,10 +1152,68 @@ else if (word == "listener")
 //      collisionZone *c = new collisionZone(p1, p2, p3, p4);
 //      (void)c;
 //    }
+else if (word == "gentest")
+    {
+      g_usingFloorplan = 1;
+      
+      setFloorSize(2,1);
+
+      placeRoom("desert", 0, {0,0});
+      placeRoom("desert", 0, {1,0});
+
+      //We have loaded all the rooms by now
+      for(auto x : g_entities) {
+        specialObjectsInit(x);
+      }
+
+      placeProtag({1,0});
+
+      connectRooms({0,0}, {1,0});
+
+      configureDoors();
+      break;
+    }
+    else if(word == "autogen") 
+    {
+      g_usingFloorplan = 1;
+      
+      setFloorSize(4,5);
+
+      placeRoom("desert", 0, {0,0});
+      placeRoom("desert", 0, {1,0});
+      placeRoom("desert", 0, {1,1});
+      placeRoom("desert", 0, {1,2});
+      placeRoom("desert", 0, {0,1});
+      placeRoom("desert", 1, {2,2}); //2x2 room
+      extendRoom({2,2}, {2,3});
+      extendRoom({2,2}, {3,2});
+      extendRoom({2,2}, {3,3});
+
+      placeRoom("desert", 0, {3,4});
+
+      //We have loaded all the rooms by now
+      for(auto x : g_entities) {
+        specialObjectsInit(x);
+      }
+
+      placeProtag({1,0});
+
+      connectRooms({0,0}, {1,0});
+      connectRooms({1,0}, {1,1});
+      connectRooms({1,1}, {1,2});
+      connectRooms({0,1}, {1,1});
+      connectRooms({2,2}, {1,2});
+      connectRooms({3,3}, {3,4});
+
+      configureDoors();
+      break;
+    }
   }
 
-  for(auto x : g_entities) {
-    specialObjectsInit(x);
+  if(!g_usingFloorplan) {
+    for(auto x : g_entities) {
+      specialObjectsInit(x);
+    }
   }
 
   // now that map geometry is done, add guests for collisionZones
@@ -1126,18 +1345,19 @@ else if (word == "listener")
 
     if (script.size() > 0)
     {
-      D(script.size());
-      M("This is the initscript");
-      for(auto x : script) {
-        D(x);
-      }
+      M("Initscript found at resources/maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
+//      D(script.size());
+//      M("This is the initscript");
+//      for(auto x : script) {
+//        D(x);
+//      }
       adventureUIManager->continueDialogue();
     }
   }
   else
   {
     //initscript not found
-    M("Initscript not found at resources/maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
+    //M("Initscript not found at resources/maps/" + g_mapdir + "/scripts/INIT-" + g_map + ".txt");
   }
 
   g_maxPelletsInLevel = g_pellets.size();
@@ -1200,7 +1420,7 @@ else if (word == "listener")
     e->setOriginY(protag->getOriginY());
   }
 
-  M("load_map() done");
+  //M("load_map() done");
 }
 
 void changeTheme(string str)
@@ -1247,7 +1467,6 @@ void changeTheme(string str)
     texstrs.push_back(entry.path().u8string());
   }
   floortexIndex = 0;
-  captexIndex = -1;
   walltexIndex = 0;
 
   // search for "floor" and "wall" textures
@@ -1263,26 +1482,16 @@ void changeTheme(string str)
     {
       walltexIndex = i;
     }
-    if (filename == "cap.qoi")
-    {
-      captexIndex = i;
-    }
-  }
-
-  if (captexIndex == -1)
-  {
-    captexIndex = walltexIndex;
   }
 
   floortex = texstrs[floortexIndex];
   delete floortexDisplay;
   floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0, 0.1, 0.1, -100);
+  floortexDisplay->heightFromWidthFactor = 1;
   walltex = texstrs[walltexIndex];
   delete walltexDisplay;
   walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, -100);
-  captex = texstrs[captexIndex];
-  delete captexDisplay;
-  captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
+  walltexDisplay->heightFromWidthFactor = 1;
 }
 
 //add support to save effectIndexes to maps
@@ -1552,7 +1761,7 @@ bool mapeditor_save_map(string word)
     x->originX = lowestPx;
     x->originY = lowestPy;
     x->width = (highestPx/64) - (lowestPx/64) + 1;
-    x->height = (highestPy/55) - (lowestPy/55) + 1;
+    x->height = (highestPy/64) - (lowestPy/64) + 1;
 
     x->chunkdata.clear();
     x->chunkdata.resize(x->width);
@@ -1563,10 +1772,10 @@ bool mapeditor_save_map(string word)
 
     for(auto y : x->chunks) {
       int posx = y->origin.x / 64;
-      int posy = y->origin.y / 55;
+      int posy = y->origin.y / 64;
 
       int valX = round(posx - x->originX/64);
-      int valY = round(posy - x->originY/55);
+      int valY = round(posy - x->originY/64);
 //      D(valX);
 //      D(valY);
       x->chunkdata[valX][valY] = (unsigned char)y->value;
@@ -1641,7 +1850,7 @@ bool mapeditor_save_map(string word)
                       << g_camBlockers[i]->bounds.height << " "
                       << g_camBlockers[i]->direction << " "
                       << endl;
-
+  
   }
 
   for(auto x : g_gradients) {
@@ -1686,7 +1895,7 @@ void init_map_writing(SDL_Renderer *renderer)
   listenerIcon = new tile(renderer, "resources/engine/listener.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   navNodeIconBlue = new tile(renderer, "resources/engine/walkerBlue.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   navNodeIconRed = new tile(renderer, "resources/engine/walkerRed.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
-  navNodeIconYellow = new tile(renderer, "resources/engine/walkerYellow.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
+  //navNodeIconYellow = new tile(renderer, "resources/engine/walkerYellow.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   musicIcon = new tile(renderer, "resources/engine/music.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   cueIcon = new tile(renderer, "resources/engine/cue.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
   waypointIcon = new tile(renderer, "resources/engine/waypoint.qoi", "&", 0, 0, 0, 0, 1, 0, 0, 0, 0);
@@ -1704,7 +1913,7 @@ void init_map_writing(SDL_Renderer *renderer)
   listenerIcon->software = 1;
   navNodeIconBlue->software = 1;
   navNodeIconRed->software = 1;
-  navNodeIconYellow->software = 1;
+  //navNodeIconYellow->software = 1;
   musicIcon->software = 1;
   cueIcon->software = 1;
   waypointIcon->software = 1;
@@ -1715,6 +1924,8 @@ void init_map_writing(SDL_Renderer *renderer)
   ggridIcon->software = 1;
 
   grassTexture = loadTexture(renderer, "resources/engine/grass-select.qoi");
+
+  g_axesTexture = loadTexture(renderer, "resources/engine/axes.qoi");
 
   cameraBlockerTextureA = loadTexture(renderer, "resources/engine/camera-blocker-a.qoi");
   cameraBlockerTextureB = loadTexture(renderer, "resources/engine/camera-blocker-b.qoi");
@@ -1727,8 +1938,9 @@ void init_map_writing(SDL_Renderer *renderer)
   // theme tiles
   // theme display
   floortexDisplay = new ui(renderer, floortex.c_str(), 0.0, 0, 0.1, 0.1, -100);
+  floortexDisplay->heightFromWidthFactor = 1;
   walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, -100);
-  captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
+  walltexDisplay->heightFromWidthFactor = 1;
 
   texstrs.clear();
   string path = "resources/static/diffuse/" + textureDirectory;
@@ -1743,13 +1955,11 @@ void init_map_writing(SDL_Renderer *renderer)
   if (devMode)
   {
 //    floortexDisplay->show = 1;
-//    captexDisplay->show = 1;
 //    walltexDisplay->show = 1;
   }
   else
   {
     floortexDisplay->show = 0;
-    captexDisplay->show = 0;
     walltexDisplay->show = 0;
     // float scalex = ((float)WIN_WIDTH / 1920) * g_defaultZoom;
     // float scaley = scalex;
@@ -2181,14 +2391,14 @@ void write_map(entity *mapent)
     }
   }
 
-  // make seethru wall
+  // quickplace tiles
 
   if (devinput[6] && !olddevinput[6] && makingbox == 0)
   {
     lx = px;
     ly = py;
     makingbox = 1;
-    selection->texture = loadTexture(renderer, "resources/engine/invisiblewall.qoi");
+    selection->texture = loadTexture(renderer, "resources/engine/quickPlace.qoi");
   }
   else
   {
@@ -2198,7 +2408,151 @@ void write_map(entity *mapent)
       {
 
         makingbox = 0;
-        impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart, 0, 0, 0);
+        for(float i = 0; i < selection->width; i+= 64) {
+          for(float j = 0; j < selection->height; j+= 64) {
+
+            vec3 origin = {selection->x + i, selection->y + j, g_activeGgrid->originZ};
+            if(g_activeGgrid) {
+              M("Making a block");
+              int value = g_lastGgridBlockPlaced;
+
+              if(value != 0) {
+
+                vector<bool> whichMeshes = {0,0,0,0,0};
+                if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
+                if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
+
+                chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
+                c->owner = g_activeGgrid;
+                c->standalone = 0;
+                c->value = value;
+                g_activeGgrid->chunks.push_back(c);
+
+                if(c->floor != 0) {
+                  c->floor->texture = g_activeGgrid->floortex;
+                  c->floor->drawShading = g_activeGgrid->hasBotShading;
+                  c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+                  //c->floor->drawDiffuse = 0;
+
+                  if(g_activeGgrid->hasTrim) {
+                    c->floor->hasTrim = 1;
+                    c->floor->trimTexture = g_activeGgrid->trimtex;
+                  } else {
+                    c->floor->hasTrim = 0;
+                  }
+
+                  for(int i = 0; i < c->floor->numVertices; i++) {
+                    float xpos = c->floor->vertex[i].position.x + c->origin.x;
+                    float ypos = c->floor->vertex[i].position.y + c->origin.y;
+                    xpos = fmod(xpos, 256);
+                    ypos = fmod(ypos, 256);
+                    xpos /= 256.0;
+                    ypos /= 256.0;
+                    if(fmod(c->origin.x,256) == 192) {
+                      //this is the horizontal edge case
+                      if(abs(xpos - 0) < 0.001) {xpos = 1;}
+                    }
+                    if(fmod(c->origin.y,256) == 192) {
+                      //this is the vertical edge case
+                      if(abs(ypos - 0) < 0.001) {ypos = 1;}
+                    }
+
+                    c->floor->vertex[i].tex_coord.x = xpos;
+                    c->floor->vertex[i].tex_coord.y = ypos;
+                  }
+                }
+                if(c->decorative != 0) {
+                  c->decorative->texture = g_activeGgrid->floortex;
+                  for(int i = 0; i < c->decorative->numVertices; i++) {
+                    float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+                    float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+                    xpos = fmod(xpos, 1024);
+                    ypos = fmod(ypos, 880);
+                    xpos /= 1024.0;
+                    ypos /= 880.0;
+                    if(fmod(c->origin.x,1024) == 960) {
+                      //this is the horizontal edge case
+                      if(abs(xpos - 0) < 0.001) {xpos = 1;}
+                    }
+                    if(fmod(c->origin.y,880) == 825) {
+                      //this is the vertical edge case
+                      if(abs(ypos - 0) < 0.001) {ypos = 1;}
+                    }
+
+                    c->decorative->vertex[i].tex_coord.x = xpos;
+                    c->decorative->vertex[i].tex_coord.y = ypos;
+                  }
+                }
+
+                if(c->wall != 0) {
+                  c->wall->texture = g_activeGgrid->walltex;
+                  c->wall->drawDiffuse = g_activeGgrid->hasWall;
+
+                  if(g_activeGgrid->wallShading == 1) {
+                    c->wall->topOrBottomShading = 3;
+                  } else if(g_activeGgrid->wallShading == 2) {
+                    c->wall->topOrBottomShading = 4;
+                  } else if(g_activeGgrid->wallShading == 3){
+                    c->wall->topOrBottomShading = 2; //both, 3 tall
+                  } else if(g_activeGgrid->wallShading == 4) {
+                    c->wall->topOrBottomShading =5;
+                  } else {
+                    c->wall->drawShading = 0;
+                  }
+
+                  if(value > 33) {
+                  } else {
+
+                    //set texcoords of wall
+                    //bottom verts have 0 red
+                    for(int i = 0; i < c->wall->numVertices; i++) {
+                      float xpos = c->wall->vertex[i].position.x + c->origin.x;
+                      xpos = fmod(xpos, 1024);
+                      xpos /= 1024.0;
+                      if(fmod(c->origin.x,1024) == 960) {
+                        //this is the horizontal edge case
+                        if(abs(xpos - 0) < 0.001) {xpos = 1;}
+                      }
+
+
+                      float offset = fmodf(g_activeGgrid->originZ, 384.0f);
+                      if(offset < 0) offset += 384.0f;
+                      offset /= 384.0f;   // now in [0,1)
+
+                      c->wall->vertex[i].tex_coord.x = xpos;
+
+                      float regionOffset;
+
+                      if(value >= 34) {
+                        // 6-block-high wall
+                        regionOffset = (c->wall->vertex[i].color.r > 128)
+                          ? 0.0f
+                          : 0.16666667f;
+                      } else {
+                        // 3-block-high wall
+                        regionOffset = (c->wall->vertex[i].color.r > 128)
+                          ? 0.0f
+                          : 0.5f;
+                      }
+
+                      // final wrapped texture coordinate
+                      float ty = offset + regionOffset;
+                      ty = fmodf(ty, 1.0f);
+                      if(ty < 0) ty += 1.0f;
+
+                      c->wall->vertex[i].tex_coord.y = ty;
+
+                    }
+                  }
+                }
+              }
+
+
+            }
+
+
+          }
+        }
 
       }
     }
@@ -2222,7 +2576,6 @@ void write_map(entity *mapent)
 
         makingbox = 0;
         impliedSlope *i = new impliedSlope(selection->x, selection->y, selection->width, selection->height, wallstart, 0, 0, 1);
-
       }
     }
   }
@@ -2413,7 +2766,7 @@ void write_map(entity *mapent)
   }
   if (devinput[21] && !olddevinput[21] && makingbox == 0)
   {
-    rect mrect = {marker->x, marker->y, 64, 55};
+    rect mrect = {marker->x, marker->y, 64, 64};
     vector<navNode*> navNodesToDelete;
     bool deleted = 0;
     for(auto x: g_navNodes) {
@@ -2577,7 +2930,7 @@ void write_map(entity *mapent)
         {
           for (auto n : g_ramps[i])
           {
-            rect a = rect(n->x, n->y, 64, 55);
+            rect a = rect(n->x, n->y, 64, 64);
             if (RectOverlap(markerrect, a))
             {
               deleteRamps.push_back(n);
@@ -3276,134 +3629,147 @@ void write_map(entity *mapent)
         //
         //write to cell of active ggrid
         //e.g. g 12 to write the twelfth mesh to the position where the cursor is
+        // now just sets g_lastGgridBlockPlaced for y and m buttons
         unsigned int n;
         line >> n;
+        g_lastGgridBlockPlaced = n;
 
-
-        //use the active ggrid's originX originY to set the
-        string path = "ggrid/" + to_string(n);
-
-        if(g_activeGgrid && (int) n < 255 ) {
-          g_lastGgridBlockPlaced = n;
-          vec3 origin = {marker->x, marker->y, 0};
-  
-          //chunk* c = new chunk(path, "", "", origin, 1, 0);
-          vector<bool> whichMeshes = {0,0,0,0,0};
-          if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1; M("Setting whichMeshes[0] to 1");}
-          if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
-
-          chunk* c = duplicateChunk(g_OPChunks[n-1], origin, whichMeshes);
-          c->owner = g_activeGgrid;
-          c->standalone = 0;
-
-          c->value = n;
-          g_activeGgrid->chunks.push_back(c);
-          if(c->floor != 0) {
-            c->floor->texture = g_activeGgrid->floortex;
-            c->floor->drawDiffuse = g_activeGgrid->hasFloor;
-            c->floor->drawShading = g_activeGgrid->hasBotShading;
-            if(g_activeGgrid->hasTrim) {
-              c->floor->hasTrim = 1;
-              c->floor->trimTexture = g_activeGgrid->trimtex;
-            }
-            for(int i = 0; i < c->floor->numVertices; i++) {
-              float xpos = c->floor->vertex[i].position.x + c->origin.x;
-              float ypos = c->floor->vertex[i].position.y + c->origin.y;
-              xpos = fmod(xpos, 1024);
-              ypos = fmod(ypos, 880);
-              xpos /= 1024.0;
-              ypos /= 880.0;
-              if(fmod(c->origin.x,1024) == 960) {
-                //this is the horizontal edge case
-                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-              }
-              if(fmod(c->origin.y,880) == 825) {
-                //this is the vertical edge case
-                if(abs(ypos - 0) < 0.001) {ypos = 1;}
-              }
-
-              c->floor->vertex[i].tex_coord.x = xpos;
-              c->floor->vertex[i].tex_coord.y = ypos;
-            }
-          }
-          if(c->decorative != 0) {
-            c->decorative->texture = g_activeGgrid->floortex;
-            for(int i = 0; i < c->decorative->numVertices; i++) {
-              float xpos = c->decorative->vertex[i].position.x + c->origin.x;
-              float ypos = c->decorative->vertex[i].position.y + c->origin.y;
-              xpos = fmod(xpos, 1024);
-              ypos = fmod(ypos, 880);
-              xpos /= 1024.0;
-              ypos /= 880.0;
-              if(fmod(c->origin.x,1024) == 960) {
-                //this is the horizontal edge case
-                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-              }
-              if(fmod(c->origin.y,880) == 825) {
-                //this is the vertical edge case
-                if(abs(ypos - 0) < 0.001) {ypos = 1;}
-              }
-  
-              c->decorative->vertex[i].tex_coord.x = xpos;
-              c->decorative->vertex[i].tex_coord.y = ypos;
-            }
-          }
-
-          if(c->wall != 0) {
-            c->wall->texture = g_activeGgrid->walltex;
-            c->wall->drawDiffuse = g_activeGgrid->hasWall;
-
-            if(g_activeGgrid->wallShading == 1) {
-              c->wall->topOrBottomShading = 0;
-            } else if(g_activeGgrid->wallShading == 2) {
-              c->wall->topOrBottomShading = 1;
-            } else if(g_activeGgrid->wallShading == 3){
-              c->wall->topOrBottomShading = 2; //both
-            } else {
-              c->wall->drawShading = 0;
-            }
-
-            //set texcoords of wall
-            //bottom verts have 0 red
-            for(int i = 0; i < c->wall->numVertices; i++) {
-              float xpos = c->wall->vertex[i].position.x + c->origin.x;
-              xpos = fmod(xpos, 1024);
-              xpos /= 1024.0;
-              if(fmod(c->origin.x,1024) == 960) {
-                //this is the horizontal edge case
-                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-              }
-
-              c->wall->vertex[i].tex_coord.x = xpos;
-              if(c->wall->vertex[i].color.r > 128) {
-                c->wall->vertex[i].tex_coord.y = 0;
-              } else {
-                c->wall->vertex[i].tex_coord.y = 1;
-
-              }
-            }
-
-          }
-
-
-
-
-        } else {
-          M("No active Ggrid for g command");
-        }
+//        //use the active ggrid's originX originY to set the
+//        string path = "ggrid/" + to_string(n);
+//
+//        if(g_activeGgrid && (int) n < 255 ) {
+//          g_lastGgridBlockPlaced = n;
+//          vec3 origin = {marker->x, marker->y, 0};
+//  
+//          //chunk* c = new chunk(path, "", "", origin, 1, 0);
+//          vector<bool> whichMeshes = {0,0,0,0,0};
+//          if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1; M("Setting whichMeshes[0] to 1");}
+//          if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
+//
+//          chunk* c = duplicateChunk(g_OPChunks[n-1], origin, whichMeshes);
+//          c->owner = g_activeGgrid;
+//          c->standalone = 0;
+//
+//          c->value = n;
+//          g_activeGgrid->chunks.push_back(c);
+//          if(c->floor != 0) {
+//            c->floor->texture = g_activeGgrid->floortex;
+//            c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+//            c->floor->drawShading = g_activeGgrid->hasBotShading;
+//            if(g_activeGgrid->hasTrim) {
+//              c->floor->hasTrim = 1;
+//              c->floor->trimTexture = g_activeGgrid->trimtex;
+//            }
+//            for(int i = 0; i < c->floor->numVertices; i++) {
+//              float xpos = c->floor->vertex[i].position.x + c->origin.x;
+//              float ypos = c->floor->vertex[i].position.y + c->origin.y;
+//              xpos = fmod(xpos, 1024);
+//              ypos = fmod(ypos, 880);
+//              xpos /= 1024.0;
+//              ypos /= 880.0;
+//              if(fmod(c->origin.x,1024) == 960) {
+//                //this is the horizontal edge case
+//                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+//              }
+//              if(fmod(c->origin.y,880) == 825) {
+//                //this is the vertical edge case
+//                if(abs(ypos - 0) < 0.001) {ypos = 1;}
+//              }
+//
+//              c->floor->vertex[i].tex_coord.x = xpos;
+//              c->floor->vertex[i].tex_coord.y = ypos;
+//            }
+//          }
+//          if(c->decorative != 0) {
+//            c->decorative->texture = g_activeGgrid->floortex;
+//            for(int i = 0; i < c->decorative->numVertices; i++) {
+//              float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+//              float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+//              xpos = fmod(xpos, 1024);
+//              ypos = fmod(ypos, 880);
+//              xpos /= 1024.0;
+//              ypos /= 880.0;
+//              if(fmod(c->origin.x,1024) == 960) {
+//                //this is the horizontal edge case
+//                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+//              }
+//              if(fmod(c->origin.y,880) == 825) {
+//                //this is the vertical edge case
+//                if(abs(ypos - 0) < 0.001) {ypos = 1;}
+//              }
+//  
+//              c->decorative->vertex[i].tex_coord.x = xpos;
+//              c->decorative->vertex[i].tex_coord.y = ypos;
+//            }
+//          }
+//
+//          if(c->wall != 0) {
+//            c->wall->texture = g_activeGgrid->walltex;
+//            c->wall->drawDiffuse = g_activeGgrid->hasWall;
+//
+//            if(g_activeGgrid->wallShading == 1) {
+//              c->wall->topOrBottomShading = 0;
+//            } else if(g_activeGgrid->wallShading == 2) {
+//              c->wall->topOrBottomShading = 1;
+//            } else if(g_activeGgrid->wallShading == 3){
+//              c->wall->topOrBottomShading = 2; //both
+//            } else {
+//              c->wall->drawShading = 0;
+//            }
+//
+//            //set texcoords of wall
+//            //bottom verts have 0 red
+//            for(int i = 0; i < c->wall->numVertices; i++) {
+//              float xpos = c->wall->vertex[i].position.x + c->origin.x;
+//              xpos = fmod(xpos, 1024);
+//              xpos /= 1024.0;
+//              if(fmod(c->origin.x,1024) == 960) {
+//                //this is the horizontal edge case
+//                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+//              }
+//
+//              c->wall->vertex[i].tex_coord.x = xpos;
+//              if(c->wall->vertex[i].color.r > 128) {
+//                c->wall->vertex[i].tex_coord.y = 0;
+//              } else {
+//                c->wall->vertex[i].tex_coord.y = 1;
+//
+//              }
+//            }
+//
+//          }
+//
+//
+//
+//
+//        } else {
+//          M("No active Ggrid for g command");
+//        }
 
         break;
       }
       if(word == "ggrid" || word == "geometrygrid") {
         //make ggrid command
         ggrid* g = new ggrid();
-        g->floortexSTR = "mapeditor/floor";
-        g->walltexSTR = "mapeditor/wall";
-        //g->trimtexSTR = "notrim";
-        g->floortex = loadTexture(renderer, "resources/static/diffuse/mapeditor/floor.qoi");
-        g->walltex = loadTexture(renderer, "resources/static/diffuse/mapeditor/wall.qoi");
+        g->floortexSTR = floortex;
+        g->walltexSTR = walltex;
+        
+        const string prefix = "resources/static/diffuse/";
+        g->floortexSTR.erase(0, prefix.size());
+        g->floortexSTR.erase(g->floortexSTR.size()-4);
+
+        g->walltexSTR.erase(0, prefix.size());
+        g->walltexSTR.erase(g->walltexSTR.size()-4);
+
+        g->floortex = loadTexture(renderer, prefix + g->floortexSTR + ".qoi");
+        g->walltex = loadTexture(renderer, prefix + g->walltexSTR + ".qoi");
+
         g->originX = marker->x + marker->width/2;
         g->originY = marker->y + marker->height/2;
+        g->wallShading = 3;
+        g->hasWall = 1;
+        g->borrowingWallTex = 0;
+        g->hasBotShading = 1;
         g->originZ = wallstart;
         g_activeGgrid = g;
 
@@ -3510,12 +3876,10 @@ void write_map(entity *mapent)
         drawhitboxes = !drawhitboxes;
         if(drawhitboxes) {
           floortexDisplay->show = 1;
-          captexDisplay->show = 1;
           walltexDisplay->show = 1;
 
         } else {
           floortexDisplay->show = 0;
-          captexDisplay->show = 0;
           walltexDisplay->show = 0;
 
         }
@@ -3668,8 +4032,8 @@ void write_map(entity *mapent)
             {
               while (y < b->bounds.height + b->bounds.y)
               {
-                new box(x, y, 64, 55, b->layer, b->walltexture, b->captexture, b->capped, 0, 0, "0000");
-                y += 55;
+                new box(x, y, 64, 64, b->layer, b->walltexture, b->captexture, b->capped, 0, 0, "0000");
+                y += 64;
               }
               x += 64;
               y = b->bounds.y;
@@ -3746,8 +4110,8 @@ void write_map(entity *mapent)
             b->shadeBot = false;
             b->shadeLeft = false;
             b->shadeRight = false;
-            rect uneighbor = {b->bounds.x + 2, b->bounds.y - 55 + 2, b->bounds.width - 4, 55 - 4};
-            rect dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};
+            rect uneighbor = {b->bounds.x + 2, b->bounds.y - 64 + 2, b->bounds.width - 4, 64 - 4};
+            rect dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 64 - 4};
             b->shineTop = true;
             b->shineBot = true;
 
@@ -3798,7 +4162,7 @@ void write_map(entity *mapent)
             {
               for (auto n : g_ramps[i + 1])
               {
-                rect ramprect = rect(n->x, n->y, 64, 55);
+                rect ramprect = rect(n->x, n->y, 64, 64);
                 if (RectOverlap(b->bounds, ramprect))
                 {
                   // there is a ramp above this block, so it needs no shine
@@ -3815,8 +4179,8 @@ void write_map(entity *mapent)
               b->shineBot = false;
             }
 
-            uneighbor = {b->bounds.x + 2, b->bounds.y - 55 + 2, b->bounds.width - 4, 55 - 4};
-            dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 55 - 4};
+            uneighbor = {b->bounds.x + 2, b->bounds.y - 64 + 2, b->bounds.width - 4, 64 - 4};
+            dneighbor = {b->bounds.x + 2, b->bounds.y + 2 + b->bounds.height, b->bounds.width - 4, 64 - 4};
             rect lneighbor = {b->bounds.x + 2 - 64, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
             rect rneighbor = {b->bounds.x + 2 + b->bounds.width, b->bounds.y + 2, 64 - 4, b->bounds.height - 4};
             // check for overlap with tiles if it is on layer 0 and with boxes and triangles a layer below for each dir
@@ -4026,7 +4390,7 @@ void write_map(entity *mapent)
                 if(!other->valid) {
                   continue;
                 }
-                if (RectOverlap(rect(him->bounds.x + him->bounds.width + 2, him->bounds.y + 2, 64 - 4, 55 - 4), other->bounds))
+                if (RectOverlap(rect(him->bounds.x + him->bounds.width + 2, him->bounds.y + 2, 64 - 4, 64 - 4), other->bounds))
                 {
                   // does it have the same shineTop as him?
                   if (him->shineTop == other->shineTop)
@@ -4150,7 +4514,7 @@ void write_map(entity *mapent)
                 if(!other->valid) {
                   continue;
                 }
-                if (RectOverlap(rect(him->bounds.x + 2, him->bounds.y + him->bounds.height + 2, 64 - 4, 55 - 4), other->bounds))
+                if (RectOverlap(rect(him->bounds.x + 2, him->bounds.y + him->bounds.height + 2, 64 - 4, 64 - 4), other->bounds))
                 {
                   // does it have the same width and x position as him?
                   if (him->bounds.x == other->bounds.x && him->bounds.width == other->bounds.width)
@@ -4307,7 +4671,7 @@ void write_map(entity *mapent)
         clear_map(g_camera);
         int savex = mapent->x;
         int savey = mapent->y;
-        load_map(renderer, word.c_str(), "a");
+        load_map(renderer, word.c_str(), "a", 0, 0);
         init_map_writing(renderer);
         mapent->x = savex;
         mapent->y = savey;
@@ -4334,8 +4698,8 @@ void write_map(entity *mapent)
             {
               while (y < b->bounds.height + b->bounds.y)
               {
-                new box(x, y, 64, 55, b->layer, b->walltexture, b->captexture, b->capped, 0, 0, "0000");
-                y += 55;
+                new box(x, y, 64, 64, b->layer, b->walltexture, b->captexture, b->capped, 0, 0, "0000");
+                y += 64;
               }
               x += 64;
               y = b->bounds.y;
@@ -4380,13 +4744,12 @@ void write_map(entity *mapent)
         }
         ofile.close();
         word = "resources/maps/" + g_mapdir + "/" + g_map + ".map";
-        D(word);
-        D(g_mapdir);
-        D(g_map);
+//        D(g_mapdir);
+//        D(g_map);
         clear_map(g_camera);
         int savex = mapent->x;
         int savey = mapent->y;
-        load_map(renderer, word.c_str(), "a");
+        load_map(renderer, word.c_str(), "a", 0, 0);
         init_map_writing(renderer);
         mapent->x = savex;
         mapent->y = savey;
@@ -4445,7 +4808,7 @@ void write_map(entity *mapent)
           word = "resources/maps/" + g_mapdir + "/" + word + ".map";
           
           clear_map(g_camera);
-          load_map(renderer, word.c_str(), "a");
+          load_map(renderer, word.c_str(), "a", 0, 0);
 
           init_map_writing(renderer);
           if (g_autoSetThemesFromMapDirectory)
@@ -4478,7 +4841,7 @@ void write_map(entity *mapent)
           word = "resources/maps/" + g_mapdir + "/" + word + ".map";
           
           clear_map(g_camera);
-          load_map(renderer, word.c_str(), "a");
+          load_map(renderer, word.c_str(), "a", 0, 0);
 
           init_map_writing(renderer);
           if (g_autoSetThemesFromMapDirectory)
@@ -4628,7 +4991,6 @@ void write_map(entity *mapent)
       if (word == "set" || word == "s")
       {
         line >> word;
-        D(word);
 
         if(word == "dark") {
           line >> word;
@@ -4843,12 +5205,6 @@ void write_map(entity *mapent)
           {
             floortex = "resources/static/diffuse/" + textureDirectory + floortex + ".qoi";
           }
-          break;
-        }
-        if (word == "cap" || word == "c")
-        {
-          line >> captex;
-          captex = "resources/static/diffuse/" + textureDirectory + captex + ".qoi";
           break;
         }
         if (word == "mask" || word == "m")
@@ -5298,20 +5654,16 @@ void write_map(entity *mapent)
             texstrs.push_back(entry.path().u8string());
           }
           floortexIndex = 0;
-          captexIndex = 0;
           walltexIndex = 0;
 
           floortex = texstrs[floortexIndex];
           delete floortexDisplay;
           floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0, 0.1, 0.1, -100);
+          floortexDisplay->heightFromWidthFactor = 1;
           walltex = texstrs[walltexIndex];
           delete walltexDisplay;
           walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, -100);
-          captex = texstrs[captexIndex];
-          delete captexDisplay;
-          captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, -100);
-
-          captex = "resources/static/diffuse/mapeditor/a.qoi";
+          walltexDisplay->heightFromWidthFactor = 1;
           walltex = "resources/static/diffuse/mapeditor/c.qoi";
           floortex = "resources/static/diffuse/mapeditor/b.qoi";
           break;
@@ -5654,11 +6006,11 @@ void write_map(entity *mapent)
         line >> fbinding;
         line >> fentity;
         line >> cooldownMs;
-        M("Lets look for trigger");
+        //M("Lets look for trigger");
         for(auto &x : g_triggers) {
           rect bounds = {x->x, x->y, x->width, x->height};
           if(RectOverlap(bounds, marker->getMovedBounds())) {
-              M("Found trigger");
+              //M("Found trigger");
 
               x->binding = fbinding;
               x->targetEntity = fentity;
@@ -5672,7 +6024,7 @@ void write_map(entity *mapent)
           g_triggers[g_triggers.size() - 1]->binding = fbinding;
           if (fentity.length() > 0)
           {
-            D(fentity);
+            //D(fentity);
             g_triggers[g_triggers.size() - 1]->targetEntity = fentity;
           }
         }
@@ -5828,7 +6180,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap, 0);
+      n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, walltex, fcap, 0);
     }
 //    if (autoMakeWallcaps)
 //    {
@@ -5864,7 +6216,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap, 0);
+      n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, walltex, fcap, 0);
     }
 //    if (autoMakeWallcaps)
 //    {
@@ -5900,7 +6252,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap, 0);
+      n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, walltex, fcap, 0);
     }
 //    int step = g_platformResolution;
 //    for (int i = 0; i < 55; i += step)
@@ -5916,7 +6268,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap, 0);
+      n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, walltex, fcap, 0);
     }
 //    int step = g_platformResolution;
 //    for (int i = 0; i < 55; i += step)
@@ -5934,7 +6286,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap, 0, 1);
+      n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, walltex, fcap, 0, 1);
     }
 //    if (autoMakeWallcaps)
 //    {
@@ -5970,7 +6322,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap, 0, 1);
+      n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, walltex, fcap, 0, 1);
     }
 //    if (autoMakeWallcaps)
 //    {
@@ -6007,7 +6359,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap, 0, 1);
+      n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, walltex, fcap, 0, 1);
     }
 //    int step = g_platformResolution;
 //    for (int i = 0; i < 55; i += step)
@@ -6023,7 +6375,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap, 0, 1);
+      n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, walltex, fcap, 0, 1);
     }
 //    int step = g_platformResolution;
 //    for (int i = 0; i < 55; i += step)
@@ -6041,7 +6393,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, captex, fcap, 0, 2);
+      n = new tri(marker->x + marker->width, marker->y, marker->x, marker->y + marker->height, i, walltex, walltex, fcap, 0, 2);
     }
 //    if (autoMakeWallcaps)
 //    {
@@ -6077,7 +6429,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, captex, fcap, 0, 2);
+      n = new tri(marker->x, marker->y, marker->x + marker->width, marker->y + marker->height, i, walltex, walltex, fcap, 0, 2);
     }
 //    if (autoMakeWallcaps)
 //    {
@@ -6114,7 +6466,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, captex, fcap, 0, 2);
+      n = new tri(marker->x, marker->y + marker->height, marker->x + marker->width, marker->y, i, walltex, walltex, fcap, 0, 2);
     }
 //    int step = g_platformResolution;
 //    for (int i = 0; i < 55; i += step)
@@ -6131,7 +6483,7 @@ void write_map(entity *mapent)
     for (int i = wallstart / 64; i < wallheight / 64; i++)
     {
       bool fcap = (!(i + 1 < wallheight / 64));
-      n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, captex, fcap, 0, 2);
+      n = new tri(marker->x + marker->width, marker->y + marker->height, marker->x, marker->y, i, walltex, walltex, fcap, 0, 2);
     }
 //    int step = g_platformResolution;
 //    for (int i = 0; i < 55; i += step)
@@ -6192,6 +6544,12 @@ void write_map(entity *mapent)
   } else if(devinput[39] && !olddevinput[39] && makingbox == 1){
     makingbox = 0;
     camBlocker* a = new camBlocker();
+
+    if(g_usingFloorplan) {
+      g_floorplan[g_floorPos.x][g_floorPos.y].camBlockers.push_back(a);
+    }
+
+
     a->direction = 0;
     a->bounds.x = selection->x;
     a->bounds.y = selection->y;
@@ -6282,115 +6640,144 @@ void write_map(entity *mapent)
 
   if(devinput[42] && !olddevinput[42]) {
     //hotkey for repeat last g command
-    
+
     if(g_activeGgrid) {
       vec3 origin = {marker->x, marker->y, g_activeGgrid->originZ};
-  
-      vector<bool> whichMeshes = {0,0,0,0,0};
-      if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
-      if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
-      chunk* c = duplicateChunk(g_OPChunks[g_lastGgridBlockPlaced-1], origin, whichMeshes);
+      int value = g_lastGgridBlockPlaced;
 
-      c->owner = g_activeGgrid;
-      c->standalone = 0;
+      if(value != 0) {
 
-      c->value = g_lastGgridBlockPlaced;
-      g_activeGgrid->chunks.push_back(c);
-      if(c->floor != 0) {
-        c->floor->texture = g_activeGgrid->floortex;
-        c->floor->drawDiffuse = g_activeGgrid->hasFloor;
-        c->floor->drawShading = g_activeGgrid->hasBotShading;
-        if(g_activeGgrid->hasTrim) {
-          c->floor->hasTrim = 1;
-          c->floor->trimTexture = g_activeGgrid->trimtex;
-        }
-        for(int i = 0; i < c->floor->numVertices; i++) {
-          float xpos = c->floor->vertex[i].position.x + c->origin.x;
-          float ypos = c->floor->vertex[i].position.y + c->origin.y;
-          xpos = fmod(xpos, 1024);
-          ypos = fmod(ypos, 880);
-          xpos /= 1024.0;
-          ypos /= 880.0;
-          if(fmod(c->origin.x,1024) == 960) {
-            //this is the horizontal edge case
-            if(abs(xpos - 0) < 0.001) {xpos = 1;}
-          }
-          if(fmod(c->origin.y,880) == 825) {
-            //this is the vertical edge case
-            if(abs(ypos - 0) < 0.001) {ypos = 1;}
-          }
+        vector<bool> whichMeshes = {0,0,0,0,0};
+        if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
+        if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
 
-          c->floor->vertex[i].tex_coord.x = xpos;
-          c->floor->vertex[i].tex_coord.y = ypos;
-        }
-      }
-      if(c->decorative != 0) {
-        c->decorative->texture = g_activeGgrid->floortex;
-        for(int i = 0; i < c->decorative->numVertices; i++) {
-          float xpos = c->decorative->vertex[i].position.x + c->origin.x;
-          float ypos = c->decorative->vertex[i].position.y + c->origin.y;
-          xpos = fmod(xpos, 1024);
-          ypos = fmod(ypos, 880);
-          xpos /= 1024.0;
-          ypos /= 880.0;
-          if(fmod(c->origin.x,1024) == 960) {
-            //this is the horizontal edge case
-            if(abs(xpos - 0) < 0.001) {xpos = 1;}
-          }
-          if(fmod(c->origin.y,880) == 825) {
-            //this is the vertical edge case
-            if(abs(ypos - 0) < 0.001) {ypos = 1;}
-          }
-  
-          c->decorative->vertex[i].tex_coord.x = xpos;
-          c->decorative->vertex[i].tex_coord.y = ypos;
-        }
-      }
+        chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
+        c->owner = g_activeGgrid;
+        c->standalone = 0;
+        c->value = value;
+        g_activeGgrid->chunks.push_back(c);
 
-      if(c->wall != 0) {
-        c->wall->texture = g_activeGgrid->walltex;
-        c->wall->drawDiffuse = g_activeGgrid->hasWall;
+        if(c->floor != 0) {
+          c->floor->texture = g_activeGgrid->floortex;
+          c->floor->drawShading = g_activeGgrid->hasBotShading;
+          c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+          //c->floor->drawDiffuse = 0;
 
-            if(g_activeGgrid->wallShading == 1) {
-              c->wall->topOrBottomShading = 0;
-            } else if(g_activeGgrid->wallShading == 2) {
-              c->wall->topOrBottomShading = 1;
-            } else if(g_activeGgrid->wallShading == 3){
-              c->wall->topOrBottomShading = 2; //both
-            } else if(g_activeGgrid->wallShading == 4) {
-              c->wall->topOrBottomShading = 5;
-            } else {
-              c->wall->drawShading = 0;
-            }
-        //set texcoords of wall
-        //bottom verts have 0 red
-        for(int i = 0; i < c->wall->numVertices; i++) {
-          float xpos = c->wall->vertex[i].position.x + c->origin.x;
-          xpos = fmod(xpos, 1024);
-          xpos /= 1024.0;
-          if(fmod(c->origin.x,1024) == 960) {
-            //this is the horizontal edge case
-            if(abs(xpos - 0) < 0.001) {xpos = 1;}
-          }
-
-          c->wall->vertex[i].tex_coord.x = xpos;
-          if(c->wall->vertex[i].color.r > 128) {
-            c->wall->vertex[i].tex_coord.y = 0;
+          if(g_activeGgrid->hasTrim) {
+            c->floor->hasTrim = 1;
+            c->floor->trimTexture = g_activeGgrid->trimtex;
           } else {
-            c->wall->vertex[i].tex_coord.y = 1;
+            c->floor->hasTrim = 0;
+          }
 
+          for(int i = 0; i < c->floor->numVertices; i++) {
+            float xpos = c->floor->vertex[i].position.x + c->origin.x;
+            float ypos = c->floor->vertex[i].position.y + c->origin.y;
+            xpos = fmod(xpos, 256);
+            ypos = fmod(ypos, 256);
+            xpos /= 256.0;
+            ypos /= 256.0;
+            if(fmod(c->origin.x,256) == 192) {
+              //this is the horizontal edge case
+              if(abs(xpos - 0) < 0.001) {xpos = 1;}
+            }
+            if(fmod(c->origin.y,256) == 192) {
+              //this is the vertical edge case
+              if(abs(ypos - 0) < 0.001) {ypos = 1;}
+            }
+
+            c->floor->vertex[i].tex_coord.x = xpos;
+            c->floor->vertex[i].tex_coord.y = ypos;
+          }
+        }
+        if(c->decorative != 0) {
+          c->decorative->texture = g_activeGgrid->floortex;
+          for(int i = 0; i < c->decorative->numVertices; i++) {
+            float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+            float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+            xpos = fmod(xpos, 1024);
+            ypos = fmod(ypos, 880);
+            xpos /= 1024.0;
+            ypos /= 880.0;
+            if(fmod(c->origin.x,1024) == 960) {
+              //this is the horizontal edge case
+              if(abs(xpos - 0) < 0.001) {xpos = 1;}
+            }
+            if(fmod(c->origin.y,880) == 825) {
+              //this is the vertical edge case
+              if(abs(ypos - 0) < 0.001) {ypos = 1;}
+            }
+
+            c->decorative->vertex[i].tex_coord.x = xpos;
+            c->decorative->vertex[i].tex_coord.y = ypos;
           }
         }
 
+        if(c->wall != 0) {
+          c->wall->texture = g_activeGgrid->walltex;
+          c->wall->drawDiffuse = g_activeGgrid->hasWall;
+
+          if(g_activeGgrid->wallShading == 1) {
+            c->wall->topOrBottomShading = 3;
+          } else if(g_activeGgrid->wallShading == 2) {
+            c->wall->topOrBottomShading = 4;
+          } else if(g_activeGgrid->wallShading == 3){
+            c->wall->topOrBottomShading = 2; //both, 3 tall
+          } else if(g_activeGgrid->wallShading == 4) {
+            c->wall->topOrBottomShading =5;
+          } else {
+            c->wall->drawShading = 0;
+          }
+
+          if(value > 33) {
+          } else {
+
+            //set texcoords of wall
+            //bottom verts have 0 red
+            for(int i = 0; i < c->wall->numVertices; i++) {
+              float xpos = c->wall->vertex[i].position.x + c->origin.x;
+              xpos = fmod(xpos, 1024);
+              xpos /= 1024.0;
+              if(fmod(c->origin.x,1024) == 960) {
+                //this is the horizontal edge case
+                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+              }
+
+
+              float offset = fmodf(g_activeGgrid->originZ, 384.0f);
+              if(offset < 0) offset += 384.0f;
+              offset /= 384.0f;   // now in [0,1)
+
+              c->wall->vertex[i].tex_coord.x = xpos;
+
+              float regionOffset;
+
+              if(value >= 34) {
+                // 6-block-high wall
+                regionOffset = (c->wall->vertex[i].color.r > 128)
+                  ? 0.0f
+                  : 0.16666667f;
+              } else {
+                // 3-block-high wall
+                regionOffset = (c->wall->vertex[i].color.r > 128)
+                  ? 0.0f
+                  : 0.5f;
+              }
+
+              // final wrapped texture coordinate
+              float ty = offset + regionOffset;
+              ty = fmodf(ty, 1.0f);
+              if(ty < 0) ty += 1.0f;
+
+              c->wall->vertex[i].tex_coord.y = ty;
+
+            }
+          }
+        }
       }
 
 
-
-
-    } else {
-      M("No active Ggrid for g command");
     }
-
   }
 
   if(devinput[43] && !olddevinput[43]) {
@@ -6426,6 +6813,7 @@ void write_map(entity *mapent)
     floortex = texstrs[floortexIndex];
     delete floortexDisplay;
     floortexDisplay = new ui(renderer, floortex.c_str(), 0, 0, 0.1, 0.1, -100);
+    floortexDisplay->heightFromWidthFactor = 1;
   }
 
   if (devinput[17] && !olddevinput[17])
@@ -6449,29 +6837,12 @@ void write_map(entity *mapent)
     walltex = texstrs[walltexIndex];
     delete walltexDisplay;
     walltexDisplay = new ui(renderer, walltex.c_str(), 0.1, 0, 0.1, 0.1, 0);
+    walltexDisplay->heightFromWidthFactor = 1;
   }
 
   if (devinput[18] && !olddevinput[18])
   {
-    if (!g_holdingCTRL)
-    {
-      captexIndex++;
-    }
-    else
-    {
-      captexIndex--;
-    }
-    if (captexIndex == (int)texstrs.size())
-    {
-      captexIndex = 0;
-    }
-    if (captexIndex == -1)
-    {
-      captexIndex = texstrs.size() - 1;
-    }
-    captex = texstrs[captexIndex];
-    delete captexDisplay;
-    captexDisplay = new ui(renderer, captex.c_str(), 0.2, 0, 0.1, 0.1, 0);
+
   }
 
   // make collision-zone
@@ -6500,61 +6871,61 @@ void write_map(entity *mapent)
 
   if (devinput[22] && !olddevinput[22])
   {
-    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 0, walltex, captex);
+    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 0, walltex, walltex);
     mapObject *child;
     int tiltstep = g_TiltResolution;
     for (int i = 0; i < 64; i += tiltstep)
     {
       // make a strip of captex
-      child = new mapObject(renderer, r->captexture, "&", r->x, r->y - ((float)i * 55.0 / 64.0) + 55, r->layer * 64 + i, 64, tiltstep + 2, 0, 0);
+      child = new mapObject(renderer, r->captexture, "&", r->x, r->y - ((float)i * 64.0 / 64.0) + 64, r->layer * 64 + i, 64, tiltstep + 2, 0, 0);
       r->children.push_back(child);
     }
   }
 
   if (devinput[23] && !olddevinput[23])
   {
-    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 1, walltex, captex);
+    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 1, walltex, walltex);
     mapObject *child;
     int tiltstep = g_TiltResolution;
     for (int i = 0; i < 64; i += tiltstep)
     {
       // make a strip of captex
-      child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 55, r->layer * 64 + i, tiltstep, 55, 0, 0);
+      child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 64, r->layer * 64 + i, tiltstep, 64, 0, 0);
       r->children.push_back(child);
     }
     // wall
-    child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
+    child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 64, r->layer * 64, 64, 32, 1, 0);
     r->children.push_back(child);
   }
 
   if (devinput[24] && !olddevinput[24])
   {
-    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 2, walltex, captex);
-    mapObject *child;
-    int tiltstep = g_TiltResolution;
-    for (int i = 0; i < 55; i += tiltstep)
-    {
-      // make a strip of captex
-      child = new mapObject(renderer, r->captexture, "&", r->x, r->y - i + 55, r->layer * 64 + (64 - (i * (64 / 55))), 64, tiltstep, 0, 0);
-      r->children.push_back(child);
-    }
-    // wall
-    child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
-    r->children.push_back(child);
-  }
-
-  if (devinput[25] && !olddevinput[25])
-  {
-    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 3, walltex, captex);
+    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 2, walltex, walltex);
     mapObject *child;
     int tiltstep = g_TiltResolution;
     for (int i = 0; i < 64; i += tiltstep)
     {
       // make a strip of captex
-      child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 55, r->layer * 64 + (64 - i), tiltstep, 55, 0, 0);
+      child = new mapObject(renderer, r->captexture, "&", r->x, r->y - i + 64, r->layer * 64 + (64 - (i * (64 / 64))), 64, tiltstep, 0, 0);
       r->children.push_back(child);
     }
-    child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 55, r->layer * 64, 64, 32, 1, 0);
+    // wall
+    child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 64, r->layer * 64, 64, 32, 1, 0);
+    r->children.push_back(child);
+  }
+
+  if (devinput[25] && !olddevinput[25])
+  {
+    ramp *r = new ramp(marker->x, marker->y, wallstart / 64, 3, walltex, walltex);
+    mapObject *child;
+    int tiltstep = g_TiltResolution;
+    for (int i = 0; i < 64; i += tiltstep)
+    {
+      // make a strip of captex
+      child = new mapObject(renderer, r->captexture, "&", r->x + i, r->y + 64, r->layer * 64 + (64 - i), tiltstep, 64, 0, 0);
+      r->children.push_back(child);
+    }
+    child = new mapObject(renderer, r->walltexture, "&", r->x, r->y + 64, r->layer * 64, 64, 32, 1, 0);
     r->children.push_back(child);
   }
 
@@ -6580,5 +6951,3 @@ void close_map_writing()
   ofile.close();
 }
 
-
-#endif

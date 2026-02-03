@@ -397,7 +397,7 @@ void TitleLoop() {
         {
           init_map_writing(renderer);
         }
-        load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+        load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave, 0, 0);
         transition = 1;
 
         break;
@@ -524,7 +524,7 @@ void TitleLoop() {
         {
           init_map_writing(renderer);
         }
-        load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave);
+        load_map(renderer, "resources/maps/" + g_mapOfLastSave + ".map", g_waypointOfLastSave, 0, 0);
 
         transition = 1;
 

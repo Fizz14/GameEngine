@@ -42,8 +42,8 @@ void runCombatScript(vector<string> combatScript, int turn, combatant* c, string
 //enum type {
 //  NONE,
 //  HEAVY,
-//  NIMBLE,
-//  ARMORED
+//  LIGHT,
+//  FLYING,
 //};
 
 enum type {
@@ -364,10 +364,10 @@ public:
   vector<ui*> partyHealthBoxes;
   //textbox* partyText = 0;
   vector<textbox*> partyNameTextboxes; // "Fomm"
-  vector<textbox*> partyHealthDescripterTextboxes; // "HP:"
-  vector<textbox*> partyHealthTextboxes;          // "33/40"
-  vector<textbox*> partyManaDescripterTextboxes;  // "SP:"
-  vector<textbox*> partyManaTextboxes;            // "12/14"
+  //vector<textbox*> partyHealthDescripterTextboxes; // "HP:"
+  //vector<textbox*> partyHealthTextboxes;          // "33/40"
+  //vector<textbox*> partyManaDescripterTextboxes;  // "SP:"
+  //vector<textbox*> partyManaTextboxes;            // "12/14"
   
   //this is for re-rendering the text when the values change
   vector<int> pHpRValues = {0,0,0,0};
@@ -470,6 +470,13 @@ public:
   const float dodgerAngleDelta = 1;
   SDL_Texture* rendertarget = 0;
   SDL_Texture* bulletTexture = 0;
+
+  //for drawing healthbar/manabar
+  SDL_Texture* heartTexture = 0;
+  SDL_Texture* heartEmptyTexture = 0;
+  SDL_Texture* starTexture = 0;
+  SDL_Texture* starEmptyTexture = 0;
+
   int accuA = 0;
   int accuB = 0;
   int accuC = 0;

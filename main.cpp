@@ -19,6 +19,7 @@
 #include "lightcookies.h"
 #include "specialobjects.h"
 #include "utils.h"
+#include "mesh.h"
 #include "combat.h"
 #include "title.h"
 #include "loss.h"
@@ -225,6 +226,12 @@ void drawUI() {
 void updateWindowResolution() {
   // update camera
   SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
+
+//  float a = STANDARD_SCREENWIDTH;
+//  float b = WIN_WIDTH;
+//  scalex = b/a;
+//  SDL_RenderSetScale(renderer, scalex, scalex);
+//  return;
 
   WIN_DIAG = pow( pow(WIN_WIDTH/2,2) + pow(WIN_HEIGHT/2,2),0.5) + 25;
 
@@ -511,7 +518,7 @@ void ExplorationLoop() {
                 }
           
                 if(x->drawDiffuse == 1) {
-                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+                  //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
           //        SDL_Rect a = {0,0.2, 0.2, 0.2};
           //        SDL_RenderCopy(renderer, x->texture, NULL, &a);
                 }
@@ -715,6 +722,7 @@ void ExplorationLoop() {
               blackrect = transformRect(blackrect);
               SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
             }
+
           
             for (long long unsigned int i = 0; i < g_tiles.size(); i++)
             {
@@ -959,11 +967,11 @@ void ExplorationLoop() {
 
                   for(int i = 0; i < g_partyCombatants.size(); i++) {
                     combatUIManager->partyNameTextboxes[i]->show = 1;
-                    combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
-                    combatUIManager->partyHealthTextboxes[i]->show = 1;
-                    combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
-                    combatUIManager->partyManaTextboxes[i]->show = 1;
                     combatUIManager->partyHealthBoxes[i]->show = 1;
+                    //combatUIManager->partyHealthTextboxes[i]->show = 1;
+//                    combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+//                    combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+//                    combatUIManager->partyManaTextboxes[i]->show = 1;
                   }
                     
 //                  combatUIManager->partyText->show = 1;
@@ -981,10 +989,10 @@ void ExplorationLoop() {
                   g_amState = amState::SPIRIT;
                   for(int i = 0; i < g_partyCombatants.size(); i++) {
                     combatUIManager->partyNameTextboxes[i]->show = 1;
-                    combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
-                    combatUIManager->partyHealthTextboxes[i]->show = 1;
-                    combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
-                    combatUIManager->partyManaTextboxes[i]->show = 1;
+                    //combatUIManager->partyHealthTextboxes[i]->show = 1;
+//                    combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+//                    combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+//                    combatUIManager->partyManaTextboxes[i]->show = 1;
                     combatUIManager->partyHealthBoxes[i]->show = 1;
                   }
 //                  combatUIManager->partyText->show = 1;
@@ -1209,10 +1217,10 @@ void ExplorationLoop() {
             combatUIManager->menuPicker->show = 0;
             for(int i = 0; i < g_partyCombatants.size(); i++) {
               combatUIManager->partyNameTextboxes[i]->show = 0;
-              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyHealthTextboxes[i]->show = 0;
-              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyManaTextboxes[i]->show = 0;
+//              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              //combatUIManager->partyHealthTextboxes[i]->show = 0;
+//              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+//              combatUIManager->partyManaTextboxes[i]->show = 0;
               combatUIManager->partyHealthBoxes[i]->show = 0;
             }
 //            combatUIManager->partyText->show = 0;
@@ -1337,10 +1345,10 @@ void ExplorationLoop() {
                 combatUIManager->currentTarget = 0;
                 for(int i = 0; i < g_partyCombatants.size(); i++) {
                   combatUIManager->partyNameTextboxes[i]->show = 1;
-                  combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
-                  combatUIManager->partyHealthTextboxes[i]->show = 1;
-                  combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
-                  combatUIManager->partyManaTextboxes[i]->show = 1;
+//                  combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+                  //combatUIManager->partyHealthTextboxes[i]->show = 1;
+//                  combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+//                  combatUIManager->partyManaTextboxes[i]->show = 1;
                   combatUIManager->partyHealthBoxes[i]->show = 1;
                 }
 //                combatUIManager->partyText->show = 1;
@@ -1627,10 +1635,10 @@ void ExplorationLoop() {
             g_amState = amState::MAJOR;
             for(int i = 0; i < g_partyCombatants.size(); i++) {
               combatUIManager->partyNameTextboxes[i]->show = 0;
-              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyHealthTextboxes[i]->show = 0;
-              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyManaTextboxes[i]->show = 0;
+//              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              //combatUIManager->partyHealthTextboxes[i]->show = 0;
+//              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+//              combatUIManager->partyManaTextboxes[i]->show = 0;
               combatUIManager->partyHealthBoxes[i]->show = 0;
             }
 //            combatUIManager->partyText->show = 0;
@@ -1678,10 +1686,10 @@ void ExplorationLoop() {
           if(protag_is_talking) {
             for(int i = 0; i < g_partyCombatants.size(); i++) {
               combatUIManager->partyNameTextboxes[i]->show = 0;
-              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyHealthTextboxes[i]->show = 0;
-              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyManaTextboxes[i]->show = 0;
+              //combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              //combatUIManager->partyHealthTextboxes[i]->show = 0;
+//              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+//              combatUIManager->partyManaTextboxes[i]->show = 0;
               combatUIManager->partyHealthBoxes[i]->show = 0;
             }
 //            combatUIManager->partyText->show = 0;
@@ -1689,10 +1697,10 @@ void ExplorationLoop() {
           } else {
             for(int i = 0; i < g_partyCombatants.size(); i++) {
               combatUIManager->partyNameTextboxes[i]->show = 1;
-              combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
-              combatUIManager->partyHealthTextboxes[i]->show = 1;
-              combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
-              combatUIManager->partyManaTextboxes[i]->show = 1;
+              //combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+              //combatUIManager->partyHealthTextboxes[i]->show = 1;
+//              combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+//              combatUIManager->partyManaTextboxes[i]->show = 1;
               combatUIManager->partyHealthBoxes[i]->show = 1;
             }
 //            combatUIManager->partyText->show = 1;
@@ -1768,10 +1776,10 @@ void ExplorationLoop() {
           if(protag_is_talking) {
             for(int i = 0; i < g_partyCombatants.size(); i++) {
               combatUIManager->partyNameTextboxes[i]->show = 0;
-              combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyHealthTextboxes[i]->show = 0;
-              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
-              combatUIManager->partyManaTextboxes[i]->show = 0;
+              //combatUIManager->partyHealthDescripterTextboxes[i]->show = 0;
+              //combatUIManager->partyHealthTextboxes[i]->show = 0;
+//              combatUIManager->partyManaDescripterTextboxes[i]->show = 0;
+//              combatUIManager->partyManaTextboxes[i]->show = 0;
               combatUIManager->partyHealthBoxes[i]->show = 0;
             }
 //            combatUIManager->partyText->show = 0;
@@ -1779,10 +1787,10 @@ void ExplorationLoop() {
           } else {
             for(int i = 1; i < g_partyCombatants.size(); i++) {
               combatUIManager->partyNameTextboxes[i]->show = 1;
-              combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
-              combatUIManager->partyHealthTextboxes[i]->show = 1;
-              combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
-              combatUIManager->partyManaTextboxes[i]->show = 1;
+              //combatUIManager->partyHealthDescripterTextboxes[i]->show = 1;
+              //combatUIManager->partyHealthTextboxes[i]->show = 1;
+//              combatUIManager->partyManaDescripterTextboxes[i]->show = 1;
+//              combatUIManager->partyManaTextboxes[i]->show = 1;
                     combatUIManager->partyHealthBoxes[i]->show = 1;
             }
 //            combatUIManager->partyText->show = 1;
@@ -3298,7 +3306,7 @@ void ExplorationLoop() {
         // render this frame
 
         clear_map(g_camera);
-        load_map(renderer, savemap, dest_waypoint);
+        load_map(renderer, savemap, dest_waypoint, 0, 0);
         transition = 1;
 
         // clear_map() will also delete engine tiles, so let's re-load them (but only if the user is map-editing)
@@ -3360,7 +3368,9 @@ void ExplorationLoop() {
       }
 
     }
+
   }
+
   B("Entity update");
   if(g_breakFromPrimarySwitch) {
     g_breakFromPrimarySwitch = 0;
@@ -3388,7 +3398,7 @@ void ExplorationLoop() {
   if(g_dungeonDarkEffect > 255) { g_dungeonDarkEffect = 255;}
   if(g_dungeonDarkEffect < g_dungeonDarkness) { g_dungeonDarkEffect = g_dungeonDarkness;}
   if(g_dungeonDarkEffect == 255) {
-    dungeonFlash();
+    //dungeonFlash();
   }
 
 
@@ -3858,6 +3868,63 @@ void ExplorationLoop() {
       
       g_activeGgridFlickerProlongMs -= elapsed;
     }
+
+    {
+//      //render axes at 0,0
+//      const int thickness = 4;
+//      bool xVis = (g_camera.x <= 0.0f) && (g_camera.x + g_camera.width >= 0.0f);
+//      bool yVis = (g_camera.y <= 0.0f) && (g_camera.y + g_camera.height >= 0.0f);
+
+
+      //robiony przez artifycjal intelligencje
+      auto worldToScreenX = [](float wx) { return(int)(wx - g_camera.x);};
+      auto worldToScreenY = [](float wy) { return(int)(wy - g_camera.y);};
+      float camLeft = g_camera.x;
+      float camRight = g_camera.x + g_camera.width;
+      float camTop = g_camera.y;
+      float camBottom = g_camera.y + g_camera.height;
+
+      SDL_Rect dst;
+
+
+//      if(xVis) {
+//        int screenX = (int)(-g_camera.x) - thickness/2;
+//        dst = {screenX, 0, thickness, g_camera.height};
+//        SDL_Rect src = {0,0,5,5};
+//        SDL_RenderCopy(renderer, g_axesTexture, &src, &dst);
+//      }
+//      if(yVis) {
+//        int screenY = (int)(-g_camera.y) - thickness/2;
+//        dst = {0, screenY, g_camera.width, thickness};
+//        SDL_Rect src = {5,0,5,5};
+//        SDL_RenderCopy(renderer, g_axesTexture, &src, &dst);
+//      }
+
+      SDL_Rect srcNeg = {6,6,4,4};
+      if(camLeft < 0 && camTop < 0) {
+        dst.x = 0;
+        dst.y = 0;
+        dst.w = worldToScreenX(0);
+        dst.h = worldToScreenY(0);
+        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
+      }
+      if(camLeft < 0 && camBottom > 0) {
+        dst.x = 0;
+        dst.y = worldToScreenY(0);
+        dst.w = worldToScreenX(0);
+        dst.h = worldToScreenY(camBottom) - dst.y;
+        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
+      }
+      if(camRight > 0 && camTop < 0) {
+        dst.x = worldToScreenX(0);
+        dst.y = 0;
+        dst.w = worldToScreenX(camRight) - dst.x;
+        dst.h = worldToScreenY(0);
+        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
+      }
+
+    }
+      
   }
 
   rect cam(0, 0, g_camera.width, g_camera.height);
@@ -3894,9 +3961,7 @@ void ExplorationLoop() {
                                    -(x->origin.z * XtoZ);
                 v[i].color.a = x->vertex[i].color.a;
             }
-            SDL_RenderGeometry(renderer, x->texture,
-                               v.data(), x->numVertices,
-                               x->indices, x->numIndices);
+            //SDL_RenderGeometry(renderer, x->texture, v.data(), x->numVertices, x->indices, x->numIndices);
           }
   
         // shade pass
@@ -3971,70 +4036,140 @@ void ExplorationLoop() {
   float px, py;
 
   //visual walls
-  //these will be drawn again later IF they have an occluder
-  
-  for(auto &x : g_meshVWalls) {
-    if(x->visible && x->awake) {
-      SDL_Vertex v[x->numVertices];
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i] = x->vertex[i];
-        v[i].position.x += x->origin.x - g_camera.x;
-        v[i].position.y += x->origin.y - g_camera.y
-                           -(x->origin.z * XtoZ);
-        v[i].color.r = v[i].color.g;
-      }
-
-//      D(v[0].position.x);
-//      D(v[0].position.y);
-//      D(x->indices[0]);
-//      D(x->numIndices);
-//      D(x->numVertices);
-
-      int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-//      D(ret);
-//      const char* error = SDL_GetError();
-//      D(error);
-      
-      
-
-      if(x->drawShading) {
-        //render shade
+ 
+  vector<mesh*>* meshset;
+  if(g_usingFloorplan) {
+    for(auto &x : g_meshVWalls) {
+      if(x->visible && x->awake) {
+        SDL_Vertex v[x->numVertices];
         for(int i = 0; i < x->numVertices; i++) {
-          v[i].tex_coord.x = x->vertexExtraData[i].first;
-          v[i].tex_coord.y = x->vertexExtraData[i].second;
+          v[i] = x->vertex[i];
+          v[i].position.x += x->origin.x - g_camera.x;
+          v[i].position.y += x->origin.y - g_camera.y
+                             -(x->origin.z * XtoZ);
+          v[i].color.r = v[i].color.g;
         }
   
-        switch(x->topOrBottomShading) {
-          case 0:
-            {
-              SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-              break;
-            }
-          case 1:
-            {
-              SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-              break;
-            }
-          case 2:
-            {
-              SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-              break;
-            }
-          case 3:
-            {
-              SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-              break;
-            }
-          case 4:
-            {
-              SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-              break;
-            }
-          case 5:
-            {
-              SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-              break;
-            }
+  //      D(v[0].position.x);
+  //      D(v[0].position.y);
+  //      D(x->indices[0]);
+  //      D(x->numIndices);
+  //      D(x->numVertices);
+  
+        int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+  //      D(ret);
+  //      const char* error = SDL_GetError();
+  //      D(error);
+        
+        
+  
+        if(x->drawShading) {
+          //render shade
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
+          }
+    
+          switch(x->topOrBottomShading) {
+            case 0:
+              {
+                SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 1:
+              {
+                SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 2:
+              {
+                SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 3:
+              {
+                SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 4:
+              {
+                SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 5:
+              {
+                SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+          }
+        }
+      }
+    }
+
+  } else {
+    for(auto &x : g_meshVWalls) {
+      if(x->visible && x->awake) {
+        SDL_Vertex v[x->numVertices];
+        for(int i = 0; i < x->numVertices; i++) {
+          v[i] = x->vertex[i];
+          v[i].position.x += x->origin.x - g_camera.x;
+          v[i].position.y += x->origin.y - g_camera.y
+                             -(x->origin.z * XtoZ);
+          v[i].color.r = v[i].color.g;
+        }
+  
+  //      D(v[0].position.x);
+  //      D(v[0].position.y);
+  //      D(x->indices[0]);
+  //      D(x->numIndices);
+  //      D(x->numVertices);
+  
+        int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+  //      D(ret);
+  //      const char* error = SDL_GetError();
+  //      D(error);
+        
+        
+  
+        if(x->drawShading) {
+          //render shade
+          for(int i = 0; i < x->numVertices; i++) {
+            v[i].tex_coord.x = x->vertexExtraData[i].first;
+            v[i].tex_coord.y = x->vertexExtraData[i].second;
+          }
+    
+          switch(x->topOrBottomShading) {
+            case 0:
+              {
+                SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 1:
+              {
+                SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 2:
+              {
+                SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 3:
+              {
+                SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 4:
+              {
+                SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+            case 5:
+              {
+                SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+                break;
+              }
+          }
         }
       }
     }
@@ -4725,7 +4860,7 @@ int WinMain()
 
   SDL_SetWindowMinimumSize(window, 100, 100);
 
-  SDL_SetWindowPosition(window, 1280, 800);
+  SDL_SetWindowPosition(window, 1280, 700);
 
   Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
   SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
@@ -4865,7 +5000,6 @@ int WinMain()
     nodeInfoText->dropshadow = 1;
     nodeInfoText->align = 0;
     g_config = "dev";
-    nodeDebug = loadTexture(renderer, "resources/engine/walkerYellow.qoi");
   }
 
   // set bindings from file
@@ -5050,17 +5184,17 @@ int WinMain()
 //  g_chain_entity = new entity(renderer, "common/chain");
 //  g_chain_entity->msPerFrame = 75;
 
-  if(devMode) {
-    g_dijkstraDebugRed = new ui(renderer, "resources/engine/walkerRed.qoi", 0,0,32,32, 3);
-    g_dijkstraDebugRed->persistent = 1;
-    g_dijkstraDebugRed->worldspace = 1;
-    g_dijkstraDebugBlue = new ui(renderer, "resources/engine/walkerBlue.qoi", 0,0,32,32, 3);
-    g_dijkstraDebugBlue->persistent = 1;
-    g_dijkstraDebugBlue->worldspace = 1;
-    g_dijkstraDebugYellow = new ui(renderer, "resources/engine/walkerYellow.qoi", 0,0,32,32, 3);
-    g_dijkstraDebugYellow->persistent = 1;
-    g_dijkstraDebugYellow->worldspace = 1;
-  }
+//  if(devMode) {
+//    g_dijkstraDebugRed = new ui(renderer, "resources/engine/walkerRed.qoi", 0,0,32,32, 3);
+//    g_dijkstraDebugRed->persistent = 1;
+//    g_dijkstraDebugRed->worldspace = 1;
+//    g_dijkstraDebugBlue = new ui(renderer, "resources/engine/walkerBlue.qoi", 0,0,32,32, 3);
+//    g_dijkstraDebugBlue->persistent = 1;
+//    g_dijkstraDebugBlue->worldspace = 1;
+//    g_dijkstraDebugYellow = new ui(renderer, "resources/engine/walkerYellow.qoi", 0,0,32,32, 3);
+//    g_dijkstraDebugYellow->persistent = 1;
+//    g_dijkstraDebugYellow->worldspace = 1;
+//  }
 
   //init user keyboard
   //render each character of the alphabet to a texture
@@ -5552,7 +5686,107 @@ int WinMain()
       c->floor->vertex[i].color.g = 255;
       c->floor->vertex[i].color.b = 255;
     }
-    c = new chunk("ggrid/33", "", "", origin, 1, 0, 1.8);
+
+    //The 33rd piece is a lighting used for shading/trim on the outsides of joinings of 45 degree walls and straight walls.
+    c = new chunk("ggrid/33", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    //From here, we have walls in the style of TBoI or LoZ
+    c = new chunk("ggrid/34", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/35", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    c = new chunk("ggrid/36", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/37", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+
+
+    c = new chunk("ggrid/38", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/39", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    c = new chunk("ggrid/40", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+    c = new chunk("ggrid/41", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+
+    // these are LoZ style outside corners
+    
+    c = new chunk("ggrid/42", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    c = new chunk("ggrid/43", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    c = new chunk("ggrid/44", "", "", origin, 1, 0, 1);
+    c->floor->ggridPiece = 1;
+    for(int i = 0; i <c->floor->numVertices; i++) {
+      c->floor->vertex[i].color.r = 255;
+      c->floor->vertex[i].color.g = 255;
+      c->floor->vertex[i].color.b = 255;
+    }
+
+    c = new chunk("ggrid/45", "", "", origin, 1, 0, 1);
     c->floor->ggridPiece = 1;
     for(int i = 0; i <c->floor->numVertices; i++) {
       c->floor->vertex[i].color.r = 255;
@@ -7322,231 +7556,231 @@ void getExplorationInput(float &elapsed)
   }
   else if (input[11] && !oldinput[11] && inPauseMenu && !g_firstFrameOfPauseMenu)
   {
-    if(g_inventoryUiIsLevelSelect == 0) {
-
-      if(g_inventoryUiIsKeyboard) {
-        //append this character to the string
-
-        //handle special keys like caps, backspace, and enter
-        if(
-            g_alphabet[inventorySelection] == '<' 
-            || g_alphabet[inventorySelection] == '^' 
-            || g_alphabet[inventorySelection] == ';'
-
-          ) {
-
-          //backspace
-          if(g_alphabet[inventorySelection] == '<') {
-            if(g_keyboardInput.size() > 0) {
-              g_keyboardInput = g_keyboardInput.substr(0, g_keyboardInput.size()-1);
-            }
-          }
-
-          //caps
-          if(g_alphabet[inventorySelection] == '^') {
-            if(g_alphabet == g_alphabet_lower) {
-              g_alphabet = g_alphabet_upper;
-              g_alphabet_textures = &g_alphabetUpper_textures;
-            } else {
-              g_alphabet = g_alphabet_lower;
-              g_alphabet_textures = &g_alphabetLower_textures;
-            }
-          }
-
-          if(g_alphabet[inventorySelection] == ';' && g_keyboardInput != "") {
-            writeSaveFieldString(g_keyboardSaveToField, g_keyboardInput);
-
-            //this will continue the script which was running, even if it just instantly terminates
-
-            g_inventoryUiIsLevelSelect = 0;
-            g_inventoryUiIsKeyboard = 0;
-            inPauseMenu = 0;
-            adventureUIManager->hideInventoryUI();
-
-
-            adventureUIManager->dialogue_index++;
-            adventureUIManager->continueDialogue();
-          }
-
-
-        } else {
-
-          if(g_keyboardInput.size() < g_keyboardInputLength) {
-            g_keyboardInput += g_alphabet[inventorySelection];
-          }
-
-          //take off caps (add sound if it was on)
-          g_alphabet = g_alphabet_lower;
-          g_alphabet_textures = &g_alphabetLower_textures;
-
-        }
-
-      }
-    } else {
-      //if this level is unlocked, travel to its map
-      if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
-
-        string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
-        vector<string> x = splitString(mapName, '/');
-        g_mapdir = x[2];
-
-
-
-        int numFloors = g_levelSequence->levelNodes[inventorySelection]->dungeonFloors;
-
-        g_dungeonDarkness = g_levelSequence->levelNodes[inventorySelection]->darkness;
-
-        //generate the DUNGEON ( :DD )
-
-        if(numFloors > 0){
-          /*
-           * Time to have some structured thought about how this should be done.
-           * I'll keep it basic, but retain some important functionality.
-           * A little bit of "rawness" or "roughness" (e.g., player can be running from a behemoth through
-           * a room which they didn't explore alone, which would be annoying and unfair, lol) is good.
-           * 
-           * But I want this to be simple yet still give me some freedom (some rooms are rarer than others, some rooms
-           * tend to spawn later)
-           *
-           * Maps proceeded with c_, u_, r_, s_, and e_ can be randomly selected to spawn in the dungeon.
-           *
-           * Rooms with c_ are common, u_ are uncommon and r_ are rare.
-           * s_ (special rooms) and e_ (easter-egg rooms) can replace the other types of rooms so long as the player isn't being chased by a behemoth
-           * s_ rooms are garanteed to spawn, but e_ rooms are the rarest type of room in the game (perfect for easter eggs)
-           *
-           *
-           * See? That should be simple enough to be doable quickly while still mysterious enough and flexible enough for me 
-           * to create many different types of dungeons, including use of the dungeon data params from the levelsequence file
-           * (number of floors, length of a rest sequence, length of a chase sequence, first active floor)
-           *
-           * start.map is first, and finish.map is last
-           *
-           */
-
-          g_dungeon.clear();
-          g_dungeonIndex = 0;
-          g_dungeonBehemoths.clear();
-          g_dungeonCommonFloors.clear();
-          g_dungeonUncommonFloors.clear();
-          g_dungeonRareFloors.clear();
-          g_dungeonSpecialFloors.clear();
-          g_dungeonEggFloors.clear();
-          g_dungeonSystemOn = 1;
-
-          //get list of eligible maps in the mapdir
-          string dir = "resources/maps/" + g_mapdir;
-          char ** entries = PHYSFS_enumerateFiles(dir.c_str());
-          char **i;
-          for(i = entries; *i != NULL; i++) {
-            string fn(*i);
-            if(fn.find(".map") != string::npos && fn.size() > 2 && fn[1] == '-') {
-              if(fn[0] == 'c') {g_dungeonCommonFloors.push_back(fn);}
-              else if(fn[0] == 'u') {g_dungeonUncommonFloors.push_back(fn);}
-              else if(fn[0] == 'r') {g_dungeonRareFloors.push_back(fn);}
-              else if(fn[0] == 's') {g_dungeonSpecialFloors.push_back(fn);}
-              else if(fn[0] == 'e') {g_dungeonEggFloors.push_back(fn);}
-            }
-          }
-          PHYSFS_freeList(entries);
-
-          if(g_dungeonUncommonFloors.size() == 0) {
-            for(auto x : g_dungeonCommonFloors) {
-              g_dungeonUncommonFloors.push_back(x);
-            }
-          }
-
-          if(g_dungeonSpecialFloors.size() == 0) {
-            for(auto x : g_dungeonCommonFloors) {
-              g_dungeonSpecialFloors.push_back(x);
-            }
-          }
-
-          for(int i = 0; i < numFloors; i++) {
-
-            float random = frng(0,1);
-            string mapstring = "";
-            char identity = 'a';
-            if(random <= 0.55) {
-              int random = rng(0, g_dungeonCommonFloors.size()-1);
-              mapstring = g_dungeonCommonFloors.at(random);
-              identity = 'c';
-            } else if(random <= 0.85){
-              int random = rng(0, g_dungeonUncommonFloors.size()-1);
-              mapstring = g_dungeonUncommonFloors.at(random);
-              identity = 'u';
-            } else {
-              int random = rng(0, g_dungeonRareFloors.size()-1);
-              mapstring = g_dungeonRareFloors.at(random);
-              identity = 'r';
-            }
-
-            dungeonFloorInfo n;
-            n.map = mapstring;
-            n.identity = identity;
-            g_dungeon.push_back(n);
-
-          }
-
-          g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
-          g_dungeon.at(g_dungeon.size() -1).identity = 'e';
-
-          g_dungeonMs = 0;
-          g_dungeonHits = 0;
-
-        } else {
-          g_dungeonSystemOn = 0;
-        }
-
-        clear_map(g_camera);
-
-        inPauseMenu = 0;
-
-
-        //since we are loading a new level, reset the pellets
-        g_currentPelletsCollected = 0;
-
-        load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
-        g_levelSequenceIndex = inventorySelection;
-        adventureUIManager->hideInventoryUI();
-
-
-        if (canSwitchOffDevMode)
-        {
-          init_map_writing(renderer);
-        }
-        protag_is_talking = 0;
-        adventureUIManager->dPointToMe = 0;
-        protag_can_move = 1;
-        adventureUIManager->showHUD();
-
-        int setFirst = 0;
-        for(auto x : g_levelSequence->levelNodes[g_levelSequenceIndex]->behemoths) {
-          if(x == "0" || x == "none") {break;}
-          dungeonBehemothInfo n;
-          n.ptr = new entity(renderer, x);
-          n.ptr->x = 0;
-          n.ptr->y = 0;
-          n.ptr->persistentGeneral = 1;
-          n.ptr->tangible = 0;
-          if(!setFirst) { 
-            n.waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor; 
-          } else {
-            float waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor + g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * frng(0.6,1.4);
-            n.waitFloors = waitFloors; 
-          }
-          setFirst = 1;
-
-          for(auto &y : n.ptr->spawnlist) {
-            y->persistentGeneral = 1;
-          }
-
-          g_dungeonBehemoths.push_back(n);
-        }
-
-
-
-      } 
-    }
+//    if(g_inventoryUiIsLevelSelect == 0) {
+//
+//      if(g_inventoryUiIsKeyboard) {
+//        //append this character to the string
+//
+//        //handle special keys like caps, backspace, and enter
+//        if(
+//            g_alphabet[inventorySelection] == '<' 
+//            || g_alphabet[inventorySelection] == '^' 
+//            || g_alphabet[inventorySelection] == ';'
+//
+//          ) {
+//
+//          //backspace
+//          if(g_alphabet[inventorySelection] == '<') {
+//            if(g_keyboardInput.size() > 0) {
+//              g_keyboardInput = g_keyboardInput.substr(0, g_keyboardInput.size()-1);
+//            }
+//          }
+//
+//          //caps
+//          if(g_alphabet[inventorySelection] == '^') {
+//            if(g_alphabet == g_alphabet_lower) {
+//              g_alphabet = g_alphabet_upper;
+//              g_alphabet_textures = &g_alphabetUpper_textures;
+//            } else {
+//              g_alphabet = g_alphabet_lower;
+//              g_alphabet_textures = &g_alphabetLower_textures;
+//            }
+//          }
+//
+//          if(g_alphabet[inventorySelection] == ';' && g_keyboardInput != "") {
+//            writeSaveFieldString(g_keyboardSaveToField, g_keyboardInput);
+//
+//            //this will continue the script which was running, even if it just instantly terminates
+//
+//            g_inventoryUiIsLevelSelect = 0;
+//            g_inventoryUiIsKeyboard = 0;
+//            inPauseMenu = 0;
+//            adventureUIManager->hideInventoryUI();
+//
+//
+//            adventureUIManager->dialogue_index++;
+//            adventureUIManager->continueDialogue();
+//          }
+//
+//
+//        } else {
+//
+//          if(g_keyboardInput.size() < g_keyboardInputLength) {
+//            g_keyboardInput += g_alphabet[inventorySelection];
+//          }
+//
+//          //take off caps (add sound if it was on)
+//          g_alphabet = g_alphabet_lower;
+//          g_alphabet_textures = &g_alphabetLower_textures;
+//
+//        }
+//
+//      }
+//    } else {
+//      //if this level is unlocked, travel to its map
+//      if(g_levelSequence->levelNodes[inventorySelection]->locked == 0) {
+//
+//        string mapName = g_levelSequence->levelNodes[inventorySelection]->mapfilename;
+//        vector<string> x = splitString(mapName, '/');
+//        g_mapdir = x[2];
+//
+//
+//
+//        int numFloors = g_levelSequence->levelNodes[inventorySelection]->dungeonFloors;
+//
+//        g_dungeonDarkness = g_levelSequence->levelNodes[inventorySelection]->darkness;
+//
+//        //generate the DUNGEON ( :DD )
+//
+//        if(numFloors > 0){
+//          /*
+//           * Time to have some structured thought about how this should be done.
+//           * I'll keep it basic, but retain some important functionality.
+//           * A little bit of "rawness" or "roughness" (e.g., player can be running from a behemoth through
+//           * a room which they didn't explore alone, which would be annoying and unfair, lol) is good.
+//           * 
+//           * But I want this to be simple yet still give me some freedom (some rooms are rarer than others, some rooms
+//           * tend to spawn later)
+//           *
+//           * Maps proceeded with c_, u_, r_, s_, and e_ can be randomly selected to spawn in the dungeon.
+//           *
+//           * Rooms with c_ are common, u_ are uncommon and r_ are rare.
+//           * s_ (special rooms) and e_ (easter-egg rooms) can replace the other types of rooms so long as the player isn't being chased by a behemoth
+//           * s_ rooms are garanteed to spawn, but e_ rooms are the rarest type of room in the game (perfect for easter eggs)
+//           *
+//           *
+//           * See? That should be simple enough to be doable quickly while still mysterious enough and flexible enough for me 
+//           * to create many different types of dungeons, including use of the dungeon data params from the levelsequence file
+//           * (number of floors, length of a rest sequence, length of a chase sequence, first active floor)
+//           *
+//           * start.map is first, and finish.map is last
+//           *
+//           */
+//
+//          g_dungeon.clear();
+//          g_dungeonIndex = 0;
+//          g_dungeonBehemoths.clear();
+//          g_dungeonCommonFloors.clear();
+//          g_dungeonUncommonFloors.clear();
+//          g_dungeonRareFloors.clear();
+//          g_dungeonSpecialFloors.clear();
+//          g_dungeonEggFloors.clear();
+//          g_dungeonSystemOn = 1;
+//
+//          //get list of eligible maps in the mapdir
+//          string dir = "resources/maps/" + g_mapdir;
+//          char ** entries = PHYSFS_enumerateFiles(dir.c_str());
+//          char **i;
+//          for(i = entries; *i != NULL; i++) {
+//            string fn(*i);
+//            if(fn.find(".map") != string::npos && fn.size() > 2 && fn[1] == '-') {
+//              if(fn[0] == 'c') {g_dungeonCommonFloors.push_back(fn);}
+//              else if(fn[0] == 'u') {g_dungeonUncommonFloors.push_back(fn);}
+//              else if(fn[0] == 'r') {g_dungeonRareFloors.push_back(fn);}
+//              else if(fn[0] == 's') {g_dungeonSpecialFloors.push_back(fn);}
+//              else if(fn[0] == 'e') {g_dungeonEggFloors.push_back(fn);}
+//            }
+//          }
+//          PHYSFS_freeList(entries);
+//
+//          if(g_dungeonUncommonFloors.size() == 0) {
+//            for(auto x : g_dungeonCommonFloors) {
+//              g_dungeonUncommonFloors.push_back(x);
+//            }
+//          }
+//
+//          if(g_dungeonSpecialFloors.size() == 0) {
+//            for(auto x : g_dungeonCommonFloors) {
+//              g_dungeonSpecialFloors.push_back(x);
+//            }
+//          }
+//
+//          for(int i = 0; i < numFloors; i++) {
+//
+//            float random = frng(0,1);
+//            string mapstring = "";
+//            char identity = 'a';
+//            if(random <= 0.55) {
+//              int random = rng(0, g_dungeonCommonFloors.size()-1);
+//              mapstring = g_dungeonCommonFloors.at(random);
+//              identity = 'c';
+//            } else if(random <= 0.85){
+//              int random = rng(0, g_dungeonUncommonFloors.size()-1);
+//              mapstring = g_dungeonUncommonFloors.at(random);
+//              identity = 'u';
+//            } else {
+//              int random = rng(0, g_dungeonRareFloors.size()-1);
+//              mapstring = g_dungeonRareFloors.at(random);
+//              identity = 'r';
+//            }
+//
+//            dungeonFloorInfo n;
+//            n.map = mapstring;
+//            n.identity = identity;
+//            g_dungeon.push_back(n);
+//
+//          }
+//
+//          g_dungeon.at(g_dungeon.size() -1).map = "finish.map";
+//          g_dungeon.at(g_dungeon.size() -1).identity = 'e';
+//
+//          g_dungeonMs = 0;
+//          g_dungeonHits = 0;
+//
+//        } else {
+//          g_dungeonSystemOn = 0;
+//        }
+//
+//        clear_map(g_camera);
+//
+//        inPauseMenu = 0;
+//
+//
+//        //since we are loading a new level, reset the pellets
+//        g_currentPelletsCollected = 0;
+//
+//        load_map(renderer, mapName, g_levelSequence->levelNodes[inventorySelection]->waypointname);
+//        g_levelSequenceIndex = inventorySelection;
+//        adventureUIManager->hideInventoryUI();
+//
+//
+//        if (canSwitchOffDevMode)
+//        {
+//          init_map_writing(renderer);
+//        }
+//        protag_is_talking = 0;
+//        adventureUIManager->dPointToMe = 0;
+//        protag_can_move = 1;
+//        adventureUIManager->showHUD();
+//
+//        int setFirst = 0;
+//        for(auto x : g_levelSequence->levelNodes[g_levelSequenceIndex]->behemoths) {
+//          if(x == "0" || x == "none") {break;}
+//          dungeonBehemothInfo n;
+//          n.ptr = new entity(renderer, x);
+//          n.ptr->x = 0;
+//          n.ptr->y = 0;
+//          n.ptr->persistentGeneral = 1;
+//          n.ptr->tangible = 0;
+//          if(!setFirst) { 
+//            n.waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor; 
+//          } else {
+//            float waitFloors = g_levelSequence->levelNodes[inventorySelection]->firstActiveFloor + g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * frng(0.6,1.4);
+//            n.waitFloors = waitFloors; 
+//          }
+//          setFirst = 1;
+//
+//          for(auto &y : n.ptr->spawnlist) {
+//            y->persistentGeneral = 1;
+//          }
+//
+//          g_dungeonBehemoths.push_back(n);
+//        }
+//
+//
+//
+//      } 
+//    }
   }
 
   dialogue_cooldown -= elapsed;
@@ -7952,7 +8186,6 @@ void toggleDevmode() {
   {
     if(drawhitboxes) {
       floortexDisplay->show = 1;
-      captexDisplay->show = 1;
       walltexDisplay->show = 1;
     }
     //boxsenabled = 0;
@@ -7961,7 +8194,6 @@ void toggleDevmode() {
   {
     protag->turningSpeed = 1.4;
     floortexDisplay->show = 0;
-    captexDisplay->show = 0;
     walltexDisplay->show = 0;
     boxsenabled = 1;
     // float scalex = ((float)WIN_WIDTH / 1920) * g_defaultZoom;
@@ -7989,269 +8221,268 @@ void protagMakesNoise() {
 }
 
 
-void dungeonFlash() {
-  g_usingMsToStunned = 0; //the trick!
-  protag->hisStatusComponent.enraged.clearStatuses();
-  protag->bonusSpeed = 0;
-  protag_is_talking = 2;
-  adventureUIManager->executingScript = 0;
-  adventureUIManager->mobilize = 0;
-  adventureUIManager->hideTalkingUI();
-
-  g_dungeonDoorActivated = 0;
-  //oddly, if I put g_dungeon.size() - 1 in the conditional directly it seems to fail inexplicably
-  int size = g_dungeon.size();
-  size -= 1;
-  if(g_dungeonIndex >= size) {
-
-    {
-      string field = g_levelSequence->levelNodes[g_levelSequenceIndex]->name + "-time";
-      int timeToBeat = checkSaveField(field);
-      if(g_dungeonMs < timeToBeat || timeToBeat == -1) {
-        //new record
-        M("New time record:" + to_string(g_dungeonMs));
-        M("Old value was " + to_string(timeToBeat));
-        writeSaveField(field, g_dungeonMs);
-      }
-      field = g_levelSequence->levelNodes[g_levelSequenceIndex]->name + "-hits";
-      int hitsToBeat = checkSaveField(field);
-      if(g_dungeonHits < hitsToBeat || hitsToBeat == -1) {
-        M("New hits record:" + to_string(g_dungeonHits));
-        M("Old value was " + to_string(hitsToBeat));
-        writeSaveField(field, g_dungeonHits);
-
-
-      }
-    }
-
-    //clear all behemoths
-    for(auto &x : g_dungeonBehemoths) {
-      x.ptr->persistentGeneral = 0;
-      x.ptr->current = nullptr;
-      x.ptr->dest = nullptr;
-      x.ptr->Destination = nullptr;
-
-      for(auto &y : x.ptr->spawnlist) {
-        y->persistentGeneral = 0;
-      }
-    }
-    g_dungeonBehemoths.clear();
-
-    //this dungeon is finished, play the beaten script to probably unlock a level, save the game, and open
-    //the menu select, but it might be to initiate a credits sequence or play a cutscene or something cool
-    string l = "resources/maps/" + g_mapdir + "/beaten.txt";
-
-    g_levelFlashing = 1; //don't do an effect
-    clear_map(g_camera);
-    g_levelFlashing = 0;
-    transition = 0;
-
-    if (canSwitchOffDevMode)
-    {
-      init_map_writing(renderer);
-    }
-
-    vector<string> beatenScript = loadText(l);
-    parseScriptForLabels(beatenScript);
-
-    for(auto x: beatenScript) {
-      D(x);
-    }
-
-    adventureUIManager->talker = narrarator;
-    adventureUIManager->ownScript = beatenScript;
-    adventureUIManager->dialogue_index = -1;
-    adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-    adventureUIManager->sleepingMS = 0;
-    g_forceEndDialogue = 0;
-    adventureUIManager->continueDialogue();
-
-  } else {
-
-
-    int numberOfActiveBehemoths = 0;
-
-    if(!g_dungeonRedo) {
-      //decide if we will end any chases
-      for(auto &x : g_dungeonBehemoths) {
-        if(x.active) {
-          x.floorsRemaining -= 1;
-          if(x.floorsRemaining < 1) {
-            //deactivate this behemoth
-            x.active = 0;
-            x.waitFloors = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * frng(0.6,1.4);
-            x.floorsRemaining = 0;
-            //            M("Behemoth sleeps for:");
-            //            D(x.waitFloors);
-          }
-
-        } else {
-          x.waitFloors -= 1;
-          if(x.waitFloors < 1) {
-            //spawn dungeon behemoth
-            //activate this behemoth
-            x.active = 1;
-            x.floorsRemaining = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgChaseSequence * frng(0.6,1.4);
-            //            M("Behemoth active for:");
-            //            D(x.floorsRemaining);
-
-          }
-
-
-        }
-
-      }
-    } else {
-    }
-
-    for(auto x : g_dungeonBehemoths) {
-      if(x.active) { numberOfActiveBehemoths++; }
-
-    }
-
-
-
-    g_dungeonIndex++;
-    g_levelFlashing = 1;
-    clear_map(g_camera);
-    transition = 1;
-    if(g_dungeonIndex == 0) {
-      load_map(renderer, "resources/maps/" + g_mapdir + "/start.map", "a");
-    } else {
-      bool randomCheck = rng(1,20) > 18;
-      D(randomCheck);
-      if(g_dungeonSpecialFloors.size() > 0 && numberOfActiveBehemoths == 0 && randomCheck && g_dungeonIndex < g_dungeon.size()-1 && !g_dungeonRedo) {
-        D(g_dungeonSpecialFloors.size());
-        int randomIndex = rng(0, g_dungeonSpecialFloors.size() - 1);
-        string replacestr = "resources/maps/" + g_mapdir + "/" + g_dungeonSpecialFloors[randomIndex];
-        g_dungeon.at(g_dungeonIndex).map = g_dungeonSpecialFloors[randomIndex];
-        load_map(renderer, replacestr, "a");
-        g_dungeonSpecialFloors.erase(g_dungeonSpecialFloors.begin() + randomIndex);
-
-      } else {
-
-        load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_dungeon.at(g_dungeonIndex).map, "a");
-      }
-    }
-    transition = 0;
-    protag_is_talking = 0;
-    adventureUIManager->dPointToMe = 0;
-    protag_can_move = 1;
-    protag->zvel = 0;
-    protag->z = 0;
-    g_levelFlashing = 0;
-    adventureUIManager->showHUD();
-    g_dungeonRedo = 0;
-
-    //this could be faster.
-    //I added some lines clearing g_behemothx to clear_map() to
-    //prevent a memory error, so this is rather safe
-    //probably not a big deal
-//    for(auto x : g_entities) {
-//      if(!x->isAI) {continue;}
-//      if(x->aiIndex == 0) {
-//        g_behemoth0 = x;
-//        g_behemoths.push_back(x);
-//      } else if(x->aiIndex == 1) {
-//        g_behemoth1 = x;
-//        g_behemoths.push_back(x);
-//      } else if(x->aiIndex == 2) {
-//        g_behemoth2 = x;
-//        g_behemoths.push_back(x);
-//      } else if(x->aiIndex == 3) {
-//        g_behemoth3 = x;
-//        g_behemoths.push_back(x);
+//void dungeonFlash() {
+//  g_usingMsToStunned = 0; //the trick!
+//  protag->hisStatusComponent.enraged.clearStatuses();
+//  protag->bonusSpeed = 0;
+//  protag_is_talking = 2;
+//  adventureUIManager->executingScript = 0;
+//  adventureUIManager->mobilize = 0;
+//  adventureUIManager->hideTalkingUI();
+//
+//  g_dungeonDoorActivated = 0;
+//  //oddly, if I put g_dungeon.size() - 1 in the conditional directly it seems to fail inexplicably
+//  int size = g_dungeon.size();
+//  size -= 1;
+//  if(g_dungeonIndex >= size) {
+//
+//    {
+//      string field = g_levelSequence->levelNodes[g_levelSequenceIndex]->name + "-time";
+//      int timeToBeat = checkSaveField(field);
+//      if(g_dungeonMs < timeToBeat || timeToBeat == -1) {
+//        //new record
+//        M("New time record:" + to_string(g_dungeonMs));
+//        M("Old value was " + to_string(timeToBeat));
+//        writeSaveField(field, g_dungeonMs);
+//      }
+//      field = g_levelSequence->levelNodes[g_levelSequenceIndex]->name + "-hits";
+//      int hitsToBeat = checkSaveField(field);
+//      if(g_dungeonHits < hitsToBeat || hitsToBeat == -1) {
+//        M("New hits record:" + to_string(g_dungeonHits));
+//        M("Old value was " + to_string(hitsToBeat));
+//        writeSaveField(field, g_dungeonHits);
+//
+//
 //      }
 //    }
-
-
-    //M(" -- Active behemoths:");
-    //try to spawn the second behemoth at waypoint b, and third at c, etc.
-    int index = 0;
-    for(auto &x : g_dungeonBehemoths) {
-      if(g_dungeonBehemoths[0].active) {
-        x.ptr->frameInAnimation = 0;
-
-        for (auto &y : x.ptr->spawnlist) {
-          y->tangible = 1;
-          y->visible = 0;
-        }
-
-        for(int i = 0; i < x.ptr->myAbilities.size(); i++) {
-          x.ptr->myAbilities[i].ready = 0;
-          x.ptr->myAbilities[i].cooldownMS = x.ptr->myAbilities[i].upperCooldownBound;
-        }
-
-        //D(x.ptr->name);
-        x.ptr->tangible = 1;
-        x.ptr->semisolid = 0;
-        if(index == 3) {
-          if(g_waypoints.size()>3) {
-            x.ptr->setOriginX(g_waypoints.at(3)->x);
-            x.ptr->setOriginY(g_waypoints.at(3)->y);
-          } else {
-            x.ptr->tangible = 0;
-            x.ptr->x = 0;
-            x.ptr->y = 0;
-          }
-        }
-
-        if(index == 2) {
-          if(g_waypoints.size()>2) {
-            x.ptr->setOriginX(g_waypoints.at(2)->x);
-            x.ptr->setOriginY(g_waypoints.at(2)->y);
-          } else {
-            x.ptr->tangible = 0;
-            x.ptr->x = 0;
-            x.ptr->y = 0;
-          }
-        }
-
-        if(index == 1) {
-          if(g_waypoints.size()>1) {
-            x.ptr->setOriginX(g_waypoints.at(1)->x);
-            x.ptr->setOriginY(g_waypoints.at(1)->y);
-          } else {
-            x.ptr->tangible = 0;
-            x.ptr->x = 0;
-            x.ptr->y = 0;
-          }
-        }
-        if(index == 0) {
-          if(g_waypoints.size()>0) {
-            x.ptr->setOriginX(g_waypoints.at(0)->x);
-            x.ptr->setOriginY(g_waypoints.at(0)->y);
-          } else {
-            x.ptr->tangible = 0;
-            x.ptr->x = 0;
-            x.ptr->y = 0;
-          }
-        }
-
-        x.ptr->opacity = -350;
-        x.ptr->opacity_delta = 5;
-        x.ptr->agrod = 1;
-        x.ptr->target = protag;
-        x.ptr->shadow->alphamod = -350;
-        x.ptr->hisStatusComponent.stunned.addStatus(2000, 1);
-      } else {
-        x.ptr->tangible = 0;
-        x.ptr->x = 0;
-        x.ptr->y = 0;
-
-        for (auto &y : x.ptr->spawnlist) {
-          y->tangible = 0;
-        }
-
-      }
-      index++;
-    }
-
-
-    if (canSwitchOffDevMode)
-    {
-      init_map_writing(renderer);
-    }
-  }
-
-}
+//
+//    //clear all behemoths
+//    for(auto &x : g_dungeonBehemoths) {
+//      x.ptr->persistentGeneral = 0;
+//      x.ptr->current = nullptr;
+//      x.ptr->dest = nullptr;
+//      x.ptr->Destination = nullptr;
+//
+//      for(auto &y : x.ptr->spawnlist) {
+//        y->persistentGeneral = 0;
+//      }
+//    }
+//    g_dungeonBehemoths.clear();
+//
+//    //this dungeon is finished, play the beaten script to probably unlock a level, save the game, and open
+//    //the menu select, but it might be to initiate a credits sequence or play a cutscene or something cool
+//    string l = "resources/maps/" + g_mapdir + "/beaten.txt";
+//
+//    g_levelFlashing = 1; //don't do an effect
+//    clear_map(g_camera);
+//    g_levelFlashing = 0;
+//    transition = 0;
+//
+//    if (canSwitchOffDevMode)
+//    {
+//      init_map_writing(renderer);
+//    }
+//
+//    vector<string> beatenScript = loadText(l);
+//    parseScriptForLabels(beatenScript);
+//
+//    for(auto x: beatenScript) {
+//      D(x);
+//    }
+//
+//    adventureUIManager->talker = narrarator;
+//    adventureUIManager->ownScript = beatenScript;
+//    adventureUIManager->dialogue_index = -1;
+//    adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+//    adventureUIManager->sleepingMS = 0;
+//    g_forceEndDialogue = 0;
+//    adventureUIManager->continueDialogue();
+//
+//  } else {
+//
+//
+//    int numberOfActiveBehemoths = 0;
+//
+//    if(!g_dungeonRedo) {
+//      //decide if we will end any chases
+//      for(auto &x : g_dungeonBehemoths) {
+//        if(x.active) {
+//          x.floorsRemaining -= 1;
+//          if(x.floorsRemaining < 1) {
+//            //deactivate this behemoth
+//            x.active = 0;
+//            x.waitFloors = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgRestSequence * frng(0.6,1.4);
+//            x.floorsRemaining = 0;
+//            //            M("Behemoth sleeps for:");
+//            //            D(x.waitFloors);
+//          }
+//
+//        } else {
+//          x.waitFloors -= 1;
+//          if(x.waitFloors < 1) {
+//            //spawn dungeon behemoth
+//            //activate this behemoth
+//            x.active = 1;
+//            x.floorsRemaining = g_levelSequence->levelNodes[g_levelSequenceIndex]->avgChaseSequence * frng(0.6,1.4);
+//            //            M("Behemoth active for:");
+//            //            D(x.floorsRemaining);
+//
+//          }
+//
+//
+//        }
+//
+//      }
+//    } else {
+//    }
+//
+//    for(auto x : g_dungeonBehemoths) {
+//      if(x.active) { numberOfActiveBehemoths++; }
+//
+//    }
+//
+//
+//
+//    g_dungeonIndex++;
+//    g_levelFlashing = 1;
+//    clear_map(g_camera);
+//    transition = 1;
+//    if(g_dungeonIndex == 0) {
+//      load_map(renderer, "resources/maps/" + g_mapdir + "/start.map", "a");
+//    } else {
+//      bool randomCheck = rng(1,20) > 18;
+//      if(g_dungeonSpecialFloors.size() > 0 && numberOfActiveBehemoths == 0 && randomCheck && g_dungeonIndex < g_dungeon.size()-1 && !g_dungeonRedo) {
+//        D(g_dungeonSpecialFloors.size());
+//        int randomIndex = rng(0, g_dungeonSpecialFloors.size() - 1);
+//        string replacestr = "resources/maps/" + g_mapdir + "/" + g_dungeonSpecialFloors[randomIndex];
+//        g_dungeon.at(g_dungeonIndex).map = g_dungeonSpecialFloors[randomIndex];
+//        load_map(renderer, replacestr, "a");
+//        g_dungeonSpecialFloors.erase(g_dungeonSpecialFloors.begin() + randomIndex);
+//
+//      } else {
+//
+//        load_map(renderer, "resources/maps/" + g_mapdir + "/" + g_dungeon.at(g_dungeonIndex).map, "a");
+//      }
+//    }
+//    transition = 0;
+//    protag_is_talking = 0;
+//    adventureUIManager->dPointToMe = 0;
+//    protag_can_move = 1;
+//    protag->zvel = 0;
+//    protag->z = 0;
+//    g_levelFlashing = 0;
+//    adventureUIManager->showHUD();
+//    g_dungeonRedo = 0;
+//
+//    //this could be faster.
+//    //I added some lines clearing g_behemothx to clear_map() to
+//    //prevent a memory error, so this is rather safe
+//    //probably not a big deal
+////    for(auto x : g_entities) {
+////      if(!x->isAI) {continue;}
+////      if(x->aiIndex == 0) {
+////        g_behemoth0 = x;
+////        g_behemoths.push_back(x);
+////      } else if(x->aiIndex == 1) {
+////        g_behemoth1 = x;
+////        g_behemoths.push_back(x);
+////      } else if(x->aiIndex == 2) {
+////        g_behemoth2 = x;
+////        g_behemoths.push_back(x);
+////      } else if(x->aiIndex == 3) {
+////        g_behemoth3 = x;
+////        g_behemoths.push_back(x);
+////      }
+////    }
+//
+//
+//    //M(" -- Active behemoths:");
+//    //try to spawn the second behemoth at waypoint b, and third at c, etc.
+//    int index = 0;
+//    for(auto &x : g_dungeonBehemoths) {
+//      if(g_dungeonBehemoths[0].active) {
+//        x.ptr->frameInAnimation = 0;
+//
+//        for (auto &y : x.ptr->spawnlist) {
+//          y->tangible = 1;
+//          y->visible = 0;
+//        }
+//
+//        for(int i = 0; i < x.ptr->myAbilities.size(); i++) {
+//          x.ptr->myAbilities[i].ready = 0;
+//          x.ptr->myAbilities[i].cooldownMS = x.ptr->myAbilities[i].upperCooldownBound;
+//        }
+//
+//        //D(x.ptr->name);
+//        x.ptr->tangible = 1;
+//        x.ptr->semisolid = 0;
+//        if(index == 3) {
+//          if(g_waypoints.size()>3) {
+//            x.ptr->setOriginX(g_waypoints.at(3)->x);
+//            x.ptr->setOriginY(g_waypoints.at(3)->y);
+//          } else {
+//            x.ptr->tangible = 0;
+//            x.ptr->x = 0;
+//            x.ptr->y = 0;
+//          }
+//        }
+//
+//        if(index == 2) {
+//          if(g_waypoints.size()>2) {
+//            x.ptr->setOriginX(g_waypoints.at(2)->x);
+//            x.ptr->setOriginY(g_waypoints.at(2)->y);
+//          } else {
+//            x.ptr->tangible = 0;
+//            x.ptr->x = 0;
+//            x.ptr->y = 0;
+//          }
+//        }
+//
+//        if(index == 1) {
+//          if(g_waypoints.size()>1) {
+//            x.ptr->setOriginX(g_waypoints.at(1)->x);
+//            x.ptr->setOriginY(g_waypoints.at(1)->y);
+//          } else {
+//            x.ptr->tangible = 0;
+//            x.ptr->x = 0;
+//            x.ptr->y = 0;
+//          }
+//        }
+//        if(index == 0) {
+//          if(g_waypoints.size()>0) {
+//            x.ptr->setOriginX(g_waypoints.at(0)->x);
+//            x.ptr->setOriginY(g_waypoints.at(0)->y);
+//          } else {
+//            x.ptr->tangible = 0;
+//            x.ptr->x = 0;
+//            x.ptr->y = 0;
+//          }
+//        }
+//
+//        x.ptr->opacity = -350;
+//        x.ptr->opacity_delta = 5;
+//        x.ptr->agrod = 1;
+//        x.ptr->target = protag;
+//        x.ptr->shadow->alphamod = -350;
+//        x.ptr->hisStatusComponent.stunned.addStatus(2000, 1);
+//      } else {
+//        x.ptr->tangible = 0;
+//        x.ptr->x = 0;
+//        x.ptr->y = 0;
+//
+//        for (auto &y : x.ptr->spawnlist) {
+//          y->tangible = 0;
+//        }
+//
+//      }
+//      index++;
+//    }
+//
+//
+//    if (canSwitchOffDevMode)
+//    {
+//      init_map_writing(renderer);
+//    }
+//  }
+//
+//}
