@@ -188,9 +188,9 @@ chunk::chunk() {
 
 chunk::~chunk() {
   g_chunks.erase(remove(g_chunks.begin(), g_chunks.end(), this), g_chunks.end());
-  if(owner != nullptr) {
-    owner->chunks.erase(remove(owner->chunks.begin(), owner->chunks.end(), this), owner->chunks.end());
-  }
+//  if(owner != nullptr) {
+//    owner->chunks.erase(remove(owner->chunks.begin(), owner->chunks.end(), this), owner->chunks.end());
+//  }
 }
 
 chunk* duplicateChunk(const chunk* original, vec3 newOrigin, vector<bool> whichMeshes) {

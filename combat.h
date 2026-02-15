@@ -9,6 +9,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <string>
 #include <unordered_map>
+#include "globals.h"
 
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 1024;
@@ -28,6 +29,7 @@ struct dropInfo {
   string name = "";
   float dropPercent = 0;
   int dropIndex = 0;
+  int dropType = 0;
 
   float eDropPercent = 0;
   float eDropIndex = 0;
@@ -114,6 +116,7 @@ struct turnSerialization {
   int target;
   turnAction action;
   int actionIndex;
+  int secondActionIndex;
 };
 
 struct statusEntry {
@@ -225,7 +228,8 @@ public:
 
   //vector<vector<int>> attackPatterns;
 
-  int itemToUse = -1;
+  int itemIndexToUse = -1;
+  int itemTypeToUse = -1;
 
   vector<int> spiritMoves = {};
 
@@ -238,6 +242,7 @@ public:
   int article = 0; //0-> a, 1-> an, 2-> the 
 
   int droppedItemIndex = 0;
+  int droppedItemType = 0;
   float droppedItemPercent = 0;
 
   int droppedEquipableIndex = 0;
@@ -277,7 +282,7 @@ struct spiritInfo {
 
 
 //extern std::vector<std::pair<int, std::string>> itemNamesTable;
-extern std::unordered_map<int, itemInfo> itemsTable;
+extern unordered_map<int, std::unordered_map<int, itemInfo>> itemsTable;
 
 extern std::unordered_map<int, spiritInfo> spiritTable;
 
@@ -299,7 +304,7 @@ int xpToLevel(int xp);
 
 int levelToXp(int level);
 
-void useItem(int item, int target, combatant* user);
+int useItem(int itemType, int index, int target, combatant* user);
 
 class ui;
 class textbox;
@@ -310,53 +315,6 @@ enum turn {
 };
 
 type stringToType(const std::string& str);
-
-//for handing menuing in turn based combat code
-enum class submode {
-  BEFORE,
-  INWIPE,
-  OUTWIPE,
-  TEXT, //entry text box
-  MAIN, //player chooses between Fight, Items, Spirit, Defend, Run
-  SPIRITCHOOSE, //player chooses which spirit move to use
-  ITEMCHOOSE, //player chooses which item to use
-  TARGETING, //player chooses which enemy to target
-  ALLYTARGETING, 
-  CONTINUE, //go to next party member, or maybe to execute
-  EXECUTE_P, //take serialization and play out the player's turns
-  TEXT_P, //Feedback about player's turns
-  EXECUTE_E, //play the enemies's turns
-  TEXT_E, //Feedback about the enemies's turns
-  FINAL,
-  FINALTEXT, // Feedback about the battle
-  SPWARNING,
-  DODGING,
-  RUNWARNING,
-  RUNSUCCESSTEXT,
-  RUNFAILTEXT,
-  CHARAXP,
-  XPTEXT,
-  LEVELUP,
-  LEVELTEXT,
-  LEARNEDTEXT, // sonso learned X
-  LEARNTEXT, // sonso can learn X, but would need to forget a move. Choose a move to forget.
-  FORGET, //select a move to forget
-  FORGETTEXT,
-  FORGETCONFIRM,
-  MEMBERDEADTEXT,
-  ALLDEADTEXT,
-  OUTWIPEL,
-  STATUS_P,
-  TEXT_STATUS_P,
-  STATUS_E,
-  TEXT_STATUS_E,
-  MEMBERDEADTEXT_P, //member dead from self damage
-  TEXT_IDLE, //prints the text when an enemy doesn't attack
-  TEXT_ENEMY_BLINDED,
-  DROPITEMS,
-  DROPITEMTEXT,
-};
-
 
 class combatUI {
 public:

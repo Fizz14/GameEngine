@@ -593,6 +593,28 @@ void specialObjectsInit(entity* a) {
       
       break;
     }
+    case 46:
+    {
+      //food item
+      
+      a->bounceindex = rand() % 8;
+      //the item should already be set in a->data[1]
+      
+      a->data[0] = 0; //which item is granted
+
+      break;
+    }
+    case 47:
+    {
+      M("Disk init'd");
+      //disk item
+      a->bounceindex = rand() % 8;
+      
+      a->data[0] = 0; //which item is granted
+
+      break;
+    }
+ 
 
     case 100:
     {
@@ -3017,25 +3039,64 @@ void specialObjectsUpdate(entity* a, float elapsed) {
       }
 
       if(rectInRect(protag->getMovedBounds(), doorrect)) {
-        //M("Time to move the player");
           doorData dd = g_Lozdoors[a->lozdoorNumber];
-//          D(a->lozdoorNumber);
-//          D(dd.toCoords.x);
-//          D(dd.toCoords.y);
           if(dd.enabled) {
             if(dd.toCoords.x >= 0 && dd.toCoords.x < g_floorplan.size() && dd.toCoords.y >= 0 && dd.toCoords.y < g_floorplan[0].size()) {
-              g_floorPos.x = dd.toCoords.x;
-              g_floorPos.y = dd.toCoords.y;
-              float angle = a->steeringAngle + M_PI;
-              protag->setOriginX(protag->getOriginX() + cos(angle) * 64 * 4);
-              protag->setOriginY(protag->getOriginY() + -sin(angle) * 64 * 4);
-              g_camera.lag = 4;
-              for(auto x : party) {
-                x->setOriginX(protag->getOriginX());
-                x->setOriginY(protag->getOriginY());
-                x->steeringAngle = protag->steeringAngle;
-                x->targetSteeringAngle = protag->steeringAngle;
-                x->forceAngularUpdate = 1;
+
+              g_LoZDoorTakenIndex = a->lozdoorNumber;
+              g_LoZDoorTaken = a;
+              g_LoZChangeRoom = 1;
+              break;
+
+              if (0) {
+                g_lastFloorPos = g_floorPos;
+                g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y].opacity = 255;
+                g_floorPos.x = dd.toCoords.x;
+                g_floorPos.y = dd.toCoords.y;
+                g_floorplan[g_floorPos.x][g_floorPos.y].opacity = 80;
+                for(auto x : g_actorsInRoom) {
+                  g_actorsInLastRoom.push_back(x);
+                }
+                g_actorsInRoom.clear();
+                for(auto x : g_floorplan[g_floorPos.x][g_floorPos.y].entities) {
+                  g_actorsInRoom.push_back(x);
+                }
+                for(auto x : party) {
+                  g_actorsInRoom.push_back(x);
+                  g_actorsInRoom.push_back(x->shadow);
+                }
+                g_actorsInRoom.push_back(g_spin_entity);
+                g_entitiesInRoom.clear();
+                for(auto x : g_floorplan[g_floorPos.x][g_floorPos.y].entities) {
+                  g_entitiesInRoom.push_back(x);
+                }
+                for(auto x : party) {
+                  g_entitiesInRoom.push_back(x);
+                }
+  
+                if(abs(sin(a->steeringAngle)) > abs(cos(a->steeringAngle))) {
+                  M("Vertical transition");
+                  g_camera.lag = 4;
+                  D(g_camera.lag);
+                } else {
+                  M("horizontal transition");
+                  g_camera.lag = 4*(17.0/9.0);
+                  D(g_camera.lag);
+                }
+                for(auto x : party) {
+                  x->setOriginX(protag->getOriginX());
+                  x->setOriginY(protag->getOriginY());
+                  if(x != protag) {
+                    x->xvel = rng(-50,50);
+                    x->yvel = rng(-50,50);
+                  } else {
+  //                  x->xvel = 0;
+  //                  x->yvel = 0;
+                  }
+                  x->steeringAngle = protag->steeringAngle;
+                  x->targetSteeringAngle = protag->steeringAngle;
+                  x->forceAngularUpdate = 1;
+                }
               }
             }
           }
@@ -3315,6 +3376,9 @@ int specialObjectsInteract(entity* a) {
     }
     case 37:
     {
+
+      //disabling this until I care to fix presents to work with the new g_items declaration
+      /* 
       //make a script and push it to the auim
 
       vector<string> script;
@@ -3373,6 +3437,7 @@ int specialObjectsInteract(entity* a) {
         adventureUIManager->continueDialogue();
 
       }
+      */
 
       break;
     }
@@ -3422,6 +3487,8 @@ int specialObjectsInteract(entity* a) {
     }
     case 41:
     {
+      //disabled bc of the new way items in the supplies menu are handled
+      /*
       //2disp
       vector<string> script;
       if(a->data[4] == 1) {
@@ -3495,10 +3562,13 @@ int specialObjectsInteract(entity* a) {
           adventureUIManager->continueDialogue();
         }
       }
+      */
       break;
     }
     case 42:
     {
+      //disabling this bc of the new item items in the supplies menu are handled
+      /*
       //3disp
       vector<string> script;
       if(a->data[4] == 1) {
@@ -3585,13 +3655,14 @@ int specialObjectsInteract(entity* a) {
           adventureUIManager->continueDialogue();
         }
       }
+      */
       break;
     }
     case 43:
     {
       //door to another map
       //travel
-      
+      D(a->name);
       const string toMap = "resources/maps/" + a->datastr[0] + ".map";
       const string wayp = a->datastr[1];
       clear_map(g_camera);
@@ -3609,7 +3680,7 @@ int specialObjectsInteract(entity* a) {
     }
     case 44:
     {
-      //pedastal
+      //pedastal, for adventure-style games like earthbound, not BoI
  
       if(a->data[1] == -1) {
         M("Pedastal is empty");
@@ -3664,6 +3735,63 @@ int specialObjectsInteract(entity* a) {
         writeSaveField(sfh, -1);
       }
 
+      break;
+    }
+    case 46:
+    { //food item
+      if(g_items.size() < g_maxInventorySize) {
+        itemData td;
+        td.type = 0;
+        td.index = a->data[0];
+        g_items.insert(g_items.begin(), td);
+        //g_items.push_back(td);
+      }
+      
+      break;
+    }
+    case 47:
+    { //disk
+      if(g_items.size() < g_maxInventorySize) {
+        itemData td;
+        td.type = 1;
+        td.index = a->data[0];
+        g_items.insert(g_items.begin(), td);
+        a->tangible = 0;
+
+        string itemName = itemsTable[1][a->data[0]].name;
+        string message = stringMultiInject(getLanguageData("GetDisk"), {itemName});
+
+        adventureUIManager->talker = narrarator;
+        adventureUIManager->dPointToMe = narrarator;
+  
+        vector<string> script = {message, "#"};
+
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->continueDialogue();
+
+      } else {
+        string itemName = itemsTable[1][a->data[0]].name;
+        string message = stringMultiInject(getLanguageData("NoSpaceForFDE"), {itemName});
+
+        adventureUIManager->talker = narrarator;
+        adventureUIManager->dPointToMe = narrarator;
+  
+        vector<string> script = {message, "#"};
+
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->continueDialogue();
+
+      }
       break;
     }
   }

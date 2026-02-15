@@ -14,6 +14,7 @@ void titleUI::hideAll() {
   title->show = 0;
   //titleExplosion->show = 0;
   titles->show = 0;
+  titleGraphic->show = 0;
   bg->show = 0;
 }
 
@@ -25,12 +26,16 @@ void titleUI::showAll() {
   handMarker->show = 1;
   panel->show = 1;
   title->show = 1;
+  titleGraphic->show = 1;
   //titleExplosion->show = 0;
   titles->show = 1;
   bg->show = 1;
 }
 
 titleUI::titleUI(SDL_Renderer* renderer) {
+
+  //titleGraphic = loadTexture(renderer, "resources/engine/title_graphic.qoi");
+
   newText = new textbox(renderer, getLanguageData("NewGameText").c_str(), 2, 0, 0, 0.9);
   newText->boxWidth = 1;
   newText->boxHeight = 0.5;
@@ -79,15 +84,18 @@ titleUI::titleUI(SDL_Renderer* renderer) {
   panel->persistent = true;
 
   //title = new ui(renderer, "resources/engine/title.qoi", 0.15, 0.13, 1-0.3, 0.13, 0);
-  title = new ui(renderer, "resources/engine/title.qoi", 0.1, 0.22, 1-0.2, 0.16, 0);
+  title = new ui(renderer, "resources/engine/title.qoi", 0.1, 0.12, 1-0.2, 0.16, 0);
   title->persistent = true;
 
 //  titleExplosion = new ui(renderer, "resources/engine/title_explosion.qoi", 0, 0.05, 1, 0.5, 0);
 //  titleExplosion->opacity = 255*90;
 //  titleExplosion->persistent = true;
 
-  titles = new ui(renderer, "resources/engine/title_shadow.qoi", 0.1 + 0.003, 0.22 + (0.003*1.6), 1-0.2, 0.16, 0);
+  titles = new ui(renderer, "resources/engine/title_shadow.qoi", 0.1 + 0.003, 0.12 + (0.003*1.6), 1-0.2 - 0.003, 0.16, 0);
   titles->persistent = true;
+
+  titleGraphic = new ui(renderer, "resources/engine/title_graphic.qoi", 0.15, 0.3, 0.7, 0.5, 0);
+  titleGraphic->heightFromWidthFactor = 0.35289;
 
   bg = new ui(renderer, "resources/engine/titlebg.qoi", 0, 0, 1, 1, 0);
   bg->persistent = true;
@@ -232,28 +240,37 @@ void TitleLoop() {
   }
 
   if(titleUIManager->option == 0) {
+    titleUIManager->handMarker->x = titleUIManager->newText->boxX + titleUIManager->handXOffset;
     titleUIManager->handMarker->y = titleUIManager->newText->boxY + titleUIManager->handYOffset;
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->newText->width;
-    titleUIManager->handMarker->x = titleUIManager->newText->boxX + (fwidth / ww / 2);
+    titleUIManager->handMarker->x -= fwidth/ww /2;
   } else if(titleUIManager->option == 1) {
+    titleUIManager->handMarker->x = titleUIManager->continueText->boxX + titleUIManager->handXOffset;
+    titleUIManager->handMarker->y = titleUIManager->continueText->boxY + titleUIManager->handYOffset;
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->continueText->width;
-    titleUIManager->handMarker->x = titleUIManager->continueText->boxX + (fwidth / ww / 2);
-    titleUIManager->handMarker->y = titleUIManager->continueText->boxY + titleUIManager->handYOffset;
+    titleUIManager->handMarker->x -= fwidth/ww /2;
 
   } else if(titleUIManager->option == 2) {
-    titleUIManager->handMarker->y = titleUIManager->endText->boxY + 0;//titleUIManager->handYOffset;
+
+    titleUIManager->handMarker->x = titleUIManager->endText->boxX + titleUIManager->handXOffset;
+    titleUIManager->handMarker->y = titleUIManager->endText->boxY + titleUIManager->handYOffset;
     float ww = WIN_WIDTH;
     float fwidth = titleUIManager->endText->width;
-    titleUIManager->handMarker->x = titleUIManager->endText->boxX;// + (fwidth / ww / 2);
-
+    titleUIManager->handMarker->x -= fwidth/ww /2;
   }
 
   
   updateWindowResolution();
 
   titleUIManager->bg->render(renderer, g_camera, elapsed);
+
+  SDL_Rect dest = {WIN_WIDTH* 0.2, WIN_HEIGHT*0.2, WIN_WIDTH*0.6, WIN_HEIGHT*0.6};
+
+  //SDL_RenderCopy(renderer, titleUIManager->titleGraphic, NULL, &dest);
+
+  titleUIManager->titleGraphic->render(renderer, g_camera, elapsed);
 
   //titleUIManager->panel->render(renderer, g_camera, elapsed);
 

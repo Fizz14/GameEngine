@@ -41,6 +41,7 @@ void setFloorSize(int width, int height) {
 }
 
 void placeRoom(string dir, int roomNum, coord pos) {
+  M("placeRoom()");
   if(pos.x >= g_floorplan.size() || pos.y >= g_floorplan[0].size()) {
     E("Tried placing a room out-of-bounds");
     abort();
@@ -55,15 +56,36 @@ void placeRoom(string dir, int roomNum, coord pos) {
   float offsetx = -128; float offsety = -128;
 
   load_map(renderer, ls, "a", pos.x*64*g_roomGridW + offsetx, pos.y * 64* g_roomGridH + offsety);
-  //load_map(renderer, ls, "a", pos.x*64*21, pos.y * 64* 13);
   g_floorplan[pos.x][pos.y].mesh = g_activeGgrid;
+  g_floorplan[pos.x][pos.y].opacity = 0;
 }
 
 void placeProtag(coord pos) {
+  M("placeProtag()");
   g_floorPos = pos;
+  g_lastFloorPos = {-1,-1};
   ggrid* g = g_floorplan[pos.x][pos.y].mesh;
   protag->setOriginX(g->originX + g->width*64/2);
   protag->setOriginY(g->originY + g->height*64/2);
+  g_floorplan[pos.x][pos.y].opacity = 255;
+
+  g_actorsInRoom.clear();
+  g_actorsInLastRoom.clear();
+  for(auto x : g_floorplan[g_floorPos.x][g_floorPos.y].entities) {
+    g_actorsInRoom.push_back(x);
+  }
+  for(auto x : party) {
+    g_actorsInRoom.push_back(x);
+    g_actorsInRoom.push_back(x->shadow);
+  }
+  g_actorsInRoom.push_back(g_spin_entity);
+  g_entitiesInRoom.clear();
+  for(auto x : g_floorplan[g_floorPos.x][g_floorPos.y].entities) {
+    g_entitiesInRoom.push_back(x);
+  }
+  for(auto x : party) {
+    g_entitiesInRoom.push_back(x);
+  }
 }
 
 void connectRooms(coord r1, coord r2) {
@@ -82,7 +104,6 @@ void connectRooms(coord r1, coord r2) {
     int padding = 64;
 
     if(abs(fc.x - sc.x) < 5) {
-      M("X's are equal");
       int xcoord = fc.x;
       int smallerY = min(fc.y, sc.y);
       int largerY = max(fc.y, sc.y);
@@ -91,7 +112,6 @@ void connectRooms(coord r1, coord r2) {
       r.y = smallerY - padding;
       r.height = (largerY + padding) - r.y;
     } else if(abs(fc.y - sc.y) < 5) {
-      //M("Y's are equal");
       int ycoord = fc.y;
       int smallerX = min(fc.x, sc.x);
       int largerX = max(fc.x, sc.x);
@@ -112,13 +132,13 @@ void connectRooms(coord r1, coord r2) {
   
   {
     int foundDoors = 0;
-    D(r.x);
-    D(r.y);
-    D(r.width);
-    D(r.height);
+//    D(r.x);
+//    D(r.y);
+//    D(r.width);
+//    D(r.height);
     for(auto &x : g_Lozdoors) {
-      D(x.entity->x);
-      D(x.entity->y);
+//      D(x.entity->x);
+//      D(x.entity->y);
       if(RectOverlap(r, x.entity->getMovedBounds())) {
         x.entity->visible = 1;
         x.entity->unsolidify();
@@ -142,17 +162,26 @@ void configureDoors() {
   for(auto &x : g_Lozdoors) {
     if(x.enabled) { 
       x.entity->frameInAnimation = 1; //use "open" sprite
-      float xpos = x.entity->getOriginX()-128;
-      float ypos = x.entity->getOriginY()-128;
-      float forwardX = 64*10.5*cos(x.entity->steeringAngle + M_PI);
+      
+      float OriginalX = x.entity->getOriginX();
+      float OriginalY = x.entity->getOriginY();
+      float forwardX = 64*8.5*cos(x.entity->steeringAngle + M_PI);
       float forwardY = 64*6.5*-1*sin(x.entity->steeringAngle + M_PI);
 
-      xpos += forwardX; ypos += forwardY;
+      float xpos = OriginalX + forwardX; float ypos = OriginalY + forwardY;
 
-      xpos /= 64*21; ypos /= 64*13;
+      xpos /= 64*17; ypos /= 64*9; //! This is right, it should be 21 x 13 because
+                                    //  the doors exist in that false space between rooms
+                                    //  don't change it to 17x9
 
-      x.toCoords.x = round(xpos);
-      x.toCoords.y = round(ypos);
+      x.toCoords.x = floor(xpos);
+      x.toCoords.y = floor(ypos);
+
+      float fromPosX = OriginalX - forwardX;
+      float fromPosY = OriginalY - forwardY;
+      fromPosX /= 64*17; fromPosY /= 64*9;
+      x.fromCoords.x = floor(fromPosX);
+      x.fromCoords.y = floor(fromPosY);
 
       if(x.toCoords.x >= g_floorplan.size() || x.toCoords.y >= g_floorplan[0].size()) {
         E("Door is set up to take the player out of the map.");
@@ -174,6 +203,9 @@ void extendRoom(coord r, coord p) {
   g_floorplan[p.x][p.y].mesh = g_floorplan[r.x][r.y].mesh;
   g_floorplan[p.x][p.y].camBlockers = g_floorplan[r.x][r.y].camBlockers;
   g_floorplan[p.x][p.y].impliedSlopes = g_floorplan[r.x][r.y].impliedSlopes;
+  g_floorplan[p.x][p.y].tiles = g_floorplan[r.x][r.y].tiles;
+  g_floorplan[p.x][p.y].actors = g_floorplan[r.x][r.y].actors;
+  g_floorplan[p.x][p.y].entities = g_floorplan[r.x][r.y].entities;
 }
 
 void populateMapWithEntities()
@@ -239,146 +271,146 @@ void playNextMusic() {
 }
 
 
-void loadDataIntoGgrid(ggrid* g, vector<vector<int>> cd, int x, int y, int width, int height) {
-  for(int j = y; j < height + y; j++) {
-    for(int i = x; i < width + x; i++) {
-      int value = cd[i][j];
-      float jval = j * 64;
-      jval = round(jval);
-      vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, g_activeGgrid->originZ};
-      if(value != 0) {
-
-        vector<bool> whichMeshes = {0,0,0,0,0};
-        if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
-        if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
-
-        chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
-        c->owner = g_activeGgrid;
-        c->standalone = 0;
-        c->value = value;
-        g_activeGgrid->chunks.push_back(c);
-
-        if(c->floor != 0) {
-          c->floor->texture = g_activeGgrid->floortex;
-          c->floor->drawShading = g_activeGgrid->hasBotShading;
-          c->floor->drawDiffuse = g_activeGgrid->hasFloor;
-          //c->floor->drawDiffuse = 0;
-
-          if(g_activeGgrid->hasTrim) {
-            c->floor->hasTrim = 1;
-            c->floor->trimTexture = g_activeGgrid->trimtex;
-          } else {
-            c->floor->hasTrim = 0;
-          }
-
-          for(int i = 0; i < c->floor->numVertices; i++) {
-            float xpos = c->floor->vertex[i].position.x + c->origin.x;
-            float ypos = c->floor->vertex[i].position.y + c->origin.y;
-            xpos = fmod(xpos, 256);
-            ypos = fmod(ypos, 256);
-            xpos /= 256.0;
-            ypos /= 256.0;
-            if(fmod(c->origin.x,256) == 192) {
-              //this is the horizontal edge case
-              if(abs(xpos - 0) < 0.001) {xpos = 1;}
-            }
-            if(fmod(c->origin.y,256) == 192) {
-              //this is the vertical edge case
-              if(abs(ypos - 0) < 0.001) {ypos = 1;}
-            }
-
-            c->floor->vertex[i].tex_coord.x = xpos;
-            c->floor->vertex[i].tex_coord.y = ypos;
-          }
-        }
-        if(c->decorative != 0) {
-          c->decorative->texture = g_activeGgrid->floortex;
-          for(int i = 0; i < c->decorative->numVertices; i++) {
-            float xpos = c->decorative->vertex[i].position.x + c->origin.x;
-            float ypos = c->decorative->vertex[i].position.y + c->origin.y;
-            xpos = fmod(xpos, 1024);
-            ypos = fmod(ypos, 880);
-            xpos /= 1024.0;
-            ypos /= 880.0;
-            if(fmod(c->origin.x,1024) == 960) {
-              //this is the horizontal edge case
-              if(abs(xpos - 0) < 0.001) {xpos = 1;}
-            }
-            if(fmod(c->origin.y,880) == 825) {
-              //this is the vertical edge case
-              if(abs(ypos - 0) < 0.001) {ypos = 1;}
-            }
-
-            c->decorative->vertex[i].tex_coord.x = xpos;
-            c->decorative->vertex[i].tex_coord.y = ypos;
-          }
-        }
-
-        if(c->wall != 0) {
-          c->wall->texture = g_activeGgrid->walltex;
-          c->wall->drawDiffuse = g_activeGgrid->hasWall;
-
-          if(g_activeGgrid->wallShading == 1) {
-            c->wall->topOrBottomShading = 3;
-          } else if(g_activeGgrid->wallShading == 2) {
-            c->wall->topOrBottomShading = 4;
-          } else if(g_activeGgrid->wallShading == 3){
-            c->wall->topOrBottomShading = 2; //both, 3 tall
-          } else if(g_activeGgrid->wallShading == 4) {
-            c->wall->topOrBottomShading =5;
-          } else {
-            c->wall->drawShading = 0;
-          }
-
-          if(value > 33) {
-          } else {
-
-            //set texcoords of wall
-            //bottom verts have 0 red
-            for(int i = 0; i < c->wall->numVertices; i++) {
-              float xpos = c->wall->vertex[i].position.x + c->origin.x;
-              xpos = fmod(xpos, 1024);
-              xpos /= 1024.0;
-              if(fmod(c->origin.x,1024) == 960) {
-                //this is the horizontal edge case
-                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-              }
-
-
-              float offset = fmodf(g_activeGgrid->originZ, 384.0f);
-              if(offset < 0) offset += 384.0f;
-              offset /= 384.0f;   // now in [0,1)
-
-              c->wall->vertex[i].tex_coord.x = xpos;
-
-              float regionOffset;
-
-              if(value >= 34) {
-                // 6-block-high wall
-                regionOffset = (c->wall->vertex[i].color.r > 128)
-                  ? 0.0f
-                  : 0.16666667f;
-              } else {
-                // 3-block-high wall
-                regionOffset = (c->wall->vertex[i].color.r > 128)
-                  ? 0.0f
-                  : 0.5f;
-              }
-
-              // final wrapped texture coordinate
-              float ty = offset + regionOffset;
-              ty = fmodf(ty, 1.0f);
-              if(ty < 0) ty += 1.0f;
-
-              c->wall->vertex[i].tex_coord.y = ty;
-
-            }
-          }
-        }
-      }
-    }
-  }
-}
+//void loadDataIntoGgrid(ggrid* g, vector<vector<int>> cd, int x, int y, int width, int height) {
+//  for(int j = y; j < height + y; j++) {
+//    for(int i = x; i < width + x; i++) {
+//      int value = cd[i][j];
+//      float jval = j * 64;
+//      jval = round(jval);
+//      vec3 origin = {g_activeGgrid->originX + i*64, g_activeGgrid->originY + jval, g_activeGgrid->originZ};
+//      if(value != 0) {
+//
+//        vector<bool> whichMeshes = {0,0,0,0,0};
+//        if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
+//        if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
+//
+//        chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
+//        c->owner = g_activeGgrid;
+//        c->standalone = 0;
+//        c->value = value;
+//        g_activeGgrid->chunks.push_back(c);
+//
+//        if(c->floor != 0) {
+//          c->floor->texture = g_activeGgrid->floortex;
+//          c->floor->drawShading = g_activeGgrid->hasBotShading;
+//          c->floor->drawDiffuse = g_activeGgrid->hasFloor;
+//          //c->floor->drawDiffuse = 0;
+//
+//          if(g_activeGgrid->hasTrim) {
+//            c->floor->hasTrim = 1;
+//            c->floor->trimTexture = g_activeGgrid->trimtex;
+//          } else {
+//            c->floor->hasTrim = 0;
+//          }
+//
+//          for(int i = 0; i < c->floor->numVertices; i++) {
+//            float xpos = c->floor->vertex[i].position.x + c->origin.x;
+//            float ypos = c->floor->vertex[i].position.y + c->origin.y;
+//            xpos = fmod(xpos, 256);
+//            ypos = fmod(ypos, 256);
+//            xpos /= 256.0;
+//            ypos /= 256.0;
+//            if(fmod(c->origin.x,256) == 192) {
+//              //this is the horizontal edge case
+//              if(abs(xpos - 0) < 0.001) {xpos = 1;}
+//            }
+//            if(fmod(c->origin.y,256) == 192) {
+//              //this is the vertical edge case
+//              if(abs(ypos - 0) < 0.001) {ypos = 1;}
+//            }
+//
+//            c->floor->vertex[i].tex_coord.x = xpos;
+//            c->floor->vertex[i].tex_coord.y = ypos;
+//          }
+//        }
+//        if(c->decorative != 0) {
+//          c->decorative->texture = g_activeGgrid->floortex;
+//          for(int i = 0; i < c->decorative->numVertices; i++) {
+//            float xpos = c->decorative->vertex[i].position.x + c->origin.x;
+//            float ypos = c->decorative->vertex[i].position.y + c->origin.y;
+//            xpos = fmod(xpos, 1024);
+//            ypos = fmod(ypos, 880);
+//            xpos /= 1024.0;
+//            ypos /= 880.0;
+//            if(fmod(c->origin.x,1024) == 960) {
+//              //this is the horizontal edge case
+//              if(abs(xpos - 0) < 0.001) {xpos = 1;}
+//            }
+//            if(fmod(c->origin.y,880) == 825) {
+//              //this is the vertical edge case
+//              if(abs(ypos - 0) < 0.001) {ypos = 1;}
+//            }
+//
+//            c->decorative->vertex[i].tex_coord.x = xpos;
+//            c->decorative->vertex[i].tex_coord.y = ypos;
+//          }
+//        }
+//
+//        if(c->wall != 0) {
+//          c->wall->texture = g_activeGgrid->walltex;
+//          c->wall->drawDiffuse = g_activeGgrid->hasWall;
+//
+//          if(g_activeGgrid->wallShading == 1) {
+//            c->wall->topOrBottomShading = 3;
+//          } else if(g_activeGgrid->wallShading == 2) {
+//            c->wall->topOrBottomShading = 4;
+//          } else if(g_activeGgrid->wallShading == 3){
+//            c->wall->topOrBottomShading = 2; //both, 3 tall
+//          } else if(g_activeGgrid->wallShading == 4) {
+//            c->wall->topOrBottomShading =5;
+//          } else {
+//            c->wall->drawShading = 0;
+//          }
+//
+//          if(value > 33) {
+//          } else {
+//
+//            //set texcoords of wall
+//            //bottom verts have 0 red
+//            for(int i = 0; i < c->wall->numVertices; i++) {
+//              float xpos = c->wall->vertex[i].position.x + c->origin.x;
+//              xpos = fmod(xpos, 1024);
+//              xpos /= 1024.0;
+//              if(fmod(c->origin.x,1024) == 960) {
+//                //this is the horizontal edge case
+//                if(abs(xpos - 0) < 0.001) {xpos = 1;}
+//              }
+//
+//
+//              float offset = fmodf(g_activeGgrid->originZ, 384.0f);
+//              if(offset < 0) offset += 384.0f;
+//              offset /= 384.0f;   // now in [0,1)
+//
+//              c->wall->vertex[i].tex_coord.x = xpos;
+//
+//              float regionOffset;
+//
+//              if(value >= 34) {
+//                // 6-block-high wall
+//                regionOffset = (c->wall->vertex[i].color.r > 128)
+//                  ? 0.0f
+//                  : 0.16666667f;
+//              } else {
+//                // 3-block-high wall
+//                regionOffset = (c->wall->vertex[i].color.r > 128)
+//                  ? 0.0f
+//                  : 0.5f;
+//              }
+//
+//              // final wrapped texture coordinate
+//              float ty = offset + regionOffset;
+//              ty = fmodf(ty, 1.0f);
+//              if(ty < 0) ty += 1.0f;
+//
+//              c->wall->vertex[i].tex_coord.y = ty;
+//
+//            }
+//          }
+//        }
+//      }
+//    }
+//  }
+//}
 
 
 
@@ -485,20 +517,28 @@ void load_map(SDL_Renderer *renderer, string filename, string destWaypointName, 
       int width = g_activeGgrid->width;
       int height = g_activeGgrid->height;
 
-      vector<vector<int>> cd(width, vector<int>(height));
+      //vector<vector<int>> cd(width, vector<int>(height));
+      g_activeGgrid->chunkdata.clear();
+      g_activeGgrid->chunkdata.resize(g_activeGgrid->width);
+      
+      for (int i = 0; i < g_activeGgrid->width; i++) {
+        g_activeGgrid->chunkdata[i].resize(g_activeGgrid->height);
+      }
 
       for(int j = 0; j < height; j++) {
         for(int i = 0; i < width; i++) {
           int value = 0;
           iss >> value;
-          cd[i][j] = value;
+          g_activeGgrid->chunkdata[i][j] = value;
         }
         line = strings[index];
         index++;
         iss = istringstream(line);
       }
 
-      loadDataIntoGgrid(g_activeGgrid, cd, 0, 0, width, height);
+      //this doesn't need to exist because there's no point in copying all those meshes
+      //and storing them all in memory
+      //loadDataIntoGgrid(g_activeGgrid, cd, 0, 0, width, height);
     }
 
 else if (word == "camblocker") {
@@ -659,8 +699,6 @@ else if (word == "entity")
         }
       }
 
-      //D(copy);
-
       entity* e;
       if(copy > -1) {
         e = new entity(renderer, g_entities[copy]);
@@ -668,6 +706,13 @@ else if (word == "entity")
       } else {
         e = new entity(renderer, plik);
         //M("Making e from file");
+      }
+
+      if(g_usingFloorplan) {
+        g_floorplan[g_floorPos.x][g_floorPos.y].entities.push_back(e);
+        g_floorplan[g_floorPos.x][g_floorPos.y].actors.push_back(e);
+        g_floorplan[g_floorPos.x][g_floorPos.y].actors.push_back(e->shadow);
+        e->shadow->name = e->name + "-shadow";
       }
 
       //M("About to set data of e");
@@ -852,7 +897,7 @@ else if(word == "entitydata") {
   
           string spritefilevar = "resources/static/key-items/" + to_string(a->data[0]) + ".qoi";
           const char* spritefile = spritefilevar.c_str();
-          string hook = "KeyItem" + to_string(a->data[0]) + "Name";
+          string hook = "Pet" + to_string(a->data[0]) + "Name";
           a->displayName = getLanguageData(hook);
 
           a->texture = loadTexture(renderer, spritefile);
@@ -995,6 +1040,9 @@ else if (word == "tile")
       const char *plik2 = s2.c_str();
       tile *t = new tile(renderer, plik1, plik2, p1 + offsetx, p2 + offsety, p3, p4, 0, p6, p7, p8, p9);
       (void)t;
+      if(g_usingFloorplan) {
+        g_floorplan[g_floorPos.x][g_floorPos.y].tiles.push_back(t);
+      }
     }
 else if(word == "tilelayer")
     {
@@ -1051,6 +1099,7 @@ else if (word == "worldsound")
     }
 else if(word == "music")
     {
+      M("Setting music from map");
       g_mapHasMusic = 1;
       //static map music
       iss >> s0 >> s1 >> p0;
@@ -1173,6 +1222,33 @@ else if (word == "gentest")
       configureDoors();
       break;
     }
+    else if(word == "gen2b2")
+
+    {
+      g_usingFloorplan = 1;
+      
+      setFloorSize(2,2);
+
+      placeRoom("desert", 0, {0,0});
+      placeRoom("desert", 0, {1,0});
+      placeRoom("desert", 0, {0,1});
+      placeRoom("desert", 0, {1,1});
+
+      //We have loaded all the rooms by now
+      for(auto x : g_entities) {
+        specialObjectsInit(x);
+      }
+
+      placeProtag({0,0});
+
+      connectRooms({0,0}, {1,0});
+      connectRooms({0,1}, {0,0});
+      connectRooms({0,1}, {1,1});
+      connectRooms({1,0}, {1,1});
+
+      configureDoors();
+      break;
+    }
     else if(word == "autogen") 
     {
       g_usingFloorplan = 1;
@@ -1189,9 +1265,9 @@ else if (word == "gentest")
       extendRoom({2,2}, {3,2});
       extendRoom({2,2}, {3,3});
 
-      placeRoom("desert", 0, {3,4});
+      placeRoom("desert", 3, {3,4});
 
-      //We have loaded all the rooms by now
+      //Done loading rooms
       for(auto x : g_entities) {
         specialObjectsInit(x);
       }
@@ -1388,15 +1464,15 @@ else if (word == "gentest")
   g_zoom_mod = 1;
   g_update_zoom = 1;
 
-  if(!g_mapHasMusic) {
-    M("Map doesn't have music");
-    //E("Write \"nomusic\" in the mapfile for a map without music (it will load ~1s faster");
-    Mix_FadeOutMusic(1000);
-    //Mix_FreeMusic(g_loadedMusic);
-    g_loadedMusicStr = "3";
-    g_loadedMusicVolume = 0;
-
-  }
+//  if(!g_mapHasMusic) {
+//    M("Map doesn't have music");
+//    //E("Write \"nomusic\" in the mapfile for a map without music (it will load ~1s faster");
+//    Mix_FadeOutMusic(1000);
+//    //Mix_FreeMusic(g_loadedMusic);
+////    g_loadedMusicStr = "3";
+////    g_loadedMusicVolume = 0;
+//
+//  }
 
 
   //make sure children are with their parents
@@ -1420,7 +1496,7 @@ else if (word == "gentest")
     e->setOriginY(protag->getOriginY());
   }
 
-  //M("load_map() done");
+  M("load_map() done");
 }
 
 void changeTheme(string str)
@@ -1644,7 +1720,9 @@ bool mapeditor_save_map(string word)
   {
     ofile << "worldsound " << g_worldsounds[i]->name << " " << g_worldsounds[i]->x << " " << g_worldsounds[i]->y << endl;
   }
-  ofile << "music " << g_loadedMusicStr << " " << g_loadedMusicVolume << endl;
+  if(g_loadedMusicVolume > 0) {
+    ofile << "music " << g_loadedMusicStr << " " << g_loadedMusicVolume << endl;
+  }
   for (long long unsigned int i = 0; i < g_musicNodes.size(); i++)
   {
     ofile << "musicnode " << g_musicNodes[i]->name << " " << g_musicNodes[i]->x << " " << g_musicNodes[i]->y << endl;
@@ -1731,56 +1809,56 @@ bool mapeditor_save_map(string word)
   }
 
   //set chunkdata of each ggrid
-  for(auto x : g_ggrids) {
-    //go through each chunk on the grid and record it in the ggrid's chunkdata
-    float lowestPx = -1;
-    float lowestPy = -1;
-    float highestPx = -1;
-    float highestPy = -1;
-
-    for(auto y : x->chunks) {
-      float posx = y->origin.x;
-      float posy = y->origin.y;
-      posx;
-      posy;
-//      D(posx);
-//      D(posy);
-      if(lowestPx < 0 || posx < lowestPx) {
-        lowestPx = posx;
-      }
-      if(lowestPy < 0 || posy < lowestPy) {
-        lowestPy = posy;
-      }
-      if(highestPx < 0 || posx > highestPx) {
-        highestPx = posx;
-      }
-      if(highestPy < 0 || posy > highestPy) {
-        highestPy = posy;
-      }
-    }
-    x->originX = lowestPx;
-    x->originY = lowestPy;
-    x->width = (highestPx/64) - (lowestPx/64) + 1;
-    x->height = (highestPy/64) - (lowestPy/64) + 1;
-
-    x->chunkdata.clear();
-    x->chunkdata.resize(x->width);
-    
-    for (int i = 0; i < x->width; i++) {
-      x->chunkdata[i].resize(x->height);
-    }
-
-    for(auto y : x->chunks) {
-      int posx = y->origin.x / 64;
-      int posy = y->origin.y / 64;
-
-      int valX = round(posx - x->originX/64);
-      int valY = round(posy - x->originY/64);
-//      D(valX);
-//      D(valY);
-      x->chunkdata[valX][valY] = (unsigned char)y->value;
-    }
-  }
+//  for(auto x : g_ggrids) {
+//    //go through each chunk on the grid and record it in the ggrid's chunkdata
+//    float lowestPx = -1;
+//    float lowestPy = -1;
+//    float highestPx = -1;
+//    float highestPy = -1;
+//
+//    for(auto y : x->chunks) {
+//      float posx = y->origin.x;
+//      float posy = y->origin.y;
+//      posx;
+//      posy;
+////      D(posx);
+////      D(posy);
+//      if(lowestPx < 0 || posx < lowestPx) {
+//        lowestPx = posx;
+//      }
+//      if(lowestPy < 0 || posy < lowestPy) {
+//        lowestPy = posy;
+//      }
+//      if(highestPx < 0 || posx > highestPx) {
+//        highestPx = posx;
+//      }
+//      if(highestPy < 0 || posy > highestPy) {
+//        highestPy = posy;
+//      }
+//    }
+//    x->originX = lowestPx;
+//    x->originY = lowestPy;
+//    x->width = (highestPx/64) - (lowestPx/64) + 1;
+//    x->height = (highestPy/64) - (lowestPy/64) + 1;
+//
+//    x->chunkdata.clear();
+//    x->chunkdata.resize(x->width);
+//    
+//    for (int i = 0; i < x->width; i++) {
+//      x->chunkdata[i].resize(x->height);
+//    }
+//
+//    for(auto y : x->chunks) {
+//      int posx = y->origin.x / 64;
+//      int posy = y->origin.y / 64;
+//
+//      int valX = round(posx - x->originX/64);
+//      int valY = round(posy - x->originY/64);
+////      D(valX);
+////      D(valY);
+//      x->chunkdata[valX][valY] = (unsigned char)y->value;
+//    }
+//  }
 
 
   for(auto x : g_ggrids) {
@@ -2286,6 +2364,7 @@ void write_map(entity *mapent)
     // //entstring = "entities/" + entstring + ".ent";
     const char *plik = entstring.c_str();
     entity *e = new entity(renderer, plik);
+    e->shadow->name = e->name + "-shadow";
     e->x = px + marker->width / 2 - (e->getOriginX());
     e->y = py + marker->height / 2 - (e->getOriginY());
     e->stop_hori();
@@ -2418,133 +2497,6 @@ void write_map(entity *mapent)
 
               if(value != 0) {
 
-                vector<bool> whichMeshes = {0,0,0,0,0};
-                if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
-                if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
-
-                chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
-                c->owner = g_activeGgrid;
-                c->standalone = 0;
-                c->value = value;
-                g_activeGgrid->chunks.push_back(c);
-
-                if(c->floor != 0) {
-                  c->floor->texture = g_activeGgrid->floortex;
-                  c->floor->drawShading = g_activeGgrid->hasBotShading;
-                  c->floor->drawDiffuse = g_activeGgrid->hasFloor;
-                  //c->floor->drawDiffuse = 0;
-
-                  if(g_activeGgrid->hasTrim) {
-                    c->floor->hasTrim = 1;
-                    c->floor->trimTexture = g_activeGgrid->trimtex;
-                  } else {
-                    c->floor->hasTrim = 0;
-                  }
-
-                  for(int i = 0; i < c->floor->numVertices; i++) {
-                    float xpos = c->floor->vertex[i].position.x + c->origin.x;
-                    float ypos = c->floor->vertex[i].position.y + c->origin.y;
-                    xpos = fmod(xpos, 256);
-                    ypos = fmod(ypos, 256);
-                    xpos /= 256.0;
-                    ypos /= 256.0;
-                    if(fmod(c->origin.x,256) == 192) {
-                      //this is the horizontal edge case
-                      if(abs(xpos - 0) < 0.001) {xpos = 1;}
-                    }
-                    if(fmod(c->origin.y,256) == 192) {
-                      //this is the vertical edge case
-                      if(abs(ypos - 0) < 0.001) {ypos = 1;}
-                    }
-
-                    c->floor->vertex[i].tex_coord.x = xpos;
-                    c->floor->vertex[i].tex_coord.y = ypos;
-                  }
-                }
-                if(c->decorative != 0) {
-                  c->decorative->texture = g_activeGgrid->floortex;
-                  for(int i = 0; i < c->decorative->numVertices; i++) {
-                    float xpos = c->decorative->vertex[i].position.x + c->origin.x;
-                    float ypos = c->decorative->vertex[i].position.y + c->origin.y;
-                    xpos = fmod(xpos, 1024);
-                    ypos = fmod(ypos, 880);
-                    xpos /= 1024.0;
-                    ypos /= 880.0;
-                    if(fmod(c->origin.x,1024) == 960) {
-                      //this is the horizontal edge case
-                      if(abs(xpos - 0) < 0.001) {xpos = 1;}
-                    }
-                    if(fmod(c->origin.y,880) == 825) {
-                      //this is the vertical edge case
-                      if(abs(ypos - 0) < 0.001) {ypos = 1;}
-                    }
-
-                    c->decorative->vertex[i].tex_coord.x = xpos;
-                    c->decorative->vertex[i].tex_coord.y = ypos;
-                  }
-                }
-
-                if(c->wall != 0) {
-                  c->wall->texture = g_activeGgrid->walltex;
-                  c->wall->drawDiffuse = g_activeGgrid->hasWall;
-
-                  if(g_activeGgrid->wallShading == 1) {
-                    c->wall->topOrBottomShading = 3;
-                  } else if(g_activeGgrid->wallShading == 2) {
-                    c->wall->topOrBottomShading = 4;
-                  } else if(g_activeGgrid->wallShading == 3){
-                    c->wall->topOrBottomShading = 2; //both, 3 tall
-                  } else if(g_activeGgrid->wallShading == 4) {
-                    c->wall->topOrBottomShading =5;
-                  } else {
-                    c->wall->drawShading = 0;
-                  }
-
-                  if(value > 33) {
-                  } else {
-
-                    //set texcoords of wall
-                    //bottom verts have 0 red
-                    for(int i = 0; i < c->wall->numVertices; i++) {
-                      float xpos = c->wall->vertex[i].position.x + c->origin.x;
-                      xpos = fmod(xpos, 1024);
-                      xpos /= 1024.0;
-                      if(fmod(c->origin.x,1024) == 960) {
-                        //this is the horizontal edge case
-                        if(abs(xpos - 0) < 0.001) {xpos = 1;}
-                      }
-
-
-                      float offset = fmodf(g_activeGgrid->originZ, 384.0f);
-                      if(offset < 0) offset += 384.0f;
-                      offset /= 384.0f;   // now in [0,1)
-
-                      c->wall->vertex[i].tex_coord.x = xpos;
-
-                      float regionOffset;
-
-                      if(value >= 34) {
-                        // 6-block-high wall
-                        regionOffset = (c->wall->vertex[i].color.r > 128)
-                          ? 0.0f
-                          : 0.16666667f;
-                      } else {
-                        // 3-block-high wall
-                        regionOffset = (c->wall->vertex[i].color.r > 128)
-                          ? 0.0f
-                          : 0.5f;
-                      }
-
-                      // final wrapped texture coordinate
-                      float ty = offset + regionOffset;
-                      ty = fmodf(ty, 1.0f);
-                      if(ty < 0) ty += 1.0f;
-
-                      c->wall->vertex[i].tex_coord.y = ty;
-
-                    }
-                  }
-                }
               }
 
 
@@ -3634,117 +3586,31 @@ void write_map(entity *mapent)
         line >> n;
         g_lastGgridBlockPlaced = n;
 
-//        //use the active ggrid's originX originY to set the
-//        string path = "ggrid/" + to_string(n);
-//
-//        if(g_activeGgrid && (int) n < 255 ) {
-//          g_lastGgridBlockPlaced = n;
-//          vec3 origin = {marker->x, marker->y, 0};
-//  
-//          //chunk* c = new chunk(path, "", "", origin, 1, 0);
+        //use the active ggrid's originX originY to set the
+        string path = "ggrid/" + to_string(n);
+
+        if(g_activeGgrid && (int) n < 255 ) {
+          g_lastGgridBlockPlaced = n;
+          vec3 origin = {marker->x, marker->y, 0};
+  
+          //chunk* c = new chunk(path, "", "", origin, 1, 0);
 //          vector<bool> whichMeshes = {0,0,0,0,0};
 //          if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1; M("Setting whichMeshes[0] to 1");}
 //          if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
-//
+
 //          chunk* c = duplicateChunk(g_OPChunks[n-1], origin, whichMeshes);
 //          c->owner = g_activeGgrid;
 //          c->standalone = 0;
 //
 //          c->value = n;
 //          g_activeGgrid->chunks.push_back(c);
-//          if(c->floor != 0) {
-//            c->floor->texture = g_activeGgrid->floortex;
-//            c->floor->drawDiffuse = g_activeGgrid->hasFloor;
-//            c->floor->drawShading = g_activeGgrid->hasBotShading;
-//            if(g_activeGgrid->hasTrim) {
-//              c->floor->hasTrim = 1;
-//              c->floor->trimTexture = g_activeGgrid->trimtex;
-//            }
-//            for(int i = 0; i < c->floor->numVertices; i++) {
-//              float xpos = c->floor->vertex[i].position.x + c->origin.x;
-//              float ypos = c->floor->vertex[i].position.y + c->origin.y;
-//              xpos = fmod(xpos, 1024);
-//              ypos = fmod(ypos, 880);
-//              xpos /= 1024.0;
-//              ypos /= 880.0;
-//              if(fmod(c->origin.x,1024) == 960) {
-//                //this is the horizontal edge case
-//                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-//              }
-//              if(fmod(c->origin.y,880) == 825) {
-//                //this is the vertical edge case
-//                if(abs(ypos - 0) < 0.001) {ypos = 1;}
-//              }
-//
-//              c->floor->vertex[i].tex_coord.x = xpos;
-//              c->floor->vertex[i].tex_coord.y = ypos;
-//            }
-//          }
-//          if(c->decorative != 0) {
-//            c->decorative->texture = g_activeGgrid->floortex;
-//            for(int i = 0; i < c->decorative->numVertices; i++) {
-//              float xpos = c->decorative->vertex[i].position.x + c->origin.x;
-//              float ypos = c->decorative->vertex[i].position.y + c->origin.y;
-//              xpos = fmod(xpos, 1024);
-//              ypos = fmod(ypos, 880);
-//              xpos /= 1024.0;
-//              ypos /= 880.0;
-//              if(fmod(c->origin.x,1024) == 960) {
-//                //this is the horizontal edge case
-//                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-//              }
-//              if(fmod(c->origin.y,880) == 825) {
-//                //this is the vertical edge case
-//                if(abs(ypos - 0) < 0.001) {ypos = 1;}
-//              }
-//  
-//              c->decorative->vertex[i].tex_coord.x = xpos;
-//              c->decorative->vertex[i].tex_coord.y = ypos;
-//            }
-//          }
-//
-//          if(c->wall != 0) {
-//            c->wall->texture = g_activeGgrid->walltex;
-//            c->wall->drawDiffuse = g_activeGgrid->hasWall;
-//
-//            if(g_activeGgrid->wallShading == 1) {
-//              c->wall->topOrBottomShading = 0;
-//            } else if(g_activeGgrid->wallShading == 2) {
-//              c->wall->topOrBottomShading = 1;
-//            } else if(g_activeGgrid->wallShading == 3){
-//              c->wall->topOrBottomShading = 2; //both
-//            } else {
-//              c->wall->drawShading = 0;
-//            }
-//
-//            //set texcoords of wall
-//            //bottom verts have 0 red
-//            for(int i = 0; i < c->wall->numVertices; i++) {
-//              float xpos = c->wall->vertex[i].position.x + c->origin.x;
-//              xpos = fmod(xpos, 1024);
-//              xpos /= 1024.0;
-//              if(fmod(c->origin.x,1024) == 960) {
-//                //this is the horizontal edge case
-//                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-//              }
-//
-//              c->wall->vertex[i].tex_coord.x = xpos;
-//              if(c->wall->vertex[i].color.r > 128) {
-//                c->wall->vertex[i].tex_coord.y = 0;
-//              } else {
-//                c->wall->vertex[i].tex_coord.y = 1;
-//
-//              }
-//            }
-//
-//          }
-//
-//
-//
-//
-//        } else {
-//          M("No active Ggrid for g command");
-//        }
+
+
+
+
+        } else {
+          M("No active Ggrid for g command");
+        }
 
         break;
       }
@@ -4801,34 +4667,26 @@ void write_map(entity *mapent)
       {
         if (line >> word)
         {
-          fdebug = -1;
+          int x = 0; int y = 0;
+          int usingPos = 0;
+          if(line >> x && line >>y) {
+            usingPos = 1;
+          }
           // must close file before renaming it
           ofile.close();
           string theme = word;
           word = "resources/maps/" + g_mapdir + "/" + word + ".map";
           
-          clear_map(g_camera);
-          load_map(renderer, word.c_str(), "a", 0, 0);
-
-          init_map_writing(renderer);
-          if (g_autoSetThemesFromMapDirectory)
-          {
-            changeTheme(g_mapdir);
+          if(usingPos) {
+            load_map(renderer, word.c_str(), "a", x, y);
+          } else {
+            clear_map(g_camera);
+            load_map(renderer, word.c_str(), "a", 0, 0);
+            init_map_writing(renderer);
           }
-
           break;
         }
       }
-      //if(word == "test" || word == "play" || word == "dtest")
-      //{
-        //set the map as next and do a dungeonflash
-//        if (line >> word)
-//        {
-//          g_dungeon.at(g_dungeonIndex+1).map = word + ".map";
-//          g_dungeonDoorActivated = 1;
-//        }
-
-      //}
       if(word == "gload" || word == "play") //load a map in game-mode
                          //this probably breaks lots of stuff
       {
@@ -5884,6 +5742,14 @@ void write_map(entity *mapent)
         // string loadstr = "entities/" + entstring + ".ent";
         const char *plik = entstring.c_str();
         entity *e = new entity(renderer, plik);
+        if(g_usingFloorplan) {
+          g_actorsInRoom.push_back(e);
+          g_entitiesInRoom.push_back(e);
+          g_actorsInRoom.push_back(e->shadow);
+          g_floorplan[g_floorPos.x][g_floorPos.y].actors.push_back(e);
+          g_floorplan[g_floorPos.x][g_floorPos.y].actors.push_back(e->shadow);
+          g_floorplan[g_floorPos.x][g_floorPos.y].entities.push_back(e);
+        }
         (void)e;
         e->x = px + marker->width / 2 - (e->getOriginX());
         e->y = py + marker->height / 2 - (e->getOriginY());
@@ -6644,139 +6510,6 @@ void write_map(entity *mapent)
     if(g_activeGgrid) {
       vec3 origin = {marker->x, marker->y, g_activeGgrid->originZ};
       int value = g_lastGgridBlockPlaced;
-
-      if(value != 0) {
-
-        vector<bool> whichMeshes = {0,0,0,0,0};
-        if(g_activeGgrid->hasFloor) {whichMeshes[0] = 1;}
-        if(g_activeGgrid->hasWall) {whichMeshes[1] = 1;}
-
-        chunk* c = duplicateChunk(g_OPChunks[value-1], origin, whichMeshes);
-        c->owner = g_activeGgrid;
-        c->standalone = 0;
-        c->value = value;
-        g_activeGgrid->chunks.push_back(c);
-
-        if(c->floor != 0) {
-          c->floor->texture = g_activeGgrid->floortex;
-          c->floor->drawShading = g_activeGgrid->hasBotShading;
-          c->floor->drawDiffuse = g_activeGgrid->hasFloor;
-          //c->floor->drawDiffuse = 0;
-
-          if(g_activeGgrid->hasTrim) {
-            c->floor->hasTrim = 1;
-            c->floor->trimTexture = g_activeGgrid->trimtex;
-          } else {
-            c->floor->hasTrim = 0;
-          }
-
-          for(int i = 0; i < c->floor->numVertices; i++) {
-            float xpos = c->floor->vertex[i].position.x + c->origin.x;
-            float ypos = c->floor->vertex[i].position.y + c->origin.y;
-            xpos = fmod(xpos, 256);
-            ypos = fmod(ypos, 256);
-            xpos /= 256.0;
-            ypos /= 256.0;
-            if(fmod(c->origin.x,256) == 192) {
-              //this is the horizontal edge case
-              if(abs(xpos - 0) < 0.001) {xpos = 1;}
-            }
-            if(fmod(c->origin.y,256) == 192) {
-              //this is the vertical edge case
-              if(abs(ypos - 0) < 0.001) {ypos = 1;}
-            }
-
-            c->floor->vertex[i].tex_coord.x = xpos;
-            c->floor->vertex[i].tex_coord.y = ypos;
-          }
-        }
-        if(c->decorative != 0) {
-          c->decorative->texture = g_activeGgrid->floortex;
-          for(int i = 0; i < c->decorative->numVertices; i++) {
-            float xpos = c->decorative->vertex[i].position.x + c->origin.x;
-            float ypos = c->decorative->vertex[i].position.y + c->origin.y;
-            xpos = fmod(xpos, 1024);
-            ypos = fmod(ypos, 880);
-            xpos /= 1024.0;
-            ypos /= 880.0;
-            if(fmod(c->origin.x,1024) == 960) {
-              //this is the horizontal edge case
-              if(abs(xpos - 0) < 0.001) {xpos = 1;}
-            }
-            if(fmod(c->origin.y,880) == 825) {
-              //this is the vertical edge case
-              if(abs(ypos - 0) < 0.001) {ypos = 1;}
-            }
-
-            c->decorative->vertex[i].tex_coord.x = xpos;
-            c->decorative->vertex[i].tex_coord.y = ypos;
-          }
-        }
-
-        if(c->wall != 0) {
-          c->wall->texture = g_activeGgrid->walltex;
-          c->wall->drawDiffuse = g_activeGgrid->hasWall;
-
-          if(g_activeGgrid->wallShading == 1) {
-            c->wall->topOrBottomShading = 3;
-          } else if(g_activeGgrid->wallShading == 2) {
-            c->wall->topOrBottomShading = 4;
-          } else if(g_activeGgrid->wallShading == 3){
-            c->wall->topOrBottomShading = 2; //both, 3 tall
-          } else if(g_activeGgrid->wallShading == 4) {
-            c->wall->topOrBottomShading =5;
-          } else {
-            c->wall->drawShading = 0;
-          }
-
-          if(value > 33) {
-          } else {
-
-            //set texcoords of wall
-            //bottom verts have 0 red
-            for(int i = 0; i < c->wall->numVertices; i++) {
-              float xpos = c->wall->vertex[i].position.x + c->origin.x;
-              xpos = fmod(xpos, 1024);
-              xpos /= 1024.0;
-              if(fmod(c->origin.x,1024) == 960) {
-                //this is the horizontal edge case
-                if(abs(xpos - 0) < 0.001) {xpos = 1;}
-              }
-
-
-              float offset = fmodf(g_activeGgrid->originZ, 384.0f);
-              if(offset < 0) offset += 384.0f;
-              offset /= 384.0f;   // now in [0,1)
-
-              c->wall->vertex[i].tex_coord.x = xpos;
-
-              float regionOffset;
-
-              if(value >= 34) {
-                // 6-block-high wall
-                regionOffset = (c->wall->vertex[i].color.r > 128)
-                  ? 0.0f
-                  : 0.16666667f;
-              } else {
-                // 3-block-high wall
-                regionOffset = (c->wall->vertex[i].color.r > 128)
-                  ? 0.0f
-                  : 0.5f;
-              }
-
-              // final wrapped texture coordinate
-              float ty = offset + regionOffset;
-              ty = fmodf(ty, 1.0f);
-              if(ty < 0) ty += 1.0f;
-
-              c->wall->vertex[i].tex_coord.y = ty;
-
-            }
-          }
-        }
-      }
-
-
     }
   }
 

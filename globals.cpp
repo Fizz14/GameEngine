@@ -43,6 +43,10 @@ vector<cshadow *> g_shadows;
 
 vector<entity *> g_entities;
 
+vector<entity*> g_entitiesInRoom;
+
+vector<entity*>* eset;
+
 vector<entity *> g_boardableEntities;
 
 vector<entity*> g_ai;
@@ -76,6 +80,10 @@ vector<fontmem> g_fontmems;
 vector<ui *> g_ui;
 
 vector<actor *> g_actors;
+
+vector<actor*> g_actorsInRoom;
+
+vector<actor*> g_actorsInLastRoom;
 
 vector<mapObject *> g_mapObjects;
 
@@ -161,6 +169,12 @@ vector<ggrid*> g_ggrids;
 
 vector<entity*> g_LoZDoors;
 
+int g_LoZDoorTakenIndex = 0;
+
+entity* g_LoZDoorTaken = 0;
+
+bool g_LoZChangeRoom = 0;
+
 vector<vector<roomData>> g_floorplan;
 
 vector<doorData> g_Lozdoors;
@@ -192,6 +206,9 @@ SDL_Texture* g_gradient_i = 0;
 SDL_Texture* g_gradient_j = 0;
 
 SDL_Texture* g_axesTexture = 0;
+
+SDL_Texture* g_itemEffectTexture = 0;
+float g_itemEffectAccu = 0;
 
 map<string, int> enemiesMap; // stores (file,cost) for enemies to be spawned procedurally in the map
 int g_budget = 0;						 // how many points this map can spend on enemies;
@@ -320,6 +337,8 @@ vector<float> g_itemsines;
 
 float g_elapsed_accumulator = 0;
 
+float g_rotationalAccumulator = 0;
+
 // I've bounced around thinking these matter and turning them down
 // or deciding that they don't matter and pumping them up
 // Here's what I know atm: the first value should be left at 11 prettymuch always
@@ -386,7 +405,6 @@ int g_numMoneybagsLoaded = 0;
 int g_numDispensersLoaded = 0;
 int g_numPedastalsLoaded = 0;
 
-// inventory - we're switching things up. This will be the picnic-box, the inventory for consumables
 float use_cooldown = 0; // misleading, its not for attacks at all
 vector<attack *> AdventureattackSet;
 int inPauseMenu = 0;
@@ -486,7 +504,7 @@ void camera::update_movement(float elapsed, float targetx, float targety) {
 
         // Check for collisions with camBlockers and adjust camera position
         vector<camBlocker*>* set;
-        if(g_usingFloorplan) {
+        if(g_usingFloorplan && g_floorplan[g_floorPos.x][g_floorPos.y].camBlockers.size() > 0) {
           set = &g_floorplan[g_floorPos.x][g_floorPos.y].camBlockers;
         } else {
           set = &g_camBlockers;
@@ -688,8 +706,36 @@ void camera::update_movement(float elapsed, float targetx, float targety) {
         oldx = x;
         oldy = y;
     } else {
-        x += (targetx - oldx) * (elapsed / 256) * lag;
-        y += (targety - oldy) * (elapsed / 256) * lag;
+//        x += (targetx - oldx) * (elapsed / 256) * lag;
+//        y += (targety - oldy) * (elapsed / 256) * lag;
+        
+      float amt = lag * elapsed;
+        if(x < targetx) {
+          if(targetx - x > amt) {
+            x += amt;
+          } else {
+            x = targetx;
+          }
+        } else {
+          if (x - targetx > amt) {
+            x -= amt;
+          } else {
+            x = targetx;
+          }
+        }
+        if(y < targety) {
+          if(targety - y > amt) {
+            y += amt;
+          } else {
+            y = targety;
+          }
+        } else {
+          if (y - targety > amt) {
+            y -= amt;
+          } else {
+            y = targety;
+          }
+        }
 
         oldx = x;
         oldy = y;
@@ -937,12 +983,11 @@ ui* g_dijkstraDebugYellow;
 entity* g_dijkstraEntity;
 bool g_ninja = 0;
 
-//temporary debug stuff
-int fdebug = -1;
+int breakpointsOn = 0;
 
 // world
 int g_layers = 12;							 // max blocks in world
-int g_numberOfInterestSets = 50; // number of individual sets of pointsOfInterest available for entities to use
+int g_numberOfInterestSets = 5; // number of individual sets of pointsOfInterest available for entities to use
 string g_first_map = "resources/maps/first/1.map";
 
 // map editing, mapeditor, map-editor
@@ -1138,14 +1183,7 @@ vector<dungeonFloorInfo> g_dungeon;
 int g_dungeonIndex;
 //need a list of behemoths chasing player and how many rooms they will continue to chase
 vector<dungeonBehemothInfo> g_dungeonBehemoths;
-//need a list of mapobjects which are persistent over the course
-//of the dungeon so that we don't have to reload textures constantly
-vector<mapObject*> g_dungeonPersistentMOs;
-vector<string> g_dungeonCommonFloors;
-vector<string> g_dungeonUncommonFloors;
-vector<string> g_dungeonRareFloors;
-vector<string> g_dungeonSpecialFloors;
-vector<string> g_dungeonEggFloors;
+
 int g_dungeonDarkEffect;
 int g_dungeonDarkEffectDelta;
 bool g_dungeonDoorActivated = 0;
@@ -1184,7 +1222,9 @@ const int g_roomGridH = 9; //13, 9;
 
 //ggrid* g_inThisGgrid = 0;
 
-coord g_floorPos;
+coord g_floorPos = {0,0};
+
+coord g_lastFloorPos = {-1,-1};
 
 bool g_usingFloorplan = 0;
 
@@ -1234,7 +1274,9 @@ int g_autoFight = 0;
 
 int curLevelIndex = 0;
 
-vector<int> g_combatInventory;
+vector<itemData> g_items;
+
+bool g_dontRemovePR = 0;
 
 //entity* g_combatWorldEnt; //the ent that walked into the player to start combat
 

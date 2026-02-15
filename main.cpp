@@ -38,114 +38,67 @@ void protagMakesNoise();
 
 void dungeonFlash();
 
-void sortEdges(std::vector<edgeInfo>& edges, float px, float py) {
-  auto edgeComparator = [&](const edgeInfo& a, const edgeInfo& b) {
+void renderGPiece(int px  , int py, int pz, int pindex, SDL_Texture* floortex, SDL_Texture* walltex, int opacity) {
+                         
+  if(pindex == 0 || opacity == 0) {return;}
+  pindex-= 1;
 
-    float minDistA = Distance( (a.first.position.x + a.second.position.x) / 2, (a.first.position.y + a.second.position.y)/2, px, py);
-    float minDistB = Distance( (b.first.position.x + b.second.position.x) / 2, (b.first.position.y + b.second.position.y)/2, px, py);
-    return minDistA > minDistB;
-  };
+  { //render floor       
+    mesh* x = g_OPChunks[pindex]->floor;
+    vector<SDL_Vertex> v(x->numVertices);
+//    for (int i = 0; i <   x->numVertices; i++) {
+//        v[i] = x->vertex[i];
+//        v[i].position.x += px - g_camera.x;
+//        v[i].position.y += py - g_camera.y
+//                           -(pz * XtoZ);
+//        v[i].color.a = x->vertex[i].color.a;
+//    }
+//    SDL_RenderGeometry(renderer, floortex, v.data(), x->numVertices, x->indices, x->numIndices);
+  
+    for (int i = 0; i < x->numVertices; i++) {
+        v[i] = x->vertex[i];
+        v[i].position.x += px - g_camera.x;
+        v[i].position.y += py - g_camera.y;
+        v[i].tex_coord.x = x->vertexExtraData[i].first;
+        v[i].tex_coord.y = x->vertexExtraData[i].second;
+        v[i].color = {255, 255, 255, opacity};
+    }
+  
+    SDL_RenderGeometry(renderer, g_floorShadeTexture, v.data(), x->numVertices, x->indices, x->numIndices);
+  }
 
 
-  // Remove edges where both vertices' y-coordinates are greater than py
-  // This code would be ran without the conditional check
-  // back when all edges had wallmeshes
+  //render wall
+  {
+    mesh* x = g_OPChunks[pindex]->wall;
+    SDL_Vertex v[x->numVertices];
+    for(int i = 0; i < x->numVertices; i++) {
+      v[i] = x->vertex[i];
+      v[i].position.x += px - g_camera.x;
+      v[i].position.y += py - g_camera.y
+                         -(pz * XtoZ);
+      v[i].color.r = v[i].color.g;
+      v[i].color.a = opacity;
+    }
+  
+    SDL_RenderGeometry(renderer, walltex, v, x->numVertices, x->indices, x->numIndices);
 
-  //used to look like this:
- 
-//    edges.erase(std::remove_if(edges.begin(), edges.end(),
-//            [py](const edgeInfo& e) {
-//                return e.first.position.y > py && e.second.position.y > py;
-//            }), edges.end());
-
-
-  // !!!
-  // at some point, this needs logic to handle edges that are backfacing relative to the player
-  // the current solution isn't good enough
-
-//    edges.erase(std::remove_if(edges.begin(), edges.end(),
-//            [py](const edgeInfo& e) {
-//                return e.first.position.y > py && e.second.position.y > py && (e.wallMesh != nullptr);
-//            }), edges.end());
-
-  //is this even doing anything at all?
-  //this might be very important idk
-  //try turning it on later as needed
-//edges.erase(std::remove_if(edges.begin(), edges.end(),
-//    [px, py](const edgeInfo& e) {
-//        // Compute edge direction
-//        float dx = (e.second.position.x - e.first.position.x);
-//        float dy = (e.second.position.y - e.first.position.y);
-//
-//        // Compute vector from player to the edge start
-//        float toPlayerX = e.first.position.x - px;
-//        float toPlayerY = e.first.position.y - py;
-//
-//        // Cross product to determine backfacing
-//        float crossProduct = (dx * toPlayerY) - (dy * toPlayerX);
-//
-//        // Remove edge if it's backfacing
-//        if((crossProduct < 0) && (e.wallMesh != nullptr)) { M("Remove this edge");}
-//        return (crossProduct < 0) && (e.wallMesh != nullptr);
-//    }), edges.end());
-//
-
-  // Sort the remaining edges based on their minimum distance to (px, py)
-  std::sort(edges.begin(), edges.end(), edgeComparator);
+//        int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+//  //      D(ret);
+//  //      const char* error = SDL_GetError();
+//  //      D(error);
+  
+    if(x->drawShading) {
+      //render shade
+      for(int i = 0; i < x->numVertices; i++) {
+        v[i].tex_coord.x = x->vertexExtraData[i].first;
+        v[i].tex_coord.y = x->vertexExtraData[i].second;
+      }
+      SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+    }
+    
+  }
 }
-
-SDL_FPoint calculateIntersection(float x1, float y1, float z1, float x2, float y2, float z2) {
-  // Compute direction vector
-  float dx = x2 - x1;
-  float dy = y2 - y1;
-  float dz = z2 - z1;
-
-  // Scale direction vector to move to edge of the screen
-  float maxDim = std::max(WIN_WIDTH*2, WIN_HEIGHT*2);
-  float scaleFactor = maxDim / std::sqrt(dx * dx + dy * dy + dz * dz);
-
-  SDL_FPoint intersection;
-  intersection.x = x1 + dx * scaleFactor;
-  intersection.y = y1 + dy * scaleFactor;
-
-  return intersection;
-}
-
-bool segmentsSharePoint(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
-  auto isClose = [&](float a, float b) {
-    return std::fabs(a - b) < tolerance;
-  };
-
-  auto pointsClose = [&](SDL_Vertex a, SDL_Vertex b) {
-    return isClose(a.position.x, b.position.x) && isClose(a.position.y, b.position.y);
-  };
-
-
-  auto p1 = seg1.first;
-  auto p2 = seg1.second;
-  auto q1 = seg2.first;
-  auto q2 = seg2.second;
-
-  return pointsClose(p2, q1) || pointsClose(p1, q2);
-}
-
-bool segmentsInSamePlace(edgeInfo seg1, edgeInfo seg2, float tolerance = 1) {
-  auto isClose = [&](float a, float b) {
-    return std::fabs(a - b) < tolerance;
-  };
-
-  auto pointsClose = [&](SDL_Vertex a, SDL_Vertex b) {
-    return isClose(a.position.x, b.position.x) && isClose(a.position.y, b.position.y);
-  };
-
-  auto p1 = seg1.first;
-  auto p2 = seg1.second;
-  auto q1 = seg2.first;
-  auto q2 = seg2.second;
-
-  return (pointsClose(p1, q1) && pointsClose(p2, q2));
-}
-
 
 void drawUI() {
   adventureUIManager->dialogpointer->render(renderer, g_camera);
@@ -223,6 +176,1039 @@ void drawUI() {
 
 }
 
+void explorationRender() {
+  // tiles
+  if(g_usingFloorplan) {
+    for (long long unsigned int i = 0; i < g_floorplan[g_floorPos.x][g_floorPos.y].tiles.size(); i++)
+    {
+      if (g_floorplan[g_floorPos.x][g_floorPos.y].tiles[i]->z == 0)
+      {
+        roomData rd = g_floorplan[g_floorPos.x][g_floorPos.y];
+        SDL_SetTextureAlphaMod(rd.tiles[i]->texture, rd.opacity);
+        g_floorplan[g_floorPos.x][g_floorPos.y].tiles[i]->render(renderer, g_camera);
+      }
+    }
+
+    if(g_lastFloorPos.x > -1) {
+      roomData last = g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y];
+      for (long long unsigned int i = 0; i < last.tiles.size(); i++)
+      {
+        if (last.tiles[i]->z == 0)
+        {
+          SDL_SetTextureAlphaMod(last.tiles[i]->texture, last.opacity);
+          last.tiles[i]->render(renderer, g_camera);
+        }
+      }
+    }
+  } else {
+    for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+    {
+      if (g_tiles[i]->z == 0)
+      {
+        g_tiles[i]->render(renderer, g_camera);
+      }
+    }
+  }
+
+  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+  {
+    if (g_tiles[i]->z == 1)
+    {
+      g_tiles[i]->render(renderer, g_camera);
+    }
+  }
+
+  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+  {
+    if (g_tiles[i]->z == 2)
+    {
+      g_tiles[i]->render(renderer, g_camera);
+    }
+  }
+
+  if(devMode){ //this is to help me know which ggrid is active
+    
+    if(g_activeGgridFlickerProlongMs > 0) {
+      if(g_activeGgridFlickerMs > 80) {
+        g_activeGgridFlicker = !g_activeGgridFlicker;
+  
+        for(auto x : g_ggrids) {
+          bool setting = 1;
+          if(x == g_activeGgrid) {
+            setting = g_activeGgridFlicker;
+          }
+          //TODO: toggle the opacity of the active ggrid
+        }
+  
+        g_activeGgridFlickerMs = 0;
+      }
+  
+      g_activeGgridFlickerMs += elapsed;
+      
+      g_activeGgridFlickerProlongMs -= elapsed;
+    }
+
+    {
+//      //render axes at 0,0
+//      const int thickness = 4;
+//      bool xVis = (g_camera.x <= 0.0f) && (g_camera.x + g_camera.width >= 0.0f);
+//      bool yVis = (g_camera.y <= 0.0f) && (g_camera.y + g_camera.height >= 0.0f);
+
+
+      //robiony przez artifycjal intelligencje
+      auto worldToScreenX = [](float wx) { return(int)(wx - g_camera.x);};
+      auto worldToScreenY = [](float wy) { return(int)(wy - g_camera.y);};
+      float camLeft = g_camera.x;
+      float camRight = g_camera.x + g_camera.width;
+      float camTop = g_camera.y;
+      float camBottom = g_camera.y + g_camera.height;
+
+      SDL_Rect dst;
+
+
+//      if(xVis) {
+//        int screenX = (int)(-g_camera.x) - thickness/2;
+//        dst = {screenX, 0, thickness, g_camera.height};
+//        SDL_Rect src = {0,0,5,5};
+//        SDL_RenderCopy(renderer, g_axesTexture, &src, &dst);
+//      }
+//      if(yVis) {
+//        int screenY = (int)(-g_camera.y) - thickness/2;
+//        dst = {0, screenY, g_camera.width, thickness};
+//        SDL_Rect src = {5,0,5,5};
+//        SDL_RenderCopy(renderer, g_axesTexture, &src, &dst);
+//      }
+
+      SDL_Rect srcNeg = {6,6,4,4};
+      if(camLeft < 0 && camTop < 0) {
+        dst.x = 0;
+        dst.y = 0;
+        dst.w = worldToScreenX(0);
+        dst.h = worldToScreenY(0);
+        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
+      }
+      if(camLeft < 0 && camBottom > 0) {
+        dst.x = 0;
+        dst.y = worldToScreenY(0);
+        dst.w = worldToScreenX(0);
+        dst.h = worldToScreenY(camBottom) - dst.y;
+        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
+      }
+      if(camRight > 0 && camTop < 0) {
+        dst.x = worldToScreenX(0);
+        dst.y = 0;
+        dst.w = worldToScreenX(camRight) - dst.x;
+        dst.h = worldToScreenY(0);
+        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
+      }
+
+    }
+      
+  }
+
+  rect cam(0, 0, g_camera.width, g_camera.height);
+
+  //render this ggrid
+  if(g_usingFloorplan) {
+   //render this room's ggrid
+   
+
+    roomData rd = g_floorplan[g_floorPos.x][g_floorPos.y];
+    ggrid* x = rd.mesh;
+    int xpos = x->originX;
+    int ypos = x->originY;
+    for(int j = 0; j < x->height; j++) {
+      for(int i = 0; i < x->width; i++) {
+        renderGPiece(xpos, ypos, 0, x->chunkdata[i][j], x->floortex, x->walltex, rd.opacity);
+        xpos+= 64;
+      }
+      ypos += 64;
+      xpos = x->originX;
+    }
+   
+
+    //render last room's ggrid
+    if(g_lastFloorPos.x > -1) {
+      rd = g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y];
+      x = rd.mesh;
+      xpos = x->originX;
+      ypos = x->originY;
+      if(rd.opacity > 0) {
+        for(int j = 0; j < x->height; j++) {
+          for(int i = 0; i < x->width; i++) {
+            renderGPiece(xpos, ypos, 0, x->chunkdata[i][j], x->floortex, x->walltex, rd.opacity);
+            xpos+= 64;
+          }
+          ypos += 64;
+          xpos = x->originX;
+        }
+      }
+    }
+
+  } else {
+    for(auto x : g_ggrids) {
+        int xpos = x->originX;
+        int ypos = x->originY;
+        for(int j = 0; j < x->height; j++) {
+          for(int i = 0; i < x->width; i++) {
+            renderGPiece(xpos, ypos, 0, x->chunkdata[i][j], x->floortex, x->walltex, 255);
+            xpos+= 64;
+          }
+          ypos += 64;
+          xpos = x->originX;
+  
+  
+      }
+    }
+  }
+
+
+//  for(auto x : g_meshFloors) {
+//    rect myRect = {x->origin.x - x->sleepRadius, x->origin.y - x->sleepRadius - (x->origin.z * XtoZ), x->sleepRadius * 2, x->sleepRadius *2};
+//    myRect = transformRect(myRect);
+//    x->awake = RectOverlap(myRect, cam);
+//  }
+//
+//  for(auto x : g_meshVWalls) {
+//    //rect myRect = {x->origin.x - x->sleepRadius, x->origin.y - x->sleepRadius, x->sleepRadius * 2, x->sleepRadius *2};
+//    //did something go wrong? a bit before i did lots of memory debugging I noticed that this stopped working, hmm.
+//    rect myRect = {x->origin.x - x->sleepRadius*1.5, x->origin.y - x->sleepRadius*1.5, x->sleepRadius * 3, x->sleepRadius *3};
+//    myRect = transformRect(myRect);
+//    x->awake = RectOverlap(myRect, cam);
+//  }
+//
+//
+//  std::map<mesh*, std::vector<SDL_Vertex>> vbuffer;
+//
+//  //M("Time for the first pass");
+//  for (auto &x : g_meshFloors) {
+//      if (x->visible && x->awake) {
+//          std::vector<SDL_Vertex> v(x->numVertices);
+//
+//          if(x->drawDiffuse) {
+//            
+//            //M("A");
+//            for (int i = 0; i < x->numVertices; i++) {
+//                v[i] = x->vertex[i];
+//                v[i].position.x += x->origin.x - g_camera.x;
+//                v[i].position.y += x->origin.y - g_camera.y
+//                                   -(x->origin.z * XtoZ);
+//                v[i].color.a = x->vertex[i].color.a;
+//            }
+//            //SDL_RenderGeometry(renderer, x->texture, v.data(), x->numVertices, x->indices, x->numIndices);
+//          }
+//  
+//        // shade pass
+//          if(x->drawShading || x->hasTrim) {
+//            for (int i = 0; i < x->numVertices; i++) {
+//                v[i].tex_coord.x = x->vertexExtraData[i].first;
+//                v[i].tex_coord.y = x->vertexExtraData[i].second;
+//                v[i].color = {255, 255, 255, 255};
+//            }
+//          }
+//  
+//          //M("C");
+//          if (x->hasTrim) {
+//              vbuffer[x] = v; // copy into map
+//          } else {
+//            if(x->drawShading) {
+//              SDL_RenderGeometry(renderer, g_floorShadeTexture,
+//                                 v.data(), x->numVertices,
+//                                 x->indices, x->numIndices);
+//            }
+//          }
+//  
+//      }
+//  }
+//  
+//  // second pass
+//  for (auto &x : g_meshFloors) {
+//      if (x->visible && x->awake && x->hasTrim) {
+//          auto &v = vbuffer[x];
+//          SDL_RenderGeometry(renderer, x->trimTexture,
+//                             v.data(), x->numVertices,
+//                             x->indices, x->numIndices);
+//          if(x->drawShading) {
+//            SDL_RenderGeometry(renderer, g_floorShadeTexture,
+//                               v.data(), x->numVertices,
+//                               x->indices, x->numIndices);
+//          }
+//      }
+//  }
+
+
+  
+
+//  //decorative meshes
+//  for(auto &x : g_meshDecorative) {
+//    //D("There is an decorative mesh");
+//    if(x->visible) {
+//      SDL_Vertex v[x->numVertices];
+//      for(int i = 0; i < x->numVertices; i++) {
+//        v[i] = x->vertex[i];
+//        v[i].position.x += x->origin.x - g_camera.x;
+//        v[i].position.y += x->origin.y - g_camera.y
+//                           -(x->origin.z * XtoZ);
+//        v[i].color.a = x->vertex[i].color.a;
+//      }
+//
+//      if(x->drawDiffuse == 1) {
+//        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+//      }
+//
+//      //render shade
+//      for(int i = 0; i < x->numVertices; i++) {
+//        v[i].tex_coord.x = x->vertexExtraData[i].first;
+//        v[i].tex_coord.y = x->vertexExtraData[i].second;
+//        v[i].color.a = 255; //alpha is done in the texture for this
+//      }
+//
+//      SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
+//
+//    }
+//  }
+//
+//  //visual walls
+//  vector<mesh*>* meshset;
+//  if(g_usingFloorplan) {
+//    for(auto &x : g_meshVWalls) {
+//      if(x->visible && x->awake) {
+//        SDL_Vertex v[x->numVertices];
+//        for(int i = 0; i < x->numVertices; i++) {
+//          v[i] = x->vertex[i];
+//          v[i].position.x += x->origin.x - g_camera.x;
+//          v[i].position.y += x->origin.y - g_camera.y
+//                             -(x->origin.z * XtoZ);
+//          v[i].color.r = v[i].color.g;
+//        }
+//  
+//  
+//        int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+//  //      D(ret);
+//  //      const char* error = SDL_GetError();
+//  //      D(error);
+//        
+//        
+//  
+//        if(x->drawShading) {
+//          //render shade
+//          for(int i = 0; i < x->numVertices; i++) {
+//            v[i].tex_coord.x = x->vertexExtraData[i].first;
+//            v[i].tex_coord.y = x->vertexExtraData[i].second;
+//          }
+//    
+//          switch(x->topOrBottomShading) {
+//            case 0:
+//              {
+//                SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 1:
+//              {
+//                SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 2:
+//              {
+//                SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 3:
+//              {
+//                SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 4:
+//              {
+//                SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 5:
+//              {
+//                SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//          }
+//        }
+//      }
+//    }
+//
+//  } else {
+//    for(auto &x : g_meshVWalls) {
+//      if(x->visible && x->awake) {
+//        SDL_Vertex v[x->numVertices];
+//        for(int i = 0; i < x->numVertices; i++) {
+//          v[i] = x->vertex[i];
+//          v[i].position.x += x->origin.x - g_camera.x;
+//          v[i].position.y += x->origin.y - g_camera.y
+//                             -(x->origin.z * XtoZ);
+//          v[i].color.r = v[i].color.g;
+//        }
+//  
+//  //      D(v[0].position.x);
+//  //      D(v[0].position.y);
+//  //      D(x->indices[0]);
+//  //      D(x->numIndices);
+//  //      D(x->numVertices);
+//  
+//        int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+//  //      D(ret);
+//  //      const char* error = SDL_GetError();
+//  //      D(error);
+//        
+//        
+//  
+//        if(x->drawShading) {
+//          //render shade
+//          for(int i = 0; i < x->numVertices; i++) {
+//            v[i].tex_coord.x = x->vertexExtraData[i].first;
+//            v[i].tex_coord.y = x->vertexExtraData[i].second;
+//          }
+//    
+//          switch(x->topOrBottomShading) {
+//            case 0:
+//              {
+//                SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 1:
+//              {
+//                SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 2:
+//              {
+//                SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 3:
+//              {
+//                SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 4:
+//              {
+//                SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//            case 5:
+//              {
+//                SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
+//                break;
+//              }
+//          }
+//        }
+//      }
+//    }
+//  }
+//
+//  if(drawhitboxes) {
+//    for(auto &x : g_meshCollisions) {
+//      if(x->visible) {
+//        SDL_Vertex v[x->numVertices];
+//        for(int i = 0; i < x->numVertices; i++) {
+//          v[i] = x->vertex[i];
+//          v[i].position.x += x->origin.x - g_camera.x;
+//          v[i].position.y += x->origin.y - g_camera.y;
+//        }
+//
+//        //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
+//        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
+//
+//      }
+//    }
+//  }
+
+  // sort
+  if(g_usingFloorplan) {
+    sort_by_y(g_actorsInRoom);
+    for (long long unsigned int i = 0; i < g_actorsInRoom.size(); i++)
+    {
+      if(!g_actorsInRoom[i]->persistentGeneral) {
+        g_actorsInRoom[i]->opacity = g_floorplan[g_floorPos.x][g_floorPos.y].opacity;
+      }
+      g_actorsInRoom[i]->render(renderer, g_camera);
+    }
+
+    if(g_lastFloorPos.x >= 0) {
+      sort_by_y(g_actorsInLastRoom);
+      for (long long unsigned int i = 0; i < g_actorsInLastRoom.size(); i++)
+      {
+        if(!g_actorsInLastRoom[i]->persistentGeneral) {
+          g_actorsInLastRoom[i]->opacity = g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y].opacity;
+          g_actorsInLastRoom[i]->render(renderer, g_camera);
+        }
+      }
+    }
+
+  } else {
+    sort_by_y(g_actors);
+    for (long long unsigned int i = 0; i < g_actors.size(); i++)
+    {
+      g_actors[i]->render(renderer, g_camera);
+    }
+  }
+
+  //render black bars
+  if(!devMode && g_spotlightEnabled) {
+    //occluders
+
+    SDL_Rect blackrect;
+
+    blackrect = {
+      g_camera.desiredX - g_camera.width,
+      g_camera.desiredY - g_camera.height,
+      g_camera.width,
+      g_camera.height*3
+    };
+
+
+    blackrect = transformRect(blackrect);
+
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+    blackrect = {
+      g_camera.desiredX + g_camera.width,
+      g_camera.desiredY - g_camera.height,
+      g_camera.width,
+      g_camera.height*3
+    };
+
+
+    blackrect = transformRect(blackrect);
+
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+    blackrect = {
+      g_camera.desiredX,
+      g_camera.desiredY - g_camera.height,
+      g_camera.width,
+      g_camera.height
+    };
+
+    blackrect = transformRect(blackrect);
+
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+    blackrect = {
+      g_camera.desiredX,
+      g_camera.desiredY + g_camera.height,
+      g_camera.width,
+      g_camera.height
+    };
+
+    blackrect = transformRect(blackrect);
+
+    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
+
+    blackrect = {
+      g_camera.desiredX,
+      g_camera.desiredY,
+      g_camera.width,
+      g_camera.height
+    };
+
+    blackrect = transformRect(blackrect);
+    SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
+  }
+
+
+  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
+  {
+    if (g_tiles[i]->software == 1)
+    {
+      g_tiles[i]->render(renderer, g_camera);
+    }
+  }
+
+  //shade
+  SDL_RenderCopy(renderer, g_shade, NULL, NULL);
+
+  drawUI();
+
+  //render fancybox
+  g_fancybox->render();
+  g_fancybox->update(elapsed);
+
+
+  // settings menu
+  if (g_inSettingsMenu) 
+  {
+    //move reticle to the correct position
+    if(!g_settingsUI->cursorIsOnBackButton) {
+      g_settingsUI->handMarker->targety
+        = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
+        + (g_settingsUI->handOffset);
+
+      g_settingsUI->handMarker->targetx
+        = g_settingsUI->markerHandX;
+
+      g_settingsUI->fingerMarker->targety
+        = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
+        + (g_settingsUI->fingerOffset);
+
+      g_settingsUI->fingerMarker->targetx
+        = g_settingsUI->markerFingerX;
+
+
+    } else {
+      float ww = WIN_WIDTH;
+      float wh = WIN_HEIGHT;
+
+      g_settingsUI->fingerMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+      g_settingsUI->fingerMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
+
+      g_settingsUI->handMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
+      g_settingsUI->handMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
+    }
+
+    if(g_firstFrameOfSettingsMenu) {
+      g_firstFrameOfSettingsMenu = 0;
+      g_settingsUI->handMarker->x = g_settingsUI->handMarker->targetx;
+      g_settingsUI->handMarker->y = g_settingsUI->handMarker->targety;
+      g_settingsUI->fingerMarker->x = g_settingsUI->fingerMarker->targetx;
+      g_settingsUI->fingerMarker->y = g_settingsUI->fingerMarker->targety;
+
+    }
+
+  }
+
+  //this is the menu for quitting or going back to the "overworld"
+  if (g_inEscapeMenu) 
+  {
+    elapsed = 0;
+    //move reticle to the correct position
+    g_escapeUI->handMarker->targety
+      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+      + (g_escapeUI->handOffset);
+
+    g_escapeUI->handMarker->targetx
+      = g_escapeUI->markerHandX;
+
+    g_escapeUI->fingerMarker->targety
+      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
+      + (g_escapeUI->fingerOffset);
+
+    float ww = WIN_WIDTH;
+    float fwidth = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->width;
+    g_escapeUI->fingerMarker->targetx
+      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxX + 
+      fwidth / ww / 2;
+
+
+
+    if(g_firstFrameOfSettingsMenu) {
+      g_firstFrameOfSettingsMenu = 0;
+      g_escapeUI->handMarker->x = g_escapeUI->handMarker->targetx;
+      g_escapeUI->handMarker->y = g_escapeUI->handMarker->targety;
+      g_escapeUI->fingerMarker->x = g_escapeUI->fingerMarker->targetx;
+      g_escapeUI->fingerMarker->y = g_escapeUI->fingerMarker->targety;
+
+    }
+
+  }
+
+  // draw pause screen
+  if (inPauseMenu)
+  {
+    adventureUIManager->crosshair->x = 5;
+
+    // iterate thru inventory and draw items on screen
+    float defaultX = WIN_WIDTH * 0.05;
+    float defaultY = WIN_HEIGHT * adventureUIManager->inventoryYStart;
+    float x = defaultX;
+    float y = defaultY;
+    float maxX = WIN_WIDTH * 0.9;
+    float maxY = WIN_HEIGHT * adventureUIManager->inventoryYEnd;
+    float itemWidth = WIN_WIDTH * 0.07;
+    float padding = WIN_WIDTH * 0.01;
+
+    int i = 0;
+
+    if (g_inventoryUiIsLevelSelect == 0) {
+      if(g_inventoryUiIsKeyboard == 1) {
+        //draw a letter in each box and append to a string
+
+
+        for(int j = 0; j < g_alphabet.size(); j++) {
+          if( i < itemsPerRow * inventoryScroll) {
+            i++;
+            continue;
+          }
+
+          SDL_Rect drect;
+          if(g_alphabet == g_alphabet_lower) {
+            drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230) , (int)y, (int)itemWidth * (g_alphabet_widths[i] / 60), (int)itemWidth}; 
+          } else {
+            drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230), (int)y, (int)itemWidth * (g_alphabet_upper_widths[i] / 60), (int)itemWidth}; 
+          }
+
+          // draw the ith letter of "alphabet" in drect
+          if(1) {
+            SDL_Rect shadowRect = drect;
+            float booshAmount = g_textDropShadowDist  * (60 * g_fontsize);
+            shadowRect.x += booshAmount;
+            shadowRect.y += booshAmount;
+            SDL_SetTextureColorMod(g_alphabet_textures->at(i), g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
+            SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &shadowRect);
+            SDL_SetTextureColorMod(g_alphabet_textures->at(i), 255,255,255);
+          }
+          SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
+
+
+          if (i == inventorySelection || g_firstFrameOfPauseMenu)
+          {
+            // this item should have the marker
+            inventoryMarker->show = 1;
+            float biggen = 0; // !!! resolutions : might have problems with diff resolutions
+
+            if(g_firstFrameOfPauseMenu) {
+              inventoryMarker->x = x / WIN_WIDTH;
+              inventoryMarker->y = y / WIN_HEIGHT;
+              inventoryMarker->x -= biggen;
+              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              //now that it's a hand
+              inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->targetx = inventoryMarker->x;
+              inventoryMarker->targety = inventoryMarker->y;
+              g_firstFrameOfPauseMenu = 0;
+            } else {
+              inventoryMarker->targetx = x / WIN_WIDTH;
+              inventoryMarker->targety = y / WIN_HEIGHT;
+              inventoryMarker->targetx -= biggen;
+              inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              //now that it's a hand
+              inventoryMarker->targetx += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+              inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            }
+
+            inventoryMarker->width = itemWidth / WIN_WIDTH;
+
+            inventoryMarker->width += biggen * 2;
+            //inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+          }
+
+          x += itemWidth + padding;
+          if (x > maxX)
+          {
+            x = defaultX;
+            y += itemWidth + padding;
+            if (y > maxY)
+            {
+              // we filled up the entire inventory, so lets leave
+              break;
+            }
+          }
+          i++;
+
+        }
+
+        //draw current input in the bottom box
+        adventureUIManager->inputText->updateText(g_keyboardInput.c_str(), -1, 0.9);
+        adventureUIManager->escText->updateText(adventureUIManager->keyboardPrompt, -1, 0.9);
+
+
+        g_itemsInInventory = g_alphabet.size();
+
+
+      }
+    } else {
+      //populate the UI based on the loaded level sequence.
+      for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
+        if( i < itemsPerRow * inventoryScroll) {
+          i++;
+          continue;
+        }
+        SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
+        int boosh = 5;
+        drect.w += boosh * 2;
+        drect.h += boosh * 2;
+        drect.x -= boosh;
+        drect.y -= boosh;
+
+        levelNode* tn = g_levelSequence->levelNodes[j];
+
+        //should we draw the locked graphic?
+        if(tn->locked) {
+
+          SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
+
+          //render the face
+          SDL_RenderCopy(renderer, tn->mouthTexture, NULL, &drect);
+
+          SDL_Rect srect = tn->getEyeRect();
+          SDL_RenderCopy(renderer, tn->eyeTexture, &srect, &drect);
+          g_levelSequence->levelNodes[j]->blinkCooldownMS -= 16;
+          if(tn->blinkCooldownMS < 0) { tn->blinkCooldownMS = rng(tn->minBlinkCooldownMS, tn->maxBlinkCooldownMS); }
+        } else {
+          SDL_RenderCopy(renderer, tn->sprite, NULL, &drect);
+        }
+
+
+        if (i == inventorySelection)
+        {
+
+          if(g_levelSequence->levelNodes[i]->locked) {
+            adventureUIManager->escText->updateText("Locked", -1, 0.9);
+          } else {
+            string dispText = g_levelSequence->levelNodes[i]->name;
+            std::replace(dispText.begin(), dispText.end(),'_',' ');
+            adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
+          }
+
+          // this item should have the marker
+          inventoryMarker->show = 1;
+          float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
+
+          if(g_firstFrameOfPauseMenu) {
+            inventoryMarker->x = x / WIN_WIDTH;
+            inventoryMarker->y = y / WIN_HEIGHT;
+            inventoryMarker->x -= biggen;
+            inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            //now that it's a hand
+            inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            inventoryMarker->targetx = inventoryMarker->x;
+            inventoryMarker->targety = inventoryMarker->y;
+            g_firstFrameOfPauseMenu = 0;
+          } else {
+            inventoryMarker->targetx = x / WIN_WIDTH;
+            inventoryMarker->targety = y / WIN_HEIGHT;
+            inventoryMarker->targetx -= biggen;
+            inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            //now that it's a hand
+            inventoryMarker->targetx += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+            inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+          }
+
+          inventoryMarker->width = itemWidth / WIN_WIDTH;
+
+          inventoryMarker->width += biggen * 2;
+          inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
+        }
+
+        x += itemWidth + padding;
+        if (x > maxX)
+        {
+          x = defaultX;
+          y += itemWidth + padding;
+          if (y > maxY)
+          {
+            // we filled up the entire inventory, so lets leave
+            break;
+          }
+        }
+        i++;
+
+      }
+      g_itemsInInventory = g_levelSequence->levelNodes.size();
+
+    }
+
+    //re-render inventory reticle so it goes on top of the items/level icons
+    inventoryMarker->render(renderer, g_camera, 0);
+    inventoryMarker->show = 0;
+
+  }
+  else
+  {
+    inventoryMarker->show = 0;
+    inventoryText->show = 0;
+  }
+
+  // map editing
+  if (devMode)
+  {
+    nodeInfoText->textcolor = {0, 0, 0};
+    nodeInfoText->show = 1;
+
+
+    if(drawhitboxes) {
+      for(int i = 0; i < g_chunks.size(); i++) {
+        if(g_chunks[i]->standalone) {
+          SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+          SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
+        }
+      }
+    }
+
+    // draw nodes
+    for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_worldsounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
+
+      SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+      //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      //        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+      //
+      //        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+      //
+      //        SDL_FreeSurface(textsurface);
+      //        SDL_DestroyTexture(texttexture);
+
+      nodeInfoText->x = obj.x;
+      nodeInfoText->y = obj.y - 20;
+      nodeInfoText->updateText(g_worldsounds[i]->name, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+
+
+    //draw precede node(s)
+    if(precedeProtagNode != nullptr) {
+      SDL_Rect obj = { precedeProtagNode->x, precedeProtagNode->y, 40, 40};
+
+      obj = transformRect(obj);
+      SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
+    }
+
+    for (long long unsigned int i = 0; i < g_musicNodes.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_musicNodes[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
+
+      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+      SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+      SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+      SDL_FreeSurface(textsurface);
+      SDL_DestroyTexture(texttexture);
+    }
+
+    for (long long unsigned int i = 0; i < g_cueSounds.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_cueSounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
+      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+      SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+      SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+      SDL_FreeSurface(textsurface);
+      SDL_DestroyTexture(texttexture);
+    }
+
+    for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
+    {
+      if(!drawhitboxes) {break;}
+      SDL_Rect obj = {(int)((g_waypoints[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+      SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
+      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+      nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
+      nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
+      nodeInfoText->boxX -= 0.02;
+      nodeInfoText->boxY -= 0.03;
+      nodeInfoText->updateText(g_waypoints[i]->name, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+
+      //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+      //SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+      //nodeInfoText->updateText(g_waypoints[i]->name
+
+      //SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+      //SDL_FreeSurface(textsurface);
+      //SDL_DestroyTexture(texttexture);
+    }
+
+    for (auto x : g_setsOfInterest)
+    {
+      for (auto y : x)
+      {
+        SDL_Rect obj = {(int)((y->x - g_camera.x - 20) * g_camera.zoom), (int)((y->y - g_camera.y - 20) * g_camera.zoom), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
+        SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
+
+        SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
+
+        SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
+        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+
+        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
+
+        SDL_FreeSurface(textsurface);
+        SDL_DestroyTexture(texttexture);
+      }
+    }
+
+    // doors
+    if(drawhitboxes) {
+      for (long long unsigned int i = 0; i < g_doors.size(); i++)
+      {
+        SDL_Rect obj = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
+        // the wall
+        SDL_Rect obj2 = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - (g_doors[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(((g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
+        //SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
+        nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
+        nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
+        nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
+        nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
+    }
+
+    for (long long unsigned int i = 0; i < g_dungeonDoors.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)((g_dungeonDoors[i]->height * g_camera.zoom))};
+      SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj);
+      // the wall
+      SDL_Rect obj2 = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)(((128) * XtoZ * g_camera.zoom) + (g_dungeonDoors[i]->height * g_camera.zoom))};
+      SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj2);
+    }
+
+
+    if(drawhitboxes) {
+      for (long long unsigned int i = 0; i < g_ggrids.size(); i++) {
+
+        SDL_Rect obj = {(int)((g_ggrids[i]->originX - g_camera.x - 20) * g_camera.zoom), (int)(((g_ggrids[i]->originY - g_camera.y - 20 - (g_ggrids[i]->originZ * XtoZ)) * g_camera.zoom)), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
+
+        SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &obj);
+
+      }
+
+      for (long long unsigned int i = 0; i < g_triggers.size(); i++)
+      {
+        SDL_Rect obj = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
+        // the wall
+        SDL_Rect obj2 = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(((g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
+        SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
+
+        nodeInfoText->x = obj.x + 25;
+        nodeInfoText->y = obj.y + 25;
+        nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
+        nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+      }
+    }
+
+    // listeners
+    for (long long unsigned int i = 0; i < g_listeners.size(); i++)
+    {
+      SDL_Rect obj = {(int)((g_listeners[i]->x - g_camera.x - 20) * g_camera.zoom), (int)((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
+      SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
+      nodeInfoText->x = obj.x;
+      nodeInfoText->y = obj.y - 20;
+      nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, -1, 15);
+      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
+    }
+
+    write_map(protag);
+    for (int i = 0; i < 50; i++)
+    {
+      devinput[i] = 0;
+    }
+    nodeInfoText->show = 0;
+  }
+
+}
+
 void updateWindowResolution() {
   // update camera
   SDL_GetWindowSize(window, &WIN_WIDTH, &WIN_HEIGHT);
@@ -296,6 +1282,19 @@ void ExplorationLoop() {
   g_boardingCooldownMs -= elapsed;
   g_protagBonusSpeedMS -= elapsed;
   g_catchUpModeMs -= elapsed;
+
+  if(g_usingFloorplan) {
+    g_floorplan[g_floorPos.x][g_floorPos.y].opacity += 2 * elapsed;
+    if (g_floorplan[g_floorPos.x][g_floorPos.y].opacity > 255) {
+      g_floorplan[g_floorPos.x][g_floorPos.y].opacity = 255;
+    }
+    if(g_lastFloorPos.x >= 0) {
+      g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y].opacity -= 2 * elapsed;
+      if (g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y].opacity < 0) {
+        g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y].opacity = 0;
+      }
+    }
+  }
 
   if(g_catchUpMode) {
     bool advance = 1;
@@ -480,261 +1479,8 @@ void ExplorationLoop() {
             //draw the bg
             SDL_RenderCopy(renderer, background, NULL, NULL);
         
-            // tiles
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->z == 0)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->z == 1)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->z == 2)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            //meshes
-            for(auto &x : g_meshFloors) {
-              if(x->visible) {
-                SDL_Vertex v[x->numVertices];
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i] = x->vertex[i];
-                  v[i].position.x += x->origin.x - g_camera.x;
-                  v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z * XtoZ);
-                  v[i].color.a = x->vertex[i].color.a;
-                }
-          
-                if(x->drawDiffuse == 1) {
-                  //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-          //        SDL_Rect a = {0,0.2, 0.2, 0.2};
-          //        SDL_RenderCopy(renderer, x->texture, NULL, &a);
-                }
-          
-          
-                //render shade
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i].tex_coord.x = x->vertexExtraData[i].first;
-                  v[i].tex_coord.y = x->vertexExtraData[i].second;
-                  v[i].color.r = 255;
-                  v[i].color.g = 255;
-                  v[i].color.b = 255;
-                  v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
-                }
-          
-                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-          
-              }
-            }
-          
-          
-            //decorative meshes
-            for(auto &x : g_meshDecorative) {
-              //D("There is an decorative mesh");
-              if(x->visible) {
-                SDL_Vertex v[x->numVertices];
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i] = x->vertex[i];
-                  v[i].position.x += x->origin.x - g_camera.x;
-                  v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z * XtoZ);
-                  v[i].color.a = x->vertex[i].color.a;
-                }
-          
-                if(x->drawDiffuse == 1) {
-                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-                }
-          
-                //render shade
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i].tex_coord.x = x->vertexExtraData[i].first;
-                  v[i].tex_coord.y = x->vertexExtraData[i].second;
-                  v[i].color.a = 255; //alpha is done in the texture for this
-                }
-          
-                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-          
-              }
-            }
-          
-          
-            //visual walls
-            //these will be drawn again later IF they have an occluder
-            if(1) { //!!! change to 1 asap, this should not be zero
-            for(auto &x : g_meshVWalls) {
-              if(x->visible && x->awake) {
-                SDL_Vertex v[x->numVertices];
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i] = x->vertex[i];
-                  v[i].position.x += x->origin.x - g_camera.x;
-                  v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z *XtoZ);
-                  v[i].color.r = v[i].color.g;
-                  //          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
-                  //          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
-                }
-        
-                SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-        
-                if(x->drawShading) {
-                  //render shade
-                  for(int i = 0; i < x->numVertices; i++) {
-                    v[i].tex_coord.x = x->vertexExtraData[i].first;
-                    v[i].tex_coord.y = x->vertexExtraData[i].second;
-                  }
-
-                  switch(x->topOrBottomShading) {
-                    case 0:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 1:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 2:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 3:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 4:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 5:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                  }
-          
-                }
-              }
-            }
-            }
-          
-          
-          
-            if(drawhitboxes) {
-              for(auto &x : g_meshCollisions) {
-                if(x->visible) {
-                  SDL_Vertex v[x->numVertices];
-                  for(int i = 0; i < x->numVertices; i++) {
-                    v[i] = x->vertex[i];
-                    v[i].position.x += x->origin.x - g_camera.x;
-                    v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z *XtoZ);
-                  }
-          
-                  //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
-                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-          
-                }
-              }
-            }
-          
-            // sort
-            sort_by_y(g_actors);
-            for (long long unsigned int i = 0; i < g_actors.size(); i++)
-            {
-              g_actors[i]->render(renderer, g_camera);
-            }
-          
-            //render black bars
-            if(!devMode && g_spotlightEnabled) {
-              //occluders
-          
-              SDL_Rect blackrect;
-          
-              blackrect = {
-                g_camera.desiredX - g_camera.width,
-                g_camera.desiredY - g_camera.height,
-                g_camera.width,
-                g_camera.height*3
-              };
-          
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX + g_camera.width,
-                g_camera.desiredY - g_camera.height,
-                g_camera.width,
-                g_camera.height*3
-              };
-          
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX,
-                g_camera.desiredY - g_camera.height,
-                g_camera.width,
-                g_camera.height
-              };
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX,
-                g_camera.desiredY + g_camera.height,
-                g_camera.width,
-                g_camera.height
-              };
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX,
-                g_camera.desiredY,
-                g_camera.width,
-                g_camera.height
-              };
-          
-              blackrect = transformRect(blackrect);
-              SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
-            }
-
-          
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->software == 1)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            //shade
-            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
-
+            explorationRender();
+            
             //drawUI();
           
             SDL_SetRenderTarget(renderer, NULL);
@@ -1114,7 +1860,7 @@ void ExplorationLoop() {
                 adventureUIManager->talker = narrarator;
                 adventureUIManager->dPointToMe = 0;
                 vector<string> flavorScript = {};
-                flavorScript.push_back(getLanguageData("KeyItem" + to_string(g_keyItemsRelevant[adventureUIManager->kiIndex]->index) + "Flavor"));
+                flavorScript.push_back(getLanguageData("Pet" + to_string(g_keyItemsRelevant[adventureUIManager->kiIndex]->index) + "Desc"));
                 flavorScript.push_back("#");
                 adventureUIManager->ownScript = flavorScript;
                 adventureUIManager->dialogue_index = -1;
@@ -1236,7 +1982,7 @@ void ExplorationLoop() {
           if(input[1] && !oldinput[1]&& !protag_is_talking) {
             if(combatUIManager->currentInventoryOption != 6 &&
                 combatUIManager->currentInventoryOption != 13) {
-              if(combatUIManager->currentInventoryOption + 1 < g_combatInventory.size()) {
+              if(combatUIManager->currentInventoryOption + 1 < g_items.size()) {
                 combatUIManager->currentInventoryOption ++;
               }
             }
@@ -1253,9 +1999,9 @@ void ExplorationLoop() {
               combatUIManager->currentInventoryOption += 7;
             }
           }
-          combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_combatInventory.size()-1);
+          combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_items.size()-1);
           if(input[11] &&!oldinput[11]&& !protag_is_talking) {
-            if(combatUIManager->currentInventoryOption >= 0 && combatUIManager->currentInventoryOption < g_combatInventory.size()) {
+            if(combatUIManager->currentInventoryOption >= 0 && combatUIManager->currentInventoryOption < g_items.size()) {
               //first see if we want to use or discard
               g_amState = amState::USEORDISCARD;
               combatUIManager->useOrDiscardPanel->show = 1;
@@ -1279,33 +2025,6 @@ void ExplorationLoop() {
               combatUIManager->useOrDiscardMenuPicker->y = combatUIManager->useOrDiscardUseText->boxY + 0.005;
               combatUIManager->useOrDiscardMenuPicker->x = combatUIManager->useOrDiscardUseText->boxX - 0.03;
               combatUIManager->UDOption = 0;
-
-
-              //this is the code for trying to use an item
-              //
-//              if(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting == 1) {
-//                g_amState = amState::ITARGETING;
-//                combatUIManager->currentTarget = 0;
-//                combatUIManager->partyText->show = 1;
-//                combatUIManager->partyMiniText->show = 1;
-//
-//                break;
-//              } else {
-//                vector<string> spiritScript = {};
-//                adventureUIManager->talker = narrarator;
-//                spiritScript.push_back(getLanguageData("ItemError"));
-//                spiritScript.push_back("#");
-//
-//                adventureUIManager->ownScript = spiritScript;
-//                adventureUIManager->dialogue_index = -1;
-//                adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-//                adventureUIManager->sleepingMS = 0;
-//                protag_is_talking = 1;
-//                g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
-//                g_forceEndDialogue = 0;
-//                adventureUIManager->continueDialogue();
-//
-//              }
             }
           }
           break;
@@ -1340,7 +2059,9 @@ void ExplorationLoop() {
             if(combatUIManager->UDOption == 0) 
             {
               //try to use an item
-              if(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting == 1) {
+              itemData td = g_items[combatUIManager->currentInventoryOption];
+              int thisTargeting = itemsTable[td.type][td.index].targeting;
+              if(thisTargeting== 1) {
                 g_amState = amState::ITARGETING;
                 combatUIManager->currentTarget = 0;
                 for(int i = 0; i < g_partyCombatants.size(); i++) {
@@ -1360,7 +2081,7 @@ void ExplorationLoop() {
                 combatUIManager->useOrDiscardMenuPicker->show = 0;
 
                 break;
-              } else if(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting == 3) {
+              } else if(thisTargeting == 3) {
                 //this means that the item affects allies and is untargeted, e.g. picnicbox
                 combatant *c = g_partyCombatants[0];
                 for(auto x : g_partyCombatants) {
@@ -1368,9 +2089,9 @@ void ExplorationLoop() {
                     c = x;
                   }
                 }
-                useItem(g_combatInventory[combatUIManager->currentInventoryOption], combatUIManager->currentTarget, c);
-                g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
-                combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_combatInventory.size()-1);
+                int ret = useItem(td.type, td.index, combatUIManager->currentTarget, c);
+                //g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
+                combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_items.size()-1);
                 g_amState = amState::ITEM;
                 combatUIManager->useOrDiscardPanel->show = 0;
                 combatUIManager->useOrDiscardUseText->show = 0;
@@ -1412,8 +2133,8 @@ void ExplorationLoop() {
               }
             } else if(combatUIManager->UDOption == 1) {
               //discard
-              g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
-              if(g_combatInventory.size() == 0) {
+              g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
+              if(g_items.size() == 0) {
                 combatUIManager->menuPicker->x = -1;
 
               }
@@ -1428,25 +2149,30 @@ void ExplorationLoop() {
                
             } else {
               //info
-              vector<string> spiritScript = {};
-              adventureUIManager->talker = narrarator;
-              spiritScript.push_back(getLanguageData("I" + to_string(g_combatInventory[combatUIManager->currentInventoryOption]) ) + getLanguageData("ItemDescSeparator") + getLanguageData("Idesc" + to_string(g_combatInventory[combatUIManager->currentInventoryOption])));
-              spiritScript.push_back("#");
 
-              adventureUIManager->ownScript = spiritScript;
-              adventureUIManager->dialogue_index = -1;
-              adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
-              adventureUIManager->sleepingMS = 0;
-              protag_is_talking = 1;
-              g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
-              g_forceEndDialogue = 0;
-              adventureUIManager->continueDialogue();
-              g_amState = amState::ITEM;
-              combatUIManager->useOrDiscardPanel->show = 0;
-              combatUIManager->useOrDiscardUseText->show = 0;
-              combatUIManager->useOrDiscardDiscardText->show = 0;
-              combatUIManager->udInfoText->show = 0;
-              combatUIManager->useOrDiscardMenuPicker->show = 0;
+              //TODO figure out how you're going to do this
+//              vector<string> spiritScript = {};
+//              adventureUIManager->talker = narrarator;
+//
+//
+//
+//              spiritScript.push_back(getLanguageData("I" + to_string(g_items[combatUIManager->currentInventoryOption]) ) + getLanguageData("ItemDescSeparator") + getLanguageData("Idesc" + to_string(g_combatInventory[combatUIManager->currentInventoryOption])));
+//              spiritScript.push_back("#");
+//
+//              adventureUIManager->ownScript = spiritScript;
+//              adventureUIManager->dialogue_index = -1;
+//              adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+//              adventureUIManager->sleepingMS = 0;
+//              protag_is_talking = 1;
+//              g_keyItemFlavorDisplay = 1; //really just means make sure we dont use the input from the dialog ending to start another one
+//              g_forceEndDialogue = 0;
+//              adventureUIManager->continueDialogue();
+//              g_amState = amState::ITEM;
+//              combatUIManager->useOrDiscardPanel->show = 0;
+//              combatUIManager->useOrDiscardUseText->show = 0;
+//              combatUIManager->useOrDiscardDiscardText->show = 0;
+//              combatUIManager->udInfoText->show = 0;
+//              combatUIManager->useOrDiscardMenuPicker->show = 0;
               break;
             
             }
@@ -1489,9 +2215,11 @@ void ExplorationLoop() {
                 c = x;
               }
             }
-            useItem(g_combatInventory[combatUIManager->currentInventoryOption], combatUIManager->currentTarget, c);
-            g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
-            combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_combatInventory.size()-1);
+
+            itemData td = g_items[combatUIManager->currentInventoryOption];
+            useItem(td.type, td.index, combatUIManager->currentTarget, c);
+            //g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
+            combatUIManager->currentInventoryOption = clamp(combatUIManager->currentInventoryOption, 0, g_items.size()-1);
             g_amState = amState::ITEM;
           }
           break;
@@ -2433,18 +3161,25 @@ void ExplorationLoop() {
     //for fog of war, keep a list of map Collisions to use 
     //which are close to the player and on layer 0
     g_is_collisions.clear();
-    for(auto x : g_impliedSlopes) {
-      SDL_FRect obj;
-      obj.x = (x->bounds.x -g_camera.x)* g_camera.zoom;
-      obj.y = (x->bounds.y -g_camera.y - height) * g_camera.zoom;
-      obj.w = x->bounds.width * g_camera.zoom;
-      obj.h = x->bounds.height * g_camera.zoom;
-
-      if(RectOverlap(obj, cam))
-      {
-        g_is_collisions.push_back(x);
+    if(g_usingFloorplan) {
+      for(int i = 0; i < g_floorplan[g_floorPos.x][g_floorPos.y].impliedSlopes.size(); i++) {
+        impliedSlope* t = g_floorplan[g_floorPos.x][g_floorPos.y].impliedSlopes[i];
+        g_is_collisions.push_back(t);
       }
-
+    } else { 
+      for(auto x : g_impliedSlopes) {
+        SDL_FRect obj;
+        obj.x = (x->bounds.x -g_camera.x)* g_camera.zoom;
+        obj.y = (x->bounds.y -g_camera.y - height) * g_camera.zoom;
+        obj.w = x->bounds.width * g_camera.zoom;
+        obj.h = x->bounds.height * g_camera.zoom;
+  
+        if(RectOverlap(obj, cam))
+        {
+          g_is_collisions.push_back(x);
+        }
+  
+      }
     }
 
     //could foreseeably cause issues if ents try pathfinding around
@@ -2482,7 +3217,7 @@ void ExplorationLoop() {
     }
 
   }
-  B("close collision check");
+  BM("close collision check");
 
   // ui
   if (!inPauseMenu && g_showHUD)
@@ -2612,9 +3347,9 @@ void ExplorationLoop() {
     //adventureUIManager->healthText->show = 0;
     //adventureUIManager->hungerText->show = 0;
   }
-  B("UI");
+  BM("UI");
 
-  B("Inventory ui");
+  BM("Inventory ui");
 
   // sines for item bouncing
   g_elapsed_accumulator += elapsed;
@@ -2626,12 +3361,17 @@ void ExplorationLoop() {
   g_itemsines[5] = ( sin((g_elapsed_accumulator + (235 * 5) ) / 300) * 10 + 30);
   g_itemsines[6] = ( sin((g_elapsed_accumulator + (235 * 6) ) / 300) * 10 + 30);
   g_itemsines[7] = ( sin((g_elapsed_accumulator + (235 * 7) ) / 300) * 10 + 30);
-  B("Itemsines");
+  BM("Itemsines");
 
 
   if (g_elapsed_accumulator > 1800 * M_PI)
   {
     g_elapsed_accumulator -= 1800* M_PI;
+  }
+
+  g_rotationalAccumulator+= elapsed * 0.03;
+  if(g_rotationalAccumulator > 360) {
+    g_rotationalAccumulator -= 360;
   }
 
 
@@ -2643,7 +3383,7 @@ void ExplorationLoop() {
     g_waterTexture = animateWater(renderer, g_waterTexture, g_waterSurface, g_wAcc);
   }
   g_waterOnscreen = 0;
-  B("Animate water");
+  BM("Animate water");
 
 
   if(g_dungeonDoorActivated == 0) {
@@ -2849,261 +3589,7 @@ void ExplorationLoop() {
             //draw the bg
             SDL_RenderCopy(renderer, background, NULL, NULL);
         
-            // tiles
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->z == 0)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->z == 1)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->z == 2)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            //meshes
-            for(auto &x : g_meshFloors) {
-              if(x->visible) {
-                SDL_Vertex v[x->numVertices];
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i] = x->vertex[i];
-                  v[i].position.x += x->origin.x - g_camera.x;
-                  v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z * XtoZ);
-                  v[i].color.a = x->vertex[i].color.a;
-                }
-          
-                if(x->drawDiffuse == 1) {
-                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-          //        SDL_Rect a = {0,0.2, 0.2, 0.2};
-          //        SDL_RenderCopy(renderer, x->texture, NULL, &a);
-                }
-          
-          
-                //render shade
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i].tex_coord.x = x->vertexExtraData[i].first;
-                  v[i].tex_coord.y = x->vertexExtraData[i].second;
-                  v[i].color.r = 255;
-                  v[i].color.g = 255;
-                  v[i].color.b = 255;
-                  v[i].color.a = 255; //alpha is done in the texture for this anyways, so this lets me do more (shadow where train enters mountain)
-                }
-          
-                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-          
-              }
-            }
-          
-          
-            //decorative meshes
-            for(auto &x : g_meshDecorative) {
-              //D("There is an decorative mesh");
-              if(x->visible) {
-                SDL_Vertex v[x->numVertices];
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i] = x->vertex[i];
-                  v[i].position.x += x->origin.x - g_camera.x;
-                  v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z * XtoZ);
-                  v[i].color.a = x->vertex[i].color.a;
-                }
-          
-                if(x->drawDiffuse == 1) {
-                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-                }
-          
-                //render shade
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i].tex_coord.x = x->vertexExtraData[i].first;
-                  v[i].tex_coord.y = x->vertexExtraData[i].second;
-                  v[i].color.a = 255; //alpha is done in the texture for this
-                }
-          
-                SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-          
-              }
-            }
-          
-          
-            //visual walls
-            //these will be drawn again later IF they have an occluder
-            if(1) { //!!! change to 1 asap, this should not be zero
-            for(auto &x : g_meshVWalls) {
-              if(x->visible && x->awake) {
-                SDL_Vertex v[x->numVertices];
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i] = x->vertex[i];
-                  v[i].position.x += x->origin.x - g_camera.x;
-                  v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z *XtoZ);
-                  v[i].color.r = v[i].color.g;
-                  //          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
-                  //          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
-                }
-        
-                SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-        
-                if(x->drawShading) {
-                  //render shade
-                  for(int i = 0; i < x->numVertices; i++) {
-                    v[i].tex_coord.x = x->vertexExtraData[i].first;
-                    v[i].tex_coord.y = x->vertexExtraData[i].second;
-                  }
-
-                  switch(x->topOrBottomShading) {
-                    case 0:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 1:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 2:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 3:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 4:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 5:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                  }
-          
-                }
-              }
-            }
-            }
-          
-          
-          
-            if(drawhitboxes) {
-              for(auto &x : g_meshCollisions) {
-                if(x->visible) {
-                  SDL_Vertex v[x->numVertices];
-                  for(int i = 0; i < x->numVertices; i++) {
-                    v[i] = x->vertex[i];
-                    v[i].position.x += x->origin.x - g_camera.x;
-                    v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z *XtoZ);
-                  }
-          
-                  //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
-                  SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-          
-                }
-              }
-            }
-          
-            // sort
-            sort_by_y(g_actors);
-            for (long long unsigned int i = 0; i < g_actors.size(); i++)
-            {
-              g_actors[i]->render(renderer, g_camera);
-            }
-          
-            //render black bars
-            if(!devMode && g_spotlightEnabled) {
-              //occluders
-          
-              SDL_Rect blackrect;
-          
-              blackrect = {
-                g_camera.desiredX - g_camera.width,
-                g_camera.desiredY - g_camera.height,
-                g_camera.width,
-                g_camera.height*3
-              };
-          
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX + g_camera.width,
-                g_camera.desiredY - g_camera.height,
-                g_camera.width,
-                g_camera.height*3
-              };
-          
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX,
-                g_camera.desiredY - g_camera.height,
-                g_camera.width,
-                g_camera.height
-              };
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX,
-                g_camera.desiredY + g_camera.height,
-                g_camera.width,
-                g_camera.height
-              };
-          
-              blackrect = transformRect(blackrect);
-          
-              SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-          
-              blackrect = {
-                g_camera.desiredX,
-                g_camera.desiredY,
-                g_camera.width,
-                g_camera.height
-              };
-          
-              blackrect = transformRect(blackrect);
-              SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
-            }
-          
-            for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-            {
-              if (g_tiles[i]->software == 1)
-              {
-                g_tiles[i]->render(renderer, g_camera);
-              }
-            }
-          
-            //shade
-            SDL_RenderCopy(renderer, g_shade, NULL, NULL);
-
-            //drawUI();
+            explorationRender();
           
             SDL_SetRenderTarget(renderer, NULL);
             while (!cont) {
@@ -3181,7 +3667,7 @@ void ExplorationLoop() {
     }
   }
 
-  B("Tall grass update");
+  BM("Tall grass update");
 
   if(!devMode){ //set frames for protags
 
@@ -3255,21 +3741,32 @@ void ExplorationLoop() {
     }
   }
 
+
   // ENTITY MOVEMENT (ENTITY UPDATE)
   // dont update movement while transitioning
+  //vector<entity*>* eset;
+  vector<entity*> mySet;
   if (1)
   {
-    for (long long unsigned int i = 0; i < g_entities.size(); i++)
+    if(g_usingFloorplan) {
+      eset = &g_entitiesInRoom;
+    } else {
+      eset = &g_entities;
+    }
+
+
+
+    for (long long unsigned int i = 0; i < eset->size(); i++)
     {
-      if (g_entities[i]->isWorlditem || (g_entities[i]->identity == 35&& g_entities[i]->usingTimeToLive == 0))
+      if (eset->at(i)->isWorlditem || (eset->at(i)->identity == 46 && eset->at(i)->usingTimeToLive == 0))
       {
         // make it bounce
-        int index = g_entities[i]->bounceindex;
-        g_entities[i]->floatheight = g_itemsines[index];
+        int index = eset->at(i)->bounceindex;
+        eset->at(i)->floatheight = g_itemsines[index];
       }
       door* taken = nullptr;
-      if( (protag_is_talking == 0 && g_amState == amState::CLOSED && inPauseMenu == 0) || g_entities[i] == g_approacher) {
-        taken = g_entities[i]->update(g_doors, elapsed);
+      if( (protag_is_talking == 0 && g_amState == amState::CLOSED && inPauseMenu == 0) || eset->at(i) == g_approacher) {
+        taken = eset->at(i)->update(g_doors, elapsed);
         if(g_breakFromPrimarySwitch) {
           g_breakFromPrimarySwitch = 0;
           return;
@@ -3320,46 +3817,46 @@ void ExplorationLoop() {
         break;
       }
 
-      if(g_entities[i]->usingTimeToLive) {
+      if(eset->at(i)->usingTimeToLive) {
 
-        if(g_entities[i]->timeToLiveMs < 0) {
-          if(g_entities[i]->dontSave) {
-            if(!g_entities[i]->asset_sharer) {
-              g_entities[i]->tangible = 0;
-              g_entities[i]->usingTimeToLive = 0;
+        if(eset->at(i)->timeToLiveMs < 0) {
+          if(eset->at(i)->dontSave) {
+            if(!eset->at(i)->asset_sharer) {
+              eset->at(i)->tangible = 0;
+              eset->at(i)->usingTimeToLive = 0;
             } else {
-              delete g_entities[i];
+              delete eset->at(i);
             }
 
           } else {
-            g_entities[i]->height = 0;
-            g_entities[i]->width = 0;
+            eset->at(i)->height = 0;
+            eset->at(i)->width = 0;
 
-            g_entities[i]->shrinking = 1;
+            eset->at(i)->shrinking = 1;
 
-            if(!g_entities[i]->wasPellet) { 
-              g_entities[i]->dynamic = 0;
-              g_entities[i]->xvel = 0;
-              g_entities[i]->yvel = 0;
-              g_entities[i]->missile = 0;
+            if(!eset->at(i)->wasPellet) { 
+              eset->at(i)->dynamic = 0;
+              eset->at(i)->xvel = 0;
+              eset->at(i)->yvel = 0;
+              eset->at(i)->missile = 0;
             }
 
 
-            if(g_entities[i]->curheight < 1) {
+            if(eset->at(i)->curheight < 1) {
               //remove this entity from it's parent's 
               //list of children
-              if(g_entities[i]->isOrbital) {
-                g_entities[i]->parent->children.erase(remove(g_entities[i]->parent->children.begin(), g_entities[i]->parent->children.end(), g_entities[i]), g_entities[i]->parent->children.end());
-                g_entities[i]->isOrbital = 0;
+              if(eset->at(i)->isOrbital) {
+                eset->at(i)->parent->children.erase(remove(eset->at(i)->parent->children.begin(), eset->at(i)->parent->children.end(), eset->at(i)), eset->at(i)->parent->children.end());
+                eset->at(i)->isOrbital = 0;
               }
 
 
 
-              if(!g_entities[i]->asset_sharer) {
-                g_entities[i]->tangible = 0;
-                g_entities[i]->usingTimeToLive = 0;
+              if(!eset->at(i)->asset_sharer) {
+                eset->at(i)->tangible = 0;
+                eset->at(i)->usingTimeToLive = 0;
               } else {
-                delete g_entities[i];
+                delete eset->at(i);
               }
             }
           }
@@ -3371,7 +3868,59 @@ void ExplorationLoop() {
 
   }
 
-  B("Entity update");
+  if(g_LoZChangeRoom) {
+    g_LoZChangeRoom = 0;
+    doorData dd = g_Lozdoors[g_LoZDoorTakenIndex]; 
+
+    //g_lastFloorPos = g_floorPos; //only works for leaving 1x1 rooms
+    g_lastFloorPos = dd.fromCoords;
+
+    g_floorplan[g_lastFloorPos.x][g_lastFloorPos.y].opacity = 255;
+    g_floorPos = dd.toCoords;
+    g_floorplan[g_floorPos.x][g_floorPos.y].opacity = 80;
+    g_actorsInLastRoom.clear();
+    for(auto x : g_actorsInRoom) {
+      g_actorsInLastRoom.push_back(x);
+    }
+    g_actorsInRoom.clear();
+    for(auto x : g_floorplan[g_floorPos.x][g_floorPos.y].actors) {
+      g_actorsInRoom.push_back(x);
+    }
+    for(auto x : party) {
+      g_actorsInRoom.push_back(x);
+      g_actorsInRoom.push_back(x->shadow);
+    }
+    g_actorsInRoom.push_back(g_spin_entity);
+    g_entitiesInRoom.clear();
+    for(auto x : g_floorplan[g_floorPos.x][g_floorPos.y].entities) {
+      g_entitiesInRoom.push_back(x);
+    }
+    for(auto x : party) {
+      g_entitiesInRoom.push_back(x);
+    }
+  
+    if(abs(sin(g_LoZDoorTaken->steeringAngle)) > abs(cos(g_LoZDoorTaken->steeringAngle))) {
+      g_camera.lag = 3;
+    } else {
+      g_camera.lag = 3*(17.0/9.0);
+    }
+    for(auto x : party) {
+      x->setOriginX(protag->getOriginX());
+      x->setOriginY(protag->getOriginY());
+      if(x != protag) {
+        x->xvel = rng(-50,50);
+        x->yvel = rng(-50,50);
+      } else {
+  //      x->xvel = 0;
+  //      x->yvel = 0;
+      }
+      x->steeringAngle = protag->steeringAngle;
+      x->targetSteeringAngle = protag->steeringAngle;
+      x->forceAngularUpdate = 1;
+    }
+  }
+
+  BM("Entity update");
   if(g_breakFromPrimarySwitch) {
     g_breakFromPrimarySwitch = 0;
     return;
@@ -3540,7 +4089,7 @@ void ExplorationLoop() {
 
     }
   }
-  B("familiars");
+  BM("familiars");
 
 //  g_spurl_entity->setOriginX(protag->getOriginX());
 //  g_spurl_entity->setOriginY(protag->getOriginY());
@@ -3677,7 +4226,7 @@ void ExplorationLoop() {
       }
     }
   }
-  B("Triggers update");
+  BM("Triggers update");
 
   //hitboxes
   for(auto a : g_hitboxes) {
@@ -3736,7 +4285,7 @@ void ExplorationLoop() {
       g_grossupShowMs -= elapsed;
     }
   }
-  B("Sounds & grossup");
+  BM("Sounds & grossup");
 
 
   if(!g_dungeonSystemOn) {
@@ -3765,7 +4314,7 @@ void ExplorationLoop() {
 //      }
     }
   }
-  B("Music update");
+  BM("Music update");
 
   // wakeup manager if it is sleeping
   if (adventureUIManager->sleepflag)
@@ -3811,953 +4360,8 @@ void ExplorationLoop() {
     }
   }
 
-
-  // tiles
-  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-  {
-    if (g_tiles[i]->z == 0)
-    {
-      g_tiles[i]->render(renderer, g_camera);
-    }
-  }
-
-  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-  {
-    if (g_tiles[i]->z == 1)
-    {
-      g_tiles[i]->render(renderer, g_camera);
-    }
-  }
-
-  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-  {
-    if (g_tiles[i]->z == 2)
-    {
-      g_tiles[i]->render(renderer, g_camera);
-    }
-  }
-
-  if(devMode){ //this is to help me know which ggrid is active
-    
-    if(g_activeGgridFlickerProlongMs > 0) {
-      if(g_activeGgridFlickerMs > 80) {
-        g_activeGgridFlicker = !g_activeGgridFlicker;
-  
-        for(auto x : g_ggrids) {
-          bool setting = 1;
-          if(x == g_activeGgrid) {
-            setting = g_activeGgridFlicker;
-          }
-          for(auto y : x->chunks) {
-            if(y->floor != 0) {
-              y->floor->visible = setting;
-            }
-            if(y->wall != 0) {
-              y->wall->visible = setting;
-            }
-            if(y->decorative != 0) {
-              y->decorative->visible = setting;
-            }
-          }
-        }
-  
-        g_activeGgridFlickerMs = 0;
-      }
-  
-      g_activeGgridFlickerMs += elapsed;
-      
-      g_activeGgridFlickerProlongMs -= elapsed;
-    }
-
-    {
-//      //render axes at 0,0
-//      const int thickness = 4;
-//      bool xVis = (g_camera.x <= 0.0f) && (g_camera.x + g_camera.width >= 0.0f);
-//      bool yVis = (g_camera.y <= 0.0f) && (g_camera.y + g_camera.height >= 0.0f);
-
-
-      //robiony przez artifycjal intelligencje
-      auto worldToScreenX = [](float wx) { return(int)(wx - g_camera.x);};
-      auto worldToScreenY = [](float wy) { return(int)(wy - g_camera.y);};
-      float camLeft = g_camera.x;
-      float camRight = g_camera.x + g_camera.width;
-      float camTop = g_camera.y;
-      float camBottom = g_camera.y + g_camera.height;
-
-      SDL_Rect dst;
-
-
-//      if(xVis) {
-//        int screenX = (int)(-g_camera.x) - thickness/2;
-//        dst = {screenX, 0, thickness, g_camera.height};
-//        SDL_Rect src = {0,0,5,5};
-//        SDL_RenderCopy(renderer, g_axesTexture, &src, &dst);
-//      }
-//      if(yVis) {
-//        int screenY = (int)(-g_camera.y) - thickness/2;
-//        dst = {0, screenY, g_camera.width, thickness};
-//        SDL_Rect src = {5,0,5,5};
-//        SDL_RenderCopy(renderer, g_axesTexture, &src, &dst);
-//      }
-
-      SDL_Rect srcNeg = {6,6,4,4};
-      if(camLeft < 0 && camTop < 0) {
-        dst.x = 0;
-        dst.y = 0;
-        dst.w = worldToScreenX(0);
-        dst.h = worldToScreenY(0);
-        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
-      }
-      if(camLeft < 0 && camBottom > 0) {
-        dst.x = 0;
-        dst.y = worldToScreenY(0);
-        dst.w = worldToScreenX(0);
-        dst.h = worldToScreenY(camBottom) - dst.y;
-        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
-      }
-      if(camRight > 0 && camTop < 0) {
-        dst.x = worldToScreenX(0);
-        dst.y = 0;
-        dst.w = worldToScreenX(camRight) - dst.x;
-        dst.h = worldToScreenY(0);
-        SDL_RenderCopy(renderer, g_axesTexture, &srcNeg, &dst);
-      }
-
-    }
-      
-  }
-
-  rect cam(0, 0, g_camera.width, g_camera.height);
-
-  for(auto x : g_meshFloors) {
-    rect myRect = {x->origin.x - x->sleepRadius, x->origin.y - x->sleepRadius - (x->origin.z * XtoZ), x->sleepRadius * 2, x->sleepRadius *2};
-    myRect = transformRect(myRect);
-    x->awake = RectOverlap(myRect, cam);
-  }
-
-  for(auto x : g_meshVWalls) {
-    //rect myRect = {x->origin.x - x->sleepRadius, x->origin.y - x->sleepRadius, x->sleepRadius * 2, x->sleepRadius *2};
-    //did something go wrong? a bit before i did lots of memory debugging I noticed that this stopped working, hmm.
-    rect myRect = {x->origin.x - x->sleepRadius*1.5, x->origin.y - x->sleepRadius*1.5, x->sleepRadius * 3, x->sleepRadius *3};
-    myRect = transformRect(myRect);
-    x->awake = RectOverlap(myRect, cam);
-  }
-
-
-  std::map<mesh*, std::vector<SDL_Vertex>> vbuffer;
-
-  //M("Time for the first pass");
-  for (auto &x : g_meshFloors) {
-      if (x->visible && x->awake) {
-          std::vector<SDL_Vertex> v(x->numVertices);
-
-          if(x->drawDiffuse) {
-            
-            //M("A");
-            for (int i = 0; i < x->numVertices; i++) {
-                v[i] = x->vertex[i];
-                v[i].position.x += x->origin.x - g_camera.x;
-                v[i].position.y += x->origin.y - g_camera.y
-                                   -(x->origin.z * XtoZ);
-                v[i].color.a = x->vertex[i].color.a;
-            }
-            //SDL_RenderGeometry(renderer, x->texture, v.data(), x->numVertices, x->indices, x->numIndices);
-          }
-  
-        // shade pass
-          if(x->drawShading || x->hasTrim) {
-            for (int i = 0; i < x->numVertices; i++) {
-                v[i].tex_coord.x = x->vertexExtraData[i].first;
-                v[i].tex_coord.y = x->vertexExtraData[i].second;
-                v[i].color = {255, 255, 255, 255};
-            }
-          }
-  
-          //M("C");
-          if (x->hasTrim) {
-              vbuffer[x] = v; // copy into map
-          } else {
-            if(x->drawShading) {
-              SDL_RenderGeometry(renderer, g_floorShadeTexture,
-                                 v.data(), x->numVertices,
-                                 x->indices, x->numIndices);
-            }
-          }
-  
-      }
-  }
-  
-  // second pass
-  for (auto &x : g_meshFloors) {
-      if (x->visible && x->awake && x->hasTrim) {
-          auto &v = vbuffer[x];
-          SDL_RenderGeometry(renderer, x->trimTexture,
-                             v.data(), x->numVertices,
-                             x->indices, x->numIndices);
-          if(x->drawShading) {
-            SDL_RenderGeometry(renderer, g_floorShadeTexture,
-                               v.data(), x->numVertices,
-                               x->indices, x->numIndices);
-          }
-      }
-  }
-
-  //decorative meshes
-  for(auto &x : g_meshDecorative) {
-    //D("There is an decorative mesh");
-    if(x->visible) {
-      SDL_Vertex v[x->numVertices];
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i] = x->vertex[i];
-        v[i].position.x += x->origin.x - g_camera.x;
-        v[i].position.y += x->origin.y - g_camera.y
-                           -(x->origin.z * XtoZ);
-        v[i].color.a = x->vertex[i].color.a;
-      }
-
-      if(x->drawDiffuse == 1) {
-        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-      }
-
-      //render shade
-      for(int i = 0; i < x->numVertices; i++) {
-        v[i].tex_coord.x = x->vertexExtraData[i].first;
-        v[i].tex_coord.y = x->vertexExtraData[i].second;
-        v[i].color.a = 255; //alpha is done in the texture for this
-      }
-
-      SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-
-    }
-  }
-
-  g_wsEdges.clear();
-  g_osEdges.clear();
-  float px, py;
-
-  //visual walls
- 
-  vector<mesh*>* meshset;
-  if(g_usingFloorplan) {
-    for(auto &x : g_meshVWalls) {
-      if(x->visible && x->awake) {
-        SDL_Vertex v[x->numVertices];
-        for(int i = 0; i < x->numVertices; i++) {
-          v[i] = x->vertex[i];
-          v[i].position.x += x->origin.x - g_camera.x;
-          v[i].position.y += x->origin.y - g_camera.y
-                             -(x->origin.z * XtoZ);
-          v[i].color.r = v[i].color.g;
-        }
-  
-  //      D(v[0].position.x);
-  //      D(v[0].position.y);
-  //      D(x->indices[0]);
-  //      D(x->numIndices);
-  //      D(x->numVertices);
-  
-        int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-  //      D(ret);
-  //      const char* error = SDL_GetError();
-  //      D(error);
-        
-        
-  
-        if(x->drawShading) {
-          //render shade
-          for(int i = 0; i < x->numVertices; i++) {
-            v[i].tex_coord.x = x->vertexExtraData[i].first;
-            v[i].tex_coord.y = x->vertexExtraData[i].second;
-          }
-    
-          switch(x->topOrBottomShading) {
-            case 0:
-              {
-                SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 1:
-              {
-                SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 2:
-              {
-                SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 3:
-              {
-                SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 4:
-              {
-                SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 5:
-              {
-                SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-          }
-        }
-      }
-    }
-
-  } else {
-    for(auto &x : g_meshVWalls) {
-      if(x->visible && x->awake) {
-        SDL_Vertex v[x->numVertices];
-        for(int i = 0; i < x->numVertices; i++) {
-          v[i] = x->vertex[i];
-          v[i].position.x += x->origin.x - g_camera.x;
-          v[i].position.y += x->origin.y - g_camera.y
-                             -(x->origin.z * XtoZ);
-          v[i].color.r = v[i].color.g;
-        }
-  
-  //      D(v[0].position.x);
-  //      D(v[0].position.y);
-  //      D(x->indices[0]);
-  //      D(x->numIndices);
-  //      D(x->numVertices);
-  
-        int ret = SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-  //      D(ret);
-  //      const char* error = SDL_GetError();
-  //      D(error);
-        
-        
-  
-        if(x->drawShading) {
-          //render shade
-          for(int i = 0; i < x->numVertices; i++) {
-            v[i].tex_coord.x = x->vertexExtraData[i].first;
-            v[i].tex_coord.y = x->vertexExtraData[i].second;
-          }
-    
-          switch(x->topOrBottomShading) {
-            case 0:
-              {
-                SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 1:
-              {
-                SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 2:
-              {
-                SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 3:
-              {
-                SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 4:
-              {
-                SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-            case 5:
-              {
-                SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                break;
-              }
-          }
-        }
-      }
-    }
-  }
-  
-  
-
-  if(drawhitboxes) {
-    for(auto &x : g_meshCollisions) {
-      if(x->visible) {
-        SDL_Vertex v[x->numVertices];
-        for(int i = 0; i < x->numVertices; i++) {
-          v[i] = x->vertex[i];
-          v[i].position.x += x->origin.x - g_camera.x;
-          v[i].position.y += x->origin.y - g_camera.y;
-        }
-
-        //SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
-        SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-
-      }
-    }
-  }
-
-  // sort
-  sort_by_y(g_actors);
-  for (long long unsigned int i = 0; i < g_actors.size(); i++)
-  {
-    g_actors[i]->render(renderer, g_camera);
-  }
-
-  //render black bars
-  if(!devMode && g_spotlightEnabled) {
-    //occluders
-
-    SDL_Rect blackrect;
-
-    blackrect = {
-      g_camera.desiredX - g_camera.width,
-      g_camera.desiredY - g_camera.height,
-      g_camera.width,
-      g_camera.height*3
-    };
-
-
-    blackrect = transformRect(blackrect);
-
-    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-    blackrect = {
-      g_camera.desiredX + g_camera.width,
-      g_camera.desiredY - g_camera.height,
-      g_camera.width,
-      g_camera.height*3
-    };
-
-
-    blackrect = transformRect(blackrect);
-
-    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-    blackrect = {
-      g_camera.desiredX,
-      g_camera.desiredY - g_camera.height,
-      g_camera.width,
-      g_camera.height
-    };
-
-    blackrect = transformRect(blackrect);
-
-    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-    blackrect = {
-      g_camera.desiredX,
-      g_camera.desiredY + g_camera.height,
-      g_camera.width,
-      g_camera.height
-    };
-
-    blackrect = transformRect(blackrect);
-
-    SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-    blackrect = {
-      g_camera.desiredX,
-      g_camera.desiredY,
-      g_camera.width,
-      g_camera.height
-    };
-
-    blackrect = transformRect(blackrect);
-    SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
-  }
-
-  for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-  {
-    if (g_tiles[i]->software == 1)
-    {
-      g_tiles[i]->render(renderer, g_camera);
-    }
-  }
-
-  //shade
-  SDL_RenderCopy(renderer, g_shade, NULL, NULL);
-
-  drawUI();
-
-  //render fancybox
-  g_fancybox->render();
-  g_fancybox->update(elapsed);
-
-
-  // settings menu
-  if (g_inSettingsMenu) 
-  {
-    //move reticle to the correct position
-    if(!g_settingsUI->cursorIsOnBackButton) {
-      g_settingsUI->handMarker->targety
-        = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
-        + (g_settingsUI->handOffset);
-
-      g_settingsUI->handMarker->targetx
-        = g_settingsUI->markerHandX;
-
-      g_settingsUI->fingerMarker->targety
-        = g_settingsUI->optionTextboxes[g_settingsUI->positionOfCursor]->boxY
-        + (g_settingsUI->fingerOffset);
-
-      g_settingsUI->fingerMarker->targetx
-        = g_settingsUI->markerFingerX;
-
-
-    } else {
-      float ww = WIN_WIDTH;
-      float wh = WIN_HEIGHT;
-
-      g_settingsUI->fingerMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
-      g_settingsUI->fingerMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
-
-      g_settingsUI->handMarker->targetx = g_settingsUI->bbNinePatch->x + (g_settingsUI->markerBBOffset);
-      g_settingsUI->handMarker->targety = g_settingsUI->bbNinePatch->y + (g_settingsUI->markerBBOffsetY * (ww/wh));
-    }
-
-    if(g_firstFrameOfSettingsMenu) {
-      g_firstFrameOfSettingsMenu = 0;
-      g_settingsUI->handMarker->x = g_settingsUI->handMarker->targetx;
-      g_settingsUI->handMarker->y = g_settingsUI->handMarker->targety;
-      g_settingsUI->fingerMarker->x = g_settingsUI->fingerMarker->targetx;
-      g_settingsUI->fingerMarker->y = g_settingsUI->fingerMarker->targety;
-
-    }
-
-  }
-
-  //this is the menu for quitting or going back to the "overworld"
-  if (g_inEscapeMenu) 
-  {
-    elapsed = 0;
-    //move reticle to the correct position
-    g_escapeUI->handMarker->targety
-      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
-      + (g_escapeUI->handOffset);
-
-    g_escapeUI->handMarker->targetx
-      = g_escapeUI->markerHandX;
-
-    g_escapeUI->fingerMarker->targety
-      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxY
-      + (g_escapeUI->fingerOffset);
-
-    float ww = WIN_WIDTH;
-    float fwidth = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->width;
-    g_escapeUI->fingerMarker->targetx
-      = g_escapeUI->optionTextboxes[g_escapeUI->positionOfCursor]->boxX + 
-      fwidth / ww / 2;
-
-
-
-    if(g_firstFrameOfSettingsMenu) {
-      g_firstFrameOfSettingsMenu = 0;
-      g_escapeUI->handMarker->x = g_escapeUI->handMarker->targetx;
-      g_escapeUI->handMarker->y = g_escapeUI->handMarker->targety;
-      g_escapeUI->fingerMarker->x = g_escapeUI->fingerMarker->targetx;
-      g_escapeUI->fingerMarker->y = g_escapeUI->fingerMarker->targety;
-
-    }
-
-  }
-
-  // draw pause screen
-  if (inPauseMenu)
-  {
-    adventureUIManager->crosshair->x = 5;
-
-    // iterate thru inventory and draw items on screen
-    float defaultX = WIN_WIDTH * 0.05;
-    float defaultY = WIN_HEIGHT * adventureUIManager->inventoryYStart;
-    float x = defaultX;
-    float y = defaultY;
-    float maxX = WIN_WIDTH * 0.9;
-    float maxY = WIN_HEIGHT * adventureUIManager->inventoryYEnd;
-    float itemWidth = WIN_WIDTH * 0.07;
-    float padding = WIN_WIDTH * 0.01;
-
-    int i = 0;
-
-    if (g_inventoryUiIsLevelSelect == 0) {
-      if(g_inventoryUiIsKeyboard == 1) {
-        //draw a letter in each box and append to a string
-
-
-        for(int j = 0; j < g_alphabet.size(); j++) {
-          if( i < itemsPerRow * inventoryScroll) {
-            i++;
-            continue;
-          }
-
-          SDL_Rect drect;
-          if(g_alphabet == g_alphabet_lower) {
-            drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230) , (int)y, (int)itemWidth * (g_alphabet_widths[i] / 60), (int)itemWidth}; 
-          } else {
-            drect = {(int)x + (0.02 * WIN_WIDTH) - (g_alphabet_widths[i] * itemWidth/230), (int)y, (int)itemWidth * (g_alphabet_upper_widths[i] / 60), (int)itemWidth}; 
-          }
-
-          // draw the ith letter of "alphabet" in drect
-          if(1) {
-            SDL_Rect shadowRect = drect;
-            float booshAmount = g_textDropShadowDist  * (60 * g_fontsize);
-            shadowRect.x += booshAmount;
-            shadowRect.y += booshAmount;
-            SDL_SetTextureColorMod(g_alphabet_textures->at(i), g_textDropShadowColor,g_textDropShadowColor,g_textDropShadowColor);
-            SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &shadowRect);
-            SDL_SetTextureColorMod(g_alphabet_textures->at(i), 255,255,255);
-          }
-          SDL_RenderCopy(renderer, g_alphabet_textures->at(i), NULL, &drect);
-
-
-          if (i == inventorySelection || g_firstFrameOfPauseMenu)
-          {
-            // this item should have the marker
-            inventoryMarker->show = 1;
-            float biggen = 0; // !!! resolutions : might have problems with diff resolutions
-
-            if(g_firstFrameOfPauseMenu) {
-              inventoryMarker->x = x / WIN_WIDTH;
-              inventoryMarker->y = y / WIN_HEIGHT;
-              inventoryMarker->x -= biggen;
-              inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-              //now that it's a hand
-              inventoryMarker->x += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-              inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-              inventoryMarker->targetx = inventoryMarker->x;
-              inventoryMarker->targety = inventoryMarker->y;
-              g_firstFrameOfPauseMenu = 0;
-            } else {
-              inventoryMarker->targetx = x / WIN_WIDTH;
-              inventoryMarker->targety = y / WIN_HEIGHT;
-              inventoryMarker->targetx -= biggen;
-              inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-              //now that it's a hand
-              inventoryMarker->targetx += 0.015 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-              inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            }
-
-            inventoryMarker->width = itemWidth / WIN_WIDTH;
-
-            inventoryMarker->width += biggen * 2;
-            //inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          }
-
-          x += itemWidth + padding;
-          if (x > maxX)
-          {
-            x = defaultX;
-            y += itemWidth + padding;
-            if (y > maxY)
-            {
-              // we filled up the entire inventory, so lets leave
-              break;
-            }
-          }
-          i++;
-
-        }
-
-        //draw current input in the bottom box
-        adventureUIManager->inputText->updateText(g_keyboardInput.c_str(), -1, 0.9);
-        adventureUIManager->escText->updateText(adventureUIManager->keyboardPrompt, -1, 0.9);
-
-
-        g_itemsInInventory = g_alphabet.size();
-
-
-      }
-    } else {
-      //populate the UI based on the loaded level sequence.
-      for(int j = 0; j < g_levelSequence->levelNodes.size(); j++) {
-        if( i < itemsPerRow * inventoryScroll) {
-          i++;
-          continue;
-        }
-        SDL_Rect drect = {(int)x, (int)y, (int)itemWidth, (int)itemWidth}; 
-        int boosh = 5;
-        drect.w += boosh * 2;
-        drect.h += boosh * 2;
-        drect.x -= boosh;
-        drect.y -= boosh;
-
-        levelNode* tn = g_levelSequence->levelNodes[j];
-
-        //should we draw the locked graphic?
-        if(tn->locked) {
-
-          SDL_RenderCopy(renderer, g_locked_level_texture, NULL, &drect);
-
-          //render the face
-          SDL_RenderCopy(renderer, tn->mouthTexture, NULL, &drect);
-
-          SDL_Rect srect = tn->getEyeRect();
-          SDL_RenderCopy(renderer, tn->eyeTexture, &srect, &drect);
-          g_levelSequence->levelNodes[j]->blinkCooldownMS -= 16;
-          if(tn->blinkCooldownMS < 0) { tn->blinkCooldownMS = rng(tn->minBlinkCooldownMS, tn->maxBlinkCooldownMS); }
-        } else {
-          SDL_RenderCopy(renderer, tn->sprite, NULL, &drect);
-        }
-
-
-        if (i == inventorySelection)
-        {
-
-          if(g_levelSequence->levelNodes[i]->locked) {
-            adventureUIManager->escText->updateText("Locked", -1, 0.9);
-          } else {
-            string dispText = g_levelSequence->levelNodes[i]->name;
-            std::replace(dispText.begin(), dispText.end(),'_',' ');
-            adventureUIManager->escText->updateText(g_levelSequence->levelNodes[i]->name, -1, 0.9);
-          }
-
-          // this item should have the marker
-          inventoryMarker->show = 1;
-          float biggen = 0.01; // !!! resolutions : might have problems with diff resolutions
-
-          if(g_firstFrameOfPauseMenu) {
-            inventoryMarker->x = x / WIN_WIDTH;
-            inventoryMarker->y = y / WIN_HEIGHT;
-            inventoryMarker->x -= biggen;
-            inventoryMarker->y -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            //now that it's a hand
-            inventoryMarker->x += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            inventoryMarker->y += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            inventoryMarker->targetx = inventoryMarker->x;
-            inventoryMarker->targety = inventoryMarker->y;
-            g_firstFrameOfPauseMenu = 0;
-          } else {
-            inventoryMarker->targetx = x / WIN_WIDTH;
-            inventoryMarker->targety = y / WIN_HEIGHT;
-            inventoryMarker->targetx -= biggen;
-            inventoryMarker->targety -= biggen * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            //now that it's a hand
-            inventoryMarker->targetx += 0.02 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-            inventoryMarker->targety += 0.03 * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-          }
-
-          inventoryMarker->width = itemWidth / WIN_WIDTH;
-
-          inventoryMarker->width += biggen * 2;
-          inventoryMarker->height = inventoryMarker->width * ((float)WIN_WIDTH / (float)WIN_HEIGHT);
-        }
-
-        x += itemWidth + padding;
-        if (x > maxX)
-        {
-          x = defaultX;
-          y += itemWidth + padding;
-          if (y > maxY)
-          {
-            // we filled up the entire inventory, so lets leave
-            break;
-          }
-        }
-        i++;
-
-      }
-      g_itemsInInventory = g_levelSequence->levelNodes.size();
-
-    }
-
-    //re-render inventory reticle so it goes on top of the items/level icons
-    inventoryMarker->render(renderer, g_camera, 0);
-    inventoryMarker->show = 0;
-
-  }
-  else
-  {
-    inventoryMarker->show = 0;
-    inventoryText->show = 0;
-  }
-
-  // map editing
-  if (devMode)
-  {
-    nodeInfoText->textcolor = {0, 0, 0};
-    nodeInfoText->show = 1;
-
-
-    if(drawhitboxes) {
-      for(int i = 0; i < g_chunks.size(); i++) {
-        if(g_chunks[i]->standalone) {
-          SDL_Rect obj = {(int)((g_chunks[i]->origin.x - g_camera.x - 20) * g_camera.zoom), (int)(((g_chunks[i]->origin.y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-          SDL_RenderCopy(renderer, chunkIcon->texture, NULL, &obj);
-        }
-      }
-    }
-
-    // draw nodes
-    for (long long unsigned int i = 0; i < g_worldsounds.size(); i++)
-    {
-      SDL_Rect obj = {(int)((g_worldsounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_worldsounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-      SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
-
-      SDL_Rect textrect = {(int)(obj.x), (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-      //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_worldsounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-      //        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-      //
-      //        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-      //
-      //        SDL_FreeSurface(textsurface);
-      //        SDL_DestroyTexture(texttexture);
-
-      nodeInfoText->x = obj.x;
-      nodeInfoText->y = obj.y - 20;
-      nodeInfoText->updateText(g_worldsounds[i]->name, -1, 15);
-      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-    }
-
-
-    //draw precede node(s)
-    if(precedeProtagNode != nullptr) {
-      SDL_Rect obj = { precedeProtagNode->x, precedeProtagNode->y, 40, 40};
-
-      obj = transformRect(obj);
-      SDL_RenderCopy(renderer, worldsoundIcon->texture, NULL, &obj);
-    }
-
-    for (long long unsigned int i = 0; i < g_musicNodes.size(); i++)
-    {
-      SDL_Rect obj = {(int)((g_musicNodes[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_musicNodes[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-      SDL_RenderCopy(renderer, musicIcon->texture, NULL, &obj);
-
-      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-      SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_musicNodes[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-      SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-      SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-      SDL_FreeSurface(textsurface);
-      SDL_DestroyTexture(texttexture);
-    }
-
-    for (long long unsigned int i = 0; i < g_cueSounds.size(); i++)
-    {
-      SDL_Rect obj = {(int)((g_cueSounds[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_cueSounds[i]->y - g_camera.y - 20) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-      SDL_RenderCopy(renderer, cueIcon->texture, NULL, &obj);
-      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-      SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_cueSounds[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-      SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-      SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-      SDL_FreeSurface(textsurface);
-      SDL_DestroyTexture(texttexture);
-    }
-
-    for (long long unsigned int i = 0; i < g_waypoints.size(); i++)
-    {
-      if(!drawhitboxes) {break;}
-      SDL_Rect obj = {(int)((g_waypoints[i]->x - g_camera.x - 20) * g_camera.zoom), (int)(((g_waypoints[i]->y - 20 - g_camera.y - g_waypoints[i]->z * XtoZ) * g_camera.zoom)), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-      SDL_RenderCopy(renderer, waypointIcon->texture, NULL, &obj);
-      SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-      nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
-      nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
-      nodeInfoText->boxX -= 0.02;
-      nodeInfoText->boxY -= 0.03;
-      nodeInfoText->updateText(g_waypoints[i]->name, -1, 15);
-      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-
-      //SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, g_waypoints[i]->name.c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-      //SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-      //nodeInfoText->updateText(g_waypoints[i]->name
-
-      //SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-      //SDL_FreeSurface(textsurface);
-      //SDL_DestroyTexture(texttexture);
-    }
-
-    for (auto x : g_setsOfInterest)
-    {
-      for (auto y : x)
-      {
-        SDL_Rect obj = {(int)((y->x - g_camera.x - 20) * g_camera.zoom), (int)((y->y - g_camera.y - 20) * g_camera.zoom), (int)((40 * g_camera.zoom)), (int)((40 * g_camera.zoom))};
-        SDL_RenderCopy(renderer, poiIcon->texture, NULL, &obj);
-
-        SDL_Rect textrect = {(int)obj.x, (int)(obj.y + 20), (int)(obj.w - 15), (int)(obj.h - 15)};
-
-        SDL_Surface *textsurface = TTF_RenderText_Blended_Wrapped(nodeInfoText->font, to_string(y->index).c_str(), {15, 15, 15}, 1 * WIN_WIDTH);
-        SDL_Texture *texttexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-
-        SDL_RenderCopy(renderer, texttexture, NULL, &textrect);
-
-        SDL_FreeSurface(textsurface);
-        SDL_DestroyTexture(texttexture);
-      }
-    }
-
-    // doors
-    if(drawhitboxes) {
-      for (long long unsigned int i = 0; i < g_doors.size(); i++)
-      {
-        SDL_Rect obj = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)((g_doors[i]->height * g_camera.zoom))};
-        SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj);
-        // the wall
-        SDL_Rect obj2 = {(int)((g_doors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_doors[i]->y - g_camera.y - (g_doors[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_doors[i]->width * g_camera.zoom)), (int)(((g_doors[i]->zeight - g_doors[i]->z) * XtoZ * g_camera.zoom) + (g_doors[i]->height * g_camera.zoom))};
-        //SDL_RenderCopy(renderer, doorIcon->texture, NULL, &obj2);
-        nodeInfoText->boxX = (float)obj.x / (float)WIN_WIDTH * g_zoom_mod;
-        nodeInfoText->boxY = (float)obj.y / (float) WIN_HEIGHT* g_zoom_mod;
-        nodeInfoText->updateText(g_doors[i]->to_map + "->" + g_doors[i]->to_point, -1, 15);
-        nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-      }
-    }
-
-    for (long long unsigned int i = 0; i < g_dungeonDoors.size(); i++)
-    {
-      SDL_Rect obj = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)((g_dungeonDoors[i]->height * g_camera.zoom))};
-      SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj);
-      // the wall
-      SDL_Rect obj2 = {(int)((g_dungeonDoors[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_dungeonDoors[i]->y - g_camera.y - (128) * XtoZ) * g_camera.zoom)), (int)((g_dungeonDoors[i]->width * g_camera.zoom)), (int)(((128) * XtoZ * g_camera.zoom) + (g_dungeonDoors[i]->height * g_camera.zoom))};
-      SDL_RenderCopy(renderer, ddoorIcon->texture, NULL, &obj2);
-    }
-
-
-    if(drawhitboxes) {
-      for (long long unsigned int i = 0; i < g_ggrids.size(); i++) {
-
-        SDL_Rect obj = {(int)((g_ggrids[i]->originX - g_camera.x - 20) * g_camera.zoom), (int)(((g_ggrids[i]->originY - g_camera.y - 20 - (g_ggrids[i]->originZ * XtoZ)) * g_camera.zoom)), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
-
-        SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &obj);
-
-      }
-
-      for (long long unsigned int i = 0; i < g_triggers.size(); i++)
-      {
-        SDL_Rect obj = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)((g_triggers[i]->height * g_camera.zoom))};
-        SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj);
-        // the wall
-        SDL_Rect obj2 = {(int)((g_triggers[i]->x - g_camera.x) * g_camera.zoom), (int)(((g_triggers[i]->y - g_camera.y - (g_triggers[i]->zeight) * XtoZ) * g_camera.zoom)), (int)((g_triggers[i]->width * g_camera.zoom)), (int)(((g_triggers[i]->zeight - g_triggers[i]->z) * XtoZ * g_camera.zoom) + (g_triggers[i]->height * g_camera.zoom))};
-        SDL_RenderCopy(renderer, triggerIcon->texture, NULL, &obj2);
-
-        nodeInfoText->x = obj.x + 25;
-        nodeInfoText->y = obj.y + 25;
-        nodeInfoText->updateText(g_triggers[i]->binding, -1, 15);
-        nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-      }
-    }
-
-    // listeners
-    for (long long unsigned int i = 0; i < g_listeners.size(); i++)
-    {
-      SDL_Rect obj = {(int)((g_listeners[i]->x - g_camera.x - 20) * g_camera.zoom), (int)((g_listeners[i]->y - g_camera.y - 20) * g_camera.zoom), (int)(40 * g_camera.zoom), (int)(40 * g_camera.zoom)};
-      SDL_RenderCopy(renderer, listenerIcon->texture, NULL, &obj);
-      nodeInfoText->x = obj.x;
-      nodeInfoText->y = obj.y - 20;
-      nodeInfoText->updateText(g_listeners[i]->listenList.size() + " of " + g_listeners[i]->entityName, -1, 15);
-      nodeInfoText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
-    }
-
-    write_map(protag);
-    for (int i = 0; i < 50; i++)
-    {
-      devinput[i] = 0;
-    }
-    nodeInfoText->show = 0;
-  }
-  B("After mapedit");
+  explorationRender();
+  BM("After mapedit");
 
 
   // transition
@@ -4819,7 +4423,7 @@ void ExplorationLoop() {
   if(!g_learningMove && !g_gainingXPInExplorationMode) {
     SDL_RenderPresent(renderer);
   }
-  B("End of frame");
+  BM("End of frame");
 }
 
 
@@ -4919,6 +4523,9 @@ int WinMain()
   SDL_Texture* brightness_a = loadTexture(renderer, "resources/engine/transition.qoi");
 
   SDL_Texture* brightness_b_s = loadTexture(renderer, "resources/engine/black-diffuse.qoi");
+
+  g_itemEffectTexture = loadTexture(renderer, "resources/engine/item_effect.qoi");
+  //SDL_SetTextureBlendMode(g_itemEffectTexture, SDL_BLENDMODE_ADD);
 
   // entities will be made here so have them set as created during loadingtime and not arbitrarily during play
   g_loadingATM = 1;
@@ -6040,7 +5647,7 @@ int WinMain()
     //g_globalAccumulator += ticks;
     elapsed = ticks - lastticks;
     lastticks = ticks;
-    B("On Tick");
+    BM("On Tick");
 
     if(g_entityBenchmarking) {
       g_eu_exec++;
@@ -6405,7 +6012,126 @@ int interact(float elapsed, entity *protag)
       break;
   }
 
-  for (long long unsigned int i = 0; i < g_entities.size(); i++)
+  if(g_usingFloorplan) {
+    for (long long unsigned int i = 0; i < eset->size(); i++)
+    {
+      if(eset->at(i)->tangible && eset->at(i)->identity != 0) {
+        int val = specialObjectsInteract(eset->at(i));
+        //can do a special object interaction AND execute a script (but I haven't done it yet)
+        g_ignoreInput = 1;
+        dialogue_cooldown = 500;
+        if(val == 1) {
+          return 0;
+        }
+      }
+      if (eset->at(i)->tangible && eset->at(i)->sayings.size() > 0 && eset->at(i)->inParty == 0 && eset->at(i)->disableInteraction == 0)
+      {
+        if (eset->at(i)->animlimit != 0)
+        {
+          eset->at(i)->animate = 1;
+        }
+        // make ent look at player, if they have the frames
+  
+        if(eset->at(i)->turnToFacePlayer && eset->at(i)->yframes >= 7)
+        {
+          float xvector = (eset->at(i)->getOriginX()) - (protag->getOriginX());
+          float yvector = (eset->at(i)->getOriginY()) - (protag->getOriginY());
+          float angle = atan2(yvector, xvector);
+          eset->at(i)->flip = SDL_FLIP_NONE;
+          if(angle < -7 * M_PI / 8 || angle >= 7 * M_PI / 8) {
+            eset->at(i)->animation = 6;
+          } else if (angle < 7 * M_PI / 8 && angle >= 5 * M_PI / 8) {
+            eset->at(i)->animation = 7;
+          } else if (angle < 5 * M_PI / 8 && angle >= 3 * M_PI / 8) {
+            eset->at(i)->animation = 0;
+          } else if (angle < 3 * M_PI / 8 && angle >= M_PI / 8) {
+            eset->at(i)->animation = 1;
+          } else if (angle < M_PI / 8 && angle >= - M_PI / 8) {
+            eset->at(i)->animation = 2;
+          } else if (angle < - M_PI / 8 && angle >= - 3 * M_PI / 8) {
+            eset->at(i)->animation = 3;
+          } else if (angle < - 3 * M_PI / 8 && angle > - 5 * M_PI / 8) {
+            eset->at(i)->animation = 4;
+          } else if (angle < - 5 * M_PI / 8 && angle > - 7 * M_PI / 8) {
+            eset->at(i)->animation = 5;
+          }
+        }
+        else if (eset->at(i)->turnToFacePlayer && eset->at(i)->yframes >= 5)
+        {
+  
+          int xdiff = (eset->at(i)->getOriginX()) - (protag->getOriginX());
+          int ydiff = (eset->at(i)->getOriginY()) - (protag->getOriginY());
+          int axdiff = (abs(xdiff) - abs(ydiff));
+          if (axdiff > 0)
+          {
+            // xaxis is more important
+            eset->at(i)->animation = 2;
+            if (xdiff > 0)
+            {
+              eset->at(i)->flip = SDL_FLIP_NONE;
+            }
+            else
+            {
+              eset->at(i)->flip = SDL_FLIP_HORIZONTAL;
+            }
+          }
+          else
+          {
+            // yaxis is more important
+            eset->at(i)->flip = SDL_FLIP_NONE;
+            if (ydiff > 0)
+            {
+              eset->at(i)->animation = 0;
+            }
+            else
+            {
+              eset->at(i)->animation = 4;
+            }
+          }
+          if (abs(axdiff) < 45)
+          {
+            if (xdiff > 0)
+            {
+              eset->at(i)->flip = SDL_FLIP_NONE;
+            }
+            else
+            {
+              eset->at(i)->flip = SDL_FLIP_HORIZONTAL;
+            }
+            if (ydiff > 0)
+            {
+              eset->at(i)->animation = 1;
+            }
+            else
+            {
+              eset->at(i)->animation = 3;
+            }
+          }
+        }
+  
+        //adventureUIManager->blip = g_entities[i]->voice;
+        adventureUIManager->blip = g_ui_voice;
+        //adventureUIManager->sayings = &g_entities[i]->sayings;
+        adventureUIManager->talker = eset->at(i);
+        adventureUIManager->dPointToMe = eset->at(i);
+        if(eset->at(i)->useDialogPointer) {
+          adventureUIManager->dialogpointer->visible = 1;
+          adventureUIManager->dialogpointergap->show = 1;
+        } else {
+          adventureUIManager->dialogpointer->visible = 0;
+          adventureUIManager->dialogpointergap->show = 0;
+        }
+  
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 0;
+        g_forceEndDialogue = 0;
+        adventureUIManager->continueDialogue();
+        g_ignoreInput = 1;
+        return 0;
+      }
+      
+    }
+  } else for (long long unsigned int i = 0; i < g_entities.size(); i++)
   {
 
     SDL_Rect hisrect = {(int)g_entities[i]->x + g_entities[i]->bounds.x + 10, (int)g_entities[i]->y + g_entities[i]->bounds.y + 10, (int)g_entities[i]->bounds.width - 20, (int)g_entities[i]->bounds.height - 20};

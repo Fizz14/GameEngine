@@ -215,9 +215,8 @@ class ggrid {
     int height = 0;
 
     vector<vector<unsigned char>> chunkdata;
-
-    vector<chunk*> chunks;
-
+    //vector<chunk*> chunks;
+   
     ggrid();
 
     ~ggrid();

@@ -23,12 +23,15 @@ public:
   ui* titles;
   ui* titleExplosion;
   ui* bg;
+
+  ui* titleGraphic;
   textbox* newText;
   textbox* continueText;
   textbox* endText;
   textbox* creditText;
   
-  float handYOffset = 0.04;
+  float handXOffset = -0.05;
+  float handYOffset = 0;
 
   int option = 0;
 

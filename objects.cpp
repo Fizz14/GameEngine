@@ -2000,6 +2000,7 @@ void tile::render(SDL_Renderer * renderer, camera fcamera) {
   }
 
 
+
   if(RectOverlap(obj, cam)) {
 
     if(this->wraptexture) {
@@ -2592,6 +2593,9 @@ cshadow::~cshadow() {
 }
 
 void cshadow::render(SDL_Renderer * renderer, camera fcamera) {
+  if(owner->name == "common/pedastal") {
+    M("Rendering pedastals shadow");
+  }
   if(!owner->tangible || !this->visible) {return;}
   if(!owner->visible) {
     //show the protags shadow whilst spinning
@@ -4692,8 +4696,11 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
 
   if(identity == 44) { cam.height += 30;} //this is for the draw element on pedastals
 
+  if(identity == 46) {cam.height + 30; cam.width += 30; cam.x -= 15; cam.y -=15;} //this is for the effect
+
   if(RectOverlap(obj, cam)) {
     hadInput = 0;
+
 
 
     if(animationconfig == 5) {
@@ -4733,6 +4740,8 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
         if(useTint) {
           SDL_SetTextureColorMod(texture, red, green, blue);
         }
+
+
         SDL_RenderCopyExF(renderer, texture, &srcrect, &dstrect, this->spriteAngle, &center, flip);
       }
     } else {
@@ -4745,6 +4754,29 @@ void entity::render(SDL_Renderer * renderer, camera fcamera) {
           SDL_SetTextureColorMod(texture, red, green, blue);
         }
         const SDL_FPoint center = {framewidth/2 ,frameheight/2};
+        if(identity == 46 && 0) {
+          SDL_Rect a = {0, 0, 128, 128};
+          SDL_Rect b = {128, 0, 128, 128};
+          SDL_Rect c = {256, 0, 128, 128};
+          int width = 42;
+          const SDL_FPoint eCenter = {width,width}; // 32 + x increase
+          SDL_FRect erect;
+          erect.x = dstrect.x + (dstrect.w)/2;
+          erect.y = dstrect.y + (dstrect.h)/2;
+          erect.x -= width;
+          erect.y -= width;
+          erect.w = width*2;
+          erect.h = width*2;
+
+//          erect.x -= 10;
+//          erect.y -= 10;
+//          erect.w += 20;
+//          erect.h += 20;
+
+          SDL_RenderCopyExF(renderer, g_itemEffectTexture, &a, &erect, g_rotationalAccumulator*6, &eCenter, flip);
+          SDL_RenderCopyExF(renderer, g_itemEffectTexture, &b, &erect, g_rotationalAccumulator*6 + 60, &eCenter, flip);
+          SDL_RenderCopyExF(renderer, g_itemEffectTexture, &c, &erect, g_rotationalAccumulator*6 + 120, &eCenter, flip);
+        }
         SDL_RenderCopyExF(renderer, texture, NULL, &dstrect, this->spriteAngle, &center, flip);
         specialObjectsRender(this, dstrect);
       }
@@ -5165,20 +5197,20 @@ door* entity::update(vector<door*> doors, float elapsed) {
         movedbounds.zeight = bounds.zeight;
 
         //check for map collisions
-        for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
-          //don't worry about boxes if we're not even close
-          //no point for a sleepbox if we're only doing one check
-          //rect sleepbox = rect(g_boxs[layer].at(i)->bounds.x - 150, g_boxs[layer].at(i)->bounds.y-150, g_boxs[layer].at(i)->bounds.width+300, g_boxs[layer].at(i)->bounds.height+300);
-          //if(!RectOverlap(sleepbox, movedbounds)) {continue;}
-          if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
-            inCollision = 1;
-            break;
-          }
-
-        }
+//        for (int i = 0; i < (int)g_boxs[layer].size(); i++) {
+//          //don't worry about boxes if we're not even close
+//          //no point for a sleepbox if we're only doing one check
+//          //rect sleepbox = rect(g_boxs[layer].at(i)->bounds.x - 150, g_boxs[layer].at(i)->bounds.y-150, g_boxs[layer].at(i)->bounds.width+300, g_boxs[layer].at(i)->bounds.height+300);
+//          //if(!RectOverlap(sleepbox, movedbounds)) {continue;}
+//          if(RectOverlap(movedbounds, g_boxs[layer].at(i)->bounds)) {
+//            inCollision = 1;
+//            break;
+//          }
+//
+//        }
 
         if(g_useSimpleImpliedGeometry) {
-          for(auto x : g_impliedSlopes) {
+          for(auto x : g_is_collisions) {
             //rect sleepbox = rect(x->bounds.x - 150, x->bounds.y-150, x->bounds.width+300, x->bounds.height+300);
             //if(!RectOverlap(sleepbox, movedbounds)) {continue;}
             if(RectOverlap(movedbounds, x->bounds)) {
@@ -5225,60 +5257,6 @@ door* entity::update(vector<door*> doors, float elapsed) {
             }
           }
         }
-
-
-        //check for implied slopes
-        //might be much better to just stop xcollide from being set to 1 if grounded
-        //            if(!inCollision) { //shortcut if already in collision
-        //              
-        //              for(auto i : g_impliedSlopes) {
-        //                rect simslope = rect(0,0,0,0);
-        //                
-        //                bool overlapY = RectOverlap(movedbounds, i->bounds);
-        //    
-        //                float heightFactor;
-        //                if(i->bounds.z >= this->z) {
-        //                  heightFactor = 1;
-        //                } else if (this->z - 63 > i->bounds.z) {
-        //                  heightFactor = 0;
-        //                } else {
-        //                  heightFactor = 1 - ((this->z - i->bounds.z) /63);
-        //                }
-        //    
-        //                if(overlapY) {
-        //                  rect simslope = rect(i->bounds.x, i->bounds.y + (16 * (1- heightFactor) ), i->bounds.width, i->bounds.height -  (64 * (1- heightFactor) ));
-        //                  if(heightFactor < 0.95 && heightFactor > 0 && RectOverlap(simslope, movedbounds)) {
-        //                    heightFactor = pow(heightFactor, 2);
-        //    
-        //                    if(heightFactor < 0.3) {
-        //                      inCollision = 1;
-        //                    }
-        //                  }
-        //                }
-        //    
-        //                if(heightFactor > 0) {
-        //                  
-        //                  if(overlapY) {
-        //                    bool overlapX = RectOverlap(movedbounds, simslope);
-        //      
-        //                    if(overlapX) {
-        //                      inCollision = 1;
-        //                    }
-        //      
-        //                  } else {
-        //                    movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y + (yvel * ((double) elapsed / 256.0)) , bounds.width, bounds.height);
-        //                    bool overlapX = RectOverlap(movedbounds, i->bounds);
-        //     
-        //                    if(overlapX) {
-        //                      inCollision = 1;
-        //                    }
-        //      
-        //                  }
-        //                }
-        //              }
-        //            }
-
-
       }
 
       if(!inCollision) {
@@ -5499,14 +5477,14 @@ door* entity::update(vector<door*> doors, float elapsed) {
       if(g_useSimpleImpliedGeometry) {
 
         rect movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
-        for(auto n : g_impliedSlopes) {
+        for(auto n : g_is_collisions) {
           if(RectOverlap(movedbounds, n->bounds)) {
             ycollide = true;
             yvel = 0;
           }
         }
         movedbounds = rect(bounds.x + x + (xvel * ((double) elapsed / 256.0)), bounds.y + y, bounds.width, bounds.height);
-        for(auto n : g_impliedSlopes) {
+        for(auto n :  g_is_collisions) {
           if(RectOverlap(movedbounds, n->bounds)) {
             xcollide = true;
             xvel = 0;
@@ -5805,7 +5783,7 @@ door* entity::update(vector<door*> doors, float elapsed) {
 
     //test for implied slopes
     if(g_useSimpleImpliedGeometry == 0) {
-      for(auto i : g_impliedSlopes) {
+      for(auto i :  g_is_collisions) {
         rect movedbounds;
         rect simslope = rect(0,0,0,0);
         movedbounds = rect(bounds.x + x, bounds.y + y  + (yvel * ((double) elapsed / 256.0)), bounds.width, bounds.height);
@@ -7756,6 +7734,8 @@ int loadSave() {
     int spiritFour = stoi(tokens[15]);
 
     entity* a = new entity(renderer, name);
+    a->persistentGeneral = 1;
+    a->shadow->persistentGeneral = 1;
     party.push_back(a);
     a->semisolid = 0;
     a->semisolidwaittoenable = 0;
@@ -7894,12 +7874,16 @@ int loadSave() {
 
   }
 
-  g_combatInventory.clear();
+  g_items.clear();
   //load combatItems
   while(getline(file, line)) {
     if(line[0] == '&') { break;}
-    if(g_combatInventory.size() < g_maxInventorySize) {
-      g_combatInventory.push_back(stoi(line));
+    vector<string> x = splitString(line, ' ');
+    itemData td;
+    td.type = stoi(x[0]);
+    td.index = stoi(x[1]);
+    if(g_items.size() < g_maxInventorySize) {
+      g_items.push_back(td);
     }
   }
 
@@ -8016,8 +8000,8 @@ int writeSave() {
 
   file << "&" << endl; //token to stop writing unlocked levels
 
-  for(auto x : g_combatInventory) {
-    file << x << endl;
+  for(auto x : g_items) {
+    file << x.type << " " << x.index << endl;
   }
   file << "&" << endl; //token to stop writing combat items
 
@@ -8873,51 +8857,8 @@ void escapeUI::uiSelecting() {
 //clear map
 //CLEAR MAP
 void clear_map(camera& cameraToReset) {
-  //M("clear_map()");
-
-  g_usingFloorplan = 0;
-  g_floorplan.clear();
-  g_Lozdoors.clear();
-
-  g_numPresentsLoaded = 0;
-  g_numPedastalsLoaded = 0;
-  g_numMoneybagsLoaded = 0;
-  g_worldEnemies.clear();
-  resetTrivialData();
-  g_eheightmaps.clear();
-  g_poweredDoors.clear();
-  g_poweredLevers.clear();
-  g_budget = 0;
-  enemiesMap.clear();
-  g_ai.clear();
-  g_musicalEntities.clear();
-  g_boardableEntities.clear();
-  g_familiars.clear();
-  g_ex_familiars.clear();
-  g_lt_collisions.clear();
-  g_is_collisions.clear();
-  loadedEncounters.clear();
-  loadedBackgrounds.clear();
-  if(g_dungeonSystemOn == 0) {
-    g_behemoths.clear();
-    g_behemoth0 = 0;
-    g_behemoth1 = 0;
-    g_behemoth2 = 0;
-    g_behemoth3 = 0;
-  }
-
-  g_encountersFile = "";
-  g_encounterChance = 0;
-  g_activeGgrid = 0;
-
-
-  if(g_waterAllocated) {
-    g_waterTexture = 0;
-    g_waterAllocated = 0;
-    SDL_FreeSurface(g_waterSurface);
-  }
-
-  adventureUIManager->crosshair->show = 0;
+  M("clear_map()");
+  BP();
   if(!g_levelFlashing){
     //Mix_FadeOutMusic(1000);
 
@@ -8954,281 +8895,10 @@ void clear_map(camera& cameraToReset) {
     //draw the bg
     SDL_RenderCopy(renderer, background, NULL, NULL);
 
+    devinput[11] = 0; //there was a bug where explorationRender() would hang in the internal console input polling if the map was changed that way
+
     {
-      // tiles
-      for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-      {
-        if (g_tiles[i]->z == 0)
-        {
-          g_tiles[i]->render(renderer, g_camera);
-        }
-      }
-
-      for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-      {
-        if (g_tiles[i]->z == 1)
-        {
-          g_tiles[i]->render(renderer, g_camera);
-        }
-      }
-
-      for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-      {
-        if (g_tiles[i]->z == 2)
-        {
-          g_tiles[i]->render(renderer, g_camera);
-        }
-      }
-
-      //meshes
-      std::map<mesh*, std::vector<SDL_Vertex>> vbuffer;
-      for (auto &x : g_meshFloors) {
-          if (x->visible && x->awake) {
-              std::vector<SDL_Vertex> v(x->numVertices);
-    
-              if(x->drawDiffuse) {
-                
-                //M("A");
-                for (int i = 0; i < x->numVertices; i++) {
-                    v[i] = x->vertex[i];
-                    v[i].position.x += x->origin.x - g_camera.x;
-                    v[i].position.y += x->origin.y - g_camera.y
-                                       -(x->origin.z * XtoZ);
-                    v[i].color.a = x->vertex[i].color.a;
-                }
-                SDL_RenderGeometry(renderer, x->texture,
-                                   v.data(), x->numVertices,
-                                   x->indices, x->numIndices);
-              }
-      
-            // shade pass
-              if(x->drawShading || x->hasTrim) {
-                for (int i = 0; i < x->numVertices; i++) {
-                    v[i].tex_coord.x = x->vertexExtraData[i].first;
-                    v[i].tex_coord.y = x->vertexExtraData[i].second;
-                    v[i].color = {255, 255, 255, 255};
-                }
-              }
-      
-              //M("C");
-              if (x->hasTrim) {
-                  vbuffer[x] = v; // copy into map
-              } else {
-                if(x->drawShading) {
-                  SDL_RenderGeometry(renderer, g_floorShadeTexture,
-                                     v.data(), x->numVertices,
-                                     x->indices, x->numIndices);
-                }
-              }
-      
-          }
-      }
-      
-      // second pass
-      for (auto &x : g_meshFloors) {
-          if (x->visible && x->awake && x->hasTrim) {
-              auto &v = vbuffer[x];
-              SDL_RenderGeometry(renderer, x->trimTexture,
-                                 v.data(), x->numVertices,
-                                 x->indices, x->numIndices);
-              if(x->drawShading) {
-                SDL_RenderGeometry(renderer, g_floorShadeTexture,
-                                   v.data(), x->numVertices,
-                                   x->indices, x->numIndices);
-              }
-          }
-      }
-
-      //decorative meshes
-      for(auto &x : g_meshDecorative) {
-        //D("There is an decorative mesh");
-        if(x->visible) {
-          SDL_Vertex v[x->numVertices];
-          for(int i = 0; i < x->numVertices; i++) {
-            v[i] = x->vertex[i];
-            v[i].position.x += x->origin.x - g_camera.x;
-            v[i].position.y += x->origin.y - g_camera.y
-                              -x->origin.z * XtoZ;
-            v[i].color.a = x->vertex[i].color.a;
-          }
-
-          if(x->drawDiffuse == 1) {
-            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-          }
-
-          //render shade
-          for(int i = 0; i < x->numVertices; i++) {
-            v[i].tex_coord.x = x->vertexExtraData[i].first;
-            v[i].tex_coord.y = x->vertexExtraData[i].second;
-            v[i].color.a = 255; //alpha is done in the texture for this
-          }
-
-          SDL_RenderGeometry(renderer, g_floorShadeTexture, v, x->numVertices, x->indices, x->numIndices);
-
-        }
-      }
-
-
-      
-      //visual walls
-      //most of these will be drawn later so :S
-            //visual walls
-            //these will be drawn again later IF they have an occluder
-            if(1) { //!!! change to 1 asap, this should not be zero
-            for(auto &x : g_meshVWalls) {
-              if(x->visible && x->awake) {
-                SDL_Vertex v[x->numVertices];
-                for(int i = 0; i < x->numVertices; i++) {
-                  v[i] = x->vertex[i];
-                  v[i].position.x += x->origin.x - g_camera.x;
-                  v[i].position.y += x->origin.y - g_camera.y
-                                     -(x->origin.z *XtoZ);
-                  v[i].color.r = v[i].color.g;
-                  //          SDL_Rect a = {v[i].position.x, v[i].position.y, 10, 10};
-                  //          SDL_RenderCopy(renderer, ggridIcon->texture, NULL, &a);
-                }
-        
-                SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, x->indices, x->numIndices);
-        
-                if(x->drawShading) {
-                  //render shade
-                  for(int i = 0; i < x->numVertices; i++) {
-                    v[i].tex_coord.x = x->vertexExtraData[i].first;
-                    v[i].tex_coord.y = x->vertexExtraData[i].second;
-                  }
-
-                  switch(x->topOrBottomShading) {
-                    case 0:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 1:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 2:
-                      {
-                        SDL_RenderGeometry(renderer, g_wallShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 3:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall3ShadeTopTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                    case 4:
-                      {
-                        SDL_RenderGeometry(renderer, g_wall3ShadeBotTexture, v, x->numVertices, x->indices, x->numIndices);
-                        break;
-                      }
-                   case 5:
-                     {
-                       SDL_RenderGeometry(renderer, g_wall5ShadeFullTexture, v, x->numVertices, x->indices, x->numIndices);
-                       break;
-                     }
-                   }
-          
-                }
-              }
-            }
-            }
-
-      if(drawhitboxes) {
-        for(auto &x : g_meshCollisions) {
-          if(x->visible) {
-            SDL_Vertex v[x->numVertices];
-            for(int i = 0; i < x->numVertices; i++) {
-              v[i] = x->vertex[i];
-              v[i].position.x += x->origin.x - g_camera.x;
-              v[i].position.y += x->origin.y - g_camera.y;
-                                -x->origin.z * XtoZ;
-            }
-
-            SDL_RenderGeometry(renderer, x->texture, v, x->numVertices, NULL, 0);
-
-          }
-        }
-      }
-
-      // sort
-      sort_by_y(g_actors);
-      for (long long unsigned int i = 0; i < g_actors.size(); i++)
-      {
-        g_actors[i]->render(renderer, g_camera);
-      }
-
-      //render black bars
-      if(!devMode && g_spotlightEnabled) {
-        //occluders
-
-        SDL_Rect blackrect;
-
-        blackrect = {
-          g_camera.desiredX - g_camera.width,
-          g_camera.desiredY - g_camera.height,
-          g_camera.width,
-          g_camera.height*3
-        };
-
-
-        blackrect = transformRect(blackrect);
-
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-        blackrect = {
-          g_camera.desiredX + g_camera.width,
-          g_camera.desiredY - g_camera.height,
-          g_camera.width,
-          g_camera.height*3
-        };
-
-
-        blackrect = transformRect(blackrect);
-
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-        blackrect = {
-          g_camera.desiredX,
-          g_camera.desiredY - g_camera.height,
-          g_camera.width,
-          g_camera.height
-        };
-
-        blackrect = transformRect(blackrect);
-
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-        blackrect = {
-          g_camera.desiredX,
-          g_camera.desiredY + g_camera.height,
-          g_camera.width,
-          g_camera.height
-        };
-
-        blackrect = transformRect(blackrect);
-
-        SDL_RenderCopy(renderer, blackbarTexture, NULL, &blackrect);
-
-        blackrect = {
-          g_camera.desiredX,
-          g_camera.desiredY,
-          g_camera.width,
-          g_camera.height
-        };
-
-        blackrect = transformRect(blackrect);
-        SDL_RenderCopy(renderer, spotlightTexture, NULL, &blackrect);
-      }
-
-      for (long long unsigned int i = 0; i < g_tiles.size(); i++)
-      {
-        if (g_tiles[i]->software == 1)
-        {
-          g_tiles[i]->render(renderer, g_camera);
-        }
-      }
+      explorationRender();
     }
 
     SDL_SetTextureAlphaMod(g_shade, g_dungeonDarkEffect);
@@ -9310,6 +8980,54 @@ void clear_map(camera& cameraToReset) {
     SDL_DestroyTexture(frame);
   }
 
+  g_usingFloorplan = 0;
+  g_lastFloorPos = {-1,-1};
+  g_floorplan.clear();
+  g_Lozdoors.clear();
+  g_LoZDoorTaken = nullptr;
+  g_LoZDoorTakenIndex = -1;
+
+  g_numPresentsLoaded = 0;
+  g_numPedastalsLoaded = 0;
+  g_numMoneybagsLoaded = 0;
+  g_worldEnemies.clear();
+  resetTrivialData();
+  g_eheightmaps.clear();
+  g_poweredDoors.clear();
+  g_poweredLevers.clear();
+  g_budget = 0;
+  enemiesMap.clear();
+  g_ai.clear();
+  g_musicalEntities.clear();
+  g_boardableEntities.clear();
+  g_familiars.clear();
+  g_ex_familiars.clear();
+  g_lt_collisions.clear();
+  g_is_collisions.clear();
+  loadedEncounters.clear();
+  loadedBackgrounds.clear();
+  if(g_dungeonSystemOn == 0) {
+    g_behemoths.clear();
+    g_behemoth0 = 0;
+    g_behemoth1 = 0;
+    g_behemoth2 = 0;
+    g_behemoth3 = 0;
+  }
+
+  g_encountersFile = "";
+  g_encounterChance = 0;
+  g_activeGgrid = 0;
+
+
+  if(g_waterAllocated) {
+    g_waterTexture = 0;
+    g_waterAllocated = 0;
+    SDL_FreeSurface(g_waterSurface);
+  }
+
+  adventureUIManager->crosshair->show = 0;
+
+
   cameraToReset.resetCamera();
   int size;
   size = (int)g_entities.size();
@@ -9327,7 +9045,6 @@ void clear_map(camera& cameraToReset) {
   vector<entity*> persistentEnts;
   for(int i=0; i< size; i++) {
     if(g_entities[0]->inParty) {
-      //M("Found a party ent! It's called " + g_entities[0]->name);
       //remove from array without deleting
       party.push_back(g_entities[0]);
       g_actors.erase(remove(g_actors.begin(), g_actors.end(), g_entities[0]), g_actors.end());
@@ -9364,28 +9081,22 @@ void clear_map(camera& cameraToReset) {
     g_meshes.clear();
 
     size = g_meshFloors.size();
-    //M("Delete g_meshFloors");
-    //D(g_meshFloors.size());
-    //This segfaults when leaving desert/1-under
     for(int i = 0; i < size; i++) {
       delete g_meshFloors[0];
     }
     g_meshFloors.clear();
 
-    //M("Delete g_meshVWalls");
     size = g_meshVWalls.size();
     for(int i = 0; i < size; i++) {
       delete g_meshVWalls[0];
     }
     g_meshVWalls.clear();
 
-    //M("Delete g_meshCollisions");
     size = g_meshCollisions.size();
     for(int i = 0; i < size; i++) {
       delete g_meshCollisions[0];
     }
 
-    //M("Delete g_meshOccluders");
     size = g_meshOccluders.size();
     for(int i = 0; i < size; i++) {
       delete g_meshOccluders[0];
@@ -9393,19 +9104,16 @@ void clear_map(camera& cameraToReset) {
     g_oEdges.clear();
     g_wEdges.clear();
 
-    //M("Delete g_meshDecorative");
     size = g_meshDecorative.size();
     for(int i = 0; i < size; i++) {
       delete g_meshDecorative[0];
     }
 
-    //M("Delete g_chunks");
     size = g_chunks.size();
     for(int i = 0; i < size; i++) {
       delete g_chunks[0];
     }
 
-    //M("Delete g_ggrids");
     size = g_ggrids.size();
     for(int i = 0; i < size; i++) {
       delete g_ggrids[0];
@@ -9413,26 +9121,22 @@ void clear_map(camera& cameraToReset) {
 
   }
 
-  //M("Delete g_tallGrasses");
   size = g_tallGrasses.size();
   for(int i = 0; i < size; i++) {
     delete g_tallGrasses[0];
   }
 
-  //M("Delete g_camBlockers");
   size = g_camBlockers.size();
   for(int i = 0; i < size; i++) {
     delete g_camBlockers[0];
   }
 
-  //M("Delete g_gradients");
   size = g_gradients.size();
   for(int i = 0; i < size; i++) {
     delete g_gradients[0];
   }
 
 
-  //M("Delete g_ribbons");
   size = g_ribbons.size();
   for(int i = 0; i < size; i++) {
     delete g_ribbons[0];
@@ -9469,19 +9173,16 @@ void clear_map(camera& cameraToReset) {
   //with lastReferencedEntity fields set to deleted entity
   adventureUIManager->lastReferencedEntity = 0;
 
-  //M("Delete g_tiles");
   size = (int)g_tiles.size();
   for(int i = 0; i < size; i++) {
     delete g_tiles[0];
   }
 
-  //M("Delete g_emitters");
   size = (int)g_emitters.size();
   for(int i = 0; i < size; i++) {
     delete g_emitters[0];
   }
 
-  //M("Delete g_navNodes");
   size = (int)g_navNodes.size();
   for(int i = 0; i < size; i++) {
     delete g_navNodes[0];
@@ -9489,84 +9190,52 @@ void clear_map(camera& cameraToReset) {
 
   g_pelletGoalScripts.clear();
 
-
-  //was there a reason to do this?
-  //none of the entities which persist through map clears
-  //should ever have worldsounds
-  //  vector<worldsound*> savedSounds;
-  //
-  //  size = (int)g_worldsounds.size();
-  //  for(int i = 0; i < size; i++) {
-  //    if(g_worldsounds[0]->owner == nullptr) {
-  //      delete g_worldsounds[0];
-  //    } else {
-  //      savedSounds.push_back(g_worldsounds[0]);
-  //      g_worldsounds.erase(remove(g_worldsounds.begin(), g_worldsounds.end(), g_worldsounds[0]), g_worldsounds.end());
-  //    }
-  //  }
-  //
-  //  //put savedSounds back to g_worldsounds
-  //  for(auto s : savedSounds) {
-  //
-  //
-  //  }
-
-  //M("Delete g_worldsounds");
   //just do a typical clear
   size = (int)g_worldsounds.size();
   for(int i = 0; i < size; i++) {
     delete g_worldsounds[0];
   }
 
-  //M("Delete g_musicNodes");
   size = (int)g_musicNodes.size();
   for(int i = 0; i < size; i++) {
     delete g_musicNodes[0];
   }
 
-  //M("Delete g_cueSounds");
   size = (int)g_cueSounds.size();
   for(int i = 0; i < size; i++) {
     delete g_cueSounds[0];
   }
 
-  //M("Delete g_waypoints");
   size = (int)g_waypoints.size();
   for(int i = 0; i < size; i++) {
     delete g_waypoints[0];
   }
 
-  //M("Delete g_doors");
   size = (int)g_doors.size();
   for(int i = 0; i < size; i++) {
     delete g_doors[0];
   }
 
-  //M("Delete g_dungeonsDoors");
   size = (int)g_dungeonDoors.size();
   for(int i = 0; i < size; i++) {
     delete g_dungeonDoors[0];
   }
 
-  //M("Delete g_triggers");
   size = (int)g_triggers.size();
   for(int i = 0; i < size; i++) {
     delete g_triggers[0];
   }
 
-  //M("Delete g_heightmaps");
   size = (int)g_heightmaps.size();
   for(int i = 0; i < size; i++) {
     delete g_heightmaps[0];
   }
 
-  //M("Delete g_listeners");
   size = (int)g_listeners.size();
   for(int i = 0; i < size; i++) {
     delete g_listeners[0];
   }
 
-  //M("Delete g_effectIndexes");
   vector<effectIndex*> savedEffectIndexes;
   size = (int)g_effectIndexes.size();
   for(int i = 0; i < size; i++) {
@@ -9585,7 +9254,6 @@ void clear_map(camera& cameraToReset) {
 
   g_particles.clear();
 
-  //M("Delete g_ui");
   vector<ui*> persistentui;
   size = (int)g_ui.size();
   for(int i = 0; i < size; i++) {
@@ -9610,13 +9278,10 @@ void clear_map(camera& cameraToReset) {
 
   //new, delete all mc, which will automatycznie delete the others
   //here's where we could save some textures if we're going to a map in the same level, might be worth it
-  //M("Delete g_mapCollisions");
   size = (int)g_mapCollisions.size();
   for (int i = 0; i < size; i++) {
-    //M("Lets delete a mapCol");
     int jsize = (int)g_mapCollisions[0]->children.size();
     for (int j = 0; j < jsize; j ++) {
-      //M("Lets delete a mapCol child");
       delete g_mapCollisions[0]->children[j];
     }
     delete g_mapCollisions[0];
@@ -9637,16 +9302,13 @@ void clear_map(camera& cameraToReset) {
   for(long long unsigned int i = 0; i < g_ramps.size(); i++) {
     g_ramps[i].clear();
   }
-  //M("Delete background");
   if(g_backgroundLoaded && background != 0) {
-    //M("deleted background");
     SDL_DestroyTexture(background);
     extern string backgroundstr;
     backgroundstr = "";
     background = 0;
   }
 
-  //M("Delete g_setsOfInterest");
   for(int i = 0; i < g_numberOfInterestSets; i++) {
     while(g_setsOfInterest[i].size() > 0) {
       delete g_setsOfInterest[i][0];
@@ -9825,7 +9487,6 @@ void debugUI() {
 
 void adventureUI::showTalkingUI()
 {
-  M("showTalkingUI()");
   talkingBox->show = 1;
   //dialogProceedIndicator->show = 1;
   // talkingBoxTexture->show = 1;
@@ -9834,7 +9495,6 @@ void adventureUI::showTalkingUI()
   responseText->show = 1;
   responseText->updateText("", -1, 34);
   if(talker != nullptr && talker->turnToFacePlayer && talker->useDialogPointer) {
-    M("shown from showTalkingUI");
     dialogpointer->visible = 1;
     dialogpointergap->show = 1;
   }
@@ -9843,7 +9503,6 @@ void adventureUI::showTalkingUI()
 
 void adventureUI::hideTalkingUI()
 {
-  // M("hideTalkingUI()");
   talkingBox->show = 0;
   dialogProceedIndicator->show = 0;
   //dialogProceedIndicator->y = 0.88;
@@ -10707,7 +10366,6 @@ void adventureUI::continueDialogue()
     resetTrivialData();
     talker = narrarator;
     adventureUIManager->hideTalkingUI();
-    //M("Ret A");
     return;
   }
 
@@ -10717,7 +10375,6 @@ void adventureUI::continueDialogue()
     if( playersUI) {
       protag_is_talking = !mobilize;
     }
-    //M("Ret B");
     return;
   }
   else
@@ -10789,7 +10446,7 @@ void adventureUI::continueDialogue()
         string sfh = "pedastal-" + g_mapdir + "/" + g_map + "-" + to_string(talker->data[2]);
         writeSaveField(sfh, talker->data[1]);
       } else {
-        M("response index must be -1");
+        //M("response index must be -1");
       } 
 
     }
@@ -11637,9 +11294,11 @@ void adventureUI::continueDialogue()
       string s = scriptToUse->at(dialogue_index + 1);
       vector<string> x = splitString(s, ' ');
 
-      if(s.size() > 1) {
-        int itemToGet = stoi(x[1]);
-        g_combatInventory.push_back(itemToGet);
+      if(s.size() > 2) {
+        itemData td;
+        td.type = stoi(x[1]);
+        td.index = stoi(x[2]);
+        g_items.push_back(td);
       }
   
       dialogue_index++;
@@ -13847,6 +13506,7 @@ void adventureUI::continueDialogue()
   // /teach [spiritmovenumber] [partymemberindex]
   if(scriptToUse->at(dialogue_index + 1).substr(0, 6) == "/teach") 
   {
+    M("Time to learn a move");
     adventureUIManager->dialogpointer->visible = 0;
     dialogpointergap->show = 0;
     string s = scriptToUse->at(dialogue_index + 1);

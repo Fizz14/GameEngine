@@ -628,9 +628,10 @@ combatant::combatant(string ffilename, int fxp) {
   //percent, then index
   
   vector<string> x = splitString(parseMe, ':');
-  if(x.size() > 1) {
+  if(x.size() > 2) {
     droppedItemPercent = stof(x[0]);
-    droppedItemIndex = stoi(x[1]);
+    droppedItemType = stoi(x[1]);
+    droppedItemIndex = stoi(x[2]);
   }
 
   file >> temp;
@@ -737,7 +738,7 @@ spiritInfo::spiritInfo() {
   cost = 0;
 }
 
-std::unordered_map<int, itemInfo> itemsTable;
+unordered_map<int, std::unordered_map<int, itemInfo>> itemsTable;
 
 std::unordered_map<int, spiritInfo> spiritTable;
 
@@ -1550,66 +1551,77 @@ void initTables() {
     // 2 -> untargeted
     // 3 -> untargeted, usable outside of combat (Picnicbox)
     // 4 -> ally targeted, in-combat only (e.g. Rockyroad)
-    itemsTable[0] = itemInfo(getLanguageData("I0"), 1); //bandage
-    itemsTable[1] = itemInfo(getLanguageData("I1"), 2); // bomb
-    itemsTable[2] = itemInfo(getLanguageData("I2"), 2); // S.Bomb
-    itemsTable[3] = itemInfo(getLanguageData("I3"), 2); // U.Bomb
-    itemsTable[4] = itemInfo(getLanguageData("I4"), 0); // Grenade
-    itemsTable[5] = itemInfo(getLanguageData("I5"), 0); // S.Grenade
-    itemsTable[6] = itemInfo(getLanguageData("I6"), 0); // U.Grenade
-    itemsTable[7] = itemInfo(getLanguageData("I7"), 0); // Stickybomb
-    itemsTable[8] = itemInfo(getLanguageData("I8"), 1); // Tofu
-    itemsTable[9] = itemInfo(getLanguageData("I9"), 1); // Noodles
-    itemsTable[10] = itemInfo(getLanguageData("I10"), 1); // Avocado
-    itemsTable[11] = itemInfo(getLanguageData("I11"), 1); // Pretzel
-    itemsTable[12] = itemInfo(getLanguageData("I12"), 1); // Donut
-    itemsTable[13] = itemInfo(getLanguageData("I13"), 1); // Nutmilk
-    itemsTable[14] = itemInfo(getLanguageData("I14"), 1); // Sandwich
-    itemsTable[15] = itemInfo(getLanguageData("I15"), 1); // TVDinner
-    itemsTable[16] = itemInfo(getLanguageData("I16"), 1); // Burger
-    itemsTable[17] = itemInfo(getLanguageData("I17"), 1); // Grilledcheese
-    itemsTable[18] = itemInfo(getLanguageData("I18"), 3); // Picnicbox
-    itemsTable[19] = itemInfo(getLanguageData("I19"), 1); // Bagel
-    itemsTable[20] = itemInfo(getLanguageData("I20"), 1); // Pasta
-    itemsTable[21] = itemInfo(getLanguageData("I21"), 1); // Pickle
-    itemsTable[22] = itemInfo(getLanguageData("I22"), 1); // OrangeJuice
-    itemsTable[23] = itemInfo(getLanguageData("I23"), 1); // Rice
-    itemsTable[24] = itemInfo(getLanguageData("I24"), 1); // Apple
-    itemsTable[25] = itemInfo(getLanguageData("I25"), 1); // Toast
-    itemsTable[26] = itemInfo(getLanguageData("I26"), 1); // Cookie
-    itemsTable[27] = itemInfo(getLanguageData("I27"), 3); // DeluxePicnic
-    itemsTable[28] = itemInfo(getLanguageData("I28"), 3); // Weddingcake
-    itemsTable[29] = itemInfo(getLanguageData("I29"), 1); // Icecream
-    itemsTable[30] = itemInfo(getLanguageData("I30"), 0); // Snare
-    itemsTable[31] = itemInfo(getLanguageData("I31"), 0); // Electrosnare
-    itemsTable[32] = itemInfo(getLanguageData("I32"), 0); // Herbicide
-    itemsTable[33] = itemInfo(getLanguageData("I33"), 0); // HerbicideX
-    itemsTable[34] = itemInfo(getLanguageData("I34"), 0); // Bugspray
-    itemsTable[35] = itemInfo(getLanguageData("I35"), 0); // PremiumBugspray
-    itemsTable[36] = itemInfo(getLanguageData("I36"), 0); // Jammer
-    itemsTable[37] = itemInfo(getLanguageData("I37"), 0); // RetroJammer
-    itemsTable[38] = itemInfo(getLanguageData("I38"), 0); // Acid
-    itemsTable[39] = itemInfo(getLanguageData("I39"), 0); // IndustrialAcid
-    itemsTable[40] = itemInfo(getLanguageData("I40"), 0); // Strobe 
-    itemsTable[41] = itemInfo(getLanguageData("I41"), 0); // Discostrobe
-    itemsTable[42] = itemInfo(getLanguageData("I42"), 0); // Offering
-    itemsTable[43] = itemInfo(getLanguageData("I43"), 0); // ChaoticOffering
-    itemsTable[44] = itemInfo(getLanguageData("I44"), 0); // Spike
-    itemsTable[45] = itemInfo(getLanguageData("I45"), 0); // GoldenSpike
-    itemsTable[46] = itemInfo(getLanguageData("I46"), 0); // Chemicalwaste
-    itemsTable[47] = itemInfo(getLanguageData("I47"), 0); // Steeltrap
-    itemsTable[48] = itemInfo(getLanguageData("I48"), 4); // Rockyroad
-    itemsTable[49] = itemInfo(getLanguageData("I49"), 0); // Shrinkray
-    itemsTable[50] = itemInfo(getLanguageData("I50"), 1); // Healthium
-    itemsTable[51] = itemInfo(getLanguageData("I51"), 1); // Attackase
-    itemsTable[52] = itemInfo(getLanguageData("I52"), 1); // Defendine
-    itemsTable[53] = itemInfo(getLanguageData("I53"), 1); // Critium
-    itemsTable[54] = itemInfo(getLanguageData("I54"), 1); // Skillium
-    itemsTable[55] = itemInfo(getLanguageData("I55"), 1); // Soulium
-    itemsTable[56] = itemInfo(getLanguageData("I56"), 1); // Mindium
-    itemsTable[57] = itemInfo(getLanguageData("I57"), 1); // Recoverum
-    itemsTable[58] = itemInfo(getLanguageData("I58"), 1); // UnstableConcoction
-    itemsTable[59] = itemInfo(getLanguageData("I59"), 2); // Devbomb
+
+    string diskPrefix = getLanguageData("DiskPrefix");
+    itemsTable[0][0] = itemInfo("Tofu", 1);
+    for(int i = 0; i < 6; i++) {
+      string name = diskPrefix + to_string(i) + " " + getLanguageData("S" + to_string(i));
+      D(name);
+      itemsTable[1][i] = itemInfo(name, 1);
+    }
+    itemsTable[2][0] = itemInfo("Pistol", 1);
+    itemsTable[3][0] = itemInfo("Bomb", 0);
+
+//    itemsTable[0] = itemInfo(getLanguageData("I0"), 1); //bandage
+//    itemsTable[1] = itemInfo(getLanguageData("I1"), 2); // bomb
+//    itemsTable[2] = itemInfo(getLanguageData("I2"), 2); // S.Bomb
+//    itemsTable[3] = itemInfo(getLanguageData("I3"), 2); // U.Bomb
+//    itemsTable[4] = itemInfo(getLanguageData("I4"), 0); // Grenade
+//    itemsTable[5] = itemInfo(getLanguageData("I5"), 0); // S.Grenade
+//    itemsTable[6] = itemInfo(getLanguageData("I6"), 0); // U.Grenade
+//    itemsTable[7] = itemInfo(getLanguageData("I7"), 0); // Stickybomb
+//    itemsTable[8] = itemInfo(getLanguageData("I8"), 1); // Tofu
+//    itemsTable[9] = itemInfo(getLanguageData("I9"), 1); // Noodles
+//    itemsTable[10] = itemInfo(getLanguageData("I10"), 1); // Avocado
+//    itemsTable[11] = itemInfo(getLanguageData("I11"), 1); // Pretzel
+//    itemsTable[12] = itemInfo(getLanguageData("I12"), 1); // Donut
+//    itemsTable[13] = itemInfo(getLanguageData("I13"), 1); // Nutmilk
+//    itemsTable[14] = itemInfo(getLanguageData("I14"), 1); // Sandwich
+//    itemsTable[15] = itemInfo(getLanguageData("I15"), 1); // TVDinner
+//    itemsTable[16] = itemInfo(getLanguageData("I16"), 1); // Burger
+//    itemsTable[17] = itemInfo(getLanguageData("I17"), 1); // Grilledcheese
+//    itemsTable[18] = itemInfo(getLanguageData("I18"), 3); // Picnicbox
+//    itemsTable[19] = itemInfo(getLanguageData("I19"), 1); // Bagel
+//    itemsTable[20] = itemInfo(getLanguageData("I20"), 1); // Pasta
+//    itemsTable[21] = itemInfo(getLanguageData("I21"), 1); // Pickle
+//    itemsTable[22] = itemInfo(getLanguageData("I22"), 1); // OrangeJuice
+//    itemsTable[23] = itemInfo(getLanguageData("I23"), 1); // Rice
+//    itemsTable[24] = itemInfo(getLanguageData("I24"), 1); // Apple
+//    itemsTable[25] = itemInfo(getLanguageData("I25"), 1); // Toast
+//    itemsTable[26] = itemInfo(getLanguageData("I26"), 1); // Cookie
+//    itemsTable[27] = itemInfo(getLanguageData("I27"), 3); // DeluxePicnic
+//    itemsTable[28] = itemInfo(getLanguageData("I28"), 3); // Weddingcake
+//    itemsTable[29] = itemInfo(getLanguageData("I29"), 1); // Icecream
+//    itemsTable[30] = itemInfo(getLanguageData("I30"), 0); // Snare
+//    itemsTable[31] = itemInfo(getLanguageData("I31"), 0); // Electrosnare
+//    itemsTable[32] = itemInfo(getLanguageData("I32"), 0); // Herbicide
+//    itemsTable[33] = itemInfo(getLanguageData("I33"), 0); // HerbicideX
+//    itemsTable[34] = itemInfo(getLanguageData("I34"), 0); // Bugspray
+//    itemsTable[35] = itemInfo(getLanguageData("I35"), 0); // PremiumBugspray
+//    itemsTable[36] = itemInfo(getLanguageData("I36"), 0); // Jammer
+//    itemsTable[37] = itemInfo(getLanguageData("I37"), 0); // RetroJammer
+//    itemsTable[38] = itemInfo(getLanguageData("I38"), 0); // Acid
+//    itemsTable[39] = itemInfo(getLanguageData("I39"), 0); // IndustrialAcid
+//    itemsTable[40] = itemInfo(getLanguageData("I40"), 0); // Strobe 
+//    itemsTable[41] = itemInfo(getLanguageData("I41"), 0); // Discostrobe
+//    itemsTable[42] = itemInfo(getLanguageData("I42"), 0); // Offering
+//    itemsTable[43] = itemInfo(getLanguageData("I43"), 0); // ChaoticOffering
+//    itemsTable[44] = itemInfo(getLanguageData("I44"), 0); // Spike
+//    itemsTable[45] = itemInfo(getLanguageData("I45"), 0); // GoldenSpike
+//    itemsTable[46] = itemInfo(getLanguageData("I46"), 0); // Chemicalwaste
+//    itemsTable[47] = itemInfo(getLanguageData("I47"), 0); // Steeltrap
+//    itemsTable[48] = itemInfo(getLanguageData("I48"), 4); // Rockyroad
+//    itemsTable[49] = itemInfo(getLanguageData("I49"), 0); // Shrinkray
+//    itemsTable[50] = itemInfo(getLanguageData("I50"), 1); // Healthium
+//    itemsTable[51] = itemInfo(getLanguageData("I51"), 1); // Attackase
+//    itemsTable[52] = itemInfo(getLanguageData("I52"), 1); // Defendine
+//    itemsTable[53] = itemInfo(getLanguageData("I53"), 1); // Critium
+//    itemsTable[54] = itemInfo(getLanguageData("I54"), 1); // Skillium
+//    itemsTable[55] = itemInfo(getLanguageData("I55"), 1); // Soulium
+//    itemsTable[56] = itemInfo(getLanguageData("I56"), 1); // Mindium
+//    itemsTable[57] = itemInfo(getLanguageData("I57"), 1); // Recoverum
+//    itemsTable[58] = itemInfo(getLanguageData("I58"), 1); // UnstableConcoction
+//    itemsTable[59] = itemInfo(getLanguageData("I59"), 2); // Devbomb
    
 
   }
@@ -1631,7 +1643,7 @@ void initTables() {
     spiritTable[8] = spiritInfo(getLanguageData("S8"), 2, 2); //Synchronize
     spiritTable[9] = spiritInfo(getLanguageData("S9"), 1, 6); //Optimize, all
     spiritTable[10] = spiritInfo(getLanguageData("S10"), 0, 4); //Ignite, Dafua
-    spiritTable[11] = spiritInfo(getLanguageData("S11"), 0, 6); //Exploit, Neheten
+    spiritTable[11] = spiritInfo(getLanguageData("S11"), 0, 6); //Exploit, Neheten (dumb idea)
     spiritTable[12] = spiritInfo(getLanguageData("S12"), 3, 2); //Bestow, Fomm
     spiritTable[13] = spiritInfo(getLanguageData("S13"), 0, 5); //Curse, Blish
     spiritTable[14] = spiritInfo(getLanguageData("S14"), 0, 3); //Finish, Fomm
@@ -1678,1485 +1690,1525 @@ int levelToXp(int level) {
   return totalXP;
 }
 
-void useItem(int item, int target, combatant* user) {
-  switch(item) {
+int useItem(int type, int index, int target, combatant* user) {
+
+  switch(type) {
     case 0:
       {
-        //Bandage
-        int mag = 8.0f * frng(0.85,1.15) + 3 * (user->curSkill/100.0f);
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[0].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
+        //use food
         break;
       }
     case 1:
       {
-        //Bomb
-        int mag = 25.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
-        for(int i = 0; i < g_enemyCombatants.size(); i++) {
-          int thisMag = mag - g_enemyCombatants[i]->curDefense;
-          if(thisMag <0) {thisMag = 0;}
-          g_enemyCombatants[i]->health -= thisMag;
-          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
-          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I1")});
-          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-          combatUIManager->currentText = "";
-          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-          combatUIManager->dialogProceedIndicator->y = 0.25;
-          combatant* e = g_enemyCombatants[i];
-          if(e->health <= 0) {
-            string deathmessage = e->name + " " + e->deathText;
-            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-            g_deadCombatants.push_back(e);
-            //delete e;
-            i--;
-          }
-        }
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
+        //use disk
+        
+        vector<string> script = {"/teach " + to_string(index) + " " + to_string(target) , "#"};
+        D(script[0]);
+
+        adventureUIManager->ownScript = script;
+        adventureUIManager->dialogue_index = -1;
+        adventureUIManager->useOwnScriptInsteadOfTalkersScript = 1;
+        adventureUIManager->sleepingMS = 0;
+        protag_is_talking = 1;
+        g_forceEndDialogue = 0;
+        adventureUIManager->continueDialogue();
+
+        //if they canceled out, don't remove the item
+
         break;
       }
     case 2:
       {
-        //Super Bomb
-        int mag = 95.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
-        for(int i = 0; i < g_enemyCombatants.size(); i++) {
-          int thisMag = mag - g_enemyCombatants[i]->curDefense;
-          if(thisMag <0) {thisMag = 0;}
-          g_enemyCombatants[i]->health -= thisMag;
-          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
-          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I2")});
-          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-          combatUIManager->currentText = "";
-          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-          combatUIManager->dialogProceedIndicator->y = 0.25;
-          combatant* e = g_enemyCombatants[i];
-          if(e->health <= 0) {
-            string deathmessage = e->name + " " + e->deathText;
-            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-            g_deadCombatants.push_back(e);
-            //delete e;
-            i--;
-          }
-        }
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
+        //use equipment
         break;
       }
     case 3:
       {
-        //Mega Bomb
-        int mag = 175.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
-        for(int i = 0; i < g_enemyCombatants.size(); i++) {
-          int thisMag = mag - g_enemyCombatants[i]->curDefense;
-          if(thisMag <0) {thisMag = 0;}
-          g_enemyCombatants[i]->health -= thisMag;
-          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
-          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I3")});
-          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-          combatUIManager->currentText = "";
-          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-          combatUIManager->dialogProceedIndicator->y = 0.25;
-          combatant* e = g_enemyCombatants[i];
-          if(e->health <= 0) {
-            string deathmessage = e->name + " " + e->deathText;
-            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-            g_deadCombatants.push_back(e);
-            //delete e;
-            i--;
-          }
-        }
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 4:
-      {
-        //Grenade
-        int mag = 35.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I4")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 5:
-      {
-        //S.Grenade
-        int mag = 70.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I5")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 6:
-      {
-        //U.Grenade
-        int mag = 150.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I6")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 7:
-      {
-        //Stickybomb
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        mag = 0;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-        string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I7")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        statusEntry se;
-        se.type = status::STICKYBOMBED;
-        se.turns = 1;
-        se.magnitude = 1000;
-        e->statuses.push_back(se);
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 8:
-      {
-        // Tofu
-
-        int mag = 45.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 9:
-      {
-        // Noodles
-
-        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 10:
-      {
-        // Avocado
-
-        int mag = 25.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 11:
-      {
-        // Pretzel
-
-        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 12:
-      {
-        // Donut
-
-        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        int smag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          g_partyCombatants[target]->sp += smag;
-          if(g_partyCombatants[target]->sp > g_partyCombatants[target]->curMind) {
-            g_partyCombatants[target]->sp = g_partyCombatants[target]->curMind;
-          }
-
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          int value2 = min(smag, g_partyCombatants[target]->curMind - g_partyCombatants[target]->sp);
-          if(user->name == g_partyCombatants[target]->name) {
-            message = stringMultiInject(getLanguageData("HealedForSelf"),{user->name, to_stringF(value)});
-          } else {
-            message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-          }
-          string spmessage = "";
-          if(user->name == g_partyCombatants[target]->name) {
-            spmessage = stringMultiInject(getLanguageData("RestoredSpForSelf"),{user->name, to_stringF(value2)});
-          } else {
-            spmessage = stringMultiInject(getLanguageData("RestoredSpFor"),{user->name, to_stringF(value2), g_partyCombatants[target]->name});
-          }
-          combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 13:
-      {
-        // Nutmilk
-
-        int mag = 12.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 14:
-      {
-        // Sandwich
-
-        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 15:
-      {
-        // TVDinner
-
-        int mag = 18.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 16: 
-      {
-        // Burger
-
-        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 17: 
-      {
-        // Grilledcheese
-
-        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 18: 
-      {
-        // Picnicbox
-
-        int mag = 50.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        int smag = 10 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
-        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
-        for(int i =0; i <g_partyCombatants.size(); i++) {
-          if(g_partyCombatants[i]->health > 0) {
-            g_partyCombatants[i]->health += mag;
-            g_partyCombatants[i]->sp += smag;
-            
-
-            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
-              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
-            }
-
-            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
-              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
-            }
-
-
-            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
-            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
-            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
-            combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
-          }
-        }
-
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 19: 
-      {
-        // Bagel
-
-        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 20: 
-      {
-        // Pasta
-
-        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 21: 
-      {
-        // Pickle
-
-        int mag = 8.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 22: 
-      {
-        // Orangejuice
-
-        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 23: 
-      {
-        // Rice
-
-        int mag = 20.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 24: 
-      {
-        // Apple
-
-        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 25: 
-      {
-        // Toast
-
-        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 26: 
-      {
-        // Cookie
-
-        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 27: 
-      {
-        // DeluxePicnicbox
-
-        int mag = 100.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        int smag = 20 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
-        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
-        for(int i =0; i <g_partyCombatants.size(); i++) {
-          if(g_partyCombatants[i]->health > 0) {
-            g_partyCombatants[i]->health += mag;
-            g_partyCombatants[i]->sp += smag;
-            
-
-            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
-              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
-            }
-
-            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
-              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
-            }
-
-
-            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
-            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
-            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
-            combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
-          }
-        }
-
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 28: 
-      {
-        // Weddingcake
-
-        int mag = 150.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        int smag = 30 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
-        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
-        for(int i =0; i <g_partyCombatants.size(); i++) {
-          if(g_partyCombatants[i]->health > 0) {
-            g_partyCombatants[i]->health += mag;
-            g_partyCombatants[i]->sp += smag;
-            
-
-            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
-              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
-            }
-
-            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
-              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
-            }
-
-
-            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
-            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
-            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
-            combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
-          }
-        }
-
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 29: 
-      {
-        // Icecream
-
-        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
-        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
-        string message = "";
-        if(g_partyCombatants[target]->health > 0) {
-          g_partyCombatants[target]->health += mag;
-          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
-          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
-        } else {
-          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
-        }
-        combatUIManager->finalText = message;
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
-          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
-        }
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        break;
-      }
-    case 30:
-      {
-        // Snare
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::ANIMAL) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I30")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 31:
-      {
-        // Electrosnare
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::ANIMAL) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I31")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 32:
-      {
-        // Herbicide
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::PLANT) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I32")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 33:
-      {
-        // HerbicideX
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::PLANT) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I33")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 34:
-      {
-        // Bugspray
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::BUG) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I34")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 35:
-      {
-        // PremiumBugspray
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::BUG) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I35")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 36:
-      {
-        // Jammer
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::ROBOT) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I36")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 37:
-      {
-        // RetroJammer
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::ROBOT) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I37")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 38:
-      {
-        // Acid
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::ALIEN) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I38")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 39:
-      {
-        // IndustrialAcid
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::ALIEN) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I39")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 40:
-      {
-        // Strobe
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::UNDEAD) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I40")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 41:
-      {
-        // Discostrobe
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::UNDEAD) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I41")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 42:
-      {
-        // Offering
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::GHOST) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I42")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 43:
-      {
-        // ChaoticOffering
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::GHOST) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I43")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 44:
-      {
-        // Spike
-        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::DEMON) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I44")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 45:
-      {
-        // GoldenSpike
-        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
-        int i = target;
-        mag -= g_enemyCombatants[i]->curDefense;
-        if(mag <0) { mag = 0;}
-        if(g_enemyCombatants[i]->myType == type::DEMON) {
-          mag *= 2;
-        }
-        g_enemyCombatants[i]->health -= mag;
-        g_enemyCombatants[i]->damageTakenThisTurn += mag;
-        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I45")});
-        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-        combatUIManager->currentText = "";
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-        if(e->health <= 0) {
-          string deathmessage = e->name + " " + e->deathText;
-          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-          g_deadCombatants.push_back(e);
-          //delete e;
-          i--;
-        }
-
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
-        break;
-      }
-    case 46:
-      {
-        // Chemicalwaste - blinds enemy
-        int i = target;
-        int bossPoints = g_enemyCombatants[target]->bossPoints;
-        bool succ = 0;
-        if(rng(0,100) > bossPoints * 10) {
-          succ = 1;
-        }
-        string message = "";
-        if(succ) {
-          message = stringMultiInject(getLanguageData("BlindedBy"), {g_enemyCombatants[i]->name, getLanguageData("I46") });
-          combatant* c = g_enemyCombatants[i];
-          bool alreadyHave = 0;
-          for(auto &x : c->statuses) {
-            if(x.type == status::BLINDED) {
-              alreadyHave = 1;
-              if(x.turns < 4) {
-                x.turns = 3;
-              }
-              float chanceToMiss = 0.5;
-              x.magnitude = chanceToMiss;
-              break;
-            }
-          }
-          if(!alreadyHave) {
-            statusEntry e;
-            e.type = status::BLINDED;
-            e.turns = 3;
-            float chanceToMiss = 0.5;
-            e.magnitude = chanceToMiss;
-            c->statuses.push_back(e);
-          }
-
-        } else {
-          message = stringMultiInject(getLanguageData("DidntWorkOn"), {getLanguageData("I45"), g_enemyCombatants[i]->name});
-        }
-
-        combatUIManager->currentText = "";
-        combatUIManager->finalText = message;
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-        combatant* e = g_enemyCombatants[i];
-
-        user->serial.target = 1;
-        break;
-      }
-    case 47:
-      {
-        //Steeltrap
-        int i = target;
-        string message = "";
-        combatant* c = g_enemyCombatants[i];
-        message = stringMultiInject(getLanguageData("SteeltrapUsage"), {user->name, c->name});
-        bool alreadyHave = 0;
-        for(auto &x : c->statuses) {
-          if(x.type == status::STEELTRAPPED) {
-            alreadyHave = 1;
-            if(x.turns < 4) {
-              x.turns = 3;
-            }
-            float chanceToMiss = 0.5;
-            x.magnitude = 5 + user->curSkill;
-            break;
-          }
-        }
-        if(!alreadyHave) {
-          statusEntry e;
-          e.type = status::STEELTRAPPED;
-          e.turns = 3;
-          e.magnitude = 5 + user->curSkill;
-          c->statuses.push_back(e);
-        }
-
-        combatUIManager->currentText = "";
-        combatUIManager->finalText = message;
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-
-        user->serial.target = 1;
-        break;
-      }
-    case 48:
-      {
-        //defenspill
-        combatant*c = g_partyCombatants[target];
-        int magnitude = 5 + 0.5 * user->curSkill;
-        string message = stringMultiInject(getLanguageData("DefenspillUsage"), {c->name, getPossessivePronoun(c), to_string(magnitude)});
-        bool alreadyHave = 0;
-
-        //defenspill can stack
-        if(!alreadyHave) {
-          statusEntry e;
-          e.type = status::DEFENSPILLED;
-          e.turns = 8;
-          e.magnitude = magnitude;
-          c->statuses.push_back(e);
-        }
-
-        combatUIManager->currentText = "";
-        combatUIManager->finalText = message;
-        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-        combatUIManager->dialogProceedIndicator->y = 0.25;
-
-        user->serial.target = 1;
-        break;
-
-
-        break;
-      }
-    case 49:
-      {
-        g_shrinkTurns = 4;
-        break;
-      }
-    case 100:
-      {
-        //Devbomb
-        int mag = 2500.0f * frng(0.85, 1.15) + (user->curSkill * 2);
-
-        if(canSwitchOffDevMode) {
-          if(g_combatInventory.size() < g_maxInventorySize) {
-            g_combatInventory.push_back(30);
-          }
-        }
-
-        for(int i = 0; i < g_enemyCombatants.size(); i++) {
-          int thisMag = mag - g_enemyCombatants[i]->curDefense;
-          if(thisMag <0) {thisMag = 0;}
-          g_enemyCombatants[i]->health -= thisMag;
-          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
-          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
-          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I1")});
-          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
-          combatUIManager->currentText = "";
-          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
-          combatUIManager->dialogProceedIndicator->y = 0.25;
-          combatant* e = g_enemyCombatants[i];
-          if(e->health <= 0) {
-            string deathmessage = e->name + " " + e->deathText;
-            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
-            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
-            g_deadCombatants.push_back(e);
-            //delete e;
-            i--;
-          }
-        }
-        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
-        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
-        user->serial.target = 1;
+        //use combat item (like a disposable bomb, or a healing potion)
         break;
       }
   }
+  return 0; //this means the item was used up
 }
+
+  //old system, here for reference
+//  switch(item) {
+//    case 0:
+//      {
+//        //Bandage
+//        int mag = 8.0f * frng(0.85,1.15) + 3 * (user->curSkill/100.0f);
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[0].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 1:
+//      {
+//        //Bomb
+//        int mag = 25.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
+//        for(int i = 0; i < g_enemyCombatants.size(); i++) {
+//          int thisMag = mag - g_enemyCombatants[i]->curDefense;
+//          if(thisMag <0) {thisMag = 0;}
+//          g_enemyCombatants[i]->health -= thisMag;
+//          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
+//          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I1")});
+//          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//          combatUIManager->currentText = "";
+//          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//          combatUIManager->dialogProceedIndicator->y = 0.25;
+//          combatant* e = g_enemyCombatants[i];
+//          if(e->health <= 0) {
+//            string deathmessage = e->name + " " + e->deathText;
+//            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//            g_deadCombatants.push_back(e);
+//            //delete e;
+//            i--;
+//          }
+//        }
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 2:
+//      {
+//        //Super Bomb
+//        int mag = 95.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
+//        for(int i = 0; i < g_enemyCombatants.size(); i++) {
+//          int thisMag = mag - g_enemyCombatants[i]->curDefense;
+//          if(thisMag <0) {thisMag = 0;}
+//          g_enemyCombatants[i]->health -= thisMag;
+//          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
+//          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I2")});
+//          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//          combatUIManager->currentText = "";
+//          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//          combatUIManager->dialogProceedIndicator->y = 0.25;
+//          combatant* e = g_enemyCombatants[i];
+//          if(e->health <= 0) {
+//            string deathmessage = e->name + " " + e->deathText;
+//            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//            g_deadCombatants.push_back(e);
+//            //delete e;
+//            i--;
+//          }
+//        }
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 3:
+//      {
+//        //Mega Bomb
+//        int mag = 175.0f * frng(0.85, 1.15) + (user->curSkill/100.0f)*50;
+//        for(int i = 0; i < g_enemyCombatants.size(); i++) {
+//          int thisMag = mag - g_enemyCombatants[i]->curDefense;
+//          if(thisMag <0) {thisMag = 0;}
+//          g_enemyCombatants[i]->health -= thisMag;
+//          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
+//          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I3")});
+//          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//          combatUIManager->currentText = "";
+//          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//          combatUIManager->dialogProceedIndicator->y = 0.25;
+//          combatant* e = g_enemyCombatants[i];
+//          if(e->health <= 0) {
+//            string deathmessage = e->name + " " + e->deathText;
+//            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//            g_deadCombatants.push_back(e);
+//            //delete e;
+//            i--;
+//          }
+//        }
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 4:
+//      {
+//        //Grenade
+//        int mag = 35.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I4")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 5:
+//      {
+//        //S.Grenade
+//        int mag = 70.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I5")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 6:
+//      {
+//        //U.Grenade
+//        int mag = 150.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I6")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 7:
+//      {
+//        //Stickybomb
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        mag = 0;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//        string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I7")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        statusEntry se;
+//        se.type = status::STICKYBOMBED;
+//        se.turns = 1;
+//        se.magnitude = 1000;
+//        e->statuses.push_back(se);
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 8:
+//      {
+//        // Tofu
+//
+//        int mag = 45.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 9:
+//      {
+//        // Noodles
+//
+//        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 10:
+//      {
+//        // Avocado
+//
+//        int mag = 25.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 11:
+//      {
+//        // Pretzel
+//
+//        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 12:
+//      {
+//        // Donut
+//
+//        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        int smag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          g_partyCombatants[target]->sp += smag;
+//          if(g_partyCombatants[target]->sp > g_partyCombatants[target]->curMind) {
+//            g_partyCombatants[target]->sp = g_partyCombatants[target]->curMind;
+//          }
+//
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          int value2 = min(smag, g_partyCombatants[target]->curMind - g_partyCombatants[target]->sp);
+//          if(user->name == g_partyCombatants[target]->name) {
+//            message = stringMultiInject(getLanguageData("HealedForSelf"),{user->name, to_stringF(value)});
+//          } else {
+//            message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//          }
+//          string spmessage = "";
+//          if(user->name == g_partyCombatants[target]->name) {
+//            spmessage = stringMultiInject(getLanguageData("RestoredSpForSelf"),{user->name, to_stringF(value2)});
+//          } else {
+//            spmessage = stringMultiInject(getLanguageData("RestoredSpFor"),{user->name, to_stringF(value2), g_partyCombatants[target]->name});
+//          }
+//          combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 13:
+//      {
+//        // Nutmilk
+//
+//        int mag = 12.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 14:
+//      {
+//        // Sandwich
+//
+//        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 15:
+//      {
+//        // TVDinner
+//
+//        int mag = 18.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 16: 
+//      {
+//        // Burger
+//
+//        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 17: 
+//      {
+//        // Grilledcheese
+//
+//        int mag = 35.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 18: 
+//      {
+//        // Picnicbox
+//
+//        int mag = 50.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        int smag = 10 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
+//        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
+//        for(int i =0; i <g_partyCombatants.size(); i++) {
+//          if(g_partyCombatants[i]->health > 0) {
+//            g_partyCombatants[i]->health += mag;
+//            g_partyCombatants[i]->sp += smag;
+//            
+//
+//            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
+//              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
+//            }
+//
+//            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
+//              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
+//            }
+//
+//
+//            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
+//            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
+//            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
+//            combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
+//          }
+//        }
+//
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 19: 
+//      {
+//        // Bagel
+//
+//        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 20: 
+//      {
+//        // Pasta
+//
+//        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 21: 
+//      {
+//        // Pickle
+//
+//        int mag = 8.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 22: 
+//      {
+//        // Orangejuice
+//
+//        int mag = 10.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 23: 
+//      {
+//        // Rice
+//
+//        int mag = 20.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 24: 
+//      {
+//        // Apple
+//
+//        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 25: 
+//      {
+//        // Toast
+//
+//        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 26: 
+//      {
+//        // Cookie
+//
+//        int mag = 5.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 27: 
+//      {
+//        // DeluxePicnicbox
+//
+//        int mag = 100.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        int smag = 20 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
+//        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
+//        for(int i =0; i <g_partyCombatants.size(); i++) {
+//          if(g_partyCombatants[i]->health > 0) {
+//            g_partyCombatants[i]->health += mag;
+//            g_partyCombatants[i]->sp += smag;
+//            
+//
+//            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
+//              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
+//            }
+//
+//            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
+//              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
+//            }
+//
+//
+//            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
+//            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
+//            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
+//            combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
+//          }
+//        }
+//
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 28: 
+//      {
+//        // Weddingcake
+//
+//        int mag = 150.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        int smag = 30 * frng(0.85, 1.15) + 15 * (user->curSkill/100.0f);
+//        string message = stringMultiInject(getLanguageData("PicnicboxText"),{user->name});
+//        for(int i =0; i <g_partyCombatants.size(); i++) {
+//          if(g_partyCombatants[i]->health > 0) {
+//            g_partyCombatants[i]->health += mag;
+//            g_partyCombatants[i]->sp += smag;
+//            
+//
+//            if(g_partyCombatants[i]->health >= g_partyCombatants[i]->curStrength) {
+//              g_partyCombatants[i]->health = floor(g_partyCombatants[i]->curStrength);
+//            }
+//
+//            if(g_partyCombatants[i]->sp >= g_partyCombatants[i]->curMind) {
+//              g_partyCombatants[i]->sp = floor(g_partyCombatants[i]->curMind);
+//            }
+//
+//
+//            int value = min(mag, g_partyCombatants[i]->curStrength - g_partyCombatants[i]->health);
+//            int value2 = min(smag, g_partyCombatants[i]->curMind - g_partyCombatants[i]->sp);
+//            string spmessage = stringMultiInject(getLanguageData("Regained"),{g_partyCombatants[i]->name, to_stringF(value), to_stringF(value2)});
+//            combatUIManager->queuedStrings.push_back(make_pair(spmessage,(combatant*)0));
+//          }
+//        }
+//
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 29: 
+//      {
+//        // Icecream
+//
+//        int mag = 15.0f * frng(0.85, 1.15) + 35 * (user->curSkill/100.0f);
+//        //string message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(mag)});
+//        string message = "";
+//        if(g_partyCombatants[target]->health > 0) {
+//          g_partyCombatants[target]->health += mag;
+//          int value = min(mag, g_partyCombatants[target]->curStrength - g_partyCombatants[target]->health);
+//          message = stringMultiInject(getLanguageData("HealedFor"),{user->name, g_partyCombatants[target]->name, to_stringF(value)});
+//        } else {
+//          message = stringMultiInject(getLanguageData("TriedToUse"), {user->name, itemsTable[8].name});
+//        }
+//        combatUIManager->finalText = message;
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        if(g_partyCombatants[target]->health >= g_partyCombatants[target]->curStrength) {
+//          g_partyCombatants[target]->health = floor(g_partyCombatants[target]->curStrength);
+//        }
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        break;
+//      }
+//    case 30:
+//      {
+//        // Snare
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::ANIMAL) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I30")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 31:
+//      {
+//        // Electrosnare
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::ANIMAL) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I31")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 32:
+//      {
+//        // Herbicide
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::PLANT) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I32")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 33:
+//      {
+//        // HerbicideX
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::PLANT) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I33")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 34:
+//      {
+//        // Bugspray
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::BUG) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I34")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 35:
+//      {
+//        // PremiumBugspray
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::BUG) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I35")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 36:
+//      {
+//        // Jammer
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::ROBOT) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I36")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 37:
+//      {
+//        // RetroJammer
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::ROBOT) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I37")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 38:
+//      {
+//        // Acid
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::ALIEN) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I38")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 39:
+//      {
+//        // IndustrialAcid
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::ALIEN) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I39")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 40:
+//      {
+//        // Strobe
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::UNDEAD) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I40")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 41:
+//      {
+//        // Discostrobe
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::UNDEAD) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I41")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 42:
+//      {
+//        // Offering
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::GHOST) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I42")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 43:
+//      {
+//        // ChaoticOffering
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::GHOST) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I43")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 44:
+//      {
+//        // Spike
+//        int mag = 20.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::DEMON) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I44")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 45:
+//      {
+//        // GoldenSpike
+//        int mag = 100.0f * frng(0.85, 1.15) + (user->curSkill/100.0f) * 50;
+//        int i = target;
+//        mag -= g_enemyCombatants[i]->curDefense;
+//        if(mag <0) { mag = 0;}
+//        if(g_enemyCombatants[i]->myType == type::DEMON) {
+//          mag *= 2;
+//        }
+//        g_enemyCombatants[i]->health -= mag;
+//        g_enemyCombatants[i]->damageTakenThisTurn += mag;
+//        user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I45")});
+//        combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//        combatUIManager->currentText = "";
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//        if(e->health <= 0) {
+//          string deathmessage = e->name + " " + e->deathText;
+//          combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//          g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//          g_deadCombatants.push_back(e);
+//          //delete e;
+//          i--;
+//        }
+//
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 46:
+//      {
+//        // Chemicalwaste - blinds enemy
+//        int i = target;
+//        int bossPoints = g_enemyCombatants[target]->bossPoints;
+//        bool succ = 0;
+//        if(rng(0,100) > bossPoints * 10) {
+//          succ = 1;
+//        }
+//        string message = "";
+//        if(succ) {
+//          message = stringMultiInject(getLanguageData("BlindedBy"), {g_enemyCombatants[i]->name, getLanguageData("I46") });
+//          combatant* c = g_enemyCombatants[i];
+//          bool alreadyHave = 0;
+//          for(auto &x : c->statuses) {
+//            if(x.type == status::BLINDED) {
+//              alreadyHave = 1;
+//              if(x.turns < 4) {
+//                x.turns = 3;
+//              }
+//              float chanceToMiss = 0.5;
+//              x.magnitude = chanceToMiss;
+//              break;
+//            }
+//          }
+//          if(!alreadyHave) {
+//            statusEntry e;
+//            e.type = status::BLINDED;
+//            e.turns = 3;
+//            float chanceToMiss = 0.5;
+//            e.magnitude = chanceToMiss;
+//            c->statuses.push_back(e);
+//          }
+//
+//        } else {
+//          message = stringMultiInject(getLanguageData("DidntWorkOn"), {getLanguageData("I45"), g_enemyCombatants[i]->name});
+//        }
+//
+//        combatUIManager->currentText = "";
+//        combatUIManager->finalText = message;
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//        combatant* e = g_enemyCombatants[i];
+//
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 47:
+//      {
+//        //Steeltrap
+//        int i = target;
+//        string message = "";
+//        combatant* c = g_enemyCombatants[i];
+//        message = stringMultiInject(getLanguageData("SteeltrapUsage"), {user->name, c->name});
+//        bool alreadyHave = 0;
+//        for(auto &x : c->statuses) {
+//          if(x.type == status::STEELTRAPPED) {
+//            alreadyHave = 1;
+//            if(x.turns < 4) {
+//              x.turns = 3;
+//            }
+//            float chanceToMiss = 0.5;
+//            x.magnitude = 5 + user->curSkill;
+//            break;
+//          }
+//        }
+//        if(!alreadyHave) {
+//          statusEntry e;
+//          e.type = status::STEELTRAPPED;
+//          e.turns = 3;
+//          e.magnitude = 5 + user->curSkill;
+//          c->statuses.push_back(e);
+//        }
+//
+//        combatUIManager->currentText = "";
+//        combatUIManager->finalText = message;
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//
+//        user->serial.target = 1;
+//        break;
+//      }
+//    case 48:
+//      {
+//        //defenspill
+//        combatant*c = g_partyCombatants[target];
+//        int magnitude = 5 + 0.5 * user->curSkill;
+//        string message = stringMultiInject(getLanguageData("DefenspillUsage"), {c->name, getPossessivePronoun(c), to_string(magnitude)});
+//        bool alreadyHave = 0;
+//
+//        //defenspill can stack
+//        if(!alreadyHave) {
+//          statusEntry e;
+//          e.type = status::DEFENSPILLED;
+//          e.turns = 8;
+//          e.magnitude = magnitude;
+//          c->statuses.push_back(e);
+//        }
+//
+//        combatUIManager->currentText = "";
+//        combatUIManager->finalText = message;
+//        combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//        combatUIManager->dialogProceedIndicator->y = 0.25;
+//
+//        user->serial.target = 1;
+//        break;
+//
+//
+//        break;
+//      }
+//    case 49:
+//      {
+//        g_shrinkTurns = 4;
+//        break;
+//      }
+//    case 100:
+//      {
+//        //Devbomb
+//        int mag = 2500.0f * frng(0.85, 1.15) + (user->curSkill * 2);
+//
+//        if(canSwitchOffDevMode) {
+//          if(g_combatInventory.size() < g_maxInventorySize) {
+//            g_combatInventory.push_back(30);
+//          }
+//        }
+//
+//        for(int i = 0; i < g_enemyCombatants.size(); i++) {
+//          int thisMag = mag - g_enemyCombatants[i]->curDefense;
+//          if(thisMag <0) {thisMag = 0;}
+//          g_enemyCombatants[i]->health -= thisMag;
+//          g_enemyCombatants[i]->damageTakenThisTurn += thisMag;
+//          user->dmgDealtOverFight += min(g_enemyCombatants[i]->health, (int)mag);
+//          string message = stringMultiInject(getLanguageData("TookFrom"), {g_enemyCombatants[i]->name, to_stringF(mag), getLanguageData("I1")});
+//          combatUIManager->queuedStrings.push_back(make_pair(message,(combatant*)0));
+//          combatUIManager->currentText = "";
+//          combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
+//          combatUIManager->dialogProceedIndicator->y = 0.25;
+//          combatant* e = g_enemyCombatants[i];
+//          if(e->health <= 0) {
+//            string deathmessage = e->name + " " + e->deathText;
+//            combatUIManager->queuedStrings.push_back(make_pair(deathmessage,e));
+//            g_enemyCombatants.erase(g_enemyCombatants.begin() + i);
+//            g_deadCombatants.push_back(e);
+//            //delete e;
+//            i--;
+//          }
+//        }
+//        combatUIManager->finalText = combatUIManager->queuedStrings.at(0).first;
+//        combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
+//        user->serial.target = 1;
+//        break;
+//      }
+//  }
 
 //note that statuses are procked after the enemy turn for the enemies and after the
 //player turn for the protags.
@@ -4529,20 +4581,22 @@ void renderInventoryPanel()
   const float initialX = 0.44;
   const float initialY = 0.1;
   int index = 0;
-  if(g_combatInventory.size() > 0) {
+  if(g_items.size() > 0) {
     for(int i = 0; i < columns; i++) {
       for(int j = 0; j < rows; j++) {
         combatUIManager->inventoryText->boxX = initialX + (i * width);
         combatUIManager->inventoryText->boxY = initialY + (j * height);
 
+        int itemType = 0;
         int itemIndex = 0;
-        if(index < g_combatInventory.size() && index >= 0) {
-          itemIndex = g_combatInventory[index];
+        if(index < g_items.size() && index >= 0) {
+          itemType = g_items[index].type;
+          itemIndex = g_items[index].index;
         }
 
         string itemName = "";
-        if(itemIndex >= 0 && itemIndex < itemsTable.size()) {
-          itemName = itemsTable[itemIndex].name;
+        if(itemType >=0 && itemType <= 3 && itemIndex >= 0 && itemIndex < itemsTable[itemType].size()) {
+          itemName = itemsTable.at(itemType).at(itemIndex).name;
         } else {
           E("Bad itemIndex " + itemIndex);
           abort();
@@ -4555,7 +4609,7 @@ void renderInventoryPanel()
           combatUIManager->menuPicker->x = initialX + (i * width) - 0.028;
           combatUIManager->menuPicker->y = initialY + (j * height) + 0.007;
         }
-        if(index < (int)g_combatInventory.size()) {
+        if(index < (int)g_items.size()) {
           combatUIManager->inventoryText->render(renderer, WIN_WIDTH, WIN_HEIGHT);
         }
 
@@ -4932,9 +4986,9 @@ void CombatLoop() {
     drawSimpleBackground();
   }
 
-  B("Before drawCombatants()");
+  BM("Before drawCombatants()");
   drawCombatants();
-  B("drawCombatants()");
+  BM("drawCombatants()");
 
   SDL_RenderCopy(renderer, g_shade, NULL, NULL);
 
@@ -4976,6 +5030,7 @@ void CombatLoop() {
           dropInfo d;
           d.dropPercent = x->droppedItemPercent;
           d.dropIndex = x->droppedItemIndex;
+          d.dropType = x->droppedItemType;
           d.name = x->name;
           d.eDropPercent = x->droppedEquipablePercent;
           d.eDropIndex = x->droppedEquipableIndex;
@@ -5791,11 +5846,12 @@ void CombatLoop() {
             if(c->serial.target <0) {break;}
           }
           combatant* com = g_partyCombatants[combatUIManager->executePIndex];
-          int a = com->serial.actionIndex; //which item
+          int type = com->serial.actionIndex;
+          int index = com->serial.secondActionIndex;
           int b = com->serial.target; //which ally/enemy
-          com->itemToUse = -1;
+          com->itemIndexToUse = -1;
 
-          useItem(a, b, com);
+          useItem(type, index, b, com);
 
           g_submode = submode::TEXT_P;
 
@@ -6555,10 +6611,13 @@ void CombatLoop() {
 
         //return held items to inventory (combatant.itemToUse)
         for(auto x : g_partyCombatants) {
-          if(x->itemToUse != -1) {
-            if(g_combatInventory.size() < g_maxInventorySize) {
-              g_combatInventory.push_back(x->itemToUse);;
-              x->itemToUse = -1;
+          if(x->itemIndexToUse != -1) {
+            if(g_items.size() < g_maxInventorySize) {
+              itemData td;
+              td.type = x->itemIndexToUse;
+              td.index = x->itemIndexToUse;
+              g_items.push_back(td);
+              x->itemIndexToUse = -1;
             }
 
           }
@@ -7260,11 +7319,14 @@ void CombatLoop() {
     case submode::ITEMCHOOSE: 
       {
 
-        if(g_partyCombatants[curCombatantIndex]->itemToUse != -1) {
-          if(g_combatInventory.size() < g_maxInventorySize) {
-            g_combatInventory.push_back(g_partyCombatants[curCombatantIndex]->itemToUse);
+        if(g_partyCombatants[curCombatantIndex]->itemIndexToUse != -1) {
+          if(g_items.size() < g_maxInventorySize) {
+            itemData td;
+            td.type = g_partyCombatants[curCombatantIndex]->itemTypeToUse;
+            td.index = g_partyCombatants[curCombatantIndex]->itemIndexToUse;
+            g_items.push_back(td);
           }
-          g_partyCombatants[curCombatantIndex]->itemToUse = -1;
+          g_partyCombatants[curCombatantIndex]->itemIndexToUse = -1;
         }
         combatUIManager->mainPanel->show = 0;
         combatUIManager->dialogProceedIndicator->show = 0;
@@ -7294,7 +7356,7 @@ void CombatLoop() {
         if(input[1] && !oldinput[1]) {
           if(combatUIManager->currentInventoryOption != 6 &&
               combatUIManager->currentInventoryOption != 13) {
-            if(combatUIManager->currentInventoryOption + 1 < g_combatInventory.size()) {
+            if(combatUIManager->currentInventoryOption + 1 < g_items.size()) {
               combatUIManager->currentInventoryOption ++;
             }
           }
@@ -7308,7 +7370,7 @@ void CombatLoop() {
 
         if(input[3] && !oldinput[3]) {
           if(combatUIManager->currentInventoryOption <= 6) {
-            if(combatUIManager->currentInventoryOption + 7 < g_combatInventory.size()) {
+            if(combatUIManager->currentInventoryOption + 7 < g_items.size()) {
               combatUIManager->currentInventoryOption += 7;
             }
           }
@@ -7322,13 +7384,16 @@ void CombatLoop() {
           combatUIManager->inventoryText->show = 0;
         }
 
-        if(input[11] && !oldinput[11] && g_combatInventory.size() > 0) {
-          g_partyCombatants[curCombatantIndex]->itemToUse = g_combatInventory[combatUIManager->currentInventoryOption];
-          switch(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting) {
+        if(input[11] && !oldinput[11] && g_items.size() > 0) {
+          g_partyCombatants[curCombatantIndex]->itemTypeToUse = g_items[combatUIManager->currentInventoryOption].type;
+          g_partyCombatants[curCombatantIndex]->itemIndexToUse = g_items[combatUIManager->currentInventoryOption].index;
+          itemData td = g_items[combatUIManager->currentInventoryOption];
+          switch(itemsTable[td.type][td.index].targeting) {
             case 0:
               //enemy
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
 
               g_submode = submode::TARGETING;
               combatUIManager->currentTarget = 0;
@@ -7336,32 +7401,36 @@ void CombatLoop() {
             case 1:
               //teamate
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
               g_submode = submode::ALLYTARGETING;
               combatUIManager->currentTarget = 0;
               break;
             case 2:
               //none
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
               g_submode = submode::CONTINUE;
               break;
             case 3:
               //to be used on allies, untargeted, e.g., picnicbox
               //must be usable in overworld
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
               g_submode = submode::CONTINUE;
               break;
             case 4:
               //ally targeted
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
               g_submode = submode::ALLYTARGETING;
               combatUIManager->currentTarget = 0;
               break;
           }
-          g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
+          g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
 
         }
 
@@ -8603,10 +8672,13 @@ void CombatLoop() {
       {
         vector<string> messages; messages.clear();
         for(auto x : g_dropInfos) {
-          if(frng(0,100) <= x.dropPercent && g_combatInventory.size() < g_maxInventorySize) {
-            messages.push_back(stringMultiInject(getLanguageData("FoundText"), {itemsTable[x.dropIndex].name}));
+          if(frng(0,100) <= x.dropPercent && g_items.size() < g_maxInventorySize) {
+            messages.push_back(stringMultiInject(getLanguageData("FoundText"), {itemsTable[x.dropType][x.dropIndex].name}));
             //messages.push_back("Fomm found a " + itemsTable[x.dropIndex].name + " which the enemy left behind.");
-            g_combatInventory.push_back(x.dropIndex);
+            itemData td;
+            td.index = x.dropIndex;
+            td.type = x.dropType;
+            g_items.push_back(td);
           }
         }
 
@@ -8618,7 +8690,7 @@ void CombatLoop() {
           combatUIManager->queuedStrings.push_back(make_pair(messages.at(i), (combatant*)0));
         }
 
-        if(g_combatInventory.size() < g_maxInventorySize) {
+        if(g_items.size() < g_maxInventorySize) {
 
         }
 
@@ -8705,7 +8777,7 @@ void CombatLoop() {
       }
   }
 
-  B("After submode handling");
+  BM("After submode handling");
 
 
   combatUIManager->mainPanel->render(renderer, g_camera, elapsed);
@@ -8960,7 +9032,7 @@ void CombatLoop() {
 
 
   SDL_RenderPresent(renderer);
-  B("After present");
+  BM("After present");
 }
 
 //this is for gaining xp out of combat (including learning/forgetting spiritmoves
@@ -9815,9 +9887,12 @@ void explorationLevelupLoop() {
           combatant* com = g_partyCombatants[combatUIManager->executePIndex];
           int a = com->serial.actionIndex; //which item
           int b = com->serial.target; //which ally/enemy
-          com->itemToUse = -1;
+          itemData td;
+          td.type = com->itemTypeToUse;
+          td.index = com->itemIndexToUse;
+          com->itemIndexToUse = -1;
 
-          useItem(a, b, com);
+          useItem(td.type, td.index, b, com);
 
           g_submode = submode::TEXT_P;
 
@@ -10442,10 +10517,14 @@ void explorationLevelupLoop() {
 
         //return held items to inventory (combatant.itemToUse)
         for(auto x : g_partyCombatants) {
-          if(x->itemToUse != -1) {
-            if(g_combatInventory.size() < g_maxInventorySize) {
-              g_combatInventory.push_back(x->itemToUse);;
-              x->itemToUse = -1;
+          if(x->itemIndexToUse != -1) {
+            if(g_items.size() < g_maxInventorySize) {
+              itemData td;
+              td.type = x->itemTypeToUse;
+              td.index = x->itemIndexToUse;
+
+              g_items.push_back(td);
+              x->itemIndexToUse = -1;
             }
 
           }
@@ -11150,11 +11229,14 @@ void explorationLevelupLoop() {
     case submode::ITEMCHOOSE: 
       {
 
-        if(g_partyCombatants[curCombatantIndex]->itemToUse != -1) {
-          if(g_combatInventory.size() < g_maxInventorySize) {
-            g_combatInventory.push_back(g_partyCombatants[curCombatantIndex]->itemToUse);
+        if(g_partyCombatants[curCombatantIndex]->itemIndexToUse != -1) {
+          if(g_items.size() < g_maxInventorySize) {
+            itemData td;
+            td.type = g_partyCombatants[curCombatantIndex]->itemTypeToUse;
+            td.index = g_partyCombatants[curCombatantIndex]->itemIndexToUse;
+            g_items.push_back(td);
           }
-          g_partyCombatants[curCombatantIndex]->itemToUse = -1;
+          g_partyCombatants[curCombatantIndex]->itemIndexToUse = -1;
         }
         combatUIManager->mainPanel->show = 0;
         combatUIManager->dialogProceedIndicator->show = 0;
@@ -11184,7 +11266,7 @@ void explorationLevelupLoop() {
         if(input[1] && !oldinput[1]) {
           if(combatUIManager->currentInventoryOption != 6 &&
               combatUIManager->currentInventoryOption != 13) {
-            if(combatUIManager->currentInventoryOption + 1 < g_combatInventory.size()) {
+            if(combatUIManager->currentInventoryOption + 1 < g_items.size()) {
               combatUIManager->currentInventoryOption ++;
             }
           }
@@ -11198,7 +11280,7 @@ void explorationLevelupLoop() {
 
         if(input[3] && !oldinput[3]) {
           if(combatUIManager->currentInventoryOption <= 6) {
-            if(combatUIManager->currentInventoryOption + 7 < g_combatInventory.size()) {
+            if(combatUIManager->currentInventoryOption + 7 < g_items.size()) {
               combatUIManager->currentInventoryOption += 7;
             }
           }
@@ -11212,13 +11294,17 @@ void explorationLevelupLoop() {
           combatUIManager->inventoryText->show = 0;
         }
 
-        if(input[11] && !oldinput[11] && g_combatInventory.size() > 0) {
-          g_partyCombatants[curCombatantIndex]->itemToUse = g_combatInventory[combatUIManager->currentInventoryOption];
-          switch(itemsTable[g_combatInventory[combatUIManager->currentInventoryOption]].targeting) {
+        if(input[11] && !oldinput[11] && g_items.size() > 0) {
+          g_partyCombatants[curCombatantIndex]->itemTypeToUse = g_items[combatUIManager->currentInventoryOption].type;
+          g_partyCombatants[curCombatantIndex]->itemIndexToUse = g_items[combatUIManager->currentInventoryOption].index;
+          itemData td;
+          td = g_items[combatUIManager->currentInventoryOption];
+          switch(itemsTable[td.type][td.index].targeting) {
             case 0:
               //enemy
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
 
               g_submode = submode::TARGETING;
               combatUIManager->currentTarget = 0;
@@ -11226,18 +11312,20 @@ void explorationLevelupLoop() {
             case 1:
               //teamate
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
               g_submode = submode::ALLYTARGETING;
               combatUIManager->currentTarget = 0;
               break;
             case 2:
               //none
               g_partyCombatants[curCombatantIndex]->serial.action = turnAction::ITEM;
-              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_combatInventory[combatUIManager->currentInventoryOption];
+              g_partyCombatants[curCombatantIndex]->serial.actionIndex = g_items[combatUIManager->currentInventoryOption].type;
+              g_partyCombatants[curCombatantIndex]->serial.secondActionIndex = g_items[combatUIManager->currentInventoryOption].index;
               g_submode = submode::CONTINUE;
               break;
           }
-          g_combatInventory.erase(g_combatInventory.begin() + combatUIManager->currentInventoryOption);
+          g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
 
         }
 
@@ -12593,7 +12681,6 @@ void learnMoveLoop() {
   switch (g_submode) {
     case submode::LEVELUP:
       {
-
         if(g_partyCombatants[g_whoLearnsMove]->spiritMoves.size() < 4) {
           //just learn it
           combatUIManager->currentText = "";
@@ -12601,6 +12688,7 @@ void learnMoveLoop() {
 
           combatUIManager->finalText = stringMultiInject(getLanguageData("LearnedMoveSuccess"), {g_partyCombatants[g_whoLearnsMove]->name, spiritTable[combatUIManager->moveToLearn].name});
           g_partyCombatants[g_whoLearnsMove]->spiritMoves.push_back(combatUIManager->moveToLearn);
+          g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
 
           g_submode = submode::LEARNEDTEXT;
           break;
@@ -12669,6 +12757,7 @@ void learnMoveLoop() {
                 combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);
                 combatUIManager->finalText = stringMultiInject(getLanguageData("LearnedMoveSuccess"), {g_partyCombatants[g_whoLearnsMove]->name, spiritTable[combatUIManager->moveToLearn].name});
                 g_partyCombatants[g_whoLearnsMove]->spiritMoves.push_back(combatUIManager->moveToLearn);
+                g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
 
                 g_submode = submode::LEARNEDTEXT;
                 break;
@@ -12754,9 +12843,17 @@ void learnMoveLoop() {
               combatUIManager->queuedStrings.erase(combatUIManager->queuedStrings.begin());
             } else {
 
+
                 //go back to the dialog system in exploration mode
                 g_learningMove = 0;
                 combatUIManager->hideAll();
+
+                //this is because the player now learns from disks in the item menu
+                combatUIManager->inventoryPanel->show = 1;
+                combatUIManager->inventoryText->show = 1;
+                combatUIManager->currentInventoryOption = 0;
+                combatUIManager->menuPicker->show = 1;
+                combatUIManager->menuPicker->x = 10;
     
                 adventureUIManager->dialogue_index++;
                 adventureUIManager->continueDialogue();
@@ -12999,15 +13096,24 @@ void learnMoveLoop() {
         if(input[11] && !oldinput[11]) {
           if(combatUIManager->confirmOption == 0) {
             if(combatUIManager->forgetOption == 4) {
-
+              //the user chose to not learn a move
+              
               g_learningMove = 0;
               combatUIManager->hideAll();
+
+              //this is because the player now learns from disks in the item menu
+              combatUIManager->inventoryPanel->show = 1;
+              combatUIManager->inventoryText->show = 1;
+              combatUIManager->currentInventoryOption = 0;
+              combatUIManager->menuPicker->show = 1;
+              combatUIManager->menuPicker->x = 10;
     
               adventureUIManager->dialogue_index++;
               adventureUIManager->continueDialogue();
               return;
             }
             g_partyCombatants[g_whoLearnsMove]->spiritMoves[combatUIManager->forgetOption] = combatUIManager->moveToLearn;
+            g_items.erase(g_items.begin() + combatUIManager->currentInventoryOption);
 
             combatUIManager->currentText = "";
             combatUIManager->mainText->updateText(combatUIManager->currentText, -1, 0.85, g_textcolor, g_font);

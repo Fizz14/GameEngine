@@ -7,7 +7,11 @@ void setBarColor();
 
 void TitleLoop();
 
+void explorationRender();
+
 void ExplorationLoop();
+
+void renderGPiece(int px, int py, int pindex, SDL_Texture* floortex, SDL_Texture walltex, int opacity);
 
 void CombatLoop();
 

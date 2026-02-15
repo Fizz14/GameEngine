@@ -129,6 +129,8 @@ struct dungeonFloorInfo;
 
 class combatant;
 
+class dropInfo;
+
 class combatUI;
 
 class miniEnt;
@@ -156,6 +158,8 @@ class ggrid;
 class roomData;
 
 class doorData;
+
+class itemData;
 
 class camera
 {
@@ -214,6 +218,10 @@ extern vector<cshadow *> g_shadows;
 
 extern vector<entity *> g_entities;
 
+extern vector<entity*> g_entitiesInRoom; //entities that should be updated
+
+extern vector<entity*>* eset;
+
 extern vector<entity *> g_boardableEntities;
 
 extern vector<entity*> g_ai;
@@ -247,6 +255,10 @@ extern vector<fontmem> g_fontmems;
 extern vector<ui *> g_ui;
 
 extern vector<actor *> g_actors;
+
+extern vector<actor*> g_actorsInRoom;
+
+extern vector<actor*> g_actorsInLastRoom;
 
 extern vector<mapObject *> g_mapObjects;
 
@@ -337,6 +349,12 @@ extern vector<vector<roomData>> g_floorplan; //contains a grid of pointers to gg
 
 extern vector<doorData> g_Lozdoors;
 
+extern int g_LoZDoorTakenIndex;
+
+extern entity* g_LoZDoorTaken;
+
+extern bool g_LoZChangeRoom;
+
 struct edgeInfo {
   SDL_Vertex first;
   float firstZ;
@@ -387,6 +405,9 @@ extern SDL_Texture* g_gradient_j;
 
 extern SDL_Texture* g_axesTexture;
 
+extern SDL_Texture* g_itemEffectTexture;
+extern float g_itemEffectAccu;
+
 struct cmpCoord
 {
   bool operator()(const pair<int, int> a, const pair<int, int> b) const;
@@ -413,7 +434,9 @@ struct cmpCoord
 
 #define E(a)                              \
 {                                         \
+  if(breakpointsOn) { \
   breakpoint();                     \
+  } \
   std::cout << "     " <<  "ERROR: " << (a) << endl;\
 }
 
@@ -422,12 +445,29 @@ struct cmpCoord
   std::cout << "     " <<  "Warning: " << (a) << endl; \
 }
 
+#define BP_ENABLE() \
+{ \
+  breakpointsOn = 1; \
+}
+
+#define BP_DISABLE() \
+{ \
+  breakpointsOn = 0; \
+}
+
+#define BP() \
+{ \
+  if(breakpointsOn) { \
+  breakpoint();       \
+  }                   \
+}
+
 extern int g_globalAccumulator;
 extern int g_tempAccumulator;
 extern bool g_benchmarking;
 extern bool g_entityBenchmarking;
 
-#define B(a) \
+#define BM(a) \
 { \
   if(g_benchmarking){ \
     int ticks = SDL_GetTicks(); \
@@ -629,6 +669,7 @@ extern float basePunishValueDegrade;
 extern vector<float> g_itemsines;
 
 extern float g_elapsed_accumulator;
+extern float g_rotationalAccumulator;
 
 extern int g_platformResolution;
 extern float g_TiltResolution;
@@ -983,7 +1024,7 @@ extern ui* g_dijkstraDebugYellow;
 extern entity* g_dijkstraEntity;
 extern bool g_ninja;
 
-extern int fdebug;
+extern int breakpointsOn;
 
 extern int g_layers;
 extern int g_numberOfInterestSets;
@@ -1212,6 +1253,8 @@ extern const int g_roomGridH;
 
 extern coord g_floorPos;
 
+extern coord g_lastFloorPos;
+
 extern bool g_usingFloorplan;
 
 extern size_t g_activeGgridIndex;
@@ -1234,6 +1277,53 @@ enum gamemode {
   WIN
 };
 
+//for handing menuing in turn based combat code
+enum class submode {
+  BEFORE,
+  INWIPE,
+  OUTWIPE,
+  TEXT, //entry text box
+  MAIN, //player chooses between Fight, Items, Spirit, Defend, Run
+  SPIRITCHOOSE, //player chooses which spirit move to use
+  ITEMCHOOSE, //player chooses which item to use
+  TARGETING, //player chooses which enemy to target
+  ALLYTARGETING, 
+  CONTINUE, //go to next party member, or maybe to execute
+  EXECUTE_P, //take serialization and play out the player's turns
+  TEXT_P, //Feedback about player's turns
+  EXECUTE_E, //play the enemies's turns
+  TEXT_E, //Feedback about the enemies's turns
+  FINAL,
+  FINALTEXT, // Feedback about the battle
+  SPWARNING,
+  DODGING,
+  RUNWARNING,
+  RUNSUCCESSTEXT,
+  RUNFAILTEXT,
+  CHARAXP,
+  XPTEXT,
+  LEVELUP,
+  LEVELTEXT,
+  LEARNEDTEXT, // sonso learned X
+  LEARNTEXT, // sonso can learn X, but would need to forget a move. Choose a move to forget.
+  FORGET, //select a move to forget
+  FORGETTEXT,
+  FORGETCONFIRM,
+  MEMBERDEADTEXT,
+  ALLDEADTEXT,
+  OUTWIPEL,
+  STATUS_P,
+  TEXT_STATUS_P,
+  STATUS_E,
+  TEXT_STATUS_E,
+  MEMBERDEADTEXT_P, //member dead from self damage
+  TEXT_IDLE, //prints the text when an enemy doesn't attack
+  TEXT_ENEMY_BLINDED,
+  DROPITEMS,
+  DROPITEMTEXT,
+};
+
+
 extern gamemode g_gamemode;
 
 extern int g_learningMove;
@@ -1246,7 +1336,7 @@ extern int g_whoLearnsMove;
 
 extern int g_whichMoveLearned;
 
-extern turn g_turn;
+//extern turn g_turn;
 
 extern submode g_submode;
 
@@ -1262,7 +1352,9 @@ extern int g_autoFight;
 
 extern int curLevelIndex;
 
-extern vector<int> g_combatInventory;
+extern vector<itemData> g_items;
+
+extern bool g_dontRemovePR;
 
 //extern entity* g_combatWorldEnt;
 
@@ -1312,7 +1404,7 @@ extern lossSub g_lossSub;
 
 extern lossUI* lossUIManager;
 
-extern vector<keyItemInfo*> g_keyItems;
+extern vector<keyItemInfo*> g_keyItems; //pets
 extern vector<keyItemInfo*> g_keyItemsRelevant;
 
 extern bool g_keyItemFlavorDisplay;
